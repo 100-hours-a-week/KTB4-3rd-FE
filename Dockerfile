@@ -10,7 +10,7 @@ RUN npm ci
 FROM dependencies AS build
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN mkdir -p public && npm run test --if-present && npm run build
+RUN npm run test --if-present && npm run build
 
 FROM ${NODE_IMAGE} AS runtime
 WORKDIR /app
