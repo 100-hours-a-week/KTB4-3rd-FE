@@ -8,6 +8,7 @@ export type TextVariant =
   | 'screenTitle'
   | 'articleBody'
   | 't4Regular'
+  | 't4Bold'
   | 't4StaticRegular'
   | 'modalTitle';
 
@@ -25,6 +26,7 @@ const variantClassNames: Record<TextVariant, string> = {
   screenTitle: styles.screenTitle,
   articleBody: styles.articleBody,
   t4Regular: styles.t4Regular,
+  t4Bold: styles.t4Bold,
   t4StaticRegular: styles.t4StaticRegular,
   modalTitle: styles.modalTitle,
 };

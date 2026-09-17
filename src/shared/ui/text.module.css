@@ -27,6 +27,13 @@
   letter-spacing: var(--typography-t4-regular-letter-spacing);
 }
 
+.t4Bold {
+  font-size: var(--typography-t4-bold-font-size);
+  line-height: var(--typography-t4-bold-line-height);
+  font-weight: var(--typography-t4-bold-font-weight);
+  letter-spacing: var(--typography-t4-bold-letter-spacing);
+}
+
 .t4StaticRegular {
   font-size: var(--typography-t4-static-regular-font-size);
   line-height: var(--typography-t4-static-regular-line-height);

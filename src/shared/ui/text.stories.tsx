@@ -6,6 +6,7 @@ const variants: TextVariant[] = [
   'screenTitle',
   'articleBody',
   't4Regular',
+  't4Bold',
   't4StaticRegular',
   'modalTitle',
 ];

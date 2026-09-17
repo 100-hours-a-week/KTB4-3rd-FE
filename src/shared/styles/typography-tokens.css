@@ -93,6 +93,12 @@
   --typography-t4-regular-font-weight: var(--font-weight-regular);
   --typography-t4-regular-letter-spacing: var(--letter-spacing-normal);
 
+  /* Semantic: t4Bold */
+  --typography-t4-bold-font-size: var(--font-size-t4);
+  --typography-t4-bold-line-height: var(--line-height-t4);
+  --typography-t4-bold-font-weight: var(--font-weight-bold);
+  --typography-t4-bold-letter-spacing: var(--letter-spacing-normal);
+
   /* Semantic: t4StaticRegular */
   --typography-t4-static-regular-font-size: var(--font-size-t4-static);
   --typography-t4-static-regular-line-height: var(--line-height-t4-static);
