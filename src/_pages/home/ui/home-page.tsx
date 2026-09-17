@@ -56,9 +56,9 @@ export function HomePage() {
             Ready to build
           </div>
           <h1 className="max-w-2xl text-4xl font-black tracking-tight text-slate-950 sm:text-6xl">
-            함께 이동하고,
+            이동을 모아,
             <br />
-            함께 연결되는 서비스
+            일상을 잇다
           </h1>
           <p className="mt-6 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
             위키의 기술 스택과 FSD 방향을 반영한 초기 화면입니다. 이곳에서 기능별 slice를 확장해

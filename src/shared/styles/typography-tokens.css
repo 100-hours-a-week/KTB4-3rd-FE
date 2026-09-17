@@ -1,0 +1,60 @@
+/*
+ * Typography 디자인토큰
+ */
+
+:root {
+  /* Font family */
+  --font-family-system: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-family-pretendard: 'Pretendard';
+  --font-family-web: var(--font-family-pretendard), var(--font-family-system);
+
+  /* Foundation: font-size */
+  --font-size-t1: 11px;
+  --font-size-t2: 12px;
+  --font-size-t3: 13px;
+  --font-size-t4: 14px;
+  --font-size-t5: 16px;
+  --font-size-t6: 18px;
+  --font-size-t7: 20px;
+  --font-size-t8: 22px;
+  --font-size-t9: 24px;
+  --font-size-t10: 26px;
+  --font-size-t11: 28px;
+  --font-size-t12: 32px;
+  --font-size-t13: 40px;
+  --font-size-t14: 48px;
+
+  /* Foundation: line-height */
+  --line-height-t1: 15px;
+  --line-height-t2: 16px;
+  --line-height-t3: 18px;
+  --line-height-t4: 19px;
+  --line-height-t5: 22px;
+  --line-height-t6: 24px;
+  --line-height-t7: 27px;
+  --line-height-t8: 30px;
+  --line-height-t9: 32px;
+  --line-height-t10: 35px;
+  --line-height-t11: 38px;
+  --line-height-t12: 42px;
+  --line-height-t13: 52px;
+  --line-height-t14: 60px;
+
+  /* Foundation: font-weight */
+  --font-weight-regular: 400;
+  --font-weight-medium: 500;
+  --font-weight-bold: 700;
+  --letter-spacing-normal: 0px;
+
+  /* Semantic: screenTitle */
+  --typography-screen-title-font-size: var(--font-size-t10);
+  --typography-screen-title-line-height: var(--line-height-t10);
+  --typography-screen-title-font-weight: var(--font-weight-bold);
+  --typography-screen-title-letter-spacing: var(--letter-spacing-normal);
+
+  /* Semantic: articleBody */
+  --typography-article-body-font-size: var(--font-size-t5);
+  --typography-article-body-line-height: var(--line-height-t6);
+  --typography-article-body-font-weight: var(--font-weight-regular);
+  --typography-article-body-letter-spacing: var(--letter-spacing-normal);
+}

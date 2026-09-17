@@ -8,7 +8,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: '모여타',
-  description: '함께 이동하고, 함께 연결되는 모여타',
+  description: '이동을 모아, 일상을 잇다',
 };
 
 export const viewport: Viewport = {

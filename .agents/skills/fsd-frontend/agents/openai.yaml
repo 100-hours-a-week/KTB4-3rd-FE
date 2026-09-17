@@ -1,4 +1,4 @@
 interface:
-  display_name: "FSD Frontend"
-  short_description: "Apply project FSD architecture rules"
-  default_prompt: "Use $fsd-frontend to implement this frontend change within the project FSD rules."
+  display_name: 'FSD Frontend'
+  short_description: 'Apply project FSD architecture rules'
+  default_prompt: 'Use $fsd-frontend to implement this frontend change within the project FSD rules.'
