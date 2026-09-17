@@ -1,0 +1,149 @@
+name: FE CI
+
+on:
+  pull_request:
+    branches:
+      - develop
+      - main
+      - 'release/**'
+  push:
+    branches:
+      - develop
+      - 'release/**'
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+
+env:
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Setup pnpm
+        run: |
+          corepack enable
+          pnpm --version
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Run Chromatic
+        run: pnpm run chromatic
+        env:
+          CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+          
+      - name: Unit test
+        run: pnpm test
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Type check
+        run: pnpm typecheck
+          
+      - name: Build
+        run: pnpm build
+
+      - name: Resolve image tag
+        id: meta
+        run: |
+          set -Eeuo pipefail
+
+          if [[ "$GITHUB_REF_NAME" == develop ]]; then
+            image_tag="dev-${GITHUB_SHA:0:7}"
+            push_image=true
+          elif [[ "$GITHUB_REF_NAME" == release/* ]]; then
+            version="${GITHUB_REF_NAME#release/}"
+            [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            image_tag="rc-${version}-${GITHUB_SHA:0:7}"
+            push_image=true
+          else
+            image_tag="pr-${GITHUB_SHA:0:7}"
+            push_image=false
+          fi
+
+          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
+          echo "push_image=$push_image" >> "$GITHUB_OUTPUT"
+
+      - name: Build Docker image
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          docker buildx build \
+            --file Dockerfile \
+            --tag "moyeota-fe:${IMAGE_TAG}" \
+            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --load \
+            .
+
+      - name: Scan Docker image
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: moyeota-fe:${{ steps.meta.outputs.image_tag }}
+          scanners: vuln,secret
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true
+          exit-code: '1'
+
+      - name: Configure AWS credentials
+        if: steps.meta.outputs.push_image == 'true'
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: fe-ci-${{ github.run_id }}
+
+      - name: Login to ECR
+        if: steps.meta.outputs.push_image == 'true'
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Push image and capture Digest
+        if: steps.meta.outputs.push_image == 'true'
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+        run: |
+          set -Eeuo pipefail
+
+          remote_image="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          docker tag "moyeota-fe:${IMAGE_TAG}" "$remote_image"
+          docker push "$remote_image"
+
+          digest="$(
+            docker inspect --format '{{index .RepoDigests 0}}' "$remote_image" |
+            sed 's|.*@||'
+          )"
+
+          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+
+          {
+            echo "IMAGE=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}"
+            echo "TAG=${IMAGE_TAG}"
+            echo "SOURCE_SHA=${GITHUB_SHA}"
+          } > image.env
+
+      - name: Upload image metadata
+        if: steps.meta.outputs.push_image == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: fe-image-${{ github.sha }}
+          path: image.env
+          retention-days: 7
