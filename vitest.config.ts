@@ -13,6 +13,26 @@ const config = defineConfig({
     environment: 'jsdom',
     include: ['tests/unit/**/*.test.{ts,tsx}'],
     setupFiles: ['./vitest.setup.ts', './tests/unit/setup.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text', 'html', 'lcov'],
+      reportsDirectory: './coverage',
+
+      include: ['src/**/*.{ts,tsx}'],
+      exclude: [
+        'src/**/*.d.ts',
+        'src/**/*.stories.{ts,tsx}',
+        'src/test/**',
+        'src/mocks/**',
+      ],
+
+      thresholds: {
+        lines: 80,
+        functions: 80,
+        statements: 80,
+        branches: 70,
+      },
+    },
   },
 });
 

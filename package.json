@@ -13,9 +13,11 @@
     "format:check": "oxfmt --check .",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "chromatic": "chromatic"
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
@@ -32,6 +34,7 @@
     "zustand": "^5.0.15"
   },
   "devDependencies": {
+    "@chromatic-com/storybook": "^5.3.1",
     "@playwright/test": "^1.63.0",
     "@storybook/nextjs-vite": "^10.6.0",
     "@tailwindcss/postcss": "^4.3.3",
@@ -42,6 +45,8 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.1",
+    "@vitest/coverage-v8": "5.0.0",
+    "chromatic": "^18.9.0",
     "jsdom": "^30.0.1",
     "msw": "^2.15.0",
     "oxfmt": "^0.67.0",
