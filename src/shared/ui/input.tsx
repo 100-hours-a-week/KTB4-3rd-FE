@@ -12,11 +12,7 @@ import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
 
-export type InputSize = 'sm' | 'md' | 'lg';
-
 type InputOwnProps = {
-  /** Input height preset: 36px, 40px, or 52px. */
-  size?: InputSize;
   /** Content rendered before the input value. */
   prefix?: ReactNode | null;
   /** Content rendered after the input value. */
@@ -50,12 +46,6 @@ export type InputProps = Omit<
     onValueChange: (value: string) => void;
   };
 
-const sizeClassNames: Record<InputSize, string> = {
-  sm: 'h-[36px] rounded-[8px] px-[12px] py-[7px]',
-  md: 'h-[40px] rounded-[8px] px-[14px] py-[9px]',
-  lg: 'h-[52px] rounded-[12px] px-[var(--dimension-x4)] py-[15px]',
-};
-
 function hasClearButton(clearButton: ReactNode | null | undefined) {
   return clearButton !== null && clearButton !== undefined && clearButton !== false;
 }
@@ -80,7 +70,6 @@ export const Input = forwardRef<ComponentRef<typeof BaseInput>, InputProps>(
     {
       className,
       inputClassName,
-      size = 'lg',
       prefix,
       suffix,
       clearButton,
@@ -114,8 +103,7 @@ export const Input = forwardRef<ComponentRef<typeof BaseInput>, InputProps>(
       <div className={cn('relative flex w-full items-start', className)}>
         <div
           className={cn(
-            'flex w-full items-center gap-[var(--dimension-x2)] overflow-hidden border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-layer-default)] transition-colors',
-            sizeClassNames[size],
+            'flex h-[52px] w-full items-center gap-[var(--dimension-x2)] overflow-hidden rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-layer-default)] px-[var(--dimension-x4)] py-[15px] transition-colors',
             'focus-within:border-2 focus-within:border-[var(--color-stroke-neutral-contrast)]',
             'data-[invalid=true]:border-2 data-[invalid=true]:border-[var(--color-stroke-critical-solid)]',
             'data-[invalid=true]:focus-within:border-[var(--color-stroke-critical-solid)]',

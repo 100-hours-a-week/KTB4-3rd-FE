@@ -73,16 +73,9 @@ describe('Input', () => {
     expect(screen.queryByRole('button', { name: '입력값 지우기' })).not.toBeInTheDocument();
   });
 
-  it('applies size and invalid styles to the surface', () => {
+  it('applies the fixed height and invalid styles to the surface', () => {
     render(
-      <Input
-        aria-label="계좌번호"
-        data-testid="input"
-        invalid
-        onValueChange={() => {}}
-        size="sm"
-        value=""
-      />,
+      <Input aria-label="계좌번호" data-testid="input" invalid onValueChange={() => {}} value="" />,
     );
 
     const input = screen.getByTestId('input');
@@ -92,7 +85,7 @@ describe('Input', () => {
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(surface).toHaveClass('w-full');
     expect(input.parentElement?.parentElement).toHaveClass('w-full');
-    expect(surface).toHaveClass('h-[36px]');
+    expect(surface).toHaveClass('h-[52px]');
     expect(input.parentElement).toHaveAttribute('data-invalid', 'true');
   });
 

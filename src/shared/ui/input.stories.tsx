@@ -2,9 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useState, type ComponentProps } from 'react';
 
 import { Icon } from './icon';
-import { Input, type InputSize } from './input';
-
-const sizes: InputSize[] = ['sm', 'md', 'lg'];
+import { Input } from './input';
 
 const meta = {
   title: 'Shared/Input',
@@ -14,16 +12,11 @@ const meta = {
     value: '',
     onValueChange: () => {},
     placeholder: '계좌번호를 입력해주세요',
-    size: 'lg',
     disabled: false,
     readOnly: false,
     invalid: false,
   },
   argTypes: {
-    size: {
-      control: 'select',
-      options: sizes,
-    },
     invalid: {
       control: 'boolean',
     },
@@ -84,14 +77,4 @@ export const Disabled: Story = {
   args: {
     disabled: true,
   },
-};
-
-export const AllSizes: Story = {
-  render: (args) => (
-    <div className="flex flex-col items-start gap-3">
-      {sizes.map((size) => (
-        <Input {...args} key={size} size={size} />
-      ))}
-    </div>
-  ),
 };
