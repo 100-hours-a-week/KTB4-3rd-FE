@@ -66,14 +66,14 @@ Do not use same-layer direct imports merely because there is no cycle yet. Do no
 
 ## Layer placement guide
 
-| Layer | Put here | Keep out |
-| --- | --- | --- |
-| `_app` | global providers, initialization, app-wide wiring | route-specific UI and business features |
-| `_pages` | route-level composition and page UI | reusable domain behavior |
-| `widgets` | meaningful screen blocks that compose multiple lower-level parts | isolated buttons and single user actions |
-| `features` | user actions, mutations, workflows, feature-specific state | generic domain display |
-| `entities` | stable domain model, schema, API mapping, domain UI | feature-specific actions and app wiring |
-| `shared` | domain-agnostic UI, API client, config, utilities | product-specific business rules |
+| Layer      | Put here                                                         | Keep out                                 |
+| ---------- | ---------------------------------------------------------------- | ---------------------------------------- |
+| `_app`     | global providers, initialization, app-wide wiring                | route-specific UI and business features  |
+| `_pages`   | route-level composition and page UI                              | reusable domain behavior                 |
+| `widgets`  | meaningful screen blocks that compose multiple lower-level parts | isolated buttons and single user actions |
+| `features` | user actions, mutations, workflows, feature-specific state       | generic domain display                   |
+| `entities` | stable domain model, schema, API mapping, domain UI              | feature-specific actions and app wiring  |
+| `shared`   | domain-agnostic UI, API client, config, utilities                | product-specific business rules          |
 
 Avoid premature slicing. If a domain concept is not stable or is used by only one feature, keep it near that use case and promote it to `entities` only when the reuse and ownership are clear. An `entities` layer is optional.
 

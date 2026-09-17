@@ -1,9 +1,9 @@
 ---
 name: 기능 요청
 about: 새로운 기능이나 개선 사항을 제안합니다.
-title: "[Feature] "
-labels: ""
-assignees: ""
+title: '[Feature] '
+labels: ''
+assignees: ''
 ---
 
 ## 문제 또는 배경
@@ -20,8 +20,8 @@ assignees: ""
 
 ## 완료 조건
 
-- [ ] 
-- [ ] 
+- [ ]
+- [ ]
 
 ## 참고 자료
 
