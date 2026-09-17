@@ -1,8 +1,9 @@
 @import 'tailwindcss';
+@import '../src/shared/styles/color-tokens.css';
 
 :root {
-  --background: #f8fafc;
-  --foreground: #0f172a;
+  --background: var(--color-bg-layer-fill);
+  --foreground: var(--color-fg-neutral);
 }
 
 * {
