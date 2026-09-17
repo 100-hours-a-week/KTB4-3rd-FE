@@ -91,7 +91,8 @@ describe('Input', () => {
     expect(input).toHaveClass('flex-1');
     expect(input).toHaveAttribute('aria-invalid', 'true');
     expect(surface).toHaveClass('w-full');
-    expect(input.parentElement?.parentElement).toHaveClass('w-[168px]');
+    expect(input.parentElement?.parentElement).toHaveClass('w-full');
+    expect(surface).toHaveClass('h-[36px]');
     expect(input.parentElement).toHaveAttribute('data-invalid', 'true');
   });
 
