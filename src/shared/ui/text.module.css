@@ -1,0 +1,42 @@
+.root {
+  margin: 0;
+  font-family: var(--font-family-web);
+  font-style: normal;
+  text-decoration: none;
+  text-transform: none;
+}
+
+.screenTitle {
+  font-size: var(--typography-screen-title-font-size);
+  line-height: var(--typography-screen-title-line-height);
+  font-weight: var(--typography-screen-title-font-weight);
+  letter-spacing: var(--typography-screen-title-letter-spacing);
+}
+
+.articleBody {
+  font-size: var(--typography-article-body-font-size);
+  line-height: var(--typography-article-body-line-height);
+  font-weight: var(--typography-article-body-font-weight);
+  letter-spacing: var(--typography-article-body-letter-spacing);
+}
+
+.t4Regular {
+  font-size: var(--typography-t4-regular-font-size);
+  line-height: var(--typography-t4-regular-line-height);
+  font-weight: var(--typography-t4-regular-font-weight);
+  letter-spacing: var(--typography-t4-regular-letter-spacing);
+}
+
+.t4StaticRegular {
+  font-size: var(--typography-t4-static-regular-font-size);
+  line-height: var(--typography-t4-static-regular-line-height);
+  font-weight: var(--typography-t4-static-regular-font-weight);
+  letter-spacing: var(--typography-t4-static-regular-letter-spacing);
+}
+
+.modalTitle {
+  font-size: var(--typography-modal-title-font-size);
+  line-height: var(--typography-modal-title-line-height);
+  font-weight: var(--typography-modal-title-font-weight);
+  letter-spacing: var(--typography-modal-title-letter-spacing);
+}
