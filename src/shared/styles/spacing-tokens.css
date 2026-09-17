@@ -1,0 +1,34 @@
+/*
+ * Spacing 디자인토큰
+ */
+
+:root {
+  /* Foundation: dimension */
+  --dimension-x1: 4px;
+  --dimension-x1_5: 6px;
+  --dimension-x2: 8px;
+  --dimension-x2_5: 10px;
+  --dimension-x3: 12px;
+  --dimension-x3_5: 14px;
+  --dimension-x4: 16px;
+  --dimension-x4_5: 18px;
+  --dimension-x5: 20px;
+  --dimension-x6: 24px;
+  --dimension-x7: 28px;
+  --dimension-x8: 32px;
+  --dimension-x9: 36px;
+  --dimension-x10: 40px;
+  --dimension-x12: 48px;
+  --dimension-x13: 52px;
+  --dimension-x14: 56px;
+  --dimension-x16: 64px;
+
+  /* Semantic: horizontal spacing */
+  --spacing-x-between-chips: var(--dimension-x2);
+  --spacing-x-global-gutter: var(--dimension-x5);
+
+  /* Semantic: vertical spacing */
+  --spacing-y-component-default: var(--dimension-x3);
+  --spacing-y-screen-bottom: var(--dimension-x14);
+  --spacing-y-between-text: var(--dimension-x1_5);
+}
