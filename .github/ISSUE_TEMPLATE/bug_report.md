@@ -1,9 +1,9 @@
 ---
 name: 버그 리포트
 about: 오류나 예상과 다른 동작을 제보합니다.
-title: "[Bug] "
-labels: ""
-assignees: ""
+title: '[Bug] '
+labels: ''
+assignees: ''
 ---
 
 ## 버그 설명
@@ -12,9 +12,9 @@ assignees: ""
 
 ## 재현 절차
 
-1. 
-2. 
-3. 
+1.
+2.
+3.
 
 ## 기대한 결과
 

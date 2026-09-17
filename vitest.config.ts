@@ -19,12 +19,7 @@ const config = defineConfig({
       reportsDirectory: './coverage',
 
       include: ['src/**/*.{ts,tsx}'],
-      exclude: [
-        'src/**/*.d.ts',
-        'src/**/*.stories.{ts,tsx}',
-        'src/test/**',
-        'src/mocks/**',
-      ],
+      exclude: ['src/**/*.d.ts', 'src/**/*.stories.{ts,tsx}', 'src/test/**', 'src/mocks/**'],
 
       thresholds: {
         lines: 80,
