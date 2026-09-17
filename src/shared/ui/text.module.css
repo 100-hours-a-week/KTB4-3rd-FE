@@ -2,7 +2,7 @@
   margin: 0;
   font-family: var(--font-family-web);
   font-style: normal;
-  text-decoration: none;
+  text-decoration-line: none;
   text-transform: none;
 }
 
@@ -20,23 +20,205 @@
   letter-spacing: var(--typography-article-body-letter-spacing);
 }
 
+.t1Regular {
+  font-size: var(--font-size-t1);
+  line-height: var(--line-height-t1);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t1Bold {
+  font-size: var(--font-size-t1);
+  line-height: var(--line-height-t1);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t2Regular {
+  font-size: var(--font-size-t2);
+  line-height: var(--line-height-t2);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t2Bold {
+  font-size: var(--font-size-t2);
+  line-height: var(--line-height-t2);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t3Regular {
+  font-size: var(--font-size-t3);
+  line-height: var(--line-height-t3);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t3Bold {
+  font-size: var(--font-size-t3);
+  line-height: var(--line-height-t3);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
 .t4Regular {
-  font-size: var(--typography-t4-regular-font-size);
-  line-height: var(--typography-t4-regular-line-height);
-  font-weight: var(--typography-t4-regular-font-weight);
-  letter-spacing: var(--typography-t4-regular-letter-spacing);
+  font-size: var(--font-size-t4);
+  line-height: var(--line-height-t4);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
 }
 
-.t4StaticRegular {
-  font-size: var(--typography-t4-static-regular-font-size);
-  line-height: var(--typography-t4-static-regular-line-height);
-  font-weight: var(--typography-t4-static-regular-font-weight);
-  letter-spacing: var(--typography-t4-static-regular-letter-spacing);
+.t4Bold {
+  font-size: var(--font-size-t4);
+  line-height: var(--line-height-t4);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
 }
 
-.modalTitle {
-  font-size: var(--typography-modal-title-font-size);
-  line-height: var(--typography-modal-title-line-height);
-  font-weight: var(--typography-modal-title-font-weight);
-  letter-spacing: var(--typography-modal-title-letter-spacing);
+.t5Regular {
+  font-size: var(--font-size-t5);
+  line-height: var(--line-height-t5);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t5Bold {
+  font-size: var(--font-size-t5);
+  line-height: var(--line-height-t5);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t6Regular {
+  font-size: var(--font-size-t6);
+  line-height: var(--line-height-t6);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t6Bold {
+  font-size: var(--font-size-t6);
+  line-height: var(--line-height-t6);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t7Regular {
+  font-size: var(--font-size-t7);
+  line-height: var(--line-height-t7);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t7Bold {
+  font-size: var(--font-size-t7);
+  line-height: var(--line-height-t7);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t8Regular {
+  font-size: var(--font-size-t8);
+  line-height: var(--line-height-t8);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t8Bold {
+  font-size: var(--font-size-t8);
+  line-height: var(--line-height-t8);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t9Regular {
+  font-size: var(--font-size-t9);
+  line-height: var(--line-height-t9);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t9Bold {
+  font-size: var(--font-size-t9);
+  line-height: var(--line-height-t9);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t10Regular {
+  font-size: var(--font-size-t10);
+  line-height: var(--line-height-t10);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t10Bold {
+  font-size: var(--font-size-t10);
+  line-height: var(--line-height-t10);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t11Regular {
+  font-size: var(--font-size-t11);
+  line-height: var(--line-height-t11);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t11Bold {
+  font-size: var(--font-size-t11);
+  line-height: var(--line-height-t11);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t12Regular {
+  font-size: var(--font-size-t12);
+  line-height: var(--line-height-t12);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t12Bold {
+  font-size: var(--font-size-t12);
+  line-height: var(--line-height-t12);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t13Regular {
+  font-size: var(--font-size-t13);
+  line-height: var(--line-height-t13);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t13Bold {
+  font-size: var(--font-size-t13);
+  line-height: var(--line-height-t13);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t14Regular {
+  font-size: var(--font-size-t14);
+  line-height: var(--line-height-t14);
+  font-weight: var(--font-weight-regular);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.t14Bold {
+  font-size: var(--font-size-t14);
+  line-height: var(--line-height-t14);
+  font-weight: var(--font-weight-bold);
+  letter-spacing: var(--letter-spacing-normal);
+}
+
+.maxLines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: var(--text-max-lines);
 }

@@ -1,14 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { Text, type TextVariant } from './text';
-
-const variants: TextVariant[] = [
-  'screenTitle',
-  'articleBody',
-  't4Regular',
-  't4StaticRegular',
-  'modalTitle',
-];
+import { Text, textVariants } from './text';
 
 const meta = {
   title: 'Shared/Text',
@@ -36,11 +28,10 @@ export const ScreenTitle: Story = {
   },
 };
 
-export const ModalTitle: Story = {
+export const T7Bold: Story = {
   args: {
-    as: 'h2',
-    children: '모달 제목',
-    variant: 'modalTitle',
+    children: 't7 Bold 텍스트',
+    variant: 't7Bold',
   },
 };
 
@@ -54,10 +45,29 @@ export const Multiline: Story = {
   ),
 };
 
+export const IndividualProperties: Story = {
+  render: () => (
+    <Text
+      variant="t7Bold"
+      fontSize="t5"
+      lineHeight="t6"
+      fontWeight="medium"
+      maxLines={2}
+      align="center"
+      whiteSpace="pre-line"
+      userSelect="none"
+      textDecorationLine="underline"
+      color="fg.brand"
+    >
+      개별 텍스트 속성으로 덮어쓴 예시입니다. 긴 텍스트는 두 줄까지만 표시됩니다.
+    </Text>
+  ),
+};
+
 export const AllVariants: Story = {
   render: () => (
     <div className="flex flex-col gap-4">
-      {variants.map((variant) => (
+      {textVariants.map((variant) => (
         <Text key={variant} variant={variant}>
           {variant}: 이동을 모아, 일상을 잇다
         </Text>

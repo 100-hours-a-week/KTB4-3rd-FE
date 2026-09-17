@@ -24,9 +24,42 @@ describe('Text', () => {
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('이동을 모아, 일상을 잇다');
   });
 
-  it('renders the modalTitle semantic variant', () => {
-    render(<Text variant="modalTitle">모달 제목</Text>);
+  it('renders the t7Bold variant', () => {
+    render(<Text variant="t7Bold">t7 Bold 텍스트</Text>);
 
-    expect(screen.getByText('모달 제목')).toHaveClass(textStyles.modalTitle);
+    expect(screen.getByText('t7 Bold 텍스트')).toHaveClass(textStyles.t7Bold);
+  });
+
+  it('supports token-based individual text properties', () => {
+    render(
+      <Text
+        variant="t7Bold"
+        fontSize="t5"
+        fontWeight="medium"
+        maxLines={2}
+        align="center"
+        whiteSpace="pre-line"
+        userSelect="none"
+        textDecorationLine="underline"
+        color="fg.brand"
+      >
+        개별 텍스트 속성
+      </Text>,
+    );
+
+    const text = screen.getByText('개별 텍스트 속성');
+
+    expect(text).toHaveClass(textStyles.maxLines);
+    expect(text).toHaveStyle({
+      fontSize: 'var(--font-size-t5)',
+      lineHeight: 'var(--line-height-t5)',
+      fontWeight: 'var(--font-weight-medium)',
+      textAlign: 'center',
+      whiteSpace: 'pre-line',
+      userSelect: 'none',
+      textDecorationLine: 'underline',
+      color: 'var(--color-fg-brand)',
+    });
+    expect(text.style.getPropertyValue('--text-max-lines')).toBe('2');
   });
 });
