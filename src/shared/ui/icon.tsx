@@ -36,6 +36,7 @@ const iconRegistry = {
   minus: { type: 'mask', source: '/icons/seed/icon_minus_line.svg' },
   plus: { type: 'mask', source: '/icons/seed/icon_plus_line.svg' },
   xmark: { type: 'mask', source: '/icons/seed/icon_xmark_line.svg' },
+  xmarkCircleFill: { type: 'mask', source: '/icons/seed/icon_xmark_circle_fill.svg' },
   arrowUpRight: { type: 'mask', source: '/icons/seed/icon_arrow_up_right_line.svg' },
   chattingSend: { type: 'mask', source: '/icons/seed/icon_chatting_send_regular.svg' },
   person2Line: { type: 'mask', source: '/icons/seed/icon_person2_line.svg' },
