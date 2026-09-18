@@ -119,8 +119,8 @@ export function Select<T extends string = string>({
             <BaseSelect.Popup
               className={cn(
                 'flex max-h-[min(480px,var(--available-height))] flex-col gap-[var(--dimension-x2)] overflow-y-auto rounded-[12px] bg-[var(--color-bg-layer-floating)] px-[var(--dimension-x1)] py-[var(--dimension-x2)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] outline-none',
-                'data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
-                'origin-[var(--transform-origin)] transition-[transform,opacity] duration-150',
+                'data-[starting-style]:scale-y-0 data-[starting-style]:opacity-0 data-[ending-style]:scale-y-0 data-[ending-style]:opacity-0',
+                'origin-top transition-[scale,opacity] duration-200 ease-out',
               )}
             >
               {options.length > 0 ? (
