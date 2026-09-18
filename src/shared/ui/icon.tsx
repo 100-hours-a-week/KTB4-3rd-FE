@@ -29,6 +29,7 @@ const iconRegistry = {
     type: 'mask',
     source: '/icons/seed/icon_checkmark_circle_fill.svg',
   },
+  checkmark: { type: 'mask', source: '/icons/seed/icon_checkmark_fill.svg' },
   chevronDown: { type: 'mask', source: '/icons/seed/icon_chevron_down_line.svg' },
   chevronLeft: { type: 'mask', source: '/icons/seed/icon_chevron_left_line.svg' },
   chevronRight: { type: 'mask', source: '/icons/seed/icon_chevron_right_line.svg' },
