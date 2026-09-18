@@ -5,6 +5,7 @@
 :root {
   /* Foundation: dimension */
   --dimension-x1: 4px;
+  --dimension-x0_5: 2px;
   --dimension-x1_5: 6px;
   --dimension-x2: 8px;
   --dimension-x2_5: 10px;
