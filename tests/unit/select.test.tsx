@@ -140,6 +140,22 @@ describe('Select', () => {
     expect(trigger).toHaveTextContent('택시');
   });
 
+  it('읽기 전용이면 팝업을 열지 않는다', () => {
+    render(
+      <Select
+        aria-label="이동수단"
+        onValueChange={() => {}}
+        options={options}
+        readOnly
+        value="taxi"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('combobox', { name: '이동수단' }));
+
+    expect(screen.queryByRole('option', { name: '택시' })).not.toBeInTheDocument();
+  });
+
   it('옵션이 없을 때 빈 상태를 표시한다', () => {
     render(<Select aria-label="이동수단" onValueChange={() => {}} options={[]} value={null} />);
 

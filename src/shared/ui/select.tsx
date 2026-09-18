@@ -64,6 +64,7 @@ export function Select<T extends string = string>({
         items={options}
         name={name}
         onValueChange={(nextValue) => onValueChange(nextValue)}
+        open={readOnly ? false : undefined}
         readOnly={readOnly}
         required={required}
         value={normalizedValue}
