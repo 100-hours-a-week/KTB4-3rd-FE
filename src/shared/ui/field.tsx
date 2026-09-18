@@ -12,7 +12,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
-import { Text } from './text';
+import { Text, type TextColor } from './text';
 
 export type FieldLabelWeight = 'medium' | 'bold';
 
@@ -102,16 +102,20 @@ function getCharacterCountInvalidState(
   );
 }
 
-function getCharacterCountClassName(isInvalid: boolean, hasCurrentCount: boolean) {
+function hasEnteredCharacters(characterCount: ReactNode | null | undefined) {
+  return typeof characterCount === 'number' ? characterCount > 0 : hasContent(characterCount);
+}
+
+function getCharacterCountColor(isInvalid: boolean, hasCurrentCount: boolean): TextColor {
   if (isInvalid) {
-    return 'text-[var(--color-fg-critical)]';
+    return 'fg.critical';
   }
 
   if (hasCurrentCount) {
-    return 'text-[var(--color-fg-neutral)]';
+    return 'fg.neutral';
   }
 
-  return 'text-[var(--color-fg-neutral-subtle)]';
+  return 'fg.neutralSubtle';
 }
 
 function renderFooterMessage(
@@ -244,16 +248,23 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
             </div>
 
             {hasCharacterCount ? (
-              <span
+              <Text
                 aria-label="글자 수"
-                className={cn(
-                  'shrink-0 text-[var(--font-size-t4)] leading-[var(--line-height-t4)] font-normal',
-                  getCharacterCountClassName(isCharacterCountInvalid, hasContent(characterCount)),
+                className="shrink-0"
+                color={getCharacterCountColor(
+                  isCharacterCountInvalid,
+                  hasEnteredCharacters(characterCount),
                 )}
+                variant="t3Regular"
               >
                 {hasContent(characterCount) ? characterCount : 0}
-                {hasContent(maxCharacterCount) ? <> / {maxCharacterCount}</> : null}
-              </span>
+                {hasContent(maxCharacterCount) ? (
+                  <Text as="span" color="fg.neutralSubtle" variant="t3Regular">
+                    {' / '}
+                    {maxCharacterCount}
+                  </Text>
+                ) : null}
+              </Text>
             ) : null}
           </div>
         ) : null}
