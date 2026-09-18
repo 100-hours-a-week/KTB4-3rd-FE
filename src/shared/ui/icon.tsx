@@ -23,6 +23,7 @@ type IconDefinition =
       component: ComponentType<LucideProps>;
     };
 
+// 아이콘 통합
 const iconRegistry = {
   camera: { type: 'mask', source: '/icons/seed/icon_camera_line.svg' },
   checkmarkCircle: {
@@ -58,6 +59,10 @@ const iconRegistry = {
   logOut: { type: 'lucide', component: LogOut },
   messageSquareWarning: { type: 'lucide', component: MessageSquareWarning },
   userRoundX: { type: 'lucide', component: UserRoundX },
+  exclamationmarkCircleFill: {
+    type: 'mask',
+    source: '/icons/seed/icon_exclamationmark_circle_fill.svg',
+  },
 } satisfies Record<string, IconDefinition>;
 
 export type IconName = keyof typeof iconRegistry;
