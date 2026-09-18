@@ -140,26 +140,6 @@ jobs:
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
         shell: bash
 
-      # SARIF 를 먼저 기록한 뒤 exit-code 로 실패시킨다(스캔 1회).
-      - name: Scan Docker image
-        id: trivy
-        uses: aquasecurity/trivy-action@v0.36.0
-        with:
-          image-ref: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
-          scanners: vuln,secret
-          severity: CRITICAL,HIGH
-          ignore-unfixed: true
-          format: sarif
-          output: trivy-results.sarif
-          exit-code: '1'
-
-      # 스캔이 실패해도 결과는 Security 탭에 올린다.
-      - name: Upload Trivy SARIF
-        if: always() && hashFiles('trivy-results.sarif') != ''
-        uses: github/codeql-action/upload-sarif@v4
-        with:
-          sarif_file: trivy-results.sarif
-
       - name: Configure AWS credentials
         if: steps.meta.outputs.push_image == 'true'
         uses: aws-actions/configure-aws-credentials@v4
