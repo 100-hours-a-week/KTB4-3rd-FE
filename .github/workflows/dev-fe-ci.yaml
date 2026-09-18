@@ -128,7 +128,7 @@ jobs:
             --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}" \
             --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-}" \
             --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-}" \
-            --cache-from "type=gha,scope=fe-${GITHUB_REF_NAME" \
+            --cache-from "type=gha,scope=fe-${GITHUB_REF_NAME}" \
             --cache-to "type=gha,scope=fe-${GITHUB_REF_NAME},mode=max" \
             --load \
             "${docker_build_args[@]}" \
