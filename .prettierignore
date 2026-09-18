@@ -4,6 +4,7 @@ storybook-static
 playwright-report
 test-results
 public/mockServiceWorker.js
+next-env.d.ts
 pnpm-lock.yaml
 base-ui-components.md
 browser-support-scope.md

@@ -17,12 +17,16 @@ permissions:
   id-token: write
   security-events: write
 
-
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   IMAGE_NAME: moyeota-fe
+  NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+  NEXT_PUBLIC_GA_ID: ${{ vars.NEXT_PUBLIC_GA_ID }}
+  NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}
+  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE }}
 
 jobs:
   ci:
@@ -36,9 +40,10 @@ jobs:
           # Chromatic 의 baseline 비교를 위해 전체 히스토리가 필요하다.
           fetch-depth: 0
 
-      # setup-node 의 cache: pnpm 보다 먼저 pnpm 이 준비돼야 한다.
       - name: Setup pnpm
-        uses: pnpm/action-setup@v6
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.12.0
 
       - name: Setup Node.js
         uses: actions/setup-node@v7
@@ -63,6 +68,7 @@ jobs:
         run: pnpm test
 
       - name: Run Chromatic
+        if: github.event_name == 'push'
         run: pnpm run chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
@@ -104,6 +110,11 @@ jobs:
         run: |
           set -Eeuo pipefail
 
+          docker_build_args=()
+          if [[ -n "${SENTRY_AUTH_TOKEN:-}" ]]; then
+            docker_build_args+=(--secret "id=sentry_auth_token,env=SENTRY_AUTH_TOKEN")
+          fi
+
           docker buildx build \
             --file Dockerfile \
             --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
@@ -112,16 +123,22 @@ jobs:
             --build-arg "BUILD_DATE=${{ steps.meta.outputs.build_date }}" \
             --build-arg "SENTRY_ORG=${SENTRY_ORG:-}" \
             --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT:-}" \
-            --secret "id=sentry_auth_token,env=SENTRY_AUTH_TOKEN" \
-            --cache-from "type=gha,scope=fe-${GITHUB_REF_NAME}" \
+            --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-}" \
+            --build-arg "NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID:-}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-}" \
+            --cache-from "type=gha,scope=fe-${GITHUB_REF_NAME" \
             --cache-to "type=gha,scope=fe-${GITHUB_REF_NAME},mode=max" \
             --load \
+            "${docker_build_args[@]}" \
             .
         env:
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
-          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_AUTH_TOKEN: ${{ github.event_name == 'push' && secrets.SENTRY_AUTH_TOKEN || '' }}
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+        shell: bash
 
       # SARIF 를 먼저 기록한 뒤 exit-code 로 실패시킨다(스캔 1회).
       - name: Scan Docker image
