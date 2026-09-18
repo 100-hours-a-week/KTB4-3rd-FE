@@ -12,6 +12,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
+import { Text, type TextColor } from './text';
 
 export type FieldLabelWeight = 'medium' | 'bold';
 
@@ -71,12 +72,15 @@ function getRequirementMark(
 
   if (resolvedMark === 'optional') {
     return (
-      <span
+      <Text
+        as="span"
         aria-hidden="true"
-        className="pl-[var(--dimension-x1)] leading-[var(--line-height-t3)] font-normal text-[var(--color-fg-neutral-subtle)] text-[var(--font-size-t3)]"
+        className="pl-[var(--dimension-x1)]"
+        color="fg.placeholder"
+        variant="t3Regular"
       >
         선택
-      </span>
+      </Text>
     );
   }
 
@@ -84,15 +88,6 @@ function getRequirementMark(
     <span aria-hidden="true" className="pl-[var(--dimension-x1)]">
       {resolvedMark}
     </span>
-  );
-}
-
-function getLabelClassName(labelWeight: FieldLabelWeight) {
-  const weightClassName = labelWeight === 'bold' ? 'font-bold' : 'font-medium';
-
-  return cn(
-    'min-w-0 flex-1 text-[var(--font-size-t4)] leading-[var(--line-height-t4)] text-[var(--color-fg-neutral)] data-[disabled]:text-[var(--color-fg-disabled)]',
-    weightClassName,
   );
 }
 
@@ -107,44 +102,54 @@ function getCharacterCountInvalidState(
   );
 }
 
-function getCharacterCountClassName(isInvalid: boolean, hasCurrentCount: boolean) {
+function hasEnteredCharacters(characterCount: ReactNode | null | undefined) {
+  return typeof characterCount === 'number' ? characterCount > 0 : hasContent(characterCount);
+}
+
+function getCharacterCountColor(isInvalid: boolean, hasCurrentCount: boolean): TextColor {
   if (isInvalid) {
-    return 'text-[var(--color-fg-critical)]';
+    return 'fg.critical';
   }
 
   if (hasCurrentCount) {
-    return 'text-[var(--color-fg-neutral)]';
+    return 'fg.neutral';
   }
 
-  return 'text-[var(--color-fg-neutral-subtle)]';
+  return 'fg.neutralSubtle';
 }
 
 function renderFooterMessage(
   hasErrorMessage: boolean,
   errorMessage: ReactNode | null | undefined,
   helperContent: ReactNode | null | undefined,
+  disabled: boolean,
 ) {
   if (hasErrorMessage) {
     return (
-      <BaseField.Error
-        className="flex items-center gap-[var(--dimension-x1)] leading-[var(--line-height-t3)] font-normal text-[var(--color-fg-critical)] text-[var(--font-size-t3)]"
-        match
-      >
+      <BaseField.Error className="flex items-center gap-[var(--dimension-x1)]" match>
         <Icon
           aria-hidden="true"
           color="var(--color-fg-critical)"
           name="exclamationmarkCircleFill"
           size={16}
         />
-        <span className="min-w-0 break-words text-[var(--color-fg-critical)]">{errorMessage}</span>
+        <Text className="min-w-0 break-words" color="fg.critical" variant="t3Regular">
+          {errorMessage}
+        </Text>
       </BaseField.Error>
     );
   }
 
   if (hasContent(helperContent)) {
     return (
-      <BaseField.Description className="leading-[var(--line-height-t3)] font-normal break-words text-[var(--color-fg-neutral-subtle)] text-[var(--font-size-t3)] data-[disabled]:text-[var(--color-fg-disabled)]">
-        {helperContent}
+      <BaseField.Description className="min-w-0">
+        <Text
+          className="break-words"
+          color={disabled ? 'fg.disabled' : 'fg.neutralSubtle'}
+          variant="t3Regular"
+        >
+          {helperContent}
+        </Text>
       </BaseField.Description>
     );
   }
@@ -217,12 +222,20 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
         invalid={isInvalid}
       >
         <div className="flex min-h-[20px] w-full items-center gap-[var(--dimension-x1)] px-[var(--dimension-x0_5)]">
-          <BaseField.Label className={getLabelClassName(labelWeight)}>
-            {label}
+          <BaseField.Label className="min-w-0 flex-1">
+            <Text
+              color={disabled ? 'fg.disabled' : 'fg.neutral'}
+              fontWeight={labelWeight}
+              variant="t5Regular"
+            >
+              {label}
+            </Text>
             {getRequirementMark(requirementMark, required)}
           </BaseField.Label>
           {hasContent(suffixSlot) ? (
-            <span className="inline-flex shrink-0 items-center">{suffixSlot}</span>
+            <span className="inline-flex shrink-0 items-center text-[var(--color-fg-neutral-subtle)]">
+              {suffixSlot}
+            </span>
           ) : null}
         </div>
 
@@ -231,20 +244,27 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
         {hasFooter ? (
           <div className="flex min-h-[20px] w-full items-center justify-between gap-[var(--dimension-x2)] px-[var(--dimension-x0_5)]">
             <div className="min-w-0 flex-1">
-              {renderFooterMessage(hasErrorMessage, errorMessage, helperContent)}
+              {renderFooterMessage(hasErrorMessage, errorMessage, helperContent, disabled)}
             </div>
 
             {hasCharacterCount ? (
-              <span
+              <Text
                 aria-label="글자 수"
-                className={cn(
-                  'shrink-0 text-[var(--font-size-t4)] leading-[var(--line-height-t4)] font-normal',
-                  getCharacterCountClassName(isCharacterCountInvalid, hasContent(characterCount)),
+                className="shrink-0"
+                color={getCharacterCountColor(
+                  isCharacterCountInvalid,
+                  hasEnteredCharacters(characterCount),
                 )}
+                variant="t3Regular"
               >
                 {hasContent(characterCount) ? characterCount : 0}
-                {hasContent(maxCharacterCount) ? <> / {maxCharacterCount}</> : null}
-              </span>
+                {hasContent(maxCharacterCount) ? (
+                  <Text as="span" color="fg.neutralSubtle" variant="t3Regular">
+                    {' / '}
+                    {maxCharacterCount}
+                  </Text>
+                ) : null}
+              </Text>
             ) : null}
           </div>
         ) : null}

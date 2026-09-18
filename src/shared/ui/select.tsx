@@ -129,6 +129,7 @@ function SelectComponent<T extends string = string>(
         <BaseSelect.Portal>
           <BaseSelect.Positioner
             align="start"
+            alignItemWithTrigger={false}
             className="z-50 w-[var(--anchor-width)] min-w-[180px] outline-none"
             collisionPadding={8}
             collisionAvoidance={{ side: 'shift', align: 'shift', fallbackAxisSide: 'none' }}

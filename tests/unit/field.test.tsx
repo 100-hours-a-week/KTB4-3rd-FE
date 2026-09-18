@@ -46,8 +46,10 @@ describe('Field', () => {
 
     const input = screen.getByRole('textbox', { name: '댓글' });
     const helperText = screen.getByText('최대 300자까지 입력할 수 있어요.');
+    const helperDescription = helperText.closest('[id]');
 
-    expect(input).toHaveAttribute('aria-describedby', helperText.id);
+    expect(helperDescription).not.toBeNull();
+    expect(input).toHaveAttribute('aria-describedby', helperDescription?.id);
   });
 
   it('error message를 helper text 대신 표시하고 invalid 상태로 만든다', () => {
@@ -71,6 +73,14 @@ describe('Field', () => {
     renderInputField({ characterCount: 8, maxCharacterCount: 10 });
 
     expect(screen.getByLabelText('글자 수')).toHaveTextContent('8 / 10');
+  });
+
+  it('character count가 0이면 placeholder 색상으로 표시한다', () => {
+    renderInputField({ characterCount: 0, maxCharacterCount: 10 });
+
+    expect(screen.getByLabelText('글자 수')).toHaveStyle({
+      color: 'var(--color-fg-neutral-subtle)',
+    });
   });
 
   it('입력 슬롯에 Select를 연결한다', () => {
