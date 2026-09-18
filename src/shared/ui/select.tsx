@@ -169,7 +169,7 @@ export function Select<T extends string = string>({
                         'size-[var(--dimension-x3_5)]',
                       )}
                     >
-                      <Icon aria-hidden="true" name="checkmarkCircle" size="100%" />
+                      <Icon aria-hidden="true" name="checkmark" size="100%" />
                     </BaseSelect.ItemIndicator>
                   </BaseSelect.Item>
                 ))
