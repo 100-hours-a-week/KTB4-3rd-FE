@@ -1,7 +1,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { useState } from 'react';
+import { createRef, useState } from 'react';
 
 import { Select, type SelectOption } from '@/shared/ui/select';
 
@@ -181,5 +181,27 @@ describe('Select', () => {
     fireEvent.click(trigger);
 
     expect(screen.queryByRole('option', { name: '택시' })).not.toBeInTheDocument();
+  });
+
+  it('RHF 연결에 필요한 trigger ref와 blur 이벤트를 전달한다', () => {
+    const ref = createRef<HTMLButtonElement>();
+    const handleBlur = vi.fn<() => void>();
+
+    render(
+      <Select
+        aria-label="이동수단"
+        onBlur={handleBlur}
+        onValueChange={() => {}}
+        options={options}
+        ref={ref}
+        value={null}
+      />,
+    );
+
+    expect(ref.current).toBe(screen.getByRole('combobox', { name: '이동수단' }));
+
+    fireEvent.blur(screen.getByRole('combobox', { name: '이동수단' }));
+
+    expect(handleBlur).toHaveBeenCalledOnce();
   });
 });

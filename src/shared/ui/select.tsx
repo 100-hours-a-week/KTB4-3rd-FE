@@ -1,5 +1,13 @@
 import { Select as BaseSelect } from '@base-ui/react/select';
-import type { ReactNode } from 'react';
+import {
+  forwardRef,
+  type ComponentPropsWithoutRef,
+  type ComponentRef,
+  type ForwardedRef,
+  type ReactElement,
+  type ReactNode,
+  type RefAttributes,
+} from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -12,6 +20,9 @@ export type SelectOption<T extends string = string> = {
   prefixIcon?: ReactNode | null;
   disabled?: boolean;
 };
+
+type SelectTriggerProps = ComponentPropsWithoutRef<typeof BaseSelect.Trigger>;
+type SelectTriggerRef = ComponentRef<typeof BaseSelect.Trigger>;
 
 export type SelectProps<T extends string = string> = {
   options: SelectOption<T>[];
@@ -28,6 +39,7 @@ export type SelectProps<T extends string = string> = {
   'aria-label'?: string;
   'aria-labelledby'?: string;
   'aria-describedby'?: string;
+  onBlur?: SelectTriggerProps['onBlur'];
   className?: string;
 };
 
@@ -35,23 +47,27 @@ function hasOption<T extends string>(options: SelectOption<T>[], value: T | null
   return value !== null && options.some((option) => option.value === value);
 }
 
-export function Select<T extends string = string>({
-  options,
-  value,
-  onValueChange,
-  placeholder = '선택해 주세요',
-  prefixIcon,
-  disabled = false,
-  readOnly = false,
-  invalid = false,
-  name,
-  required = false,
-  id,
-  'aria-label': ariaLabel,
-  'aria-labelledby': ariaLabelledBy,
-  'aria-describedby': ariaDescribedBy,
-  className,
-}: SelectProps<T>) {
+function SelectComponent<T extends string = string>(
+  {
+    options,
+    value,
+    onValueChange,
+    placeholder = '선택해 주세요',
+    prefixIcon,
+    disabled = false,
+    readOnly = false,
+    invalid = false,
+    name,
+    required = false,
+    id,
+    'aria-label': ariaLabel,
+    'aria-labelledby': ariaLabelledBy,
+    'aria-describedby': ariaDescribedBy,
+    onBlur,
+    className,
+  }: SelectProps<T>,
+  ref: ForwardedRef<SelectTriggerRef>,
+) {
   const normalizedValue = hasOption(options, value) ? value : null;
   const selectedOption = options.find((option) => option.value === normalizedValue);
   const triggerPrefixIcon = selectedOption?.prefixIcon ?? prefixIcon;
@@ -86,6 +102,8 @@ export function Select<T extends string = string>({
           aria-labelledby={ariaLabelledBy}
           data-invalid={invalid ? 'true' : undefined}
           data-readonly={readOnly ? 'true' : undefined}
+          onBlur={onBlur}
+          ref={ref}
         >
           {triggerPrefixIcon !== null && triggerPrefixIcon !== undefined ? (
             <span
@@ -189,3 +207,11 @@ export function Select<T extends string = string>({
     </div>
   );
 }
+
+const SelectWithRef = forwardRef(SelectComponent);
+
+SelectWithRef.displayName = 'Select';
+
+export const Select = SelectWithRef as <T extends string = string>(
+  props: SelectProps<T> & RefAttributes<SelectTriggerRef>,
+) => ReactElement | null;
