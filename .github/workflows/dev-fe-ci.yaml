@@ -17,51 +17,62 @@ permissions:
   id-token: write
   security-events: write
 
+# PR 에 연속 push 시에만 이전 실행을 취소한다.
+# develop/release push 는 이미지 빌드·푸시로 이어지므로 중간에 끊지 않는다.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+  IMAGE_NAME: moyeota-fe
 
 jobs:
   ci:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
+          # Chromatic 의 baseline 비교를 위해 전체 히스토리가 필요하다.
           fetch-depth: 0
 
+      # setup-node 의 cache: pnpm 보다 먼저 pnpm 이 준비돼야 한다.
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v6
+
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
           cache: pnpm
 
-      - name: Setup pnpm
-        run: |
-          corepack enable
-          pnpm --version
-
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
+
+      # 빠르고 싼 검증부터 실행해 피드백 시간을 줄인다.
+      - name: Lint
+        run: pnpm lint
+
+      - name: Format check
+        run: pnpm format:check
+
+      - name: Type check
+        run: pnpm typecheck
+
+      - name: Unit test
+        run: pnpm test
 
       - name: Run Chromatic
         run: pnpm run chromatic
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
-          
-      - name: Unit test
-        run: pnpm test
 
-      - name: Lint
-        run: pnpm lint
-
-      - name: Type check
-        run: pnpm typecheck
-          
-      - name: Build
-        run: pnpm build
+      # next build 는 아래 Docker 빌드에서 수행되므로 별도 build 스텝을 두지 않는다.
 
       - name: Resolve image tag
         id: meta
@@ -70,39 +81,72 @@ jobs:
 
           if [[ "$GITHUB_REF_NAME" == develop ]]; then
             image_tag="dev-${GITHUB_SHA:0:7}"
+            release_version=""
             push_image=true
           elif [[ "$GITHUB_REF_NAME" == release/* ]]; then
             version="${GITHUB_REF_NAME#release/}"
             [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
             image_tag="rc-${version}-${GITHUB_SHA:0:7}"
+            release_version="$version"
             push_image=true
           else
             image_tag="pr-${GITHUB_SHA:0:7}"
+            release_version=""
             push_image=false
           fi
 
-          echo "image_tag=$image_tag" >> "$GITHUB_OUTPUT"
-          echo "push_image=$push_image" >> "$GITHUB_OUTPUT"
+          {
+            echo "image_tag=$image_tag"
+            echo "release_version=$release_version"
+            echo "push_image=$push_image"
+            echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
 
       - name: Build Docker image
-        env:
-          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
         run: |
+          set -Eeuo pipefail
+
           docker buildx build \
             --file Dockerfile \
-            --tag "moyeota-fe:${IMAGE_TAG}" \
-            --label "org.opencontainers.image.revision=${GITHUB_SHA}" \
+            --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
+            --build-arg "BUILD_SHA=${GITHUB_SHA}" \
+            --build-arg "RELEASE_VERSION=${{ steps.meta.outputs.release_version }}" \
+            --build-arg "BUILD_DATE=${{ steps.meta.outputs.build_date }}" \
+            --build-arg "SENTRY_ORG=${SENTRY_ORG:-}" \
+            --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT:-}" \
+            --secret "id=sentry_auth_token,env=SENTRY_AUTH_TOKEN" \
+            --cache-from "type=gha,scope=fe-${GITHUB_REF_NAME}" \
+            --cache-to "type=gha,scope=fe-${GITHUB_REF_NAME},mode=max" \
             --load \
             .
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
 
+      # SARIF 를 먼저 기록한 뒤 exit-code 로 실패시킨다(스캔 1회).
       - name: Scan Docker image
-        uses: aquasecurity/trivy-action@0.28.0
+        id: trivy
+        uses: aquasecurity/trivy-action@0.36.0
         with:
-          image-ref: moyeota-fe:${{ steps.meta.outputs.image_tag }}
+          image-ref: ${{ env.IMAGE_NAME }}:${{ steps.meta.outputs.image_tag }}
           scanners: vuln,secret
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          format: sarif
+          output: trivy-results.sarif
           exit-code: '1'
+
+      # 스캔이 실패해도 결과는 Security 탭에 올린다.
+      - name: Upload Trivy SARIF
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@v4
+        with:
+          sarif_file: trivy-results.sarif
 
       - name: Configure AWS credentials
         if: steps.meta.outputs.push_image == 'true'
@@ -116,7 +160,8 @@ jobs:
         if: steps.meta.outputs.push_image == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push image and capture Digest
+      - name: Push image and capture digest
+        id: push
         if: steps.meta.outputs.push_image == 'true'
         env:
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
@@ -125,15 +170,33 @@ jobs:
 
           remote_image="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
-          docker tag "moyeota-fe:${IMAGE_TAG}" "$remote_image"
+          docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$remote_image"
           docker push "$remote_image"
 
+          # 레지스트리를 직접 조회해 매니페스트 digest 를 얻는다.
+          # docker inspect 의 RepoDigests 는 순서가 보장되지 않아
+          # [0] 이 다른 레포(예: 캐시로 pull 한 이미지)의 digest 일 수 있다.
           digest="$(
-            docker inspect --format '{{index .RepoDigests 0}}' "$remote_image" |
-            sed 's|.*@||'
+            docker buildx imagetools inspect "$remote_image" \
+              --format '{{.Manifest.Digest}}'
           )"
 
-          [[ "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]
+          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+            echo "::error::digest 형식이 올바르지 않습니다: '${digest}'"
+            exit 1
+          fi
+
+          # 푸시한 태그가 실제로 이 digest 를 가리키는지 재확인한다.
+          pushed_digest="$(
+            docker buildx imagetools inspect \
+              "${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}" \
+              --format '{{.Manifest.Digest}}'
+          )"
+
+          if [[ "$pushed_digest" != "$digest" ]]; then
+            echo "::error::digest 검증 실패: ${pushed_digest} != ${digest}"
+            exit 1
+          fi
 
           {
             echo "IMAGE=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}"
@@ -141,9 +204,22 @@ jobs:
             echo "SOURCE_SHA=${GITHUB_SHA}"
           } > image.env
 
+          {
+            echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}"
+            echo "digest=${digest}"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Pushed image"
+            echo ""
+            echo '```'
+            cat image.env
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload image metadata
         if: steps.meta.outputs.push_image == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fe-image-${{ github.sha }}
           path: image.env

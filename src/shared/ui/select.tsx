@@ -14,7 +14,6 @@ export type SelectOption<T extends string = string> = {
 };
 
 export type SelectProps<T extends string = string> = {
-  label: ReactNode;
   options: SelectOption<T>[];
   value: T | null;
   onValueChange: (value: T | null) => void;
@@ -26,6 +25,9 @@ export type SelectProps<T extends string = string> = {
   name?: string;
   required?: boolean;
   id?: string;
+  'aria-label'?: string;
+  'aria-labelledby'?: string;
+  'aria-describedby'?: string;
   className?: string;
 };
 
@@ -34,7 +36,6 @@ function hasOption<T extends string>(options: SelectOption<T>[], value: T | null
 }
 
 export function Select<T extends string = string>({
-  label,
   options,
   value,
   onValueChange,
@@ -46,6 +47,9 @@ export function Select<T extends string = string>({
   name,
   required = false,
   id,
+  'aria-label': ariaLabel,
+  'aria-labelledby': ariaLabelledBy,
+  'aria-describedby': ariaDescribedBy,
   className,
 }: SelectProps<T>) {
   const normalizedValue = hasOption(options, value) ? value : null;
@@ -53,37 +57,33 @@ export function Select<T extends string = string>({
   const triggerPrefixIcon = selectedOption?.prefixIcon ?? prefixIcon;
 
   return (
-    <div className={cn('flex w-full flex-col gap-[var(--dimension-x2)]', className)}>
+    <div className={cn('w-full', className)}>
       <BaseSelect.Root<T>
         disabled={disabled}
         id={id}
         items={options}
         name={name}
         onValueChange={(nextValue) => onValueChange(nextValue)}
+        open={readOnly ? false : undefined}
         readOnly={readOnly}
         required={required}
         value={normalizedValue}
       >
-        <BaseSelect.Label
-          className={cn(
-            'text-[var(--font-size-t4)] leading-[var(--line-height-t4)] font-medium text-[var(--color-fg-neutral)]',
-            'data-[disabled]:cursor-not-allowed data-[disabled]:text-[var(--color-fg-disabled)]',
-          )}
-        >
-          {label}
-        </BaseSelect.Label>
         <BaseSelect.Trigger
           className={cn(
-            'group flex h-[var(--dimension-x13)] w-full items-center justify-between gap-[var(--dimension-x2_5)] rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-transparent)] px-[var(--dimension-x4)] text-left text-[var(--font-size-t5)] leading-[var(--line-height-t5)] font-normal text-[var(--color-fg-neutral)] outline-none transition-colors',
+            'group flex h-[var(--dimension-x13)] w-full items-center justify-between gap-[var(--dimension-x2_5)] rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-transparent)] px-[var(--dimension-x4)] text-left text-[var(--font-size-t5)] leading-[var(--line-height-t5)] font-normal text-[var(--color-fg-neutral)] outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]',
             'active:bg-[var(--color-bg-transparent-pressed)] data-[pressed]:bg-[var(--color-bg-transparent-pressed)]',
-            'data-[popup-open]:border-2 data-[popup-open]:border-[var(--color-stroke-neutral-contrast)]',
-            'data-[invalid=true]:border-2 data-[invalid=true]:border-[var(--color-stroke-critical-solid)]',
-            'data-[invalid=true]:data-[popup-open]:border-[var(--color-stroke-critical-solid)]',
+            'data-[popup-open]:border-[var(--color-stroke-neutral-contrast)] data-[popup-open]:shadow-[inset_0_0_0_1px_var(--color-stroke-neutral-contrast)]',
+            'data-[invalid=true]:border-[var(--color-stroke-critical-solid)] data-[invalid=true]:shadow-[inset_0_0_0_1px_var(--color-stroke-critical-solid)]',
+            'data-[invalid=true]:data-[popup-open]:border-[var(--color-stroke-critical-solid)] data-[invalid=true]:data-[popup-open]:shadow-[inset_0_0_0_1px_var(--color-stroke-critical-solid)]',
             'data-[readonly=true]:bg-[var(--color-bg-disabled)] data-[readonly=true]:focus-visible:border-[var(--color-stroke-neutral-weak)]',
             'disabled:cursor-not-allowed disabled:border-[var(--color-stroke-neutral-weak)] disabled:bg-[var(--color-bg-disabled)] disabled:text-[var(--color-fg-disabled)]',
           )}
+          aria-describedby={ariaDescribedBy}
           aria-invalid={invalid || undefined}
+          aria-label={ariaLabel}
+          aria-labelledby={ariaLabelledBy}
           data-invalid={invalid ? 'true' : undefined}
           data-readonly={readOnly ? 'true' : undefined}
         >
@@ -113,13 +113,15 @@ export function Select<T extends string = string>({
             align="start"
             className="z-50 w-[var(--anchor-width)] min-w-[180px] outline-none"
             collisionPadding={8}
+            collisionAvoidance={{ side: 'shift', align: 'shift', fallbackAxisSide: 'none' }}
             sideOffset={8}
+            side="bottom"
           >
             <BaseSelect.Popup
               className={cn(
                 'flex max-h-[min(480px,var(--available-height))] flex-col gap-[var(--dimension-x2)] overflow-y-auto rounded-[12px] bg-[var(--color-bg-layer-floating)] px-[var(--dimension-x1)] py-[var(--dimension-x2)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] outline-none',
-                'data-[starting-style]:scale-95 data-[starting-style]:opacity-0 data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
-                'origin-[var(--transform-origin)] transition-[transform,opacity] duration-150',
+                'data-[starting-style]:scale-y-0 data-[starting-style]:opacity-0 data-[ending-style]:scale-y-0 data-[ending-style]:opacity-0',
+                'origin-top transition-[scale,opacity] duration-200 ease-out',
               )}
             >
               {options.length > 0 ? (
@@ -168,7 +170,7 @@ export function Select<T extends string = string>({
                         'size-[var(--dimension-x3_5)]',
                       )}
                     >
-                      <Icon aria-hidden="true" name="checkmarkCircle" size="100%" />
+                      <Icon aria-hidden="true" name="checkmark" size="100%" />
                     </BaseSelect.ItemIndicator>
                   </BaseSelect.Item>
                 ))

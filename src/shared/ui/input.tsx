@@ -12,11 +12,7 @@ import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
 
-export type InputSize = 'sm' | 'md' | 'lg';
-
 type InputOwnProps = {
-  /** Input width preset: 168px, 313px, or 353px. */
-  size?: InputSize;
   /** Content rendered before the input value. */
   prefix?: ReactNode | null;
   /** Content rendered after the input value. */
@@ -50,12 +46,6 @@ export type InputProps = Omit<
     onValueChange: (value: string) => void;
   };
 
-const sizeClassNames: Record<InputSize, string> = {
-  sm: 'w-[168px]',
-  md: 'w-[313px]',
-  lg: 'w-[353px]',
-};
-
 function hasClearButton(clearButton: ReactNode | null | undefined) {
   return clearButton !== null && clearButton !== undefined && clearButton !== false;
 }
@@ -80,7 +70,6 @@ export const Input = forwardRef<ComponentRef<typeof BaseInput>, InputProps>(
     {
       className,
       inputClassName,
-      size = 'lg',
       prefix,
       suffix,
       clearButton,
@@ -111,7 +100,7 @@ export const Input = forwardRef<ComponentRef<typeof BaseInput>, InputProps>(
     };
 
     return (
-      <div className={cn('relative flex h-[52px] items-start', sizeClassNames[size], className)}>
+      <div className={cn('relative flex w-full items-start', className)}>
         <div
           className={cn(
             'flex h-[52px] w-full items-center gap-[var(--dimension-x2)] overflow-hidden rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-layer-default)] px-[var(--dimension-x4)] py-[15px] transition-colors',

@@ -19,10 +19,10 @@ const options: SelectOption<Transport>[] = [
 ];
 
 describe('Select', () => {
-  it('renders its label and placeholder', () => {
+  it('접근성 이름과 플레이스홀더를 렌더링한다', () => {
     render(
       <Select
-        label="이동수단"
+        aria-label="이동수단"
         onValueChange={() => {}}
         options={options}
         placeholder="이동수단 선택"
@@ -30,16 +30,20 @@ describe('Select', () => {
       />,
     );
 
-    expect(screen.getByText('이동수단')).toBeInTheDocument();
     expect(screen.getByRole('combobox', { name: '이동수단' })).toHaveTextContent('이동수단 선택');
   });
 
-  it('opens the popup and reports the selected option', async () => {
+  it('팝업을 열고 선택한 옵션의 값을 전달한다', async () => {
     const user = userEvent.setup();
     const handleValueChange = vi.fn<(value: Transport | null) => void>();
 
     render(
-      <Select label="이동수단" onValueChange={handleValueChange} options={options} value={null} />,
+      <Select
+        aria-label="이동수단"
+        onValueChange={handleValueChange}
+        options={options}
+        value={null}
+      />,
     );
 
     fireEvent.click(screen.getByRole('combobox', { name: '이동수단' }));
@@ -50,12 +54,12 @@ describe('Select', () => {
     expect(handleValueChange).toHaveBeenCalledWith('subway');
   });
 
-  it('does not select a disabled option', () => {
+  it('비활성화된 옵션은 선택하지 않는다', () => {
     const handleValueChange = vi.fn<(value: Transport | null) => void>();
 
     render(
       <Select
-        label="이동수단"
+        aria-label="이동수단"
         onValueChange={handleValueChange}
         options={[...options.slice(0, 1), { ...options[1], disabled: true }]}
         value={null}
@@ -72,10 +76,10 @@ describe('Select', () => {
     expect(handleValueChange).not.toHaveBeenCalled();
   });
 
-  it('renders item descriptions and prefix icons', () => {
+  it('항목 설명과 앞쪽 아이콘을 렌더링한다', () => {
     render(
       <Select
-        label="이동수단"
+        aria-label="이동수단"
         onValueChange={() => {}}
         options={[
           {
@@ -95,12 +99,14 @@ describe('Select', () => {
     expect(screen.getByTestId('taxi-icon')).toBeInTheDocument();
   });
 
-  it('supports a controlled selected value', async () => {
+  it('제어되는 선택값을 지원한다', async () => {
     const user = userEvent.setup();
     function ControlledSelect() {
       const [value, setValue] = useState<Transport | null>('taxi');
 
-      return <Select label="이동수단" onValueChange={setValue} options={options} value={value} />;
+      return (
+        <Select aria-label="이동수단" onValueChange={setValue} options={options} value={value} />
+      );
     }
 
     render(<ControlledSelect />);
@@ -114,11 +120,11 @@ describe('Select', () => {
     expect(trigger).toHaveTextContent('지하철');
   });
 
-  it('applies invalid and read-only states', () => {
+  it('오류 상태와 읽기 전용 상태를 적용한다', () => {
     render(
       <Select
         invalid
-        label="이동수단"
+        aria-label="이동수단"
         onValueChange={() => {}}
         options={options}
         readOnly
@@ -134,17 +140,39 @@ describe('Select', () => {
     expect(trigger).toHaveTextContent('택시');
   });
 
-  it('shows an empty state when there are no options', () => {
-    render(<Select label="이동수단" onValueChange={() => {}} options={[]} value={null} />);
+  it('읽기 전용이면 팝업을 열지 않는다', () => {
+    render(
+      <Select
+        aria-label="이동수단"
+        onValueChange={() => {}}
+        options={options}
+        readOnly
+        value="taxi"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('combobox', { name: '이동수단' }));
+
+    expect(screen.queryByRole('option', { name: '택시' })).not.toBeInTheDocument();
+  });
+
+  it('옵션이 없을 때 빈 상태를 표시한다', () => {
+    render(<Select aria-label="이동수단" onValueChange={() => {}} options={[]} value={null} />);
 
     fireEvent.click(screen.getByRole('combobox', { name: '이동수단' }));
 
     expect(screen.getByRole('status')).toHaveTextContent('선택 가능한 항목이 없습니다');
   });
 
-  it('does not open when disabled', () => {
+  it('컴포넌트가 비활성화되면 팝업을 열지 않는다', () => {
     render(
-      <Select disabled label="이동수단" onValueChange={() => {}} options={options} value={null} />,
+      <Select
+        aria-label="이동수단"
+        disabled
+        onValueChange={() => {}}
+        options={options}
+        value={null}
+      />,
     );
 
     const trigger = screen.getByRole('combobox', { name: '이동수단' });

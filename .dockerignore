@@ -1,0 +1,37 @@
+# 빌드 컨텍스트에서 제외 (COPY . . 가 deps 단계 결과를 덮어쓰지 않도록)
+node_modules
+**/node_modules
+.next
+out
+build
+storybook-static
+.pnpm-store
+
+.git
+.gitignore
+.github
+.agents
+
+# 로컬 환경 변수 (.env.example 만 허용)
+.env*
+!.env.example
+
+# 테스트 / 리포트
+coverage
+playwright-report
+test-results
+blob-report
+tests
+.storybook
+**/*.stories.tsx
+**/*.test.ts
+**/*.test.tsx
+
+# 기타
+Dockerfile
+.dockerignore
+README.md
+.DS_Store
+*.log
+*.pem
+*.tsbuildinfo
