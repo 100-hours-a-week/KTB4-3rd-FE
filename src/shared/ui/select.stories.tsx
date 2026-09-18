@@ -17,7 +17,7 @@ const meta = {
   title: 'Shared/Select',
   component: Select,
   args: {
-    label: '이동수단',
+    'aria-label': '이동수단',
     options: transportOptions,
     value: null,
     onValueChange: () => {},
@@ -30,7 +30,7 @@ const meta = {
     },
   },
   parameters: {
-    layout: 'centered',
+    layout: 'padded',
   },
 } satisfies Meta<typeof Select>;
 
