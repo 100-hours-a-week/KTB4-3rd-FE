@@ -59,7 +59,7 @@ export const AllSizes: Story = {
 export const CustomSize: Story = {
   render: () => (
     <div className="flex items-center gap-8">
-      <Logo size={32} />
+      <Logo size={182} />
       <Logo size="clamp(48px, 12vw, 96px)" variant="symbol" />
     </div>
   ),
@@ -69,13 +69,6 @@ export const Link: Story = {
   args: {
     href: '/',
     alt: '서비스 홈',
-  },
-};
-
-export const Decorative: Story = {
-  args: {
-    alt: '',
-    variant: 'symbol',
   },
 };
 
