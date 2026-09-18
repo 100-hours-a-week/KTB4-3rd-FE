@@ -70,12 +70,12 @@ export function Select<T extends string = string>({
       >
         <BaseSelect.Trigger
           className={cn(
-            'group flex h-[var(--dimension-x13)] w-full items-center justify-between gap-[var(--dimension-x2_5)] rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-transparent)] px-[var(--dimension-x4)] text-left text-[var(--font-size-t5)] leading-[var(--line-height-t5)] font-normal text-[var(--color-fg-neutral)] outline-none transition-colors',
+            'group flex h-[var(--dimension-x13)] w-full items-center justify-between gap-[var(--dimension-x2_5)] rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-transparent)] px-[var(--dimension-x4)] text-left text-[var(--font-size-t5)] leading-[var(--line-height-t5)] font-normal text-[var(--color-fg-neutral)] outline-none transition-[background-color,border-color,box-shadow] duration-150 ease-out',
             'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]',
             'active:bg-[var(--color-bg-transparent-pressed)] data-[pressed]:bg-[var(--color-bg-transparent-pressed)]',
-            'data-[popup-open]:border-2 data-[popup-open]:border-[var(--color-stroke-neutral-contrast)]',
-            'data-[invalid=true]:border-2 data-[invalid=true]:border-[var(--color-stroke-critical-solid)]',
-            'data-[invalid=true]:data-[popup-open]:border-[var(--color-stroke-critical-solid)]',
+            'data-[popup-open]:border-[var(--color-stroke-neutral-contrast)] data-[popup-open]:shadow-[inset_0_0_0_1px_var(--color-stroke-neutral-contrast)]',
+            'data-[invalid=true]:border-[var(--color-stroke-critical-solid)] data-[invalid=true]:shadow-[inset_0_0_0_1px_var(--color-stroke-critical-solid)]',
+            'data-[invalid=true]:data-[popup-open]:border-[var(--color-stroke-critical-solid)] data-[invalid=true]:data-[popup-open]:shadow-[inset_0_0_0_1px_var(--color-stroke-critical-solid)]',
             'data-[readonly=true]:bg-[var(--color-bg-disabled)] data-[readonly=true]:focus-visible:border-[var(--color-stroke-neutral-weak)]',
             'disabled:cursor-not-allowed disabled:border-[var(--color-stroke-neutral-weak)] disabled:bg-[var(--color-bg-disabled)] disabled:text-[var(--color-fg-disabled)]',
           )}
