@@ -46,8 +46,10 @@ describe('Field', () => {
 
     const input = screen.getByRole('textbox', { name: '댓글' });
     const helperText = screen.getByText('최대 300자까지 입력할 수 있어요.');
+    const helperDescription = helperText.closest('[id]');
 
-    expect(input).toHaveAttribute('aria-describedby', helperText.id);
+    expect(helperDescription).not.toBeNull();
+    expect(input).toHaveAttribute('aria-describedby', helperDescription?.id);
   });
 
   it('error message를 helper text 대신 표시하고 invalid 상태로 만든다', () => {
