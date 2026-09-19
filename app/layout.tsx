@@ -15,6 +15,7 @@ export const viewport: Viewport = {
   colorScheme: 'light',
   width: 'device-width',
   initialScale: 1,
+  viewportFit: 'cover',
 };
 
 const googleAnalyticsId = process.env.NEXT_PUBLIC_GA_ID;
