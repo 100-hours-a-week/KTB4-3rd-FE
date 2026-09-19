@@ -12,7 +12,7 @@ export function KakaoLoginButton() {
         <Image
           src="/icons/brand/kakao.svg"
           alt="카카오 로그인"
-          area-hidden={true}
+          area-hidden="true"
           width={18}
           height={18}
         />
