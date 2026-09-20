@@ -21,7 +21,7 @@ jobs:
 
             const embeds = [
               {
-                title: `🚨 긴급 이슈 알림\n${issue.title}`,
+                title: `⭐ CI 완료 알림\n${issue.title}`,
                 color: 10478271,
                 description: issue.html_url,
                 fields: [

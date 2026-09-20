@@ -29,9 +29,40 @@ env:
   IMAGE_NAME: moyeota-fe
 
 jobs:
-  ci:
+  test:
+    name: Unit tests
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11.12.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Unit test
+        run: pnpm test
+
+  quality:
+    name: Static checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
 
     steps:
       - name: Checkout
@@ -69,14 +100,32 @@ jobs:
       - name: Type check
         run: pnpm typecheck
 
-      - name: Unit test
-        run: pnpm test
-
       - name: Run Chromatic
         if: github.event_name == 'push'
         run: pnpm run chromatic --exit-zero-on-changes
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
+
+  build:
+    name: Build and publish
+    needs:
+      - test
+      - quality
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+      security-events: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
 
       # develop에서는 Dev 배포용 이미지를 ECR에 Push한다.
       # main과 PR에서는 Dockerfile 검증만 수행하고 ECR에 Push하지 않는다.

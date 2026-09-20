@@ -21,6 +21,47 @@ jobs:
         with:
           script: |
             const run = context.payload.workflow_run;
+            const jobs = await github.paginate(
+              github.rest.actions.listJobsForWorkflowRun,
+              {
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                run_id: run.id,
+                per_page: 100,
+              },
+            );
+
+            const failedConclusions = new Set([
+              'failure',
+              'timed_out',
+              'cancelled',
+              'action_required',
+            ]);
+            const failedJobs = jobs.filter((job) =>
+              failedConclusions.has(job.conclusion),
+            );
+            const conclusionLabels = {
+              failure: '실패',
+              timed_out: '시간 초과',
+              cancelled: '취소됨',
+              action_required: '조치 필요',
+            };
+
+            const failedJobDetails = failedJobs.map((job) => {
+              const failedSteps = (job.steps ?? [])
+                .filter((step) => failedConclusions.has(step.conclusion))
+                .map((step) => step.name);
+              const conclusion = conclusionLabels[job.conclusion] || job.conclusion;
+              const steps = failedSteps.length
+                ? `\n실패 step: ${failedSteps.join(', ')}`
+                : '';
+
+              return `${job.name} (${conclusion})${steps}\n${job.html_url}`;
+            });
+
+            const failedJobsField = failedJobDetails.length
+              ? failedJobDetails.join('\n\n')
+              : '실패한 job 정보를 조회하지 못했습니다.';
 
             const embeds = [
               {
@@ -28,6 +69,10 @@ jobs:
                 color: 15158332,
                 description: run.html_url,
                 fields: [
+                  {
+                    name: 'Failed jobs',
+                    value: failedJobsField.slice(0, 1024),
+                  },
                   {
                     name: 'Branch',
                     value: run.head_branch || '-',
