@@ -1,9 +1,5 @@
-import { http, HttpResponse } from 'msw';
+import { authHandlers } from './auth.handlers';
+import { healthHandlers } from './health.handlers';
+import { signupHandlers } from './signup.handlers';
 
-export const handlers = [
-  http.get('*/api/health', () =>
-    HttpResponse.json({
-      status: 'ok',
-    }),
-  ),
-];
+export const handlers = [...healthHandlers, ...authHandlers, ...signupHandlers];
