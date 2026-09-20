@@ -51,7 +51,6 @@ export function Header({ title, leftSlot, rightSlot, className }: HeaderProps) {
 
         <div className="flex min-h-[44px] min-w-[44px] items-center justify-end">{rightSlot}</div>
       </div>
-      <div aria-hidden="true" className="h-px bg-[var(--color-stroke-neutral-subtle)]" />
     </header>
   );
 }
