@@ -16,6 +16,20 @@ describe('Icon', () => {
     expect(icon?.style.maskImage).toContain('/icons/seed/icon_camera_line.svg');
   });
 
+  it('문서 아이콘 asset을 렌더링한다', () => {
+    const { container } = render(<Icon name="document" />);
+    const icon = container.querySelector('span');
+
+    expect(icon?.style.maskImage).toContain('/icons/seed/icon_document_fill.svg');
+  });
+
+  it('텍스트 말풍선 아이콘 asset을 렌더링한다', () => {
+    const { container } = render(<Icon name="chatbubbleText" />);
+    const icon = container.querySelector('span');
+
+    expect(icon?.style.maskImage).toContain('/icons/seed/icon_chatbubble_text_fill.svg');
+  });
+
   it('접근성 라벨이 있는 아이콘을 렌더링한다', () => {
     const { getByRole } = render(<Icon name="info" title="정보" />);
 
