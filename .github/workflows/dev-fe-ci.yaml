@@ -1,15 +1,21 @@
 name: FE CI
 
 on:
+  # PR 은 검증만 수행하고 ECR push 와 배포는 하지 않는다.
+  # hotfix/* 는 main 으로 PR 을 보내므로 아래 main 대상 PR 에 포함된다.
   pull_request:
     branches:
       - develop
       - main
       - 'release/**'
+
+  # develop, release/* 로의 직접 push 는 branch protection 으로 차단되므로
+  # 이 이벤트는 사실상 "PR 이 병합되어 ref 가 전진했을 때"의 push 를 의미한다.
   push:
     branches:
       - develop
       - 'release/**'
+
   workflow_dispatch:
 
 permissions:
@@ -40,6 +46,11 @@ jobs:
           # Chromatic 의 baseline 비교를 위해 전체 히스토리가 필요하다.
           fetch-depth: 0
 
+      # v6 는 부트스트랩 pnpm 을 설치한 뒤 self-update 로 타깃 버전에 맞추는데,
+      # 그 과정이 self-installer 단계에서 실패해 v4 를 사용한다.
+      # v4 는 요청한 버전을 그대로 설치한다.
+      # version 값은 package.json 의 packageManager 와 반드시 일치해야 한다.
+      # 두 값이 어긋나면 action 이 "Multiple versions of pnpm specified" 로 실패한다.
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
         with:
@@ -74,7 +85,11 @@ jobs:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
 
       # next build 는 아래 Docker 빌드에서 수행되므로 별도 build 스텝을 두지 않는다.
-
+      #
+      # FE CI 의 책임은 dev-/rc- 이미지 생성까지다.
+      # 정식 출시 태그(prod-vX.Y.Z-<sha7>)는 "재빌드 없이 동일 Digest" 정책에 따라
+      # Cloud(CD) 레포에서 생성한다. CD 는 rc-vX.Y.Z- prefix 로 ECR 을 조회해
+      # 해당 버전의 rc 이미지를 찾은 뒤 prod- 태그로 재태깅한다.
       - name: Resolve image tag
         id: meta
         run: |
@@ -90,6 +105,10 @@ jobs:
             image_tag="rc-${version}-${GITHUB_SHA:0:7}"
             release_version="$version"
             push_image=true
+          elif [[ "$GITHUB_REF_NAME" == hotfix/* ]]; then
+            image_tag="hf-${GITHUB_SHA:0:7}"
+            release_version=""
+            push_image=false
           else
             image_tag="pr-${GITHUB_SHA:0:7}"
             release_version=""
@@ -103,9 +122,6 @@ jobs:
             echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build Docker image
         run: |
           set -Eeuo pipefail
@@ -115,7 +131,7 @@ jobs:
             docker_build_args+=(--secret "id=sentry_auth_token,env=SENTRY_AUTH_TOKEN")
           fi
 
-          docker buildx build \
+          DOCKER_BUILDKIT=1 docker build \
             --file Dockerfile \
             --tag "${IMAGE_NAME}:${IMAGE_TAG}" \
             --build-arg "BUILD_SHA=${GITHUB_SHA}" \
@@ -128,9 +144,6 @@ jobs:
             --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}" \
             --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-}" \
             --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-}" \
-            --cache-from "type=gha,scope=fe-${GITHUB_REF_NAME}" \
-            --cache-to "type=gha,scope=fe-${GITHUB_REF_NAME},mode=max" \
-            --load \
             "${docker_build_args[@]}" \
             .
         env:
@@ -152,8 +165,7 @@ jobs:
         if: steps.meta.outputs.push_image == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Push image and capture digest
-        id: push
+      - name: Push image
         if: steps.meta.outputs.push_image == 'true'
         env:
           IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
@@ -164,55 +176,3 @@ jobs:
 
           docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$remote_image"
           docker push "$remote_image"
-
-          # 레지스트리를 직접 조회해 매니페스트 digest 를 얻는다.
-          # docker inspect 의 RepoDigests 는 순서가 보장되지 않아
-          # [0] 이 다른 레포(예: 캐시로 pull 한 이미지)의 digest 일 수 있다.
-          digest="$(
-            docker buildx imagetools inspect "$remote_image" \
-              --format '{{.Manifest.Digest}}'
-          )"
-
-          if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
-            echo "::error::digest 형식이 올바르지 않습니다: '${digest}'"
-            exit 1
-          fi
-
-          # 푸시한 태그가 실제로 이 digest 를 가리키는지 재확인한다.
-          pushed_digest="$(
-            docker buildx imagetools inspect \
-              "${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}" \
-              --format '{{.Manifest.Digest}}'
-          )"
-
-          if [[ "$pushed_digest" != "$digest" ]]; then
-            echo "::error::digest 검증 실패: ${pushed_digest} != ${digest}"
-            exit 1
-          fi
-
-          {
-            echo "IMAGE=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}"
-            echo "TAG=${IMAGE_TAG}"
-            echo "SOURCE_SHA=${GITHUB_SHA}"
-          } > image.env
-
-          {
-            echo "image=${ECR_REGISTRY}/${ECR_REPOSITORY}@${digest}"
-            echo "digest=${digest}"
-          } >> "$GITHUB_OUTPUT"
-
-          {
-            echo "### Pushed image"
-            echo ""
-            echo '```'
-            cat image.env
-            echo '```'
-          } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Upload image metadata
-        if: steps.meta.outputs.push_image == 'true'
-        uses: actions/upload-artifact@v7
-        with:
-          name: fe-image-${{ github.sha }}
-          path: image.env
-          retention-days: 7

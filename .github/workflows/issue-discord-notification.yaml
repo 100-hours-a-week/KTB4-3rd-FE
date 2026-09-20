@@ -1,0 +1,49 @@
+name: Opened Issue Notification
+
+on:
+  issues:
+    types:
+      - opened
+
+permissions:
+  issues: read
+
+jobs:
+  notify:
+    name: Discord notification
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build issue embed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const issue = context.payload.issue;
+
+            const embeds = [
+              {
+                title: `🚨 긴급 이슈 알림\n${issue.title}`,
+                color: 10478271,
+                description: issue.html_url,
+                fields: [
+                  {
+                    name: 'Issue Number',
+                    value: `#${issue.number}`,
+                    inline: true,
+                  },
+                  {
+                    name: 'Author',
+                    value: issue.user.login,
+                    inline: true,
+                  },
+                ],
+              },
+            ];
+
+            core.exportVariable('DISCORD_EMBEDS', JSON.stringify(embeds));
+
+      - name: Send Issue
+        uses: Ilshidur/action-discord@0.3.2
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_USERNAME: WAPP_BOT
+          DISCORD_AVATAR: https://github.com/pknu-wap/WAPP/blob/main/image/icon.png?raw=true

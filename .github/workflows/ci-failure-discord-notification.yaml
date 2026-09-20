@@ -1,0 +1,62 @@
+name: CI Failure Notification
+
+on:
+  workflow_run:
+    workflows:
+      - FE CI
+    types:
+      - completed
+
+permissions:
+  actions: read
+
+jobs:
+  notify:
+    name: Discord notification
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Build CI failure embed
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+
+            const embeds = [
+              {
+                title: `❌ CI 실패 알림\n${run.name}`,
+                color: 15158332,
+                description: run.html_url,
+                fields: [
+                  {
+                    name: 'Branch',
+                    value: run.head_branch || '-',
+                    inline: true,
+                  },
+                  {
+                    name: 'Event',
+                    value: run.event || '-',
+                    inline: true,
+                  },
+                  {
+                    name: 'Actor',
+                    value: run.actor?.login || '-',
+                    inline: true,
+                  },
+                  {
+                    name: 'Commit',
+                    value: run.head_sha ? run.head_sha.slice(0, 7) : '-',
+                    inline: true,
+                  },
+                ],
+              },
+            ];
+
+            core.exportVariable('DISCORD_EMBEDS', JSON.stringify(embeds));
+
+      - name: Send CI failure notification
+        uses: Ilshidur/action-discord@0.3.2
+        env:
+          DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
+          DISCORD_USERNAME: WAPP_BOT
+          DISCORD_AVATAR: https://github.com/pknu-wap/WAPP/blob/main/image/icon.png?raw=true
