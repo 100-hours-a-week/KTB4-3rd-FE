@@ -18,7 +18,7 @@ describe('signup API', () => {
       }),
     ).toEqual({
       nickname: '제리',
-      bank_name: 'KB국민은행',
+      bank_name: BankCode.KB,
       account_no: '11012345678',
       profile_image_url: 'https://cdn.moyeota.app/p/tmp15.jpg',
       terms_agreed: true,
@@ -50,7 +50,7 @@ describe('signup API', () => {
 
     const response = await completeSignup('signup-token', {
       nickname: '제리',
-      bank_name: 'KB국민은행',
+      bank_name: BankCode.KB,
       account_no: '11012345678',
       terms_agreed: true,
     });
@@ -58,7 +58,7 @@ describe('signup API', () => {
     expect(authorization).toBe('Bearer signup-token');
     expect(body).toEqual({
       nickname: '제리',
-      bank_name: 'KB국민은행',
+      bank_name: BankCode.KB,
       account_no: '11012345678',
       terms_agreed: true,
     });

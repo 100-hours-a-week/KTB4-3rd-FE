@@ -1,11 +1,11 @@
 import { apiFetch } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/api/types';
 
-import { BANK_NAME_BY_CODE, type BankCode } from '@/features/signup/model/bank';
+import type { BankCode } from '@/features/signup/model/bank';
 
 export type SignupPayload = {
   nickname: string;
-  bank_name?: string;
+  bank_name?: BankCode;
   profile_image_url?: string;
   account_no?: string;
   terms_agreed: boolean;
@@ -37,7 +37,7 @@ export function toSignupPayload(values: SignupFormValues): SignupPayload {
   };
 
   if (values.bankCode) {
-    payload.bank_name = BANK_NAME_BY_CODE[values.bankCode];
+    payload.bank_name = values.bankCode;
   }
 
   if (accountNumber) {
