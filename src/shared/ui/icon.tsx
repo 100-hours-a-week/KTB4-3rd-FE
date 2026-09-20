@@ -56,6 +56,7 @@ const iconRegistry = {
   info: { type: 'lucide', component: Info },
   messageSquare: { type: 'lucide', component: MessageSquare },
   crosshair: { type: 'lucide', component: Crosshair },
+  document: { type: 'mask', source: '/icons/seed/icon_document_fill.svg' },
   logOut: { type: 'lucide', component: LogOut },
   messageSquareWarning: { type: 'lucide', component: MessageSquareWarning },
   userRoundX: { type: 'lucide', component: UserRoundX },
