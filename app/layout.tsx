@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
-import { QueryProvider } from '@/_app/providers';
+import { MockApiProvider, QueryProvider } from '@/_app/providers';
 
 import './globals.css';
 
@@ -29,7 +29,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="ko">
       <body>
         <div id="app-root" className="isolate min-h-dvh">
-          <QueryProvider>{children}</QueryProvider>
+          <MockApiProvider>
+            <QueryProvider>{children}</QueryProvider>
+          </MockApiProvider>
         </div>
         {googleAnalyticsId ? <GoogleAnalytics gaId={googleAnalyticsId} /> : null}
       </body>
