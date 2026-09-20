@@ -78,7 +78,10 @@ _app → _pages → features → entities → shared
 
 ## Git 및 PR 규칙
 
-- 커밋 제목은 항상 한글로 작성합니다.
+- 커밋 메시지는 Conventional Commits 형식(`type: 한글 설명`)으로 작성합니다.
+- 커밋 타입은 `feat`, `fix`, `docs`, `refactor`, `chore`, `test` 등 영어 표기를 사용합니다.
+- 커밋 설명은 반드시 한글로 작성합니다.
+- 예시: `feat: 회원가입 입력 필드 추가`, `docs: 프로젝트 작업 규칙 추가`
 - PR 제목은 항상 한글로 작성합니다.
 - Draft PR 작성 시 `.github/pull_request_template.md`를 사용합니다.
 - PR 템플릿의 모든 항목을 빠짐없이 작성합니다.
