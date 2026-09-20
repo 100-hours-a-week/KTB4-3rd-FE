@@ -61,12 +61,17 @@ describe('BottomSheet', () => {
     const onSnapPointChange = vi.fn<(snapPoint: number | string | null) => void>();
 
     render(
-      <BottomSheet defaultOpen onSnapPointChange={onSnapPointChange} title="게시글">
+      <BottomSheet
+        defaultOpen
+        defaultSnapPoint={0.7}
+        onSnapPointChange={onSnapPointChange}
+        title="게시글"
+      >
         <p>콘텐츠</p>
       </BottomSheet>,
     );
 
-    fireEvent.click(screen.getAllByTestId('bottom-sheet-backdrop').at(-1) as HTMLElement);
+    fireEvent.pointerDown(screen.getAllByTestId('bottom-sheet-viewport').at(-1) as HTMLElement);
 
     expect(onSnapPointChange).toHaveBeenCalledWith('112px');
   });
