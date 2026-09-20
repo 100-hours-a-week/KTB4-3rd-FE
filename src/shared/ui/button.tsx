@@ -4,7 +4,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
-import { Text } from './text';
+import { Text, type TextVariant } from './text';
 
 export type ButtonSize = 'xsmall' | 'small' | 'medium' | 'large';
 
@@ -26,6 +26,7 @@ type ButtonOwnProps = {
   loading?: boolean;
   prefixIcon?: ReactNode | null;
   suffixIcon?: ReactNode | null;
+  textVariant?: TextVariant;
   className?: string;
 };
 
@@ -158,6 +159,7 @@ export function Button({
   loading = false,
   prefixIcon,
   suffixIcon,
+  textVariant = 't4Bold',
   children,
   disabled = false,
   ...props
@@ -193,7 +195,7 @@ export function Button({
       ) : (
         <>
           {prefixIcon ? <IconSlot size={size}>{prefixIcon}</IconSlot> : null}
-          <Text as="span" variant="t4Bold">
+          <Text as="span" variant={textVariant}>
             {children}
           </Text>
           {suffixIcon ? <IconSlot size={size}>{suffixIcon}</IconSlot> : null}
