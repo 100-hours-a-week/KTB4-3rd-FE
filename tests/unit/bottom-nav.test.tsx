@@ -68,4 +68,11 @@ describe('BottomNav', () => {
 
     expect(screen.getByRole('navigation')).toHaveClass('custom-bottom-nav');
   });
+
+  it('화면 전체 너비를 사용하고 최대 너비를 제한하지 않는다', () => {
+    render(<BottomNav />);
+
+    expect(screen.getByRole('navigation')).toHaveClass('w-full');
+    expect(screen.getByRole('navigation')).not.toHaveClass('max-w-[393px]');
+  });
 });

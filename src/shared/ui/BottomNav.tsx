@@ -70,7 +70,7 @@ export function BottomNav({ className }: BottomNavProps) {
     <nav
       aria-label="주요 메뉴"
       className={cn(
-        'fixed inset-x-0 bottom-0 z-20 mx-auto flex h-[calc(72px+env(safe-area-inset-bottom))] w-full max-w-[393px] border border-[var(--color-stroke-neutral-subtle)] bg-[var(--color-bg-layer-default)] pb-[env(safe-area-inset-bottom)]',
+        'fixed inset-x-0 bottom-0 z-20 flex h-[calc(72px+env(safe-area-inset-bottom))] w-full border border-[var(--color-stroke-neutral-subtle)] bg-[var(--color-bg-layer-default)] pb-[env(safe-area-inset-bottom)]',
         className,
       )}
     >
