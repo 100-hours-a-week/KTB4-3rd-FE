@@ -30,7 +30,7 @@ export type BottomSheetProps = {
 };
 
 const popupClassName = cn(
-  'relative z-10 flex max-h-[100dvh] min-h-0 w-full flex-col overflow-visible rounded-tl-[24px] rounded-tr-[24px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] outline-none shadow-[0_-4px_16px_rgba(0,0,0,0.12)]',
+  'relative z-10 flex max-h-[100dvh] min-h-[70dvh] w-full flex-col overflow-visible rounded-tl-[24px] rounded-tr-[24px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] outline-none shadow-[0_-4px_16px_rgba(0,0,0,0.12)]',
   'touch-none [transform:translateY(calc(var(--drawer-snap-point-offset)+var(--drawer-swipe-movement-y)))] transition-[transform,box-shadow] duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
   'data-swiping:select-none data-starting-style:[transform:translateY(calc(100%+2px))] data-ending-style:[transform:translateY(calc(100%+2px))]',
   'data-starting-style:shadow-[0_-4px_16px_rgba(0,0,0,0)] data-ending-style:shadow-[0_-4px_16px_rgba(0,0,0,0)]',
