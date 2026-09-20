@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { Icon } from './icon';
+import { Icon, iconNames } from './icon';
 import { ResultSection, type ResultSectionButtons, type ResultSectionSize } from './result-section';
 
 const sizes: ResultSectionSize[] = ['large', 'medium'];
@@ -12,6 +12,7 @@ const meta = {
   args: {
     buttons: 'none',
     description: '상태에 대한 부가 설명이 필요한 경우 적어주세요.\n최대 두 줄을 권장해요.',
+    iconName: 'checkmarkCircle',
     primaryLabel: '라벨',
     secondaryLabel: '보조',
     size: 'large',
@@ -19,6 +20,7 @@ const meta = {
   },
   argTypes: {
     buttons: { control: 'select', options: buttonOptions },
+    iconName: { control: 'select', options: iconNames },
     size: { control: 'select', options: sizes },
   },
   parameters: {

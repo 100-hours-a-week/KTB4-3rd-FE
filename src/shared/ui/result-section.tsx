@@ -2,7 +2,7 @@ import type { ComponentPropsWithoutRef, ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Button, type ButtonProps, type ButtonVariant } from '@/shared/ui/button';
-import { Icon } from '@/shared/ui/icon';
+import { Icon, type IconName } from '@/shared/ui/icon';
 import { Text, type TextVariant } from '@/shared/ui/text';
 
 export type ResultSectionSize = 'large' | 'medium';
@@ -19,6 +19,7 @@ type ResultSectionOwnProps = {
   buttons?: ResultSectionButtons;
   description?: string;
   icon?: ReactNode;
+  iconName?: IconName;
   primaryButtonProps?: ResultSectionButtonProps;
   primaryLabel?: ReactNode;
   secondaryButtonProps?: ResultSectionButtonProps;
@@ -71,14 +72,14 @@ const primaryButtonVariants: Record<'single' | 'paired', ButtonVariant> = {
   paired: 'neutral-solid',
 };
 
-function ResultSectionIcon({ icon }: { icon?: ReactNode }) {
+function ResultSectionIcon({ icon, iconName }: { icon?: ReactNode; iconName: IconName }) {
   return (
     <div
       aria-hidden="true"
       className="flex size-[72px] shrink-0 items-center justify-center"
       data-testid="result-section-icon"
     >
-      {icon ?? <Icon name="checkmarkCircle" size={60} color="var(--color-fg-positive)" />}
+      {icon ?? <Icon name={iconName} size={60} color="var(--color-fg-positive)" />}
     </div>
   );
 }
@@ -107,6 +108,7 @@ export function ResultSection({
   className,
   description = DEFAULT_DESCRIPTION,
   icon,
+  iconName = 'checkmarkCircle',
   primaryButtonProps,
   primaryLabel = '라벨',
   secondaryButtonProps,
@@ -128,7 +130,7 @@ export function ResultSection({
           styles.inner,
         )}
       >
-        <ResultSectionIcon icon={icon} />
+        <ResultSectionIcon icon={icon} iconName={iconName} />
 
         <Text
           as="h2"

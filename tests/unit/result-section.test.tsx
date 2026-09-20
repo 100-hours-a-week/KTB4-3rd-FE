@@ -35,6 +35,12 @@ describe('ResultSection', () => {
     );
   });
 
+  it('공통 아이콘 이름으로 아이콘을 선택할 수 있다', () => {
+    render(<ResultSection iconName="info" />);
+
+    expect(screen.getByTestId('result-section-icon').querySelector('svg')).not.toBeNull();
+  });
+
   it('아이콘과 타이틀 사이 28px, 타이틀과 description 사이 8px 간격을 둔다', () => {
     render(<ResultSection />);
 
