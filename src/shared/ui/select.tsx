@@ -132,7 +132,7 @@ function SelectComponent<T extends string = string>(
             alignItemWithTrigger={false}
             className="z-50 w-[var(--anchor-width)] min-w-[180px] outline-none"
             collisionPadding={8}
-            collisionAvoidance={{ side: 'shift', align: 'shift', fallbackAxisSide: 'none' }}
+            collisionAvoidance={{ side: 'none', align: 'shift', fallbackAxisSide: 'none' }}
             sideOffset={8}
             side="bottom"
           >
