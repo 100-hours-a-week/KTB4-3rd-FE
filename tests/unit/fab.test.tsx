@@ -27,7 +27,7 @@ describe('Fab', () => {
 
     expect(screen.getByRole('button', { name: '글쓰기' })).toHaveClass(
       '!h-[var(--dimension-x12)]',
-      '!gap-[var(--dimension-x0_5)]',
+      '!gap-[var(--dimension-x1_5)]',
       '!rounded-full',
       '!border-[var(--color-stroke-neutral-subtle)]',
       'bg-[var(--color-bg-brand-solid)]',

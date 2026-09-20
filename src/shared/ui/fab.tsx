@@ -24,7 +24,7 @@ export function Fab({
     <Button
       {...props}
       className={cn(
-        '!h-[var(--dimension-x12)] !min-h-[var(--dimension-x12)] !min-w-[var(--dimension-x12)] !max-h-[var(--dimension-x12)] !gap-[var(--dimension-x0_5)] !rounded-full !border-[var(--color-stroke-neutral-subtle)] !px-[var(--dimension-x3)] !py-0 shadow-[0px_2px_10px_0px_rgba(0,0,0,0.1)]',
+        '!h-[var(--dimension-x12)] !min-h-[var(--dimension-x12)] !min-w-[var(--dimension-x12)] !max-h-[var(--dimension-x12)] !gap-[var(--dimension-x1_5)] !rounded-full !border-[var(--color-stroke-neutral-subtle)] !px-[var(--dimension-x3)] !py-0 shadow-[0px_2px_10px_0px_rgba(0,0,0,0.1)]',
         className,
       )}
       prefixIcon={leftSlot}
