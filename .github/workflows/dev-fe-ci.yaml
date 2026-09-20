@@ -1,20 +1,19 @@
 name: FE CI
 
 on:
-  # PR 은 검증만 수행하고 ECR push 와 배포는 하지 않는다.
-  # hotfix/* 는 main 으로 PR 을 보내므로 아래 main 대상 PR 에 포함된다.
+  # PR은 검증만 수행하고 ECR push와 배포는 하지 않는다.
   pull_request:
     branches:
       - develop
       - main
-      - 'release/**'
 
-  # develop, release/* 로의 직접 push 는 branch protection 으로 차단되므로
-  # 이 이벤트는 사실상 "PR 이 병합되어 ref 가 전진했을 때"의 push 를 의미한다.
+  # develop은 Dev 이미지 생성 대상이고, main은 Prod CD의 검증 대상이다.
+  # main에서는 이미지를 다시 빌드해 배포하지 않고, develop에서 검증한
+  # 이미지 Digest를 Prod CD가 승격한다.
   push:
     branches:
       - develop
-      - 'release/**'
+      - main
 
   workflow_dispatch:
 
@@ -28,11 +27,6 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   IMAGE_NAME: moyeota-fe
-  NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
-  NEXT_PUBLIC_GA_ID: ${{ vars.NEXT_PUBLIC_GA_ID }}
-  NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
-  NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}
-  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE }}
 
 jobs:
   ci:
@@ -84,30 +78,24 @@ jobs:
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
 
-      # next build 는 아래 Docker 빌드에서 수행되므로 별도 build 스텝을 두지 않는다.
-      #
-      # FE CI 의 책임은 dev-/rc- 이미지 생성까지다.
-      # 정식 출시 태그(prod-vX.Y.Z-<sha7>)는 "재빌드 없이 동일 Digest" 정책에 따라
-      # Cloud(CD) 레포에서 생성한다. CD 는 rc-vX.Y.Z- prefix 로 ECR 을 조회해
-      # 해당 버전의 rc 이미지를 찾은 뒤 prod- 태그로 재태깅한다.
+      # develop에서는 Dev 배포용 이미지를 ECR에 Push한다.
+      # main과 PR에서는 Dockerfile 검증만 수행하고 ECR에 Push하지 않는다.
       - name: Resolve image tag
         id: meta
         run: |
           set -Eeuo pipefail
 
-          if [[ "$GITHUB_REF_NAME" == develop ]]; then
+          if [[ "$GITHUB_REF_NAME" == develop || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
             image_tag="dev-${GITHUB_SHA:0:7}"
             release_version=""
-            push_image=true
-          elif [[ "$GITHUB_REF_NAME" == release/* ]]; then
-            version="${GITHUB_REF_NAME#release/}"
-            [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
-            image_tag="rc-${version}-${GITHUB_SHA:0:7}"
-            release_version="$version"
-            push_image=true
-          elif [[ "$GITHUB_REF_NAME" == hotfix/* ]]; then
-            image_tag="hf-${GITHUB_SHA:0:7}"
-            release_version=""
+            if [[ "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+              push_image=true
+            else
+              push_image=false
+            fi
+          elif [[ "$GITHUB_REF_NAME" == main ]]; then
+            image_tag="main-${GITHUB_SHA:0:7}"
+            release_version="$(node -p "require('./package.json').version")"
             push_image=false
           else
             image_tag="pr-${GITHUB_SHA:0:7}"
@@ -139,11 +127,6 @@ jobs:
             --build-arg "BUILD_DATE=${{ steps.meta.outputs.build_date }}" \
             --build-arg "SENTRY_ORG=${SENTRY_ORG:-}" \
             --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT:-}" \
-            --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-}" \
-            --build-arg "NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID:-}" \
-            --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}" \
-            --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-}" \
-            --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-}" \
             "${docker_build_args[@]}" \
             .
         env:
@@ -176,3 +159,49 @@ jobs:
 
           docker tag "${IMAGE_NAME}:${IMAGE_TAG}" "$remote_image"
           docker push "$remote_image"
+
+      - name: Resolve image digest and create release manifest
+        if: steps.meta.outputs.push_image == 'true'
+        id: release
+        env:
+          IMAGE_TAG: ${{ steps.meta.outputs.image_tag }}
+          RELEASE_VERSION: ${{ steps.meta.outputs.release_version }}
+        run: |
+          set -Eeuo pipefail
+
+          image_digest="$({
+            aws ecr describe-images \
+              --repository-name "$ECR_REPOSITORY" \
+              --image-ids imageTag="$IMAGE_TAG" \
+              --query 'imageDetails[0].imageDigest' \
+              --output text
+          })"
+
+          [[ "$image_digest" == sha256:* ]]
+
+          mkdir -p release-manifest
+          jq -n \
+            --arg source_branch "$GITHUB_REF_NAME" \
+            --arg source_sha "$GITHUB_SHA" \
+            --arg image_tag "$IMAGE_TAG" \
+            --arg image_digest "$image_digest" \
+            --arg release_version "$RELEASE_VERSION" \
+            --arg ecr_repository "$ECR_REPOSITORY" \
+            '{
+              source_branch: $source_branch,
+              source_sha: $source_sha,
+              image_tag: $image_tag,
+              image_digest: $image_digest,
+              release_version: $release_version,
+              ecr_repository: $ecr_repository
+            }' > release-manifest/release-manifest.json
+
+          echo "image_digest=$image_digest" >> "$GITHUB_OUTPUT"
+
+      - name: Upload release manifest
+        if: steps.meta.outputs.push_image == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest/release-manifest.json
+          retention-days: 14

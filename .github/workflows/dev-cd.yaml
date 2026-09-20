@@ -1,0 +1,89 @@
+name: FE Dev CD
+
+on:
+  workflow_run:
+    workflows:
+      - FE CI
+    types:
+      - completed
+    branches:
+      - develop
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frontend-cd-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment:
+      name: dev
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      EC2_INSTANCE_ID: ${{ vars.DEV_EC2_INSTANCE_ID }}
+      REMOTE_SCRIPT_PATH: /opt/moyeota/scripts/deploy-frontend-ec2.sh
+
+    steps:
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Resolve immutable image
+        id: release
+        run: |
+          set -Eeuo pipefail
+
+          manifest="release-manifest/release-manifest.json"
+          image_tag="$(jq -r '.image_tag' "$manifest")"
+          image_digest="$(jq -r '.image_digest' "$manifest")"
+
+          [[ "$image_tag" == dev-* ]]
+          [[ "$image_digest" == sha256:* ]]
+
+          {
+            echo "image_ref=${ECR_REGISTRY}/${ECR_REPOSITORY}@${image_digest}"
+            echo "image_tag=$image_tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_DEV || secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: frontend-dev-cd-${{ github.run_id }}
+
+      - name: Start deployment on EC2
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.release.outputs.image_ref }}
+          RELEASE_ID: ${{ steps.release.outputs.image_tag }}
+        run: |
+          set -Eeuo pipefail
+
+          command="$(printf 'IMAGE_REF=%q RELEASE_ID=%q bash %q' \
+            "$IMAGE_REF" "$RELEASE_ID" "$REMOTE_SCRIPT_PATH")"
+          parameters="$(jq -n --arg command "$command" '{commands: [$command]}')"
+          command_id="$(aws ssm send-command \
+            --instance-ids "$EC2_INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "frontend-${RELEASE_ID}" \
+            --timeout-seconds 900 \
+            --max-concurrency 1 \
+            --max-errors 0 \
+            --parameters "$parameters" \
+            --query 'Command.CommandId' \
+            --output text)"
+
+          echo "SSM deployment command started: $command_id"
