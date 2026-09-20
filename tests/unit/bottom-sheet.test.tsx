@@ -57,6 +57,20 @@ describe('BottomSheet', () => {
     expect(onViewAll).toHaveBeenCalledOnce();
   });
 
+  it('moves to the minimum snap point when the backdrop is clicked', () => {
+    const onSnapPointChange = vi.fn<(snapPoint: number | string | null) => void>();
+
+    render(
+      <BottomSheet defaultOpen onSnapPointChange={onSnapPointChange} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    fireEvent.click(screen.getAllByTestId('bottom-sheet-backdrop').at(-1) as HTMLElement);
+
+    expect(onSnapPointChange).toHaveBeenCalledWith('112px');
+  });
+
   it('does not fully close from Escape when the sheet is open', () => {
     const onOpenChange = vi.fn<(open: boolean) => void>();
 

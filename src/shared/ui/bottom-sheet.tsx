@@ -1,7 +1,7 @@
 'use client';
 
 import { Drawer } from '@base-ui/react/drawer';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -100,6 +100,10 @@ export function BottomSheet({
   const resolvedDefaultSnapPoint =
     resolveNonDismissiveSnapPoint(defaultSnapPoint, minimumSnapPoint) ?? minimumSnapPoint;
   const resolvedSnapPoint = resolveNonDismissiveSnapPoint(snapPoint, minimumSnapPoint);
+  const isSnapPointControlled = snapPoint !== undefined;
+  const [internalSnapPoint, setInternalSnapPoint] =
+    useState<BottomSheetSnapPoint>(resolvedDefaultSnapPoint);
+  const activeSnapPoint = isSnapPointControlled ? resolvedSnapPoint : internalSnapPoint;
 
   const handleOpenChange = (nextOpen: boolean, eventDetails: Drawer.Root.ChangeEventDetails) => {
     if (!nextOpen) {
@@ -119,7 +123,17 @@ export function BottomSheet({
       return;
     }
 
+    if (!isSnapPointControlled) {
+      setInternalSnapPoint(nextSnapPoint);
+    }
     onSnapPointChange?.(nextSnapPoint);
+  };
+
+  const handleBackdropClick = () => {
+    if (!isSnapPointControlled) {
+      setInternalSnapPoint(minimumSnapPoint);
+    }
+    onSnapPointChange?.(minimumSnapPoint);
   };
 
   return (
@@ -130,12 +144,16 @@ export function BottomSheet({
       onOpenChange={handleOpenChange}
       onSnapPointChange={handleSnapPointChange}
       open={open}
-      snapPoint={resolvedSnapPoint}
+      snapPoint={activeSnapPoint}
       snapPoints={safeSnapPoints}
       snapToSequentialPoints
     >
       <Drawer.Portal>
-        <Drawer.Backdrop className={backdropClassName} data-testid="bottom-sheet-backdrop" />
+        <Drawer.Backdrop
+          className={backdropClassName}
+          data-testid="bottom-sheet-backdrop"
+          onClick={handleBackdropClick}
+        />
         <Drawer.Viewport className="fixed inset-0 z-50 flex touch-none items-end justify-center">
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
