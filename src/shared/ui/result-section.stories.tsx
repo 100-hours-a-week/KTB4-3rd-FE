@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
+import { Icon } from './icon';
 import { ResultSection, type ResultSectionButtons, type ResultSectionSize } from './result-section';
 
 const sizes: ResultSectionSize[] = ['large', 'medium'];
@@ -49,4 +50,13 @@ export const WithActions: Story = {
     primaryButtonProps: { onClick: () => undefined },
     secondaryButtonProps: { onClick: () => undefined },
   },
+};
+
+export const CustomIcon: Story = {
+  render: (args) => (
+    <ResultSection
+      {...args}
+      icon={<Icon name="info" size={60} color="var(--color-fg-neutral)" />}
+    />
+  ),
 };

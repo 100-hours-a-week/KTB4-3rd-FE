@@ -18,6 +18,7 @@ type ResultSectionButtonProps = Omit<
 type ResultSectionOwnProps = {
   buttons?: ResultSectionButtons;
   description?: string;
+  icon?: ReactNode;
   primaryButtonProps?: ResultSectionButtonProps;
   primaryLabel?: ReactNode;
   secondaryButtonProps?: ResultSectionButtonProps;
@@ -70,14 +71,14 @@ const primaryButtonVariants: Record<'single' | 'paired', ButtonVariant> = {
   paired: 'neutral-solid',
 };
 
-function ResultSectionIcon() {
+function ResultSectionIcon({ icon }: { icon?: ReactNode }) {
   return (
     <div
       aria-hidden="true"
       className="flex size-[72px] shrink-0 items-center justify-center"
       data-testid="result-section-icon"
     >
-      <Icon name="checkmarkCircle" size={60} color="var(--color-fg-positive)" />
+      {icon ?? <Icon name="checkmarkCircle" size={60} color="var(--color-fg-positive)" />}
     </div>
   );
 }
@@ -105,6 +106,7 @@ export function ResultSection({
   buttons = 'none',
   className,
   description = DEFAULT_DESCRIPTION,
+  icon,
   primaryButtonProps,
   primaryLabel = '라벨',
   secondaryButtonProps,
@@ -126,7 +128,7 @@ export function ResultSection({
           styles.inner,
         )}
       >
-        <ResultSectionIcon />
+        <ResultSectionIcon icon={icon} />
 
         <Text
           as="h2"

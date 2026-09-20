@@ -27,6 +27,14 @@ describe('ResultSection', () => {
     expect(screen.getByTestId('result-section-icon')).toBeInTheDocument();
   });
 
+  it('사용처에서 전달한 아이콘으로 교체할 수 있다', () => {
+    render(<ResultSection icon={<span data-testid="custom-result-icon" />} />);
+
+    expect(screen.getByTestId('result-section-icon')).toContainElement(
+      screen.getByTestId('custom-result-icon'),
+    );
+  });
+
   it('아이콘과 타이틀 사이 28px, 타이틀과 description 사이 8px 간격을 둔다', () => {
     render(<ResultSection />);
 
