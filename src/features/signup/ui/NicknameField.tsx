@@ -2,7 +2,7 @@ import type { ReactNode } from 'react';
 
 import { InputField } from '@/shared/ui/input-field';
 
-const MAX_NICKNAME_LENGTH = 20;
+const MAX_NICKNAME_LENGTH = 12;
 
 export type NicknameFieldProps = {
   value: string;
