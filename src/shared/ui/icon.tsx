@@ -53,6 +53,10 @@ const iconRegistry = {
     type: 'mask',
     source: '/icons/seed/icon_dot3_horizontal_chatbubble_left_fill.svg',
   },
+  chatbubbleText: {
+    type: 'mask',
+    source: '/icons/seed/icon_chatbubble_text_fill.svg',
+  },
   info: { type: 'lucide', component: Info },
   messageSquare: { type: 'lucide', component: MessageSquare },
   crosshair: { type: 'lucide', component: Crosshair },
