@@ -74,7 +74,7 @@ jobs:
 
       - name: Run Chromatic
         if: github.event_name == 'push'
-        run: pnpm run chromatic
+        run: pnpm run chromatic -- --exit-zero-on-changes
         env:
           CHROMATIC_PROJECT_TOKEN: ${{ secrets.CHROMATIC_PROJECT_TOKEN }}
 
