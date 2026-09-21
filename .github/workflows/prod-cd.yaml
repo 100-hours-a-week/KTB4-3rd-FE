@@ -47,6 +47,11 @@ jobs:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
           role-session-name: frontend-prod-cd-${{ github.run_id }}
+      - name: Debug ECR repository
+        run: |
+          printf 'ECR_REPOSITORY=%q\n' "$ECR_REPOSITORY"
+          test -n "$ECR_REPOSITORY"
+          test "$ECR_REPOSITORY" = "${ECR_REPOSITORY//[[:space:]]/}"
 
       - name: Resolve QA-approved source commit
         id: source
