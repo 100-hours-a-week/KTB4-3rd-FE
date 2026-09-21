@@ -83,6 +83,8 @@ _app → _pages → features → entities → shared
 - 커밋 설명은 반드시 한글로 작성합니다.
 - 예시: `feat: 회원가입 입력 필드 추가`, `docs: 프로젝트 작업 규칙 추가`
 - PR 제목은 항상 한글로 작성합니다.
+- 모든 기능 브랜치의 PR 대상 브랜치는 `develop`으로 설정합니다.
+- 변경사항은 먼저 `develop`에 병합하며, `main` 병합은 별도 요청이 있을 때만 진행합니다.
 - Draft PR 작성 시 `.github/pull_request_template.md`를 사용합니다.
 - PR 템플릿의 모든 항목을 빠짐없이 작성합니다.
 - 테스트 체크리스트는 실제 실행 결과에 맞게 표시합니다.
