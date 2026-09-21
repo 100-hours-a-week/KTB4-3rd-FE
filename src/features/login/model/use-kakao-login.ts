@@ -8,6 +8,10 @@ const KAKAO_LOGIN_PATH = '/auth/kakao/login';
 export function getKakaoLoginUrl(
   apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL,
 ) {
+  if (process.env.NEXT_PUBLIC_USE_MOCK_API === 'true') {
+    return KAKAO_LOGIN_PATH;
+  }
+
   return `${apiBaseUrl.replace(/\/$/, '')}${KAKAO_LOGIN_PATH}`;
 }
 
