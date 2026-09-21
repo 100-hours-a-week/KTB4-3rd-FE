@@ -23,13 +23,15 @@ export const signupSchema = z
     nickname: z
       .string()
       .trim()
-      .min(1, '닉네임을 입력해주세요.')
-      .max(20, '닉네임은 20자까지 입력할 수 있어요.'),
+      .regex(/^[가-힣A-Za-z0-9]{2,12}$/, '한글, 영문, 숫자만 사용할 수 있어요.'),
     bank: z.enum(BankCode).nullable(),
     accountNumber: z
       .string()
       .trim()
-      .regex(/^(?:\d+(?:-\d+)*)?$/, '계좌번호는 숫자와 하이픈만 입력할 수 있어요.'),
+      .refine(
+        (value) => value.length === 0 || /^\d{10,14}$/.test(value.replaceAll('-', '')),
+        '계좌번호는 숫자 10~14자리로 입력해주세요.',
+      ),
     serviceTerms: requiredAgreement,
     locationTerms: requiredAgreement,
     genderTerms: requiredAgreement,

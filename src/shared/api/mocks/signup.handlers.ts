@@ -8,15 +8,36 @@ import {
   isValidNickname,
 } from './mock-utils';
 
-const MOCK_BANK_CODES = new Set(['kb', 'shinhan', 'woori', 'hana', 'nh', 'ibk', 'kakao', 'toss']);
+const MOCK_BANK_NAMES = new Set([
+  'KB국민은행',
+  '신한은행',
+  '우리은행',
+  '하나은행',
+  'NH농협은행',
+  'IBK기업은행',
+  '카카오뱅크',
+  '토스뱅크',
+]);
+
+const REQUIRED_AGREEMENT_FIELDS = ['service', 'location', 'gender'] as const;
+const ALL_AGREEMENT_FIELDS = [
+  ...REQUIRED_AGREEMENT_FIELDS,
+  'account_third_party',
+  'marketing',
+] as const;
+const consumedSignupTokens = new Set<string>();
 
 type MockSignupRequest = {
   nickname?: unknown;
   bank_name?: unknown;
   account_no?: unknown;
-  profile_image_url?: unknown;
-  terms_agreed?: unknown;
+  profile_image_key?: unknown;
+  agreements?: unknown;
 };
+
+function isObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
 
 export const signupHandlers = [
   http.get('*/users/nickname-availability', ({ request }) => {
@@ -34,7 +55,8 @@ export const signupHandlers = [
     });
   }),
   http.post('*/users', async ({ request }) => {
-    if (getBearerToken(request) !== MOCK_SIGNUP_TOKEN) {
+    const signupToken = getBearerToken(request);
+    if (signupToken !== MOCK_SIGNUP_TOKEN || consumedSignupTokens.has(signupToken)) {
       return errorResponse(
         '회원가입 진행 시간이 만료됐어요. 카카오 로그인부터 다시 시도해주세요',
         'UNAUTHORIZED',
@@ -45,8 +67,35 @@ export const signupHandlers = [
 
     const body = (await request.json()) as MockSignupRequest;
 
-    if (body.terms_agreed !== true) {
-      return errorResponse('필수 약관에 동의해주세요', 'VALIDATION_ERROR', 'terms_agreed', 400);
+    if (!isObject(body.agreements)) {
+      return errorResponse(
+        '필수 약관에 동의해주세요',
+        'VALIDATION_ERROR',
+        'agreements.service',
+        400,
+      );
+    }
+
+    for (const field of REQUIRED_AGREEMENT_FIELDS) {
+      if (body.agreements[field] !== true) {
+        return errorResponse(
+          '필수 약관에 동의해주세요',
+          'VALIDATION_ERROR',
+          `agreements.${field}`,
+          400,
+        );
+      }
+    }
+
+    for (const field of ALL_AGREEMENT_FIELDS) {
+      if (typeof body.agreements[field] !== 'boolean') {
+        return errorResponse(
+          '약관 동의 정보를 확인해주세요',
+          'VALIDATION_ERROR',
+          `agreements.${field}`,
+          400,
+        );
+      }
     }
 
     if (!isValidNickname(body.nickname)) {
@@ -57,7 +106,7 @@ export const signupHandlers = [
       return errorResponse('이미 사용 중인 닉네임이에요', 'NICKNAME_DUPLICATE', 'nickname', 409);
     }
 
-    if (body.bank_name !== undefined && !MOCK_BANK_CODES.has(String(body.bank_name))) {
+    if (body.bank_name !== undefined && !MOCK_BANK_NAMES.has(String(body.bank_name))) {
       return errorResponse('지원하지 않는 은행이에요', 'VALIDATION_ERROR', 'bank_name', 422);
     }
 
@@ -73,6 +122,37 @@ export const signupHandlers = [
       );
     }
 
+    if (body.profile_image_key !== undefined) {
+      if (body.profile_image_key === 'invalid-image-key') {
+        return errorResponse(
+          '사용할 수 없는 이미지예요. 이미지를 다시 올려주세요',
+          'VALIDATION_ERROR',
+          'profile_image_key',
+          422,
+        );
+      }
+
+      if (body.profile_image_key === 'missing-image-key') {
+        return errorResponse(
+          '이미지 업로드가 완료되지 않았어요. 이미지를 다시 올려주세요',
+          'IMAGE_NOT_EXISTS',
+          'profile_image_key',
+          422,
+        );
+      }
+
+      if (typeof body.profile_image_key !== 'string' || body.profile_image_key.length === 0) {
+        return errorResponse(
+          '사용할 수 없는 이미지예요. 이미지를 다시 올려주세요',
+          'VALIDATION_ERROR',
+          'profile_image_key',
+          422,
+        );
+      }
+    }
+
+    consumedSignupTokens.add(signupToken);
+
     return HttpResponse.json(
       {
         message: '가입이 완료되었어요',
@@ -82,8 +162,18 @@ export const signupHandlers = [
           created_at: '2026-09-06T09:00:00',
         },
       },
-      { status: 201 },
+      {
+        status: 201,
+        headers: {
+          'Set-Cookie':
+            'refresh_token=mock-refresh-token; Max-Age=604800; HttpOnly; Secure; SameSite=Strict',
+        },
+      },
     );
   }),
   http.delete('*/users/me', () => new HttpResponse(null, { status: 204 })),
 ];
+
+export function resetSignupMockState() {
+  consumedSignupTokens.clear();
+}

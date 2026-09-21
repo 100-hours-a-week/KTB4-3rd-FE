@@ -5,7 +5,7 @@ import { signupSchema } from '@/features/signup/model/signup-schema';
 
 const baseValues = {
   profileImage: new File(['profile'], 'profile.png', { type: 'image/png' }),
-  nickname: '모여타 사용자',
+  nickname: '모여타사용자',
   bank: null,
   accountNumber: '',
   serviceTerms: true,

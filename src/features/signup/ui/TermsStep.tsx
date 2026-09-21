@@ -19,7 +19,13 @@ const agreementFields = [
 
 const requiredAgreementFields = ['serviceTerms', 'locationTerms', 'genderTerms'] as const;
 
-export function TermsStep() {
+export type TermsStepProps = {
+  isSubmitting?: boolean;
+  submitError?: string;
+  submitSuccess?: string;
+};
+
+export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: TermsStepProps) {
   const { control, formState, setValue } = useFormContext<SignupFormValues>();
   const values = useWatch({ control });
   const isAllAgreed = agreementFields.every((field) => values[field]);
@@ -121,7 +127,25 @@ export function TermsStep() {
         ) : null}
       </VStack>
 
-      <Button type="submit" width="fill" size="large" className="mt-auto">
+      {submitError ? (
+        <Text as="p" role="alert" color="fg.critical" variant="t3Regular" className="mt-4">
+          {submitError}
+        </Text>
+      ) : null}
+      {submitSuccess ? (
+        <Text as="p" role="status" color="fg.positive" variant="t3Regular" className="mt-4">
+          {submitSuccess}
+        </Text>
+      ) : null}
+
+      <Button
+        type="submit"
+        width="fill"
+        size="large"
+        className="mt-auto"
+        loading={isSubmitting}
+        disabled={Boolean(submitSuccess)}
+      >
         회원가입하기
       </Button>
     </>
