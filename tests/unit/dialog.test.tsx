@@ -109,12 +109,10 @@ describe('Dialog', () => {
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
   });
 
-  it('closeOnBackdropClick이 false면 backdrop click으로 dialog를 닫지 않는다', () => {
+  it('disablePointerDismissal이 true면 backdrop click으로 dialog를 닫지 않는다', () => {
     const onOpenChange = vi.fn<(open: boolean) => void>();
 
-    render(
-      <Dialog closeOnBackdropClick={false} defaultOpen onOpenChange={onOpenChange} title="제목" />,
-    );
+    render(<Dialog defaultOpen disablePointerDismissal onOpenChange={onOpenChange} title="제목" />);
 
     fireEvent.click(screen.getByTestId('dialog-backdrop'));
 

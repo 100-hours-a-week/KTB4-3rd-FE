@@ -64,8 +64,8 @@ export const LongContent: Story = {
 
 export const BackdropDismissDisabled: Story = {
   args: {
-    closeOnBackdropClick: false,
     description: 'Backdrop을 눌러도 닫히지 않는 Dialog입니다.',
+    disablePointerDismissal: true,
   },
 };
 

@@ -32,7 +32,6 @@ export type DialogProps = {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   modal?: boolean | 'trap-focus';
-  closeOnBackdropClick?: boolean;
   disablePointerDismissal?: boolean;
   className?: string;
 };
@@ -111,7 +110,6 @@ export function Dialog({
   defaultOpen = false,
   onOpenChange,
   modal = true,
-  closeOnBackdropClick,
   disablePointerDismissal = false,
   className,
 }: DialogProps) {
@@ -167,12 +165,11 @@ export function Dialog({
   const hasPrimary = buttons === 'primary' || buttons === 'primarySecondary';
   const hasSecondary = buttons === 'primarySecondary';
   const hasFooter = hasPrimary || hasSecondary;
-  const shouldCloseOnBackdropClick = closeOnBackdropClick ?? !disablePointerDismissal;
 
   return (
     <BaseDialog.Root
       actionsRef={actionsRef}
-      disablePointerDismissal={!shouldCloseOnBackdropClick}
+      disablePointerDismissal={disablePointerDismissal}
       modal={modal}
       onOpenChange={handleOpenChange}
       open={isOpen}
