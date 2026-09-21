@@ -24,7 +24,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
-      name: prod
+      name: production
     env:
       GH_TOKEN: ${{ github.token }}
       MAIN_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -45,7 +45,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD || secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
           role-session-name: frontend-prod-cd-${{ github.run_id }}
 
       - name: Resolve QA-approved source commit

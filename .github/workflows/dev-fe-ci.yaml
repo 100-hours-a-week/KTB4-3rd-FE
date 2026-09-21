@@ -134,7 +134,7 @@ jobs:
         run: |
           set -Eeuo pipefail
 
-          if [[ "$GITHUB_REF_NAME" == develop || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+          if [[ "$GITHUB_REF_NAME" == develop ]]; then
             image_tag="dev-${GITHUB_SHA:0:7}"
             release_version=""
             if [[ "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
