@@ -42,6 +42,21 @@ describe('Dialog', () => {
     expect(screen.getByTestId('dialog-footer')).toBeInTheDocument();
   });
 
+  it('children은 footer를 밀어내지 않는 내부 스크롤 영역으로 렌더링한다', () => {
+    render(
+      <Dialog defaultOpen title="긴 본문">
+        <div style={{ height: 1200 }}>긴 본문</div>
+      </Dialog>,
+    );
+
+    const body = screen.getByTestId('dialog-body');
+    const contentRegion = body.parentElement;
+
+    expect(body).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto');
+    expect(contentRegion).toHaveClass('flex-1', 'min-h-0', 'overflow-hidden');
+    expect(screen.getByTestId('dialog-footer')).toHaveClass('shrink-0');
+  });
+
   it('header close button은 dialog를 닫고 onOpenChange를 호출한다', async () => {
     const user = userEvent.setup();
     const onOpenChange = vi.fn<(open: boolean) => void>();

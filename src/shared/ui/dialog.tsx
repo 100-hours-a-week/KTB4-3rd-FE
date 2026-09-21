@@ -191,7 +191,7 @@ export function Dialog({
         <BaseDialog.Viewport className="fixed inset-0 z-50 flex min-h-dvh items-center justify-center py-[10dvh]">
           <BaseDialog.Popup
             className={cn(
-              'relative flex max-h-[80dvh] w-[90%] min-w-0 flex-col overflow-hidden rounded-[20px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_24px_rgba(0,0,0,0.18)] outline-none',
+              'relative flex max-h-[80dvh] min-h-0 w-[90%] min-w-0 flex-col overflow-hidden rounded-[20px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_24px_rgba(0,0,0,0.18)] outline-none',
               sizeClassNames[size],
               className,
             )}
@@ -231,10 +231,10 @@ export function Dialog({
             </header>
 
             {hasBody ? (
-              <div className="relative min-h-0 flex-1">
+              <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
                   ref={bodyRef}
-                  className="h-full min-h-0 overflow-y-auto overscroll-contain px-[22px] pt-[20px] pb-[56px]"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[22px] pt-[20px] pb-[56px]"
                   data-testid="dialog-body"
                   onScroll={updateScrollState}
                 >
