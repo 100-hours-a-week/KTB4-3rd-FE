@@ -2,19 +2,32 @@
 
 import { useCallback } from 'react';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:8080';
-const KAKAO_LOGIN_PATH = '/auth/kakao/login';
+const KAKAO_AUTHORIZE_URL = 'https://kauth.kakao.com/oauth/authorize';
 
-export function getKakaoLoginUrl(
-  apiBaseUrl = process.env.NEXT_PUBLIC_API_BASE_URL ?? DEFAULT_API_BASE_URL,
-) {
-  return `${apiBaseUrl.replace(/\/$/, '')}${KAKAO_LOGIN_PATH}`;
+type KakaoLoginConfig = {
+  clientId?: string;
+  redirectUri?: string;
+};
+
+export function getKakaoLoginUrl({
+  clientId = process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY,
+  redirectUri = process.env.NEXT_PUBLIC_KAKAO_REDIRECT_URI,
+}: KakaoLoginConfig = {}) {
+  if (!clientId || !redirectUri) {
+    throw new Error('카카오 로그인 환경변수가 설정되지 않았습니다');
+  }
+
+  const searchParams = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    response_type: 'code',
+  });
+
+  return `${KAKAO_AUTHORIZE_URL}?${searchParams.toString()}`;
 }
 
 export function useKakaoLogin() {
-  const kakaoLoginUrl = getKakaoLoginUrl();
-
   return useCallback(() => {
-    window.location.href = kakaoLoginUrl;
-  }, [kakaoLoginUrl]);
+    window.location.href = getKakaoLoginUrl();
+  }, []);
 }
