@@ -486,7 +486,7 @@ export function Map({
           label="현재 위치로 이동"
           onClick={handleCurrentLocation}
         >
-          <Icon name="crosshair" size={22} />
+          <Icon color="var(--color-fg-brand)" name="crosshair" size={22} />
         </MapControlButton>
       ) : null}
     </div>
