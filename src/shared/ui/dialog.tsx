@@ -208,7 +208,7 @@ export function Dialog({
               data-scrolled={scrollState.isScrolled || undefined}
               data-testid="dialog-header"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 items-start gap-3">
                 <BaseDialog.Title className="m-0 min-w-0 flex-1 break-words">
                   <Text as="span" variant="t7Bold">
                     {title}

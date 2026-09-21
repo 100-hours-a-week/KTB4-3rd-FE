@@ -23,6 +23,7 @@ describe('Dialog', () => {
     expect(screen.getByText('본문')).toBeInTheDocument();
     expect(closeButton).toHaveClass('text-[var(--color-fg-neutral-muted)]');
     expect(closeButton.parentElement).toContainElement(heading);
+    expect(closeButton.parentElement).toHaveClass('items-start');
   });
 
   it('primary 버튼만 기본으로 렌더링한다', () => {
