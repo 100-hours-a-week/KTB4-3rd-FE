@@ -32,6 +32,31 @@ export type KakaoMarkerClusterer = {
   setMap: (map: KakaoMap | null) => void;
 };
 
+export type KakaoAddress = {
+  address_name: string;
+  building_name?: string;
+};
+
+export type KakaoAddressResult = {
+  address?: KakaoAddress | null;
+  road_address?: KakaoAddress | null;
+};
+
+export type KakaoGeocoder = {
+  coord2Address: (
+    x: number,
+    y: number,
+    callback: (result: KakaoAddressResult[], status: string) => void,
+  ) => void;
+};
+
+export type KakaoServicesApi = {
+  Geocoder: new () => KakaoGeocoder;
+  Status: {
+    OK: string;
+  };
+};
+
 export type KakaoMapEvent = {
   addListener(
     target: object,
@@ -67,6 +92,7 @@ export type KakaoMapsApi = {
   Size: new (width: number, height: number) => KakaoSize;
   event: KakaoMapEvent;
   load: (callback: () => void) => void;
+  services?: KakaoServicesApi;
 };
 
 export type KakaoMarkerImage = object;
