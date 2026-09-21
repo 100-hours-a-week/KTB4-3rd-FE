@@ -8,15 +8,17 @@ import { useSignupMutation } from '@/features/signup';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
 
 const signupValues: SignupFormValues = {
-  profileImage: new File(['profile'], 'profile.png', { type: 'image/png' }),
+  profile_image_key: new File(['profile'], 'profile.png', { type: 'image/png' }),
   nickname: '제리',
-  bank: null,
-  accountNumber: '',
-  serviceTerms: true,
-  locationTerms: true,
-  genderTerms: true,
-  accountInfoTerms: false,
-  marketingTerms: false,
+  bank_name: null,
+  account_no: '',
+  agreements: {
+    service: true,
+    location: true,
+    gender: true,
+    account_third_party: false,
+    marketing: false,
+  },
 };
 
 function createWrapper() {

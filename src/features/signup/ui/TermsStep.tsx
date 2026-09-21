@@ -10,14 +10,14 @@ import { Text } from '@/shared/ui/text';
 import { VStack } from '@/shared/ui/stack';
 
 const agreementFields = [
-  'serviceTerms',
-  'locationTerms',
-  'genderTerms',
-  'accountInfoTerms',
-  'marketingTerms',
+  'service',
+  'location',
+  'gender',
+  'account_third_party',
+  'marketing',
 ] as const;
 
-const requiredAgreementFields = ['serviceTerms', 'locationTerms', 'genderTerms'] as const;
+const requiredAgreementFields = ['service', 'location', 'gender'] as const;
 
 export type TermsStepProps = {
   isSubmitting?: boolean;
@@ -27,15 +27,15 @@ export type TermsStepProps = {
 
 export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: TermsStepProps) {
   const { control, formState, setValue } = useFormContext<SignupFormValues>();
-  const values = useWatch({ control });
-  const isAllAgreed = agreementFields.every((field) => values[field]);
+  const agreements = useWatch({ control, name: 'agreements' });
+  const isAllAgreed = agreementFields.every((field) => agreements[field]);
   const hasRequiredAgreementError = requiredAgreementFields.some(
-    (field) => formState.errors[field],
+    (field) => formState.errors.agreements?.[field],
   );
 
   const handleAllAgreementChange = (checked: boolean) => {
     agreementFields.forEach((field) => {
-      setValue(field, checked, { shouldDirty: true, shouldValidate: true });
+      setValue(`agreements.${field}`, checked, { shouldDirty: true, shouldValidate: true });
     });
   };
 
@@ -56,7 +56,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
 
         <Controller
           control={control}
-          name="serviceTerms"
+          name="agreements.service"
           render={({ field }) => (
             <Checkbox
               checked={field.value}
@@ -69,7 +69,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
         />
         <Controller
           control={control}
-          name="locationTerms"
+          name="agreements.location"
           render={({ field }) => (
             <Checkbox
               checked={field.value}
@@ -82,7 +82,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
         />
         <Controller
           control={control}
-          name="genderTerms"
+          name="agreements.gender"
           render={({ field }) => (
             <Checkbox
               checked={field.value}
@@ -95,7 +95,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
         />
         <Controller
           control={control}
-          name="accountInfoTerms"
+          name="agreements.account_third_party"
           render={({ field }) => (
             <Checkbox
               checked={field.value}
@@ -108,7 +108,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
         />
         <Controller
           control={control}
-          name="marketingTerms"
+          name="agreements.marketing"
           render={({ field }) => (
             <Checkbox
               checked={field.value}

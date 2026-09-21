@@ -62,8 +62,8 @@ export function ProfileImageField({
           aria-label="프로필 이미지 선택"
           defaultPreviewUrl={defaultPreviewUrl}
           disabled={disabled}
-          id="profile-image"
-          name="profileImage"
+          id="profile_image_key"
+          name="profile_image_key"
           onFileChange={onChange}
           required={required}
         />

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, type FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import {
@@ -24,18 +24,6 @@ const STEP_QUERY_VALUES = {
   profile: '1',
   terms: '2',
 } as const;
-
-const API_FIELD_TO_FORM_FIELD = {
-  nickname: 'nickname',
-  bank_name: 'bank',
-  account_no: 'accountNumber',
-  profile_image_key: 'profileImage',
-  'agreements.service': 'serviceTerms',
-  'agreements.location': 'locationTerms',
-  'agreements.gender': 'genderTerms',
-  'agreements.account_third_party': 'accountInfoTerms',
-  'agreements.marketing': 'marketingTerms',
-} as const satisfies Record<string, keyof SignupFormValues>;
 
 function getSignupStep(stepQuery: string | null): SignupStep {
   return stepQuery === STEP_QUERY_VALUES.terms ? 'terms' : 'profile';
@@ -73,10 +61,10 @@ export function SignupPage() {
 
   const handleNext = async () => {
     const isProfileValid = await methods.trigger([
-      'profileImage',
+      'profile_image_key',
       'nickname',
-      'bank',
-      'accountNumber',
+      'bank_name',
+      'account_no',
     ]);
 
     if (isProfileValid) {
@@ -90,10 +78,10 @@ export function SignupPage() {
       return;
     }
 
-    const formField = API_FIELD_TO_FORM_FIELD[error.field as keyof typeof API_FIELD_TO_FORM_FIELD];
-    if (formField) {
-      setError(formField, { type: 'server', message: error.message });
-    }
+    setError(error.field as FieldPath<SignupFormValues>, {
+      type: 'server',
+      message: error.message,
+    });
   }, [setError, signupMutation.error]);
 
   const handleSignup = (values: SignupFormValues) => {

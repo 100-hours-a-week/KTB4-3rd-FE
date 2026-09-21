@@ -18,7 +18,7 @@ export function ProfileStep() {
     <VStack gap="dimension-x6">
       <Controller
         control={control}
-        name="profileImage"
+        name="profile_image_key"
         render={({ field, fieldState }) => (
           <ProfileImageField
             errorMessage={fieldState.error?.message}
@@ -45,7 +45,7 @@ export function ProfileStep() {
 
       <Controller
         control={control}
-        name="bank"
+        name="bank_name"
         render={({ field, fieldState }) => (
           <BankSelectField
             errorMessage={fieldState.error?.message}
@@ -58,7 +58,7 @@ export function ProfileStep() {
 
       <Controller
         control={control}
-        name="accountNumber"
+        name="account_no"
         render={({ field, fieldState }) => (
           <AccountNumberField
             errorMessage={fieldState.error?.message}

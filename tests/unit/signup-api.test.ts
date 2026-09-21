@@ -5,15 +5,17 @@ import { BankCode } from '@/features/signup/model/bank';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
 
 const formValues: SignupFormValues = {
-  profileImage: new File(['profile'], 'profile.png', { type: 'image/png' }),
+  profile_image_key: new File(['profile'], 'profile.png', { type: 'image/png' }),
   nickname: ' 제리 ',
-  bank: BankCode.KB,
-  accountNumber: '110-123-45678',
-  serviceTerms: true,
-  locationTerms: true,
-  genderTerms: true,
-  accountInfoTerms: true,
-  marketingTerms: false,
+  bank_name: BankCode.KB,
+  account_no: '110-123-45678',
+  agreements: {
+    service: true,
+    location: true,
+    gender: true,
+    account_third_party: true,
+    marketing: false,
+  },
 };
 
 describe('signup API', () => {

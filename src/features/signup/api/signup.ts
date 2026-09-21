@@ -43,20 +43,14 @@ export function toSignupPayload(
 ): SignupPayload {
   const payload: SignupPayload = {
     nickname: values.nickname.trim(),
-    agreements: {
-      service: values.serviceTerms,
-      location: values.locationTerms,
-      gender: values.genderTerms,
-      account_third_party: values.accountInfoTerms,
-      marketing: values.marketingTerms,
-    },
+    agreements: values.agreements,
   };
 
-  if (values.bank) {
-    payload.bank_name = BANK_API_NAMES[values.bank];
+  if (values.bank_name) {
+    payload.bank_name = BANK_API_NAMES[values.bank_name];
   }
 
-  const accountNumber = values.accountNumber.replaceAll('-', '');
+  const accountNumber = values.account_no.replaceAll('-', '');
   if (accountNumber) {
     payload.account_no = accountNumber;
   }
