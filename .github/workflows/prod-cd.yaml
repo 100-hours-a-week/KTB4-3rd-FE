@@ -24,7 +24,7 @@ jobs:
     if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     environment:
-      name: production
+      name: prod
     env:
       GH_TOKEN: ${{ github.token }}
       MAIN_SHA: ${{ github.event.workflow_run.head_sha }}
@@ -42,7 +42,7 @@ jobs:
           fetch-depth: 1
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           aws-region: ${{ env.AWS_REGION }}
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD || secrets.AWS_ROLE_TO_ASSUME }}
