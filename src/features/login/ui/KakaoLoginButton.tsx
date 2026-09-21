@@ -3,11 +3,17 @@
 import { Button } from '@/shared/ui/button';
 import Image from 'next/image';
 
+import { useKakaoLogin } from '@/features/login/model/use-kakao-login';
+
 export function KakaoLoginButton() {
+  const handleKakaoLogin = useKakaoLogin();
+
   return (
     <Button
       size="large"
       width="fill"
+      type="button"
+      onClick={handleKakaoLogin}
       prefixIcon={
         <Image
           src="/icons/brand/kakao.svg"

@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 
+import {
+  kakaoLoginRedirectHandler,
+  MOCK_FRONTEND_URL,
+} from '@/shared/api/mocks/kakao-login.handlers';
+import { server } from '@/shared/api/mocks/server';
+
 type MockApiResponse<T> = {
   data: T;
   message?: string;
@@ -14,6 +20,46 @@ async function readJson<T>(response: Response) {
 }
 
 describe('MSW mock API', () => {
+  it('기존 회원이면 로그인 완료 콜백으로 리다이렉트한다', async () => {
+    server.use(kakaoLoginRedirectHandler('existing-user'));
+
+    const response = await fetch('http://localhost:8080/auth/kakao/login', {
+      redirect: 'manual',
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(`${MOCK_FRONTEND_URL}/auth/callback?status=ok`);
+    expect(response.headers.get('set-cookie')).toContain('refresh_token=mock-access-token');
+  });
+
+  it('신규 회원이면 회원가입 필요 콜백으로 리다이렉트한다', async () => {
+    server.use(kakaoLoginRedirectHandler('new-user'));
+
+    const response = await fetch('http://localhost:8080/auth/kakao/login', {
+      redirect: 'manual',
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      `${MOCK_FRONTEND_URL}/auth/callback?status=signup_required`,
+    );
+    expect(response.headers.get('set-cookie')).toContain('signup_token=mock-signup-token');
+  });
+
+  it('로그인 실패면 오류 콜백으로 리다이렉트한다', async () => {
+    server.use(kakaoLoginRedirectHandler('failure'));
+
+    const response = await fetch('http://localhost:8080/auth/kakao/login', {
+      redirect: 'manual',
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(
+      `${MOCK_FRONTEND_URL}/auth/callback?error=access_denied&error_description=%EC%82%AC%EC%9A%A9%EC%9E%90%EA%B0%80+%EB%A1%9C%EA%B7%B8%EC%9D%B8%EC%9D%84+%EC%B7%A8%EC%86%8C%ED%96%88%EC%8A%B5%EB%8B%88%EB%8B%A4`,
+    );
+    expect(response.headers.get('set-cookie')).toBeNull();
+  });
+
   it('카카오 신규 로그인 응답을 반환한다', async () => {
     const response = await fetch('http://localhost:8080/auth/kakao', {
       method: 'POST',
