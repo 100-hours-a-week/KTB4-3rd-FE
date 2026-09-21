@@ -5,7 +5,7 @@ import { Divider } from '@/shared/ui/divider';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
 
-import type { Post } from '@/entities/post/model/post';
+import type { CompanionTransport, Post } from '@/entities/post/model/post';
 
 export type PostItemProps = {
   className?: string;
@@ -23,6 +23,13 @@ const categoryBackground = {
   COMPANION: 'bg-[var(--color-stroke-positive-weak)]',
   COMMUNITY: 'bg-[var(--color-stroke-informative-weak)]',
 } as const;
+
+const transportLabel: Record<CompanionTransport, string> = {
+  CAR: '자차',
+  TAXI: '택시',
+  SUBWAY: '지하철',
+  BUS: '버스',
+};
 
 function formatDistance(distanceM: number) {
   if (distanceM < 1000) {
@@ -45,6 +52,7 @@ function formatDepartureTime(departureAt: string) {
 function getPostMeta(post: Post) {
   if (post.type === 'COMPANION') {
     return [
+      transportLabel[post.transport],
       formatDistance(post.distance_m),
       `${formatDepartureTime(post.departure_at)} 출발`,
       `${post.current_count}/${post.capacity}명 참여 중`,

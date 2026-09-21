@@ -3,6 +3,7 @@ export { PostList, type PostListProps } from './ui/post-list';
 export type {
   CommunityPost,
   CompanionPost,
+  CompanionTransport,
   Post,
   PostAuthor,
   PostListResponse,

@@ -3,11 +3,14 @@ export type PostAuthor = {
   profile_image_url: string | null;
 };
 
+export type CompanionTransport = 'CAR' | 'TAXI' | 'SUBWAY' | 'BUS';
+
 export type CompanionPost = {
   type: 'COMPANION';
   id: number;
   title: string;
   author: PostAuthor;
+  transport: CompanionTransport;
   distance_m: number;
   current_count: number;
   capacity: number;

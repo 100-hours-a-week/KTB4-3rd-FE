@@ -15,6 +15,7 @@ const companionPost: CompanionPost = {
   id: 10,
   title: '판교역 → 강남역',
   author: { nickname: '우림', profile_image_url: null },
+  transport: 'CAR',
   distance_m: 320,
   current_count: 2,
   capacity: 4,
@@ -40,7 +41,7 @@ describe('PostItem', () => {
 
     expect(screen.getByText('동행')).toBeInTheDocument();
     expect(screen.getByText('판교역 → 강남역')).toBeInTheDocument();
-    expect(screen.getByText('320m · 17:30 출발 · 2/4명 참여 중')).toBeInTheDocument();
+    expect(screen.getByText('자차 · 320m · 17:30 출발 · 2/4명 참여 중')).toBeInTheDocument();
   });
 
   it('커뮤니티 게시글은 커뮤 태그와 댓글 수를 표시한다', () => {

@@ -8,6 +8,7 @@ const posts: Post[] = [
     id: 10,
     title: '판교역 → 강남역',
     author: { nickname: '우림', profile_image_url: null },
+    transport: 'CAR',
     distance_m: 320,
     current_count: 2,
     capacity: 4,
