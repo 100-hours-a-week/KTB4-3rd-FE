@@ -3,21 +3,15 @@ import { describe, expect, it } from 'vitest';
 import { getKakaoLoginUrl } from '@/features/login/model/use-kakao-login';
 
 describe('getKakaoLoginUrl', () => {
-  const config = {
-    clientId: 'test-rest-api-key',
-    redirectUri: 'http://localhost:8080/auth/kakao/callback',
-  };
-
-  it('카카오 공식 인가 코드 요청 URL을 생성한다', () => {
-    const url = new URL(getKakaoLoginUrl(config));
-
-    expect(url.origin + url.pathname).toBe('https://kauth.kakao.com/oauth/authorize');
-    expect(url.searchParams.get('client_id')).toBe(config.clientId);
-    expect(url.searchParams.get('redirect_uri')).toBe(config.redirectUri);
-    expect(url.searchParams.get('response_type')).toBe('code');
+  it('백엔드 카카오 로그인 시작 API 경로를 붙인다', () => {
+    expect(getKakaoLoginUrl('http://localhost:8080')).toBe(
+      'http://localhost:8080/auth/kakao/login',
+    );
   });
 
-  it('필수 환경변수가 없으면 명확한 오류를 반환한다', () => {
-    expect(() => getKakaoLoginUrl()).toThrow('카카오 로그인 환경변수가 설정되지 않았습니다');
+  it('API base URL의 마지막 슬래시를 중복해서 붙이지 않는다', () => {
+    expect(getKakaoLoginUrl('https://api.moyeota.com/')).toBe(
+      'https://api.moyeota.com/auth/kakao/login',
+    );
   });
 });
