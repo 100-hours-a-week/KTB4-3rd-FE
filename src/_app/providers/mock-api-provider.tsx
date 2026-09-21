@@ -18,13 +18,20 @@ export function MockApiProvider({ children }: MockApiProviderProps) {
 
     let isMounted = true;
 
-    void import('@/shared/api/mocks/browser').then(async ({ worker }) => {
-      await worker.start({ onUnhandledRequest: 'bypass' });
+    void import('@/shared/api/mocks/browser')
+      .then(({ startMockApi }) => startMockApi())
+      .then(() => {
+        if (isMounted) {
+          setIsReady(true);
+        }
+      })
+      .catch((error: unknown) => {
+        console.error('MSW mock API를 시작하지 못했습니다.', error);
 
-      if (isMounted) {
-        setIsReady(true);
-      }
-    });
+        if (isMounted) {
+          setIsReady(true);
+        }
+      });
 
     return () => {
       isMounted = false;
