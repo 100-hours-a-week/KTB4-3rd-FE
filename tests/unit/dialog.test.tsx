@@ -33,6 +33,13 @@ describe('Dialog', () => {
     expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
   });
 
+  it('medium 크기 하나로 고정한다', () => {
+    render(<Dialog defaultOpen title="제목" />);
+
+    expect(screen.getByTestId('dialog')).toHaveClass('md:w-[480px]');
+    expect(screen.getByTestId('dialog')).not.toHaveClass('md:w-[800px]');
+  });
+
   it('primary와 secondary 버튼을 모두 렌더링한다', () => {
     render(<Dialog buttons="primarySecondary" defaultOpen title="제목" />);
 

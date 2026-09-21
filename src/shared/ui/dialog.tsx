@@ -9,7 +9,6 @@ import { Button, type ButtonProps } from './button';
 import { Icon } from './icon';
 import { Text } from './text';
 
-export type DialogSize = 'medium' | 'large';
 export type DialogButtons = 'none' | 'primary' | 'primarySecondary';
 
 export type DialogButtonProps = Omit<ButtonProps, 'children' | 'size' | 'variant' | 'width'>;
@@ -25,7 +24,6 @@ export type DialogProps = {
   primaryButtonProps?: DialogButtonProps;
   secondaryButtonProps?: DialogButtonProps;
 
-  size?: DialogSize;
   showCloseButton?: boolean;
   closeButtonLabel?: string;
   trigger?: ReactElement;
@@ -43,11 +41,6 @@ type ScrollState = {
   canScroll: boolean;
   isScrolled: boolean;
   isAtBottom: boolean;
-};
-
-const sizeClassNames: Record<DialogSize, string> = {
-  medium: 'md:w-[480px]',
-  large: 'md:w-[800px]',
 };
 
 const actionButtonClassName = 'min-w-0 flex-1';
@@ -111,7 +104,6 @@ export function Dialog({
   secondaryLabel = '취소',
   primaryButtonProps,
   secondaryButtonProps,
-  size = 'medium',
   showCloseButton = true,
   closeButtonLabel = '닫기',
   trigger,
@@ -194,8 +186,7 @@ export function Dialog({
         <BaseDialog.Viewport className="fixed inset-0 z-50 flex min-h-dvh items-center justify-center py-[10dvh]">
           <BaseDialog.Popup
             className={cn(
-              'relative flex max-h-[80dvh] min-h-0 w-[90%] min-w-0 flex-col overflow-hidden rounded-[20px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_24px_rgba(0,0,0,0.18)] outline-none',
-              sizeClassNames[size],
+              'relative flex max-h-[80dvh] min-h-0 w-[90%] min-w-0 flex-col overflow-hidden rounded-[20px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_24px_rgba(0,0,0,0.18)] outline-none md:w-[480px]',
               className,
             )}
             data-testid="dialog"
