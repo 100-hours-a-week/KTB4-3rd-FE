@@ -15,9 +15,14 @@ describe('Dialog', () => {
     );
 
     expect(screen.getByRole('dialog', { name: '제목' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { name: '제목' })).toBeInTheDocument();
+    const heading = screen.getByRole('heading', { name: '제목' });
+    const closeButton = screen.getByRole('button', { name: '닫기' });
+
+    expect(heading).toBeInTheDocument();
     expect(screen.getByText('설명')).toBeInTheDocument();
     expect(screen.getByText('본문')).toBeInTheDocument();
+    expect(closeButton).toHaveClass('text-[var(--color-fg-neutral-muted)]');
+    expect(closeButton.parentElement).toContainElement(heading);
   });
 
   it('primary 버튼만 기본으로 렌더링한다', () => {
@@ -52,7 +57,7 @@ describe('Dialog', () => {
     const body = screen.getByTestId('dialog-body');
     const contentRegion = body.parentElement;
 
-    expect(body).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto');
+    expect(body).toHaveClass('flex-1', 'min-h-0', 'overflow-y-auto', 'pt-8');
     expect(contentRegion).toHaveClass('flex-1', 'min-h-0', 'overflow-hidden');
     expect(screen.getByTestId('dialog-footer')).toHaveClass('shrink-0');
   });
@@ -94,6 +99,19 @@ describe('Dialog', () => {
     fireEvent.click(screen.getAllByTestId('dialog-backdrop').at(-1) as HTMLElement);
 
     expect(onOpenChange).toHaveBeenLastCalledWith(false);
+  });
+
+  it('closeOnBackdropClick이 false면 backdrop click으로 dialog를 닫지 않는다', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+
+    render(
+      <Dialog closeOnBackdropClick={false} defaultOpen onOpenChange={onOpenChange} title="제목" />,
+    );
+
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
+
+    expect(onOpenChange).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: '제목' })).toBeInTheDocument();
   });
 
   it('본문을 스크롤하면 header divider와 scroll fog를 표시한다', () => {

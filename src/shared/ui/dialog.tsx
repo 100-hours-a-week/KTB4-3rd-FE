@@ -34,6 +34,7 @@ export type DialogProps = {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   modal?: boolean | 'trap-focus';
+  closeOnBackdropClick?: boolean;
   disablePointerDismissal?: boolean;
   className?: string;
 };
@@ -118,6 +119,7 @@ export function Dialog({
   defaultOpen = false,
   onOpenChange,
   modal = true,
+  closeOnBackdropClick,
   disablePointerDismissal = false,
   className,
 }: DialogProps) {
@@ -173,11 +175,12 @@ export function Dialog({
   const hasPrimary = buttons === 'primary' || buttons === 'primarySecondary';
   const hasSecondary = buttons === 'primarySecondary';
   const hasFooter = hasPrimary || hasSecondary;
+  const shouldCloseOnBackdropClick = closeOnBackdropClick ?? !disablePointerDismissal;
 
   return (
     <BaseDialog.Root
       actionsRef={actionsRef}
-      disablePointerDismissal={disablePointerDismissal}
+      disablePointerDismissal={!shouldCloseOnBackdropClick}
       modal={modal}
       onOpenChange={handleOpenChange}
       open={isOpen}
@@ -199,34 +202,34 @@ export function Dialog({
           >
             <header
               className={cn(
-                'flex shrink-0 items-start gap-3 border-b border-transparent px-[22px] pb-[20px] pt-[calc(36px+env(safe-area-inset-top,0px))]',
+                'shrink-0 border-b border-transparent px-[22px] pt-[calc(36px+env(safe-area-inset-top,0px))]',
                 scrollState.isScrolled && 'border-[var(--color-stroke-neutral-subtle)]',
               )}
               data-scrolled={scrollState.isScrolled || undefined}
               data-testid="dialog-header"
             >
-              <div className="min-w-0 flex-1">
-                <BaseDialog.Title className="m-0 break-words">
+              <div className="flex min-w-0 items-center gap-3">
+                <BaseDialog.Title className="m-0 min-w-0 flex-1 break-words">
                   <Text as="span" variant="t7Bold">
                     {title}
                   </Text>
                 </BaseDialog.Title>
-                {description !== undefined && description !== null ? (
-                  <BaseDialog.Description className="m-0 mt-3 break-words">
-                    <Text as="span" color="fg.neutral" variant="t5Regular">
-                      {description}
-                    </Text>
-                  </BaseDialog.Description>
+                {showCloseButton ? (
+                  <BaseDialog.Close
+                    aria-label={closeButtonLabel}
+                    className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--dimension-x2)] text-[var(--color-fg-neutral-muted)] transition-colors hover:bg-[var(--color-bg-transparent-pressed)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
+                    type="button"
+                  >
+                    <Icon name="xmark" size={20} />
+                  </BaseDialog.Close>
                 ) : null}
               </div>
-              {showCloseButton ? (
-                <BaseDialog.Close
-                  aria-label={closeButtonLabel}
-                  className="inline-flex size-11 shrink-0 items-center justify-center rounded-[var(--dimension-x2)] text-[var(--color-fg-neutral)] transition-colors hover:bg-[var(--color-bg-transparent-pressed)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
-                  type="button"
-                >
-                  <Icon name="xmark" size={20} />
-                </BaseDialog.Close>
+              {description !== undefined && description !== null ? (
+                <BaseDialog.Description className="m-0 mt-3 break-words">
+                  <Text as="span" color="fg.neutral" variant="t5Regular">
+                    {description}
+                  </Text>
+                </BaseDialog.Description>
               ) : null}
             </header>
 
@@ -234,7 +237,7 @@ export function Dialog({
               <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
                 <div
                   ref={bodyRef}
-                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[22px] pt-[20px] pb-[56px]"
+                  className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-[22px] pt-8 pb-[56px]"
                   data-testid="dialog-body"
                   onScroll={updateScrollState}
                 >
