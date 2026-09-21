@@ -2,16 +2,18 @@
 
 import { useCallback, useEffect } from 'react';
 import { useSearchParams, usePathname, useRouter } from 'next/navigation';
-import { FormProvider, useForm } from 'react-hook-form';
+import { FormProvider, useForm, type FieldPath } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 
 import {
+  ProfileStep,
+  TermsStep,
   signupDefaultValues,
   signupSchema,
+  useSignupMutation,
   type SignupFormValues,
-} from '@/features/signup/model/signup-schema';
-import { ProfileStep } from '@/features/signup/ui/ProfileStep';
-import { TermsStep } from '@/features/signup/ui/TermsStep';
+} from '@/features/signup';
+import { ApiError } from '@/shared/api/client';
 import { BackButton } from '@/shared/ui/back-button';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
@@ -39,6 +41,8 @@ export function SignupPage() {
     reValidateMode: 'onChange',
     resolver: zodResolver(signupSchema),
   });
+  const { setError } = methods;
+  const signupMutation = useSignupMutation();
 
   const getStepUrl = useCallback(
     (nextStep: SignupStep) => {
@@ -56,17 +60,37 @@ export function SignupPage() {
   }, [getStepUrl, router, step, stepQuery]);
 
   const handleNext = async () => {
-    const isProfileValid = await methods.trigger(['nickname', 'bank', 'accountNumber']);
+    const isProfileValid = await methods.trigger([
+      'profile_image_key',
+      'nickname',
+      'bank_name',
+      'account_no',
+    ]);
 
     if (isProfileValid) {
       router.push(getStepUrl('terms'), { scroll: false });
     }
   };
 
+  useEffect(() => {
+    const error = signupMutation.error;
+    if (!(error instanceof ApiError) || !error.field) {
+      return;
+    }
+
+    setError(error.field as FieldPath<SignupFormValues>, {
+      type: 'server',
+      message: error.message,
+    });
+  }, [setError, signupMutation.error]);
+
   const handleSignup = (values: SignupFormValues) => {
-    void values;
-    // TODO: 회원가입 API를 연결합니다.
+    signupMutation.mutate(values);
   };
+
+  const submitError =
+    signupMutation.error instanceof Error ? signupMutation.error.message : undefined;
+  const submitSuccess = signupMutation.data?.message;
 
   return (
     <FormProvider {...methods}>
@@ -83,7 +107,15 @@ export function SignupPage() {
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={methods.handleSubmit(handleSignup)}
         >
-          {step === 'profile' ? <ProfileStep /> : <TermsStep />}
+          {step === 'profile' ? (
+            <ProfileStep />
+          ) : (
+            <TermsStep
+              isSubmitting={signupMutation.isPending}
+              submitError={submitError}
+              submitSuccess={submitSuccess}
+            />
+          )}
 
           {step === 'profile' ? (
             <Button

@@ -42,11 +42,16 @@ jobs:
           fetch-depth: 1
 
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD || secrets.AWS_ROLE_TO_ASSUME }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME_PROD }}
           role-session-name: frontend-prod-cd-${{ github.run_id }}
+      - name: Debug ECR repository
+        run: |
+          printf 'ECR_REPOSITORY=%q\n' "$ECR_REPOSITORY"
+          test -n "$ECR_REPOSITORY"
+          test "$ECR_REPOSITORY" = "${ECR_REPOSITORY//[[:space:]]/}"
 
       - name: Resolve QA-approved source commit
         id: source

@@ -28,11 +28,11 @@ export function AccountNumberField({
       disabled={disabled}
       errorMessage={errorMessage}
       helperText={helperText}
-      id="account-number"
+      id="account_no"
       inputMode="numeric"
       invalid={invalid}
       label="계좌번호"
-      name="accountNumber"
+      name="account_no"
       onValueChange={onChange}
       placeholder="계좌번호를 입력해주세요"
       required={required}

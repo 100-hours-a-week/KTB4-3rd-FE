@@ -8,7 +8,7 @@ const requiredAgreement = z.boolean().refine((checked) => checked, {
 
 export const signupSchema = z
   .object({
-    profileImage: z
+    profile_image_key: z
       .custom<File | null>(
         (value) => value === null || (typeof File !== 'undefined' && value instanceof File),
         '프로필 이미지를 확인해주세요.',
@@ -23,22 +23,26 @@ export const signupSchema = z
     nickname: z
       .string()
       .trim()
-      .min(1, '닉네임을 입력해주세요.')
-      .max(20, '닉네임은 20자까지 입력할 수 있어요.'),
-    bank: z.enum(BankCode).nullable(),
-    accountNumber: z
+      .regex(/^[가-힣A-Za-z0-9]{2,12}$/, '한글, 영문, 숫자만 사용할 수 있어요.'),
+    bank_name: z.enum(BankCode).nullable(),
+    account_no: z
       .string()
       .trim()
-      .regex(/^(?:\d+(?:-\d+)*)?$/, '계좌번호는 숫자와 하이픈만 입력할 수 있어요.'),
-    serviceTerms: requiredAgreement,
-    locationTerms: requiredAgreement,
-    genderTerms: requiredAgreement,
-    accountInfoTerms: z.boolean(),
-    marketingTerms: z.boolean(),
+      .refine(
+        (value) => value.length === 0 || /^\d{10,14}$/.test(value.replaceAll('-', '')),
+        '계좌번호는 숫자 10~14자리로 입력해주세요.',
+      ),
+    agreements: z.object({
+      service: requiredAgreement,
+      location: requiredAgreement,
+      gender: requiredAgreement,
+      account_third_party: z.boolean(),
+      marketing: z.boolean(),
+    }),
   })
   .superRefine((values, context) => {
-    const hasBank = values.bank !== null;
-    const hasAccountNumber = values.accountNumber.length > 0;
+    const hasBank = values.bank_name !== null;
+    const hasAccountNumber = values.account_no.length > 0;
 
     if (hasBank === hasAccountNumber) {
       return;
@@ -48,20 +52,22 @@ export const signupSchema = z
     context.addIssue({
       code: 'custom',
       message,
-      path: [hasBank ? 'accountNumber' : 'bank'],
+      path: [hasBank ? 'account_no' : 'bank_name'],
     });
   });
 
 export type SignupFormValues = z.infer<typeof signupSchema>;
 
 export const signupDefaultValues: SignupFormValues = {
-  profileImage: null,
+  profile_image_key: null,
   nickname: '',
-  bank: null,
-  accountNumber: '',
-  serviceTerms: false,
-  locationTerms: false,
-  genderTerms: false,
-  accountInfoTerms: false,
-  marketingTerms: false,
+  bank_name: null,
+  account_no: '',
+  agreements: {
+    service: false,
+    location: false,
+    gender: false,
+    account_third_party: false,
+    marketing: false,
+  },
 };

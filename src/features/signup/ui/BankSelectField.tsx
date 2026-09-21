@@ -32,9 +32,9 @@ export function BankSelectField({
         <Select<BankCode>
           aria-label="출금 은행"
           disabled={disabled}
-          id="bank"
+          id="bank_name"
           invalid={invalid}
-          name="bank"
+          name="bank_name"
           onValueChange={onChange}
           options={BANK_OPTIONS}
           placeholder="은행을 선택해주세요"
