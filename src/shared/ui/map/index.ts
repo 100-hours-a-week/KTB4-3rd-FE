@@ -1,5 +1,5 @@
 export { Map } from './map';
-export type { MapProps } from './map';
+export type { MapProps, MapRef } from './map';
 export { MyLocation, MyLocationButton, type MyLocationButtonProps } from './my-location';
 export type {
   MapLoadError,
