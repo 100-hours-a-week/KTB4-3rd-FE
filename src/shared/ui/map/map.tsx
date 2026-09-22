@@ -23,6 +23,7 @@ import {
   toMapViewport,
 } from './model/map.utils';
 import type {
+  KakaoLatLng,
   KakaoMap,
   KakaoMarker,
   KakaoMarkerClusterer,
@@ -39,6 +40,7 @@ import type {
 
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
+const SELECTED_MARKER_SCALE = 1.15;
 const BRAND_CLUSTER_STYLE = {
   background:
     'radial-gradient(circle, var(--color-bg-brand-solid) 0%, var(--color-bg-brand-solid) 42%, var(--transparent) 100%)',
@@ -63,6 +65,8 @@ export type MapProps = {
   defaultCenter?: MapCoordinate;
   defaultLevel?: number;
   locateOnMount?: boolean;
+  markerFocusOffset?: { x?: number; y?: number };
+  markerFocusLevel?: number;
   markers?: readonly MapMarker[];
   onLoadError?: (error: MapLoadError) => void;
   onMarkerClick?: (marker: MapMarker) => void;
@@ -97,10 +101,10 @@ function MapControlButton({ label, className, children, ...props }: MapControlBu
   );
 }
 
-function createMarkerImage(maps: KakaoMapsApi, kind: 'post' | 'user') {
+function createMarkerImage(maps: KakaoMapsApi, kind: 'post' | 'user', scale = 1) {
   const isUserMarker = kind === 'user';
-  const width = isUserMarker ? 24 : 40;
-  const height = isUserMarker ? 24 : 48;
+  const width = Math.round((isUserMarker ? 24 : 40) * scale);
+  const height = Math.round((isUserMarker ? 24 : 48) * scale);
   const color = isUserMarker ? '#3b82f6' : '#f04452';
   const svg = isUserMarker
     ? `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" fill="${color}" stroke="white" stroke-width="4"/><circle cx="12" cy="12" r="2.5" fill="white"/></svg>`
@@ -112,14 +116,34 @@ function createMarkerImage(maps: KakaoMapsApi, kind: 'post' | 'user') {
   });
 }
 
-function createCustomMarkerImage(maps: KakaoMapsApi, image: MapMarkerImage) {
-  return new maps.MarkerImage(image.src, new maps.Size(image.width, image.height), {
-    offset: new maps.Point(image.offset?.x ?? image.width / 2, image.offset?.y ?? image.height),
+function createCustomMarkerImage(maps: KakaoMapsApi, image: MapMarkerImage, scale = 1) {
+  const width = Math.round(image.width * scale);
+  const height = Math.round(image.height * scale);
+  const offsetX = Math.round((image.offset?.x ?? image.width / 2) * scale);
+  const offsetY = Math.round((image.offset?.y ?? image.height) * scale);
+
+  return new maps.MarkerImage(image.src, new maps.Size(width, height), {
+    offset: new maps.Point(offsetX, offsetY),
   });
 }
 
 function isSameCoordinate(left: MapCoordinate, right: MapCoordinate) {
   return left.lat === right.lat && left.lng === right.lng;
+}
+
+function getMarkerFocusCenter(
+  maps: KakaoMapsApi,
+  map: KakaoMap,
+  markerPosition: KakaoLatLng,
+  focusOffset: { x?: number; y?: number },
+) {
+  const offsetX = focusOffset.x ?? 0;
+  const offsetY = focusOffset.y ?? 0;
+  const projection = map.getProjection();
+  const markerPoint = projection.containerPointFromCoords(markerPosition);
+  const targetCenterPoint = new maps.Point(markerPoint.x - offsetX, markerPoint.y + offsetY);
+
+  return projection.coordsFromContainerPoint(targetCenterPoint);
 }
 
 export function Map({
@@ -132,6 +156,8 @@ export function Map({
   defaultCenter = DEFAULT_MAP_CENTER,
   defaultLevel = DEFAULT_LEVEL,
   locateOnMount = false,
+  markerFocusOffset,
+  markerFocusLevel,
   markers = [],
   onLoadError,
   onMarkerClick,
@@ -163,6 +189,8 @@ export function Map({
 
   const onLoadErrorRef = useRef(onLoadError);
   const onMarkerClickRef = useRef(onMarkerClick);
+  const markerFocusOffsetRef = useRef(markerFocusOffset);
+  const markerFocusLevelRef = useRef(markerFocusLevel);
   const onUserLocationChangeRef = useRef(onUserLocationChange);
   const onUserLocationErrorRef = useRef(onUserLocationError);
   const onViewportChangeRef = useRef(onViewportChange);
@@ -171,6 +199,8 @@ export function Map({
   useEffect(() => {
     onLoadErrorRef.current = onLoadError;
     onMarkerClickRef.current = onMarkerClick;
+    markerFocusOffsetRef.current = markerFocusOffset;
+    markerFocusLevelRef.current = markerFocusLevel;
     onUserLocationChangeRef.current = onUserLocationChange;
     onUserLocationErrorRef.current = onUserLocationError;
     onViewportChangeRef.current = onViewportChange;
@@ -178,6 +208,8 @@ export function Map({
   }, [
     onLoadError,
     onMarkerClick,
+    markerFocusOffset,
+    markerFocusLevel,
     onUserLocationChange,
     onUserLocationError,
     onViewportChange,
@@ -295,16 +327,37 @@ export function Map({
     const markerInstances: KakaoMarker[] = [];
     markerList.forEach((markerData) => {
       const position = new kakao.maps.LatLng(markerData.position.lat, markerData.position.lng);
+      const markerScale = markerData.isSelected ? SELECTED_MARKER_SCALE : 1;
       const marker = new kakao.maps.Marker({
         image: markerData.image
-          ? createCustomMarkerImage(kakao.maps, markerData.image)
-          : createMarkerImage(kakao.maps, 'post'),
+          ? createCustomMarkerImage(kakao.maps, markerData.image, markerScale)
+          : createMarkerImage(kakao.maps, 'post', markerScale),
         position,
         title: markerData.title,
       });
 
       kakao.maps.event.addListener(marker, 'click', () => {
-        map.panTo(position);
+        const focusOffset = markerFocusOffsetRef.current;
+        const targetLevel = Math.min(
+          Math.max(markerFocusLevelRef.current ?? map.getLevel() - 1, 1),
+          14,
+        );
+        const shouldChangeLevel =
+          markerFocusLevelRef.current === undefined || map.getLevel() !== targetLevel;
+
+        if (shouldChangeLevel) {
+          map.setLevel(targetLevel, {
+            anchor: position,
+            animate: !focusOffset,
+          });
+        }
+
+        if (focusOffset) {
+          map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
+        } else {
+          map.panTo(position);
+        }
+
         onMarkerClickRef.current?.(markerData);
       });
       markerInstances.push(marker);

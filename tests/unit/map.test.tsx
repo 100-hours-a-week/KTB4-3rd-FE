@@ -9,6 +9,7 @@ import type {
   KakaoMarker,
   KakaoMarkerClusterer,
   KakaoMarkerClustererStyle,
+  KakaoMapProjection,
   KakaoNamespace,
 } from '@/shared/ui/map/model/kakao-map.types';
 import { Map, type MapMarker, type MapViewport } from '@/shared/ui/map';
@@ -46,6 +47,10 @@ class FakeMap implements KakaoMap {
   getBounds = vi.fn<() => KakaoLatLngBounds>(() => fakeBounds);
   getCenter = vi.fn<() => KakaoLatLng>(() => new FakeLatLng(37.5665, 126.978));
   getLevel = vi.fn<() => number>(() => 5);
+  getProjection = vi.fn<() => KakaoMapProjection>(() => ({
+    containerPointFromCoords: vi.fn<() => { x: number; y: number }>(() => ({ x: 0, y: 0 })),
+    coordsFromContainerPoint: vi.fn<() => KakaoLatLng>(() => new FakeLatLng(37.51, 127.02)),
+  }));
   panTo = vi.fn<(position: KakaoLatLng) => void>();
   relayout = vi.fn<() => void>();
   setCenter = vi.fn<(position: KakaoLatLng) => void>();
@@ -76,12 +81,38 @@ const clusterClickHandlers: ((cluster: KakaoCluster) => void)[] = [];
 const clustererOptions: { styles?: KakaoMarkerClustererStyle[] }[] = [];
 const markerOptions: { position: KakaoLatLng; title?: string }[] = [];
 const markerImageSources: string[] = [];
+const markerImageOptions: { height: number; offsetX: number; offsetY: number; width: number }[] =
+  [];
 let fakeMap: FakeMap;
 
 class FakeMarkerImage {
-  constructor(src: string) {
+  constructor(
+    src: string,
+    size: { height: number; width: number },
+    options: { offset: { x: number; y: number } },
+  ) {
     markerImageSources.push(src);
+    markerImageOptions.push({
+      height: size.height,
+      offsetX: options.offset.x,
+      offsetY: options.offset.y,
+      width: size.width,
+    });
   }
+}
+
+class FakeSize {
+  constructor(
+    readonly width: number,
+    readonly height: number,
+  ) {}
+}
+
+class FakePoint {
+  constructor(
+    readonly x: number,
+    readonly y: number,
+  ) {}
 }
 
 const fakeKakao = {
@@ -94,8 +125,8 @@ const fakeKakao = {
     Marker: FakeMarker,
     MarkerClusterer: FakeMarkerClusterer,
     MarkerImage: FakeMarkerImage,
-    Point: class {},
-    Size: class {},
+    Point: FakePoint,
+    Size: FakeSize,
     event: {
       addListener: vi.fn<(target: object, eventName: string, handler: unknown) => void>(
         (_target, eventName, handler) => {
@@ -124,6 +155,7 @@ describe('Map', () => {
     clustererOptions.length = 0;
     markerOptions.length = 0;
     markerImageSources.length = 0;
+    markerImageOptions.length = 0;
     fakeMap = new FakeMap();
     loadKakaoMaps.mockResolvedValue(fakeKakao);
   });
@@ -179,12 +211,14 @@ describe('Map', () => {
     expect(fakeMap.panTo).toHaveBeenCalledOnce();
   });
 
-  it('centers a clicked marker and zooms into a clicked cluster', async () => {
+  it('moves a clicked marker to the requested focus offset and zooms into a clicked cluster', async () => {
     const onMarkerClick = vi.fn<(marker: MapMarker) => void>();
 
     render(
       <Map
         apiKey="test-key"
+        markerFocusLevel={3}
+        markerFocusOffset={{ y: 160 }}
         markers={[{ id: 'post-1', position: { lat: 37.51, lng: 127.02 }, title: '게시글' }]}
         onMarkerClick={onMarkerClick}
       />,
@@ -214,7 +248,12 @@ describe('Map', () => {
       position: { lat: 37.51, lng: 127.02 },
       title: '게시글',
     });
+    expect(fakeMap.setCenter).not.toHaveBeenCalled();
     expect(fakeMap.panTo).toHaveBeenCalledOnce();
+    expect(fakeMap.setLevel).toHaveBeenNthCalledWith(1, 3, {
+      anchor: expect.any(FakeLatLng),
+      animate: false,
+    });
     expect(fakeMap.setLevel).toHaveBeenCalledWith(4, {
       anchor: expect.any(FakeLatLng),
       animate: true,
@@ -229,6 +268,23 @@ describe('Map', () => {
     );
 
     expect(screen.getByRole('button', { name: '게시글 핀' })).toBeInTheDocument();
+  });
+
+  it('skips repeated zoom and pans naturally when the map is already at the focus level', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        markerFocusLevel={5}
+        markerFocusOffset={{ y: 160 }}
+        markers={[{ id: 'post-1', position: { lat: 37.51, lng: 127.02 }, title: '게시글' }]}
+      />,
+    );
+
+    await waitFor(() => expect(markerClickHandlers).toHaveLength(1));
+    markerClickHandlers[0]?.();
+
+    expect(fakeMap.setLevel).not.toHaveBeenCalled();
+    expect(fakeMap.panTo).toHaveBeenCalledOnce();
   });
 
   it('uses a custom marker image when one is provided', async () => {
@@ -250,6 +306,36 @@ describe('Map', () => {
     );
 
     await waitFor(() => expect(markerImageSources).toContain('/map-pins/accompany-marker.svg'));
+  });
+
+  it('scales a selected marker while keeping its map position anchored', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        markers={[
+          {
+            id: 'post-1',
+            image: {
+              height: 56,
+              offset: { x: 27, y: 56 },
+              src: '/map-pins/accompany-marker.svg',
+              width: 54,
+            },
+            isSelected: true,
+            position: { lat: 37.51, lng: 127.02 },
+          },
+        ]}
+      />,
+    );
+
+    await waitFor(() => expect(markerImageOptions).toHaveLength(1));
+
+    expect(markerImageOptions[0]).toEqual({
+      height: 64,
+      offsetX: 31,
+      offsetY: 64,
+      width: 62,
+    });
   });
 
   it('renders a fixed selection marker for center-based location picking', async () => {
