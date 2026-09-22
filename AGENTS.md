@@ -78,6 +78,7 @@ _app → _pages → features → entities → shared
 
 ## Git 및 PR 규칙
 
+- 새 작업 브랜치의 base 브랜치와 PR target 브랜치는 항상 `develop`으로 한다. 작업 브랜치는 최신 `origin/develop`을 기준으로 생성한다.
 - 커밋 메시지는 Conventional Commits 형식(`type: 한글 설명`)으로 작성합니다.
 - 커밋 타입은 `feat`, `fix`, `docs`, `refactor`, `chore`, `test` 등 영어 표기를 사용합니다.
 - 커밋 설명은 반드시 한글로 작성합니다.
