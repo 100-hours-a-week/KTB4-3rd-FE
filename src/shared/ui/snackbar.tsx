@@ -5,6 +5,7 @@ import { useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } fr
 import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
+import styles from './snackbar.module.css';
 import { Text } from './text';
 
 export type SnackbarType = 'default' | 'positive' | 'critical';
@@ -120,6 +121,7 @@ export function Snackbar({
       aria-atomic={props['aria-atomic'] ?? true}
       aria-live={props['aria-live'] ?? (type === 'critical' ? 'assertive' : 'polite')}
       className={cn(
+        styles.root,
         'flex h-[var(--dimension-x10)] w-[340px] max-w-[calc(100vw-32px)] items-center overflow-clip rounded-[var(--dimension-x2)] bg-[var(--color-bg-neutral-inverted)]',
         getSpacingClassName(hasIcon, hasAction),
         className,

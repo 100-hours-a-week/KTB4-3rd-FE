@@ -42,8 +42,6 @@ function TriggeredByButtonStory() {
 
   return (
     <div className="flex min-h-[160px] flex-col items-center justify-center gap-[var(--dimension-x5)]">
-      <Button onClick={() => setOpen(true)}>Snackbar 열기</Button>
-
       {open ? (
         <Snackbar
           actionProps={{ children: '확인', onClick: () => setOpen(false) }}
@@ -53,6 +51,8 @@ function TriggeredByButtonStory() {
           type="positive"
         />
       ) : null}
+
+      <Button onClick={() => setOpen(true)}>Snackbar 열기</Button>
     </div>
   );
 }
