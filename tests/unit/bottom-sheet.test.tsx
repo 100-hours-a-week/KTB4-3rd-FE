@@ -90,4 +90,39 @@ describe('BottomSheet', () => {
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(screen.getByRole('heading', { name: '게시글' })).toBeInTheDocument();
   });
+
+  it('can hide the backdrop for an inline map sheet', () => {
+    render(
+      <BottomSheet defaultOpen showBackdrop={false} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('hidden');
+  });
+
+  it('keeps the viewport above the bottom navigation when an offset is provided', () => {
+    render(
+      <BottomSheet bottomOffset="72px" defaultOpen title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveStyle({
+      bottom: '72px',
+    });
+  });
+
+  it('allows map interactions outside a non-modal sheet', () => {
+    render(
+      <BottomSheet defaultOpen modal={false} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveClass(
+      'pointer-events-none',
+    );
+    expect(screen.getAllByRole('dialog').at(-1)).toHaveClass('pointer-events-auto');
+  });
 });
