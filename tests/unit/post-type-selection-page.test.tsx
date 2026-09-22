@@ -13,10 +13,14 @@ afterEach(() => {
 
 describe('PostTypeSelectionPage', () => {
   it('글 타입과 선택 위치를 디자인 문구로 렌더링한다', () => {
-    render(<PostTypeSelectionPage />);
+    render(<PostTypeSelectionPage backHref="/post/create/location" />);
 
     expect(screen.getByRole('heading', { name: '어떤 글을 등록할까요?' })).toBeInTheDocument();
     expect(screen.getByText('글의 목적에 맞는 유형을 선택해 주세요.')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '뒤로가기' })).toHaveAttribute(
+      'href',
+      '/post/create/location',
+    );
     expect(screen.getByRole('button', { name: /동행 모집/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /커뮤니티 글/ })).toBeInTheDocument();
     expect(screen.getByText('선택 위치')).toBeInTheDocument();
