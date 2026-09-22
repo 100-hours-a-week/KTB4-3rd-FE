@@ -32,7 +32,19 @@ vi.mock('@/shared/ui/map', () => ({
   ),
 }));
 
-afterEach(cleanup);
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: navigation.push }),
+  usePathname: () => '/',
+}));
+
+afterEach(() => {
+  cleanup();
+  navigation.push.mockReset();
+});
 
 describe('HomePage', () => {
   it('지도, 글쓰기 버튼, 바텀시트, 하단 네비게이션을 조합한다', () => {
@@ -46,6 +58,14 @@ describe('HomePage', () => {
     );
     expect(screen.getByRole('heading', { name: '근처 핀 게시글' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { hidden: true, name: '주요 메뉴' })).toBeInTheDocument();
+  });
+
+  it('글쓰기 FAB을 누르면 글 작성 위치 등록 화면으로 이동한다', () => {
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByRole('button', { hidden: true, name: '글쓰기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/post/create/location');
   });
 
   it('커뮤니티 핀을 클릭하면 커뮤니티 상세 데이터가 바텀모달에 표시된다', () => {
