@@ -63,18 +63,18 @@ function getDefaultIcon(type: SnackbarType): ReactNode | null {
 
 function getSpacingClassName(hasIcon: boolean, hasAction: boolean) {
   if (hasIcon && hasAction) {
-    return 'gap-[var(--dimension-x2)] pl-[var(--dimension-x2)] pr-[var(--dimension-x2)]';
+    return 'gap-[var(--dimension-x2)] pl-[calc(var(--dimension-x2)_+_2px)] pr-[calc(var(--dimension-x2)_+_2px)]';
   }
 
   if (hasIcon) {
-    return 'gap-[var(--dimension-x2)] pl-[var(--dimension-x2)] pr-[var(--dimension-x3)]';
+    return 'gap-[var(--dimension-x2)] pl-[calc(var(--dimension-x2)_+_2px)] pr-[calc(var(--dimension-x3)_+_2px)]';
   }
 
   if (hasAction) {
-    return 'gap-[var(--dimension-x2)] px-[var(--dimension-x3)]';
+    return 'gap-[var(--dimension-x2)] px-[calc(var(--dimension-x3)_+_2px)]';
   }
 
-  return 'px-[var(--dimension-x4)]';
+  return 'px-[calc(var(--dimension-x4)_+_2px)]';
 }
 
 export function Snackbar({

@@ -20,7 +20,7 @@ describe('Snackbar', () => {
       'h-[var(--dimension-x10)]',
       'w-[340px]',
       'bg-[var(--color-bg-neutral-inverted)]',
-      'px-[var(--dimension-x4)]',
+      'px-[calc(var(--dimension-x4)_+_2px)]',
     );
     expect(snackbar.querySelector('[role="img"]')).not.toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
@@ -57,8 +57,8 @@ describe('Snackbar', () => {
 
     expect(actionClick).toHaveBeenCalledOnce();
     expect(screen.getByRole('status')).toHaveClass(
-      'pl-[var(--dimension-x2)]',
-      'pr-[var(--dimension-x2)]',
+      'pl-[calc(var(--dimension-x2)_+_2px)]',
+      'pr-[calc(var(--dimension-x2)_+_2px)]',
     );
   });
 
