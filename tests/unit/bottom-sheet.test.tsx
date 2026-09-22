@@ -101,6 +101,17 @@ describe('BottomSheet', () => {
     expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('hidden');
   });
 
+  it('renders below the dialog backdrop layer', () => {
+    render(
+      <BottomSheet defaultOpen title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('z-30');
+    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveClass('z-30');
+  });
+
   it('keeps the viewport above the bottom navigation when an offset is provided', () => {
     render(
       <BottomSheet bottomOffset="72px" defaultOpen title="게시글">
