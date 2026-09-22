@@ -12,10 +12,16 @@ export type KakaoMap = {
   getBounds: () => KakaoLatLngBounds;
   getCenter: () => KakaoLatLng;
   getLevel: () => number;
+  getProjection: () => KakaoMapProjection;
   panTo: (position: KakaoLatLng) => void;
   relayout: () => void;
   setCenter: (position: KakaoLatLng) => void;
   setLevel: (level: number, options?: { anchor?: KakaoLatLng; animate?: boolean }) => void;
+};
+
+export type KakaoMapProjection = {
+  containerPointFromCoords: (position: KakaoLatLng) => KakaoPoint;
+  coordsFromContainerPoint: (point: KakaoPoint) => KakaoLatLng;
 };
 
 export type KakaoMarker = {
@@ -99,7 +105,10 @@ export type KakaoMapsApi = {
 };
 
 export type KakaoMarkerImage = object;
-export type KakaoPoint = object;
+export type KakaoPoint = {
+  x: number;
+  y: number;
+};
 export type KakaoSize = object;
 
 export type KakaoNamespace = {

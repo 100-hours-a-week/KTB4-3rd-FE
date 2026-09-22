@@ -9,6 +9,7 @@ import type {
   KakaoMarker,
   KakaoMarkerClusterer,
   KakaoMarkerClustererStyle,
+  KakaoMapProjection,
   KakaoNamespace,
 } from '@/shared/ui/map/model/kakao-map.types';
 import { Map, type MapMarker, type MapViewport } from '@/shared/ui/map';
@@ -46,6 +47,10 @@ class FakeMap implements KakaoMap {
   getBounds = vi.fn<() => KakaoLatLngBounds>(() => fakeBounds);
   getCenter = vi.fn<() => KakaoLatLng>(() => new FakeLatLng(37.5665, 126.978));
   getLevel = vi.fn<() => number>(() => 5);
+  getProjection = vi.fn<() => KakaoMapProjection>(() => ({
+    containerPointFromCoords: vi.fn<() => { x: number; y: number }>(() => ({ x: 0, y: 0 })),
+    coordsFromContainerPoint: vi.fn<() => KakaoLatLng>(() => new FakeLatLng(37.51, 127.02)),
+  }));
   panTo = vi.fn<(position: KakaoLatLng) => void>();
   relayout = vi.fn<() => void>();
   setCenter = vi.fn<(position: KakaoLatLng) => void>();
@@ -206,12 +211,14 @@ describe('Map', () => {
     expect(fakeMap.panTo).toHaveBeenCalledOnce();
   });
 
-  it('centers a clicked marker and zooms into a clicked cluster', async () => {
+  it('moves a clicked marker to the requested focus offset and zooms into a clicked cluster', async () => {
     const onMarkerClick = vi.fn<(marker: MapMarker) => void>();
 
     render(
       <Map
         apiKey="test-key"
+        markerFocusLevel={3}
+        markerFocusOffset={{ y: 160 }}
         markers={[{ id: 'post-1', position: { lat: 37.51, lng: 127.02 }, title: '게시글' }]}
         onMarkerClick={onMarkerClick}
       />,
@@ -241,7 +248,12 @@ describe('Map', () => {
       position: { lat: 37.51, lng: 127.02 },
       title: '게시글',
     });
+    expect(fakeMap.setCenter).not.toHaveBeenCalled();
     expect(fakeMap.panTo).toHaveBeenCalledOnce();
+    expect(fakeMap.setLevel).toHaveBeenNthCalledWith(1, 3, {
+      anchor: expect.any(FakeLatLng),
+      animate: false,
+    });
     expect(fakeMap.setLevel).toHaveBeenCalledWith(4, {
       anchor: expect.any(FakeLatLng),
       animate: true,
@@ -256,6 +268,23 @@ describe('Map', () => {
     );
 
     expect(screen.getByRole('button', { name: '게시글 핀' })).toBeInTheDocument();
+  });
+
+  it('skips repeated zoom and pans naturally when the map is already at the focus level', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        markerFocusLevel={5}
+        markerFocusOffset={{ y: 160 }}
+        markers={[{ id: 'post-1', position: { lat: 37.51, lng: 127.02 }, title: '게시글' }]}
+      />,
+    );
+
+    await waitFor(() => expect(markerClickHandlers).toHaveLength(1));
+    markerClickHandlers[0]?.();
+
+    expect(fakeMap.setLevel).not.toHaveBeenCalled();
+    expect(fakeMap.panTo).toHaveBeenCalledOnce();
   });
 
   it('uses a custom marker image when one is provided', async () => {

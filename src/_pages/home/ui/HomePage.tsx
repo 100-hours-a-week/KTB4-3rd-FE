@@ -257,6 +257,8 @@ export function HomePage() {
         <Map
           className="h-full"
           clusterMarkers
+          markerFocusLevel={4}
+          markerFocusOffset={{ y: 160 }}
           markers={mapMarkers}
           onMarkerClick={handleMarkerClick}
           showCurrentLocationButton={false}
