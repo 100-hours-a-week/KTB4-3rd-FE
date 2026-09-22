@@ -76,12 +76,38 @@ const clusterClickHandlers: ((cluster: KakaoCluster) => void)[] = [];
 const clustererOptions: { styles?: KakaoMarkerClustererStyle[] }[] = [];
 const markerOptions: { position: KakaoLatLng; title?: string }[] = [];
 const markerImageSources: string[] = [];
+const markerImageOptions: { height: number; offsetX: number; offsetY: number; width: number }[] =
+  [];
 let fakeMap: FakeMap;
 
 class FakeMarkerImage {
-  constructor(src: string) {
+  constructor(
+    src: string,
+    size: { height: number; width: number },
+    options: { offset: { x: number; y: number } },
+  ) {
     markerImageSources.push(src);
+    markerImageOptions.push({
+      height: size.height,
+      offsetX: options.offset.x,
+      offsetY: options.offset.y,
+      width: size.width,
+    });
   }
+}
+
+class FakeSize {
+  constructor(
+    readonly width: number,
+    readonly height: number,
+  ) {}
+}
+
+class FakePoint {
+  constructor(
+    readonly x: number,
+    readonly y: number,
+  ) {}
 }
 
 const fakeKakao = {
@@ -94,8 +120,8 @@ const fakeKakao = {
     Marker: FakeMarker,
     MarkerClusterer: FakeMarkerClusterer,
     MarkerImage: FakeMarkerImage,
-    Point: class {},
-    Size: class {},
+    Point: FakePoint,
+    Size: FakeSize,
     event: {
       addListener: vi.fn<(target: object, eventName: string, handler: unknown) => void>(
         (_target, eventName, handler) => {
@@ -124,6 +150,7 @@ describe('Map', () => {
     clustererOptions.length = 0;
     markerOptions.length = 0;
     markerImageSources.length = 0;
+    markerImageOptions.length = 0;
     fakeMap = new FakeMap();
     loadKakaoMaps.mockResolvedValue(fakeKakao);
   });
@@ -250,6 +277,36 @@ describe('Map', () => {
     );
 
     await waitFor(() => expect(markerImageSources).toContain('/map-pins/accompany-marker.svg'));
+  });
+
+  it('scales a selected marker while keeping its map position anchored', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        markers={[
+          {
+            id: 'post-1',
+            image: {
+              height: 56,
+              offset: { x: 27, y: 56 },
+              src: '/map-pins/accompany-marker.svg',
+              width: 54,
+            },
+            isSelected: true,
+            position: { lat: 37.51, lng: 127.02 },
+          },
+        ]}
+      />,
+    );
+
+    await waitFor(() => expect(markerImageOptions).toHaveLength(1));
+
+    expect(markerImageOptions[0]).toEqual({
+      height: 64,
+      offsetX: 31,
+      offsetY: 64,
+      width: 62,
+    });
   });
 
   it('renders a fixed selection marker for center-based location picking', async () => {

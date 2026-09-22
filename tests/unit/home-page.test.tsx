@@ -17,6 +17,7 @@ vi.mock('@/shared/ui/map', () => ({
       {markers.map((marker) => (
         <button
           aria-label={marker.title}
+          data-selected={marker.isSelected}
           data-testid={`map-marker-${marker.id}`}
           key={marker.id}
           onClick={() => onMarkerClick?.(marker)}
@@ -57,6 +58,15 @@ describe('HomePage', () => {
     expect(screen.getByText('조용히 작업하기 좋은 카페를 찾고 있어요.')).toBeInTheDocument();
     expect(screen.getByText('루디')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
+  });
+
+  it('선택한 핀만 선택 상태로 표시된다', () => {
+    render(<HomePage />);
+
+    fireEvent.click(screen.getByTestId('map-marker-3'));
+
+    expect(screen.getByTestId('map-marker-3')).toHaveAttribute('data-selected', 'true');
+    expect(screen.getByTestId('map-marker-1')).toHaveAttribute('data-selected', 'false');
   });
 
   it('동행 모집 핀을 클릭하면 동행 모집 상세 데이터가 바텀모달에 표시된다', () => {

@@ -192,13 +192,6 @@ const mockPostDetails: Record<number, PostDetail> = {
 };
 
 const posts = mockPosts.map(({ post }) => post);
-const mapMarkers = mockPosts.map(({ pinVariant, position, post }) => ({
-  id: post.id,
-  image: getMapPinMarkerImage(pinVariant),
-  position,
-  title: post.title,
-}));
-
 type SelectedPost = PositionedPost & {
   detail: PostDetail;
 };
@@ -214,6 +207,13 @@ function PostDetailContent({ post }: { post: PostDetail }) {
 export function HomePage() {
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
   const [activeSnapPoint, setActiveSnapPoint] = useState<BottomSheetSnapPoint>('110px');
+  const mapMarkers = mockPosts.map(({ pinVariant, position, post }) => ({
+    id: post.id,
+    image: getMapPinMarkerImage(pinVariant),
+    isSelected: selectedPost?.post.id === post.id,
+    position,
+    title: post.title,
+  }));
 
   const handleMarkerClick = useCallback((marker: MapMarker) => {
     const nextPost = mockPosts.find(({ post }) => post.id === marker.id);
