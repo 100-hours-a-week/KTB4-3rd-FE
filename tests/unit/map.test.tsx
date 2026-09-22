@@ -343,4 +343,25 @@ describe('Map', () => {
 
     await waitFor(() => expect(screen.getByTestId('map-selection-marker')).toBeInTheDocument());
   });
+
+  it('renders a custom image for the center selection marker', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        selectionMarker={{
+          height: 56,
+          src: '/map-pins/accompany-marker.svg',
+          width: 54,
+        }}
+        selectionMode
+      />,
+    );
+
+    const selectionMarker = await screen.findByTestId('map-selection-marker');
+
+    expect(selectionMarker.querySelector('img')).toHaveAttribute(
+      'src',
+      '/map-pins/accompany-marker.svg',
+    );
+  });
 });
