@@ -44,6 +44,7 @@ const defaultIconColors: Record<Exclude<SnackbarType, 'default'>, string> = {
 };
 
 const DEFAULT_TIMEOUT = 5000;
+const EXIT_ANIMATION_DURATION = 180;
 
 function getDefaultIcon(type: SnackbarType): ReactNode | null {
   if (type === 'default') {
@@ -81,6 +82,7 @@ export function Snackbar({
   className,
   description,
   icon,
+  onAnimationEnd,
   onOpenChange,
   open,
   timeout,
@@ -90,10 +92,32 @@ export function Snackbar({
   const isControlled = open !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(true);
   const isOpen = isControlled ? open : uncontrolledOpen;
+  const [isMounted, setIsMounted] = useState(isOpen);
   const resolvedIcon = icon === undefined ? getDefaultIcon(type) : icon;
   const hasIcon = resolvedIcon !== null && resolvedIcon !== undefined && resolvedIcon !== false;
   const hasAction = actionProps?.children !== undefined && actionProps.children !== null;
   const resolvedTimeout = timeout ?? DEFAULT_TIMEOUT;
+  const isExiting = !isOpen;
+
+  useEffect(() => {
+    if (!isOpen) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setIsMounted(true), 0);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (isOpen || !isMounted) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setIsMounted(false), EXIT_ANIMATION_DURATION);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [isMounted, isOpen]);
 
   useEffect(() => {
     if (!isOpen || resolvedTimeout <= 0) {
@@ -111,8 +135,16 @@ export function Snackbar({
     return () => window.clearTimeout(timeoutId);
   }, [isControlled, isOpen, onOpenChange, resolvedTimeout]);
 
-  if (!isOpen) {
+  if (!isMounted && !isOpen) {
     return null;
+  }
+
+  function handleAnimationEnd(event: React.AnimationEvent<HTMLDivElement>) {
+    if (isExiting) {
+      setIsMounted(false);
+    }
+
+    onAnimationEnd?.(event);
   }
 
   return (
@@ -122,10 +154,12 @@ export function Snackbar({
       aria-live={props['aria-live'] ?? (type === 'critical' ? 'assertive' : 'polite')}
       className={cn(
         styles.root,
+        isExiting && styles.exit,
         'flex h-[var(--dimension-x10)] w-[340px] max-w-[calc(100vw-32px)] items-center overflow-clip rounded-[var(--dimension-x2)] bg-[var(--color-bg-neutral-inverted)]',
         getSpacingClassName(hasIcon, hasAction),
         className,
       )}
+      onAnimationEnd={handleAnimationEnd}
       role={props.role ?? 'status'}
     >
       {hasIcon ? (

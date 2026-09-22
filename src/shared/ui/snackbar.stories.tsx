@@ -42,15 +42,14 @@ function TriggeredByButtonStory() {
 
   return (
     <div className="flex min-h-[160px] flex-col items-center justify-center gap-[var(--dimension-x5)]">
-      {open ? (
-        <Snackbar
-          actionProps={{ children: '확인', onClick: () => setOpen(false) }}
-          description="버튼을 눌러 Snackbar가 표시되었습니다."
-          onOpenChange={setOpen}
-          timeout={3000}
-          type="positive"
-        />
-      ) : null}
+      <Snackbar
+        actionProps={{ children: '확인', onClick: () => setOpen(false) }}
+        description="버튼을 눌러 Snackbar가 표시되었습니다."
+        onOpenChange={setOpen}
+        open={open}
+        timeout={3000}
+        type="positive"
+      />
 
       <Button onClick={() => setOpen(true)}>Snackbar 열기</Button>
     </div>

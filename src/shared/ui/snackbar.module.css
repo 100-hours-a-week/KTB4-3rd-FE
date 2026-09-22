@@ -3,6 +3,10 @@
   will-change: opacity, transform;
 }
 
+.exit {
+  animation: snackbar-exit 180ms ease-in both;
+}
+
 @keyframes snackbar-enter {
   0% {
     opacity: 0;
@@ -20,9 +24,25 @@
   }
 }
 
+@keyframes snackbar-exit {
+  0% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.98);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .root {
     animation: none;
     will-change: auto;
+  }
+
+  .exit {
+    animation: snackbar-exit 1ms linear both;
   }
 }

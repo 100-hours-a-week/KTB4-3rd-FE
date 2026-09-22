@@ -84,8 +84,37 @@ describe('Snackbar', () => {
     expect(screen.getByRole('status')).toBeInTheDocument();
 
     act(() => vi.advanceTimersByTime(1));
-    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+    const snackbar = screen.getByRole('status');
+
+    expect(snackbar).toBeInTheDocument();
     expect(onOpenChange).toHaveBeenCalledWith(false);
+
+    act(() => vi.advanceTimersByTime(179));
+
+    expect(screen.getByRole('status')).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(1));
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
+  });
+
+  it('controlled open이 false가 되면 exit animation 후 숨긴다', () => {
+    vi.useFakeTimers();
+    const { rerender } = render(<Snackbar description="닫히는 메시지" open timeout={0} />);
+
+    rerender(<Snackbar description="닫히는 메시지" open={false} timeout={0} />);
+
+    const snackbar = screen.getByRole('status');
+
+    expect(snackbar).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(179));
+
+    expect(snackbar).toBeInTheDocument();
+
+    act(() => vi.advanceTimersByTime(1));
+
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 
   it('open을 false로 전달하면 렌더링하지 않는다', () => {
