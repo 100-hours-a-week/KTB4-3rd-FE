@@ -152,3 +152,16 @@ export const LocationSelection: Story = {
     selectionMode: true,
   },
 };
+
+export const CustomSelectionMarker: Story = {
+  args: {
+    className: 'h-screen',
+    clusterMarkers: false,
+    selectionMarker: {
+      height: 56,
+      src: '/map-pins/accompany-marker.svg',
+      width: 54,
+    },
+    selectionMode: true,
+  },
+};

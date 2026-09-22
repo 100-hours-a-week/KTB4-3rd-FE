@@ -1,6 +1,7 @@
 'use client';
 
 import { Minus, Plus } from 'lucide-react';
+import Image from 'next/image';
 import {
   useCallback,
   useEffect,
@@ -75,6 +76,7 @@ export type MapProps = {
   onViewportChange?: (viewport: MapViewport) => void;
   onCenterChange?: (center: MapCoordinate) => void;
   selectionMode?: boolean;
+  selectionMarker?: MapMarkerImage;
   showCurrentLocationButton?: boolean;
   showZoomControls?: boolean;
   userLocation?: MapCoordinate | null;
@@ -166,6 +168,7 @@ export function Map({
   onViewportChange,
   onCenterChange,
   selectionMode = false,
+  selectionMarker,
   showCurrentLocationButton = true,
   showZoomControls = true,
   userLocation,
@@ -514,14 +517,28 @@ export function Map({
 
       {children}
 
-      {selectionMode && status === 'ready' ? (
+      {selectionMode ? (
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute top-1/2 left-1/2 z-10 -translate-x-1/2 -translate-y-full"
+          className="pointer-events-none absolute top-1/2 left-1/2 z-30 -translate-x-1/2 -translate-y-full"
           data-testid="map-selection-marker"
         >
-          <span className="block size-10 rounded-full border-[3px] border-white bg-[var(--color-bg-brand-solid)] shadow-[0_3px_8px_rgb(0_0_0_/_24%)]" />
-          <span className="absolute bottom-[-5px] left-1/2 size-3 -translate-x-1/2 rotate-45 bg-[var(--color-bg-brand-solid)]" />
+          {selectionMarker ? (
+            <Image
+              alt=""
+              aria-hidden="true"
+              className="block"
+              height={selectionMarker.height}
+              src={selectionMarker.src}
+              unoptimized
+              width={selectionMarker.width}
+            />
+          ) : (
+            <>
+              <span className="block size-10 rounded-full border-[3px] border-white bg-[var(--color-bg-brand-solid)] shadow-[0_3px_8px_rgb(0_0_0_/_24%)]" />
+              <span className="absolute bottom-[-5px] left-1/2 size-3 -translate-x-1/2 rotate-45 bg-[var(--color-bg-brand-solid)]" />
+            </>
+          )}
         </div>
       ) : null}
 
