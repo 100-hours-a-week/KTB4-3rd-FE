@@ -1,3 +1,4 @@
+@import '@ncdai/react-wheel-picker/style.css';
 @import 'tailwindcss';
 @import '../src/shared/styles/color-tokens.css';
 @import '../src/shared/styles/font-faces.css';
@@ -29,4 +30,42 @@ button,
 input,
 textarea {
   font: inherit;
+}
+
+.time-picker-wheel [data-rwp] {
+  height: 224px !important;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.time-picker-wheel-wrapper {
+  position: absolute !important;
+  inset: 0;
+}
+
+.time-picker-wheel [data-rwp-option],
+.time-picker-wheel [data-rwp-highlight-item] {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.time-picker-wheel-text {
+  color: rgb(152, 162, 179);
+  font-size: 22px;
+  font-weight: 400;
+  line-height: 30px;
+  transition:
+    color 200ms ease-out,
+    font-size 200ms ease-out,
+    line-height 200ms ease-out,
+    font-weight 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+.time-picker-wheel [data-rwp-highlight-item] .time-picker-wheel-text {
+  color: rgb(29, 41, 57);
+  font-size: 24px;
+  font-weight: 700;
+  line-height: 32px;
+  transform: translateY(1px);
 }
