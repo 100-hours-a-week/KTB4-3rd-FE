@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage, type MapPinMarkerVariant } from '@/entities/map-pin';
 import { PostList, type Post, type PostDetail } from '@/entities/post';
@@ -13,7 +13,7 @@ import { BottomModal } from '@/shared/ui/bottom-modal';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
-import { Map, MyLocationButton, type MapMarker } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapMarker, type MapRef } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 
 type PositionedPost = {
@@ -205,6 +205,7 @@ function PostDetailContent({ post }: { post: PostDetail }) {
 }
 
 export function HomePage() {
+  const mapRef = useRef<MapRef>(null);
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
   const [activeSnapPoint, setActiveSnapPoint] = useState<BottomSheetSnapPoint>('110px');
   const mapMarkers = mockPosts.map(({ pinVariant, position, post }) => ({
@@ -237,6 +238,10 @@ export function HomePage() {
     }
   }, []);
 
+  const requestCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
       <Header
@@ -261,6 +266,8 @@ export function HomePage() {
           markerFocusOffset={{ y: 160 }}
           markers={mapMarkers}
           onMarkerClick={handleMarkerClick}
+          ref={mapRef}
+          locateOnMount
           showCurrentLocationButton={false}
           showZoomControls={false}
         >
@@ -272,7 +279,10 @@ export function HomePage() {
             글쓰기
           </PostCreateFab>
 
-          <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
+          <MyLocationButton
+            className="absolute right-4 bottom-[134px] z-20"
+            onClick={requestCurrentLocation}
+          />
         </Map>
       </main>
 
