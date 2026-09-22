@@ -1,5 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
+import { useState } from 'react';
 
+import { Button } from './button';
 import { Icon } from './icon';
 import { Snackbar, type SnackbarType } from './snackbar';
 
@@ -34,6 +36,26 @@ const meta = {
 export default meta;
 
 type Story = StoryObj<typeof meta>;
+
+function TriggeredByButtonStory() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="flex min-h-[160px] flex-col items-center justify-center gap-[var(--dimension-x5)]">
+      <Button onClick={() => setOpen(true)}>Snackbar 열기</Button>
+
+      {open ? (
+        <Snackbar
+          actionProps={{ children: '확인', onClick: () => setOpen(false) }}
+          description="버튼을 눌러 Snackbar가 표시되었습니다."
+          onOpenChange={setOpen}
+          timeout={3000}
+          type="positive"
+        />
+      ) : null}
+    </div>
+  );
+}
 
 export const Playground: Story = {};
 
@@ -91,4 +113,11 @@ export const AllVariants: Story = {
       ])}
     </div>
   ),
+};
+
+export const TriggeredByButton: Story = {
+  parameters: {
+    layout: 'centered',
+  },
+  render: () => <TriggeredByButtonStory />,
 };
