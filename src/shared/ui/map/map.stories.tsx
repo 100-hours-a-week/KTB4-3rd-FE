@@ -127,6 +127,15 @@ export const PostMarkers: Story = {
   },
 };
 
+export const UserLocation: Story = {
+  args: {
+    className: 'h-screen',
+    clusterMarkers: false,
+    markers: [],
+    userLocation: { lat: 37.5547, lng: 126.9707 },
+  },
+};
+
 export const OverlayContent: Story = {
   args: {
     children: (
