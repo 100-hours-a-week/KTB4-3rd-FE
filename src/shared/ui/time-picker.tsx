@@ -151,6 +151,7 @@ function TimePickerColumn({
   const pendingSnapRef = useRef<{ value: string } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
+  const [isRebasing, setIsRebasing] = useState(false);
 
   const maxDragOffset = TIME_PICKER_ROW_HEIGHT * DRAG_ROW_COUNT;
 
@@ -203,6 +204,7 @@ function TimePickerColumn({
     }
 
     pendingSnapRef.current = null;
+    setIsRebasing(false);
     event.currentTarget.setPointerCapture?.(event.pointerId);
     dragStateRef.current = { pointerId: event.pointerId, startY: event.clientY };
     wheelDeltaRef.current = 0;
@@ -249,6 +251,7 @@ function TimePickerColumn({
 
     if (dragOffset === snapOffset) {
       pendingSnapRef.current = null;
+      setIsRebasing(true);
       commitValue(getValueAfterSteps(options, value, steps, cyclic));
       setDragOffset(0);
       return;
@@ -266,6 +269,7 @@ function TimePickerColumn({
 
     dragStateRef.current = null;
     pendingSnapRef.current = null;
+    setIsRebasing(false);
     setDragOffset(0);
     setIsDragging(false);
   };
@@ -282,6 +286,7 @@ function TimePickerColumn({
     }
 
     pendingSnapRef.current = null;
+    setIsRebasing(true);
     commitValue(pendingSnap.value);
     setDragOffset(0);
   };
@@ -305,7 +310,7 @@ function TimePickerColumn({
       <div
         className={cn(
           'absolute inset-x-0 top-0 flex flex-col transition-transform duration-200 ease-out',
-          isDragging && 'transition-none',
+          (isDragging || isRebasing) && 'transition-none',
         )}
         onTransitionEnd={handleSnapTransitionEnd}
         style={{ transform: `translateY(${TIME_PICKER_SELECTED_ROW_OFFSET + dragOffset}px)` }}
