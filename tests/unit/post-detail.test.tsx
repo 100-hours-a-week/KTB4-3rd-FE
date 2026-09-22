@@ -98,7 +98,7 @@ describe('CommunityPostDetail', () => {
       '!leading-[var(--line-height-t4)]',
       '!font-[var(--font-weight-regular)]',
     );
-    expect(submitButton).toHaveClass('size-[34px]');
+    expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();
 
     await user.type(input, '새 댓글입니다');

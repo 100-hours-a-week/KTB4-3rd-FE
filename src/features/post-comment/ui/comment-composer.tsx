@@ -51,7 +51,7 @@ export function CommentComposer({
         />
         <button
           aria-label="댓글 전송"
-          className="absolute right-1 inline-flex size-[34px] items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
+          className="absolute right-1 inline-flex size-[30px] items-center justify-center rounded-full focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
           disabled={!canSubmit}
           type="submit"
         >
