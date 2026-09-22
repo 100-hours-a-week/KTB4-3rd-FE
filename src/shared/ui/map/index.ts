@@ -5,6 +5,7 @@ export type {
   MapLocationError,
   MapLocationErrorCode,
   MapMarker,
+  MapMarkerImage,
   MapMarkerId,
   MapViewport,
 } from './model/map.types';

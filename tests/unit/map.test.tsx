@@ -8,6 +8,7 @@ import type {
   KakaoMap,
   KakaoMarker,
   KakaoMarkerClusterer,
+  KakaoMarkerClustererStyle,
   KakaoNamespace,
 } from '@/shared/ui/map/model/kakao-map.types';
 import { Map, type MapMarker, type MapViewport } from '@/shared/ui/map';
@@ -53,10 +54,18 @@ class FakeMap implements KakaoMap {
 }
 
 class FakeMarker implements KakaoMarker {
+  constructor(options: { position: KakaoLatLng; title?: string }) {
+    markerOptions.push(options);
+  }
+
   setMap = vi.fn<(map: KakaoMap | null) => void>();
 }
 
 class FakeMarkerClusterer implements KakaoMarkerClusterer {
+  constructor(options: { styles?: KakaoMarkerClustererStyle[] }) {
+    clustererOptions.push(options);
+  }
+
   addMarkers = vi.fn<(markers: KakaoMarker[]) => void>();
   clear = vi.fn<() => void>();
   setMap = vi.fn<(map: KakaoMap | null) => void>();
@@ -64,7 +73,16 @@ class FakeMarkerClusterer implements KakaoMarkerClusterer {
 
 const markerClickHandlers: (() => void)[] = [];
 const clusterClickHandlers: ((cluster: KakaoCluster) => void)[] = [];
+const clustererOptions: { styles?: KakaoMarkerClustererStyle[] }[] = [];
+const markerOptions: { position: KakaoLatLng; title?: string }[] = [];
+const markerImageSources: string[] = [];
 let fakeMap: FakeMap;
+
+class FakeMarkerImage {
+  constructor(src: string) {
+    markerImageSources.push(src);
+  }
+}
 
 const fakeKakao = {
   maps: {
@@ -75,7 +93,7 @@ const fakeKakao = {
     },
     Marker: FakeMarker,
     MarkerClusterer: FakeMarkerClusterer,
-    MarkerImage: class {},
+    MarkerImage: FakeMarkerImage,
     Point: class {},
     Size: class {},
     event: {
@@ -103,6 +121,9 @@ describe('Map', () => {
     vi.clearAllMocks();
     markerClickHandlers.length = 0;
     clusterClickHandlers.length = 0;
+    clustererOptions.length = 0;
+    markerOptions.length = 0;
+    markerImageSources.length = 0;
     fakeMap = new FakeMap();
     loadKakaoMaps.mockResolvedValue(fakeKakao);
   });
@@ -170,6 +191,21 @@ describe('Map', () => {
     );
 
     await waitFor(() => expect(markerClickHandlers).toHaveLength(1));
+    expect(clustererOptions[0]?.styles).toEqual([
+      {
+        background:
+          'radial-gradient(circle, var(--color-bg-brand-solid) 0%, var(--color-bg-brand-solid) 42%, var(--transparent) 100%)',
+        borderRadius: '50%',
+        color: 'var(--color-fg-neutral-inverted)',
+        fontWeight: 700,
+        height: '48px',
+        lineHeight: '48px',
+        textAlign: 'center',
+        width: '48px',
+      },
+    ]);
+    expect(markerOptions[0]?.position.getLat()).toBe(37.51);
+    expect(markerOptions[0]?.position.getLng()).toBe(127.02);
     markerClickHandlers[0]?.();
     clusterClickHandlers[0]?.({ getCenter: () => new FakeLatLng(37.52, 127.03) });
 
@@ -183,6 +219,37 @@ describe('Map', () => {
       anchor: expect.any(FakeLatLng),
       animate: true,
     });
+  });
+
+  it('renders overlay children above the map container', () => {
+    render(
+      <Map apiKey="test-key">
+        <button type="button">게시글 핀</button>
+      </Map>,
+    );
+
+    expect(screen.getByRole('button', { name: '게시글 핀' })).toBeInTheDocument();
+  });
+
+  it('uses a custom marker image when one is provided', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        markers={[
+          {
+            id: 'post-1',
+            image: {
+              height: 56,
+              src: '/map-pins/accompany-marker.svg',
+              width: 54,
+            },
+            position: { lat: 37.51, lng: 127.02 },
+          },
+        ]}
+      />,
+    );
+
+    await waitFor(() => expect(markerImageSources).toContain('/map-pins/accompany-marker.svg'));
   });
 
   it('renders a fixed selection marker for center-based location picking', async () => {

@@ -2,15 +2,34 @@ import type { HTMLAttributes } from 'react';
 import Image from 'next/image';
 
 import { cn } from '@/shared/lib/cn';
+import type { MapMarkerImage } from '@/shared/ui/map';
 
-const ACCOMPANY_BODY_SRC = '/map-pins/accompany-body.svg';
-const ACCOMPANY_CENTER_SRC = '/map-pins/accompany-center.svg';
-const COMMUNITY_BODY_SRC = '/map-pins/community-body.svg';
-const COMMUNITY_CENTER_SRC = '/map-pins/community-center.svg';
+const ACCOMPANY_MARKER_SRC = '/map-pins/accompany-marker.svg';
+const COMMUNITY_MARKER_SRC = '/map-pins/community-marker.svg';
 const ROUTE_LINE_SRC = '/map-pins/route-line.svg';
 
 export type MapPinVariant = 'accompany' | 'community' | 'start' | 'destination';
 export type MapPinState = 'default' | 'clicked';
+export type MapPinMarkerVariant = Extract<MapPinVariant, 'accompany' | 'community'>;
+
+const mapPinMarkerImages: Record<MapPinMarkerVariant, MapMarkerImage> = {
+  accompany: {
+    height: 56,
+    offset: { x: 27, y: 56 },
+    src: ACCOMPANY_MARKER_SRC,
+    width: 54,
+  },
+  community: {
+    height: 56,
+    offset: { x: 27, y: 56 },
+    src: COMMUNITY_MARKER_SRC,
+    width: 54,
+  },
+};
+
+export function getMapPinMarkerImage(variant: MapPinMarkerVariant): MapMarkerImage {
+  return mapPinMarkerImages[variant];
+}
 
 type MapPinInteractionEventName =
   | 'onBlur'
@@ -99,34 +118,13 @@ function PinImage({
 
 function AccompanyPinVisual() {
   return (
-    <>
-      <PinImage className="inset-0 size-full" height={56} src={ACCOMPANY_BODY_SRC} width={54} />
-      <PinImage
-        className="top-2 left-[17px] size-5"
-        height={20}
-        src={ACCOMPANY_CENTER_SRC}
-        width={20}
-      />
-    </>
+    <PinImage className="inset-0 size-full" height={56} src={ACCOMPANY_MARKER_SRC} width={54} />
   );
 }
 
 function CommunityPinVisual() {
   return (
-    <>
-      <PinImage
-        className="top-0 left-[7px] h-14 w-10"
-        height={56}
-        src={COMMUNITY_BODY_SRC}
-        width={40}
-      />
-      <PinImage
-        className="top-2 left-[17px] size-5"
-        height={20}
-        src={COMMUNITY_CENTER_SRC}
-        width={20}
-      />
-    </>
+    <PinImage className="inset-0 size-full" height={56} src={COMMUNITY_MARKER_SRC} width={54} />
   );
 }
 
@@ -168,7 +166,8 @@ export function MapPin(props: MapPinProps) {
       className={cn(
         'relative block shrink-0',
         sizeClassNames[variant],
-        isInteractive && 'transition-[filter] duration-75 ease-out active:brightness-95',
+        isInteractive &&
+          'origin-bottom scale-75 transition-[filter] duration-75 ease-out active:brightness-95',
         isInteractive && stateClassNames[state],
         className,
       )}
