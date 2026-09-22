@@ -8,6 +8,7 @@ import {
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type ReactNode,
 } from 'react';
 
 import type { MapCoordinate } from '@/shared/types/common';
@@ -28,16 +29,34 @@ import type {
   KakaoMapsApi,
   KakaoNamespace,
 } from './model/kakao-map.types';
-import type { MapLoadError, MapLocationError, MapMarker, MapViewport } from './model/map.types';
+import type {
+  MapLoadError,
+  MapLocationError,
+  MapMarker,
+  MapMarkerImage,
+  MapViewport,
+} from './model/map.types';
 
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
+const BRAND_CLUSTER_STYLE = {
+  background:
+    'radial-gradient(circle, var(--color-bg-brand-solid) 0%, var(--color-bg-brand-solid) 42%, var(--transparent) 100%)',
+  borderRadius: '50%',
+  color: 'var(--color-fg-neutral-inverted)',
+  fontWeight: 700,
+  height: '48px',
+  lineHeight: '48px',
+  textAlign: 'center',
+  width: '48px',
+};
 
 type MapStatus = 'loading' | 'ready' | 'error';
 
 export type MapProps = {
   apiKey?: string;
   center?: MapCoordinate;
+  children?: ReactNode;
   className?: string;
   clusterMarkers?: boolean;
   clusterMinLevel?: number;
@@ -93,6 +112,12 @@ function createMarkerImage(maps: KakaoMapsApi, kind: 'post' | 'user') {
   });
 }
 
+function createCustomMarkerImage(maps: KakaoMapsApi, image: MapMarkerImage) {
+  return new maps.MarkerImage(image.src, new maps.Size(image.width, image.height), {
+    offset: new maps.Point(image.offset?.x ?? image.width / 2, image.offset?.y ?? image.height),
+  });
+}
+
 function isSameCoordinate(left: MapCoordinate, right: MapCoordinate) {
   return left.lat === right.lat && left.lng === right.lng;
 }
@@ -100,6 +125,7 @@ function isSameCoordinate(left: MapCoordinate, right: MapCoordinate) {
 export function Map({
   apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
   center,
+  children,
   className,
   clusterMarkers = true,
   clusterMinLevel = 6,
@@ -267,12 +293,12 @@ export function Map({
     }
 
     const markerInstances: KakaoMarker[] = [];
-    const markerImage = createMarkerImage(kakao.maps, 'post');
-
     markerList.forEach((markerData) => {
       const position = new kakao.maps.LatLng(markerData.position.lat, markerData.position.lng);
       const marker = new kakao.maps.Marker({
-        image: markerImage,
+        image: markerData.image
+          ? createCustomMarkerImage(kakao.maps, markerData.image)
+          : createMarkerImage(kakao.maps, 'post'),
         position,
         title: markerData.title,
       });
@@ -290,6 +316,7 @@ export function Map({
         disableClickZoom: true,
         map,
         minLevel: clusterMinLevel,
+        styles: [BRAND_CLUSTER_STYLE],
       });
 
       kakao.maps.event.addListener(clusterer, 'clusterclick', (cluster) => {
@@ -431,6 +458,8 @@ export function Map({
         ref={mapContainerRef}
         role="application"
       />
+
+      {children}
 
       {selectionMode && status === 'ready' ? (
         <div

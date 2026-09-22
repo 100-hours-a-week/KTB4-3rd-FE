@@ -10,6 +10,7 @@ import { Divider } from './divider';
 import { Text } from './text';
 
 export type BottomSheetSnapPoint = number | string;
+export type BottomSheetModal = boolean | 'trap-focus';
 
 export type BottomSheetProps = {
   open?: boolean;
@@ -21,9 +22,12 @@ export type BottomSheetProps = {
   snapPoint?: BottomSheetSnapPoint | null;
   onSnapPointChange?: (snapPoint: BottomSheetSnapPoint | null) => void;
 
+  modal?: BottomSheetModal;
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
+  bottomOffset?: number | string;
+  showBackdrop?: boolean;
   showViewAllButton?: boolean;
   onViewAll?: () => void;
   className?: string;
@@ -82,9 +86,12 @@ export function BottomSheet({
   defaultSnapPoint,
   snapPoint,
   onSnapPointChange,
+  modal = true,
   title,
   description,
   children,
+  bottomOffset,
+  showBackdrop = true,
   showViewAllButton = false,
   onViewAll,
   className,
@@ -141,6 +148,7 @@ export function BottomSheet({
       disablePointerDismissal
       defaultOpen={defaultOpen}
       defaultSnapPoint={resolvedDefaultSnapPoint}
+      modal={modal}
       onOpenChange={handleOpenChange}
       onSnapPointChange={handleSnapPointChange}
       open={open}
@@ -149,19 +157,26 @@ export function BottomSheet({
       snapToSequentialPoints
     >
       <Drawer.Portal>
-        <Drawer.Backdrop className={backdropClassName} data-testid="bottom-sheet-backdrop" />
+        <Drawer.Backdrop
+          className={showBackdrop ? backdropClassName : 'hidden'}
+          data-testid="bottom-sheet-backdrop"
+        />
         <Drawer.Viewport
-          className="fixed inset-0 z-50 flex touch-none items-end justify-center"
+          className={cn(
+            'fixed inset-x-0 top-0 z-50 flex touch-none items-end justify-center overflow-hidden',
+            modal !== true && 'pointer-events-none',
+          )}
           data-testid="bottom-sheet-viewport"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) {
               handleBackdropClick();
             }
           }}
+          style={bottomOffset === undefined ? undefined : { bottom: bottomOffset }}
         >
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
-            className={cn(popupClassName, className)}
+            className={cn(popupClassName, modal !== true && 'pointer-events-auto', className)}
           >
             <div className="shrink-0 touch-none px-[var(--dimension-x5)] pt-3 select-none">
               <div

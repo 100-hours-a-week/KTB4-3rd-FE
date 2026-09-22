@@ -4,6 +4,8 @@ export {
   DestinationPin,
   MapPin,
   StartPin,
+  getMapPinMarkerImage,
+  type MapPinMarkerVariant,
   type MapPinProps,
   type MapPinState,
   type MapPinVariant,

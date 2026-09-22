@@ -32,6 +32,8 @@ export type KakaoMarkerClusterer = {
   setMap: (map: KakaoMap | null) => void;
 };
 
+export type KakaoMarkerClustererStyle = Record<string, string | number>;
+
 export type KakaoAddress = {
   address_name: string;
   building_name?: string;
@@ -82,6 +84,7 @@ export type KakaoMapsApi = {
     disableClickZoom: boolean;
     map: KakaoMap;
     minLevel: number;
+    styles?: KakaoMarkerClustererStyle[];
   }) => KakaoMarkerClusterer;
   MarkerImage: new (
     src: string,

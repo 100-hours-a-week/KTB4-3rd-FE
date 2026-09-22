@@ -1,7 +1,7 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { MapPin } from '@/entities/map-pin';
+import { getMapPinMarkerImage, MapPin } from '@/entities/map-pin';
 
 afterEach(cleanup);
 
@@ -50,5 +50,14 @@ describe('MapPin', () => {
       'aria-hidden',
       'true',
     );
+  });
+
+  it.each(['accompany', 'community'] as const)('provides the %s marker image', (variant) => {
+    expect(getMapPinMarkerImage(variant)).toEqual({
+      height: 56,
+      offset: { x: 27, y: 56 },
+      src: `/map-pins/${variant}-marker.svg`,
+      width: 54,
+    });
   });
 });

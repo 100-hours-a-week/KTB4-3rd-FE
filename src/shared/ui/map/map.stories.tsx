@@ -127,6 +127,22 @@ export const PostMarkers: Story = {
   },
 };
 
+export const OverlayContent: Story = {
+  args: {
+    children: (
+      <button
+        className="absolute top-24 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-md"
+        type="button"
+      >
+        지도 위 콘텐츠
+      </button>
+    ),
+    className: 'h-screen',
+    showCurrentLocationButton: false,
+    showZoomControls: false,
+  },
+};
+
 export const LocationSelection: Story = {
   render: (args) => <LocationSelectionPreview {...args} />,
   args: {
