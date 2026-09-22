@@ -39,7 +39,7 @@ export function LocationSelectionFooter({
       </div>
 
       <Button
-        className="mt-[51px] h-[52px] min-h-[52px] w-full rounded-[8px] px-0 py-0"
+        className="mt-[51px] h-[52px] min-h-[52px] !rounded-[8px] !bg-[#414650] !px-4 !py-3"
         size="large"
         textVariant="t5Bold"
         variant="neutral-solid"
