@@ -49,6 +49,21 @@ describe('DatePicker', () => {
     expect(screen.getByRole('grid', { name: '2026년 2월' })).toBeInTheDocument();
   });
 
+  it('날짜 그리드에서 화살표 키로 포커스를 이동한다', async () => {
+    const user = userEvent.setup();
+
+    render(<DatePicker today={today} value={selectedDate} />);
+
+    const selectedDay = screen.getByRole('button', { name: '2026년 2월 9일' });
+    selectedDay.focus();
+
+    await user.keyboard('{ArrowRight}');
+    expect(screen.getByRole('button', { name: '2026년 2월 10일' })).toHaveFocus();
+
+    await user.keyboard('{ArrowLeft}');
+    expect(selectedDay).toHaveFocus();
+  });
+
   it('년월 버튼을 누르면 연도와 월 휠 선택기를 열고 값을 변경한다', async () => {
     const user = userEvent.setup();
 
@@ -64,10 +79,10 @@ describe('DatePicker', () => {
     expect(screen.getByRole('option', { name: '2월' })).toHaveAttribute('aria-selected', 'true');
 
     await user.click(screen.getByRole('option', { name: '3월' }));
-    expect(screen.getByText('2026년 3월')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2026년 3월' })).toBeInTheDocument();
 
     fireEvent.keyDown(screen.getByRole('listbox', { name: '연도' }), { key: 'ArrowUp' });
-    expect(screen.getByText('2025년 3월')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2025년 3월' })).toBeInTheDocument();
   });
 
   it('휠 이동량이 임계치를 넘을 때만 월을 한 칸 이동한다', () => {
@@ -77,10 +92,10 @@ describe('DatePicker', () => {
     const monthColumn = screen.getByRole('listbox', { name: '월' });
 
     fireEvent.wheel(monthColumn, { deltaY: 119 });
-    expect(screen.getByText('2026년 2월')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2026년 2월' })).toBeInTheDocument();
 
     fireEvent.wheel(monthColumn, { deltaY: 1 });
-    expect(screen.getByText('2026년 3월')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2026년 3월' })).toBeInTheDocument();
   });
 
   it('비제어 모드에서 선택 날짜를 내부 상태로 갱신한다', async () => {

@@ -1,3 +1,15 @@
+'use client';
+
+import {
+  CalendarDate,
+  createCalendar,
+  fromDateToLocal,
+  getLocalTimeZone,
+} from '@internationalized/date';
+import { useButton } from '@react-aria/button';
+import { useCalendar, useCalendarCell, useCalendarGrid } from '@react-aria/calendar';
+import { I18nProvider } from '@react-aria/i18n';
+import { useCalendarState, type CalendarState as CalendarStateType } from '@react-stately/calendar';
 import { useRef, useState, type KeyboardEvent, type WheelEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
@@ -26,13 +38,7 @@ export type DatePickerProps = {
   className?: string;
 };
 
-type CalendarDate = {
-  date: Date;
-  day: number;
-  isCurrentMonth: boolean;
-};
-
-const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'] as const;
+const LOCALE = 'ko-KR';
 const VISIBLE_PICKER_ROWS = 7;
 const PICKER_CENTER_OFFSET = Math.floor(VISIBLE_PICKER_ROWS / 2);
 const WHEEL_DELTA_THRESHOLD = 120;
@@ -41,52 +47,18 @@ function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-function startOfMonth(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), 1);
+function toCalendarDate(date: Date) {
+  const localDate = fromDateToLocal(startOfDay(date));
+
+  return new CalendarDate(localDate.year, localDate.month, localDate.day);
 }
 
-function toDateKey(date: Date) {
-  return `${date.getFullYear()}-${date.getMonth()}-${date.getDate()}`;
+function toDate(date: CalendarDate) {
+  return date.toDate(getLocalTimeZone());
 }
 
-function isSameDate(firstDate: Date | null | undefined, secondDate: Date | null | undefined) {
-  return firstDate !== null &&
-    firstDate !== undefined &&
-    secondDate !== null &&
-    secondDate !== undefined
-    ? toDateKey(firstDate) === toDateKey(secondDate)
-    : false;
-}
-
-function isBefore(firstDate: Date, secondDate: Date) {
-  return startOfDay(firstDate).getTime() < startOfDay(secondDate).getTime();
-}
-
-function isAfter(firstDate: Date, secondDate: Date) {
-  return startOfDay(firstDate).getTime() > startOfDay(secondDate).getTime();
-}
-
-function isSelectable(date: Date, minDate?: Date, maxDate?: Date) {
-  return !(minDate && isBefore(date, minDate)) && !(maxDate && isAfter(date, maxDate));
-}
-
-function getCalendarDates(month: Date): CalendarDate[] {
-  const year = month.getFullYear();
-  const monthIndex = month.getMonth();
-  const firstDayOfMonth = new Date(year, monthIndex, 1).getDay();
-  const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
-  const cellCount = Math.ceil((firstDayOfMonth + daysInMonth) / 7) * 7;
-
-  return Array.from({ length: cellCount }, (_, index) => {
-    const day = index - firstDayOfMonth + 1;
-    const isCurrentMonth = day >= 1 && day <= daysInMonth;
-
-    return {
-      date: new Date(year, monthIndex, isCurrentMonth ? day : 1),
-      day,
-      isCurrentMonth,
-    };
-  });
+function isSameDate(firstDate: CalendarDate | null, secondDate: CalendarDate) {
+  return firstDate?.compare(secondDate) === 0;
 }
 
 function getVisibleOptions<T>(options: readonly T[], selectedIndex: number) {
@@ -175,6 +147,7 @@ function PickerColumn({
 
   return (
     <div
+      aria-activedescendant={`${name}-option-${value}`}
       aria-label={ariaLabel}
       aria-orientation="vertical"
       aria-disabled={disabled || undefined}
@@ -192,7 +165,7 @@ function PickerColumn({
         {getVisibleOptions(options, selectedIndex).map(({ value: option, isSelected }, index) => (
           <div
             className="flex h-[52px] w-full items-center justify-center"
-            key={`${name}-${index}`}
+            key={`${name}-${option ?? 'empty'}-${index}`}
           >
             {option === null ? null : (
               <button
@@ -204,6 +177,7 @@ function PickerColumn({
                   disabled && 'cursor-not-allowed',
                 )}
                 disabled={disabled}
+                id={`${name}-option-${option}`}
                 onClick={() => commitValue(option)}
                 role="option"
                 tabIndex={-1}
@@ -230,11 +204,110 @@ function PickerColumn({
   );
 }
 
-function normalizeDate(value: Date | null | undefined, fallback: Date) {
-  return value ? startOfDay(value) : startOfDay(fallback);
+type CalendarCellProps = {
+  date: CalendarDate;
+  isOutsideMonth: boolean;
+  state: CalendarStateType<'single'>;
+  today: CalendarDate;
+};
+
+function CalendarCell({ date, isOutsideMonth, state, today }: CalendarCellProps) {
+  const ref = useRef<HTMLButtonElement>(null);
+  const { cellProps, buttonProps, isDisabled, isFocused, isSelected, isUnavailable } =
+    useCalendarCell({ date, isOutsideMonth }, state, ref);
+
+  if (isOutsideMonth) {
+    return <div {...cellProps} aria-hidden="true" className="h-[52px]" />;
+  }
+
+  const isToday = isSameDate(today, date);
+  const isDateDisabled = isDisabled || isUnavailable;
+
+  return (
+    <div {...cellProps} className="flex h-[52px] items-center justify-center">
+      <button
+        {...buttonProps}
+        aria-current={isToday ? 'date' : undefined}
+        aria-label={`${date.year}년 ${date.month}월 ${date.day}일`}
+        aria-selected={isSelected}
+        className={cn(
+          'relative inline-flex size-[48px] items-center justify-center rounded-full text-[var(--color-fg-neutral)] outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]',
+          'active:bg-[var(--color-bg-transparent-pressed)]',
+          isToday && !isSelected && 'bg-[var(--color-bg-brand-weak)]',
+          isSelected && 'bg-[var(--color-bg-brand-solid)] text-[var(--color-fg-neutral-inverted)]',
+          isDateDisabled && 'cursor-not-allowed text-[var(--color-fg-disabled)]',
+          isFocused && 'focus-visible:outline-2',
+        )}
+        disabled={isDateDisabled}
+        ref={ref}
+        type="button"
+      >
+        <Text
+          as="span"
+          className="relative z-10"
+          variant="t6Regular"
+          color={isSelected ? 'fg.neutralInverted' : undefined}
+        >
+          {date.day}
+        </Text>
+      </button>
+    </div>
+  );
 }
 
-export function DatePicker({
+type CalendarGridProps = {
+  state: CalendarStateType<'single'>;
+  today: CalendarDate;
+  year: number;
+  month: number;
+  ariaLabel: string;
+};
+
+function CalendarGrid({ state, today, year, month, ariaLabel }: CalendarGridProps) {
+  const { gridProps, headerProps, weekDays, weeksInMonth } = useCalendarGrid(
+    { firstDayOfWeek: 'sun', weekdayStyle: 'short' },
+    state,
+  );
+  const firstVisibleDate = state.visibleRange.start;
+
+  return (
+    <>
+      <div
+        {...headerProps}
+        className="grid h-[28px] grid-cols-7 text-center text-[var(--color-fg-neutral-subtle)]"
+      >
+        {weekDays.map((weekday, index) => (
+          <Text as="span" fontWeight="medium" key={`${weekday}-${index}`} variant="t5Regular">
+            {weekday}
+          </Text>
+        ))}
+      </div>
+      <div {...gridProps} aria-label={ariaLabel} className="grid">
+        {Array.from({ length: weeksInMonth }, (_, weekIndex) => (
+          <div className="grid grid-cols-7" key={`week-${weekIndex}`} role="row">
+            {state.getDatesInWeek(weekIndex, firstVisibleDate).map((date, dateIndex) => {
+              if (!date) {
+                return <div aria-hidden="true" className="h-[52px]" key={`empty-${dateIndex}`} />;
+              }
+
+              return (
+                <CalendarCell
+                  date={date}
+                  isOutsideMonth={date.year !== year || date.month !== month}
+                  key={date.toString()}
+                  state={state}
+                  today={today}
+                />
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function DatePickerContent({
   value,
   defaultValue,
   onValueChange,
@@ -245,53 +318,71 @@ export function DatePicker({
   disabled = false,
   className,
 }: DatePickerProps) {
-  const normalizedToday = startOfDay(today);
-  const initialDate = normalizeDate(defaultValue, normalizedToday);
-  const [internalValue, setInternalValue] = useState<Date | null>(
+  const normalizedToday = toCalendarDate(today);
+  const initialDate = toCalendarDate(value ?? defaultValue ?? today);
+  const [internalValue, setInternalValue] = useState<CalendarDate | null>(
     defaultValue ? initialDate : normalizedToday,
   );
-  let currentValue: Date | null;
+  const [focusedDate, setFocusedDate] = useState(initialDate);
+  let currentValue = internalValue;
 
-  if (value === undefined) {
-    currentValue = internalValue;
-  } else {
-    currentValue = value === null ? null : startOfDay(value);
+  if (value !== undefined) {
+    currentValue = value ? toCalendarDate(value) : null;
   }
-  const [visibleMonth, setVisibleMonth] = useState(() =>
-    startOfMonth(value ?? defaultValue ?? normalizedToday),
-  );
+
+  const minimumDate = minDate ? toCalendarDate(minDate) : undefined;
+  const maximumDate = maxDate ? toCalendarDate(maxDate) : undefined;
   const [isYearMonthOpen, setIsYearMonthOpen] = useState(false);
 
-  const selectedMonth = visibleMonth.getMonth() + 1;
-  const selectedYear = visibleMonth.getFullYear();
-  const years = Array.from(
-    { length: VISIBLE_PICKER_ROWS },
-    (_, index) => selectedYear - PICKER_CENTER_OFFSET + index,
-  );
-  const months = Array.from({ length: 12 }, (_, index) => index + 1);
-  const calendarDates = getCalendarDates(visibleMonth);
-
-  const updateVisibleMonth = (year: number, month: number) => {
-    setVisibleMonth(new Date(year, month - 1, 1));
-  };
-
-  const moveMonth = (direction: -1 | 1) => {
-    const nextMonth = new Date(selectedYear, visibleMonth.getMonth() + direction, 1);
-    setVisibleMonth(nextMonth);
-  };
-
-  const selectDate = (date: Date) => {
-    if (disabled || !isSelectable(date, minDate, maxDate)) {
+  const handleValueChange = (nextValue: CalendarDate | null) => {
+    if (!nextValue) {
       return;
     }
 
-    const nextValue = startOfDay(date);
+    const nextDate = toDate(nextValue);
 
     if (value === undefined) {
       setInternalValue(nextValue);
     }
 
-    onValueChange?.(nextValue);
+    onValueChange?.(nextDate);
+  };
+
+  const calendarOptions = {
+    selectionMode: 'single' as const,
+    value: currentValue,
+    onChange: handleValueChange,
+    minValue: minimumDate,
+    maxValue: maximumDate,
+    isDisabled: disabled,
+    focusedValue: focusedDate,
+    onFocusChange: setFocusedDate,
+    firstDayOfWeek: 'sun' as const,
+  };
+  const state = useCalendarState({
+    ...calendarOptions,
+    locale: LOCALE,
+    createCalendar,
+  });
+  const { calendarProps, nextButtonProps, prevButtonProps } = useCalendar(
+    { ...calendarOptions, 'aria-label': ariaLabel },
+    state,
+  );
+  const previousButtonRef = useRef<HTMLButtonElement>(null);
+  const nextButtonRef = useRef<HTMLButtonElement>(null);
+  const { buttonProps: previousButtonAriaProps } = useButton(prevButtonProps, previousButtonRef);
+  const { buttonProps: nextButtonAriaProps } = useButton(nextButtonProps, nextButtonRef);
+
+  const selectedMonth = focusedDate.month;
+  const selectedYear = focusedDate.year;
+  const years = Array.from(
+    { length: VISIBLE_PICKER_ROWS },
+    (_, index) => selectedYear - PICKER_CENTER_OFFSET + index,
+  );
+  const months = Array.from({ length: 12 }, (_, index) => index + 1);
+
+  const updateVisibleMonth = (year: number, month: number) => {
+    setFocusedDate(new CalendarDate(year, month, 1));
   };
 
   return (
@@ -306,7 +397,10 @@ export function DatePicker({
       data-date-picker-mode={isYearMonthOpen ? 'year-month' : 'month'}
       role="group"
     >
-      <div className="min-h-[388px] rounded-[20px] bg-[var(--color-bg-layer-default)] px-[24px] pt-[16px] pb-[16px]">
+      <div
+        {...calendarProps}
+        className="min-h-[388px] rounded-[20px] bg-[var(--color-bg-layer-default)] px-[24px] pt-[16px] pb-[16px]"
+      >
         <div className="flex h-[48px] items-center justify-between">
           <button
             aria-controls="date-picker-content"
@@ -329,19 +423,21 @@ export function DatePicker({
 
           <div className="flex items-center gap-[16px]">
             <button
+              {...previousButtonAriaProps}
               aria-label="이전 달"
               className="inline-flex size-[24px] items-center justify-center rounded-full text-[var(--color-fg-neutral-muted)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
-              disabled={disabled}
-              onClick={() => moveMonth(-1)}
+              disabled={disabled || prevButtonProps.isDisabled}
+              ref={previousButtonRef}
               type="button"
             >
               <Icon aria-hidden="true" name="chevronLeft" size={24} />
             </button>
             <button
+              {...nextButtonAriaProps}
               aria-label="다음 달"
               className="inline-flex size-[24px] items-center justify-center rounded-full text-[var(--color-fg-neutral)] outline-none focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
-              disabled={disabled}
-              onClick={() => moveMonth(1)}
+              disabled={disabled || nextButtonProps.isDisabled}
+              ref={nextButtonRef}
               type="button"
             >
               <Icon aria-hidden="true" name="chevronRight" size={24} />
@@ -376,71 +472,24 @@ export function DatePicker({
               <ScrollFog />
             </div>
           ) : (
-            <>
-              <div
-                aria-hidden="true"
-                className="grid h-[28px] grid-cols-7 text-center text-[var(--color-fg-neutral-subtle)]"
-              >
-                {WEEKDAYS.map((weekday) => (
-                  <Text as="span" fontWeight="medium" key={weekday} variant="t5Regular">
-                    {weekday}
-                  </Text>
-                ))}
-              </div>
-              <div
-                aria-label={`${selectedYear}년 ${selectedMonth}월`}
-                className="grid grid-cols-7"
-                role="grid"
-              >
-                {calendarDates.map(({ date, day, isCurrentMonth }, index) => {
-                  if (!isCurrentMonth) {
-                    return <div aria-hidden="true" className="h-[52px]" key={`empty-${index}`} />;
-                  }
-
-                  const isDisabled = disabled || !isSelectable(date, minDate, maxDate);
-                  const isSelected = isSameDate(currentValue, date);
-                  const isToday = isSameDate(normalizedToday, date);
-
-                  return (
-                    <div
-                      aria-selected={isSelected}
-                      className="flex h-[52px] items-center justify-center"
-                      key={toDateKey(date)}
-                      role="gridcell"
-                    >
-                      <button
-                        aria-current={isToday ? 'date' : undefined}
-                        aria-label={`${selectedYear}년 ${selectedMonth}월 ${day}일`}
-                        aria-selected={isSelected}
-                        className={cn(
-                          'relative inline-flex size-[48px] items-center justify-center rounded-full text-[var(--color-fg-neutral)] outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]',
-                          'active:bg-[var(--color-bg-transparent-pressed)]',
-                          isToday && !isSelected && 'bg-[var(--color-bg-brand-weak)]',
-                          isSelected &&
-                            'bg-[var(--color-bg-brand-solid)] text-[var(--color-fg-neutral-inverted)]',
-                          isDisabled && 'cursor-not-allowed text-[var(--color-fg-disabled)]',
-                        )}
-                        disabled={isDisabled}
-                        onClick={() => selectDate(date)}
-                        type="button"
-                      >
-                        <Text
-                          as="span"
-                          className="relative z-10"
-                          variant="t6Regular"
-                          color={isSelected ? 'fg.neutralInverted' : undefined}
-                        >
-                          {day}
-                        </Text>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
+            <CalendarGrid
+              ariaLabel={`${selectedYear}년 ${selectedMonth}월`}
+              month={selectedMonth}
+              state={state}
+              today={normalizedToday}
+              year={selectedYear}
+            />
           )}
         </div>
       </div>
     </div>
+  );
+}
+
+export function DatePicker(props: DatePickerProps) {
+  return (
+    <I18nProvider locale={LOCALE}>
+      <DatePickerContent {...props} />
+    </I18nProvider>
   );
 }
