@@ -1,4 +1,11 @@
-import { useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react';
+import {
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type PointerEvent,
+  type TransitionEvent,
+  type WheelEvent,
+} from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -141,6 +148,7 @@ function TimePickerColumn({
   const selectedIndex = Math.max(0, options.indexOf(value));
   const wheelDeltaRef = useRef(0);
   const dragStateRef = useRef<{ pointerId: number; startY: number } | null>(null);
+  const pendingSnapRef = useRef<{ value: string } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -194,6 +202,7 @@ function TimePickerColumn({
       return;
     }
 
+    pendingSnapRef.current = null;
     event.currentTarget.setPointerCapture?.(event.pointerId);
     dragStateRef.current = { pointerId: event.pointerId, startY: event.clientY };
     wheelDeltaRef.current = 0;
@@ -226,14 +235,26 @@ function TimePickerColumn({
       dragOffset === 0
         ? 0
         : Math.sign(-dragOffset) * Math.round(Math.abs(dragOffset) / TIME_PICKER_ROW_HEIGHT);
+    const snapOffset = -steps * TIME_PICKER_ROW_HEIGHT;
 
     dragStateRef.current = null;
-    setDragOffset(0);
     setIsDragging(false);
 
-    if (steps !== 0) {
-      commitValue(getValueAfterSteps(options, value, steps, cyclic));
+    if (steps === 0) {
+      setDragOffset(0);
+      return;
     }
+
+    pendingSnapRef.current = { value: getValueAfterSteps(options, value, steps, cyclic) };
+
+    if (dragOffset === snapOffset) {
+      pendingSnapRef.current = null;
+      commitValue(getValueAfterSteps(options, value, steps, cyclic));
+      setDragOffset(0);
+      return;
+    }
+
+    setDragOffset(snapOffset);
   };
 
   const cancelDrag = (event: PointerEvent<HTMLDivElement>) => {
@@ -244,8 +265,25 @@ function TimePickerColumn({
     }
 
     dragStateRef.current = null;
+    pendingSnapRef.current = null;
     setDragOffset(0);
     setIsDragging(false);
+  };
+
+  const handleSnapTransitionEnd = (event: TransitionEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget || event.propertyName !== 'transform') {
+      return;
+    }
+
+    const pendingSnap = pendingSnapRef.current;
+
+    if (!pendingSnap) {
+      return;
+    }
+
+    pendingSnapRef.current = null;
+    commitValue(pendingSnap.value);
+    setDragOffset(0);
   };
 
   return (
@@ -266,9 +304,10 @@ function TimePickerColumn({
     >
       <div
         className={cn(
-          'absolute inset-x-0 top-0 flex flex-col transition-transform duration-150 ease-out',
+          'absolute inset-x-0 top-0 flex flex-col transition-transform duration-200 ease-out',
           isDragging && 'transition-none',
         )}
+        onTransitionEnd={handleSnapTransitionEnd}
         style={{ transform: `translateY(${TIME_PICKER_SELECTED_ROW_OFFSET + dragOffset}px)` }}
       >
         {VISIBLE_ROW_OFFSETS.map((offset) => {

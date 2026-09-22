@@ -76,13 +76,17 @@ describe('TimePicker', () => {
     expect(handleValueChange).toHaveBeenLastCalledWith({ period: '오후', hour: 6, minute: 50 });
   });
 
-  it('위로 드래그하는 동안 숫자 목록이 함께 움직이고 손을 놓으면 다음 값으로 스냅한다', () => {
+  it('위로 드래그하는 동안 숫자 목록이 함께 움직이고 손을 놓으면 다음 값으로 부드럽게 스냅한다', () => {
     const handleValueChange = vi.fn<(value: TimePickerValue) => void>();
 
     render(<TimePicker onValueChange={handleValueChange} value={defaultTime} />);
 
     const minuteColumn = screen.getByRole('listbox', { name: '분' });
     const optionList = minuteColumn.firstElementChild;
+
+    if (!optionList) {
+      throw new Error('TimePicker 옵션 목록을 찾을 수 없습니다.');
+    }
 
     fireEvent.pointerDown(minuteColumn, { button: 0, clientY: 160, pointerId: 1 });
     fireEvent.pointerMove(minuteColumn, { clientY: 120, pointerId: 1 });
@@ -99,6 +103,11 @@ describe('TimePicker', () => {
     expect(handleValueChange).not.toHaveBeenCalled();
 
     fireEvent.pointerUp(minuteColumn, { clientY: 110, pointerId: 1 });
+
+    expect(optionList).toHaveStyle({ transform: 'translateY(-36px)' });
+    expect(handleValueChange).not.toHaveBeenCalled();
+
+    fireEvent.transitionEnd(optionList, { propertyName: 'transform' });
 
     expect(handleValueChange).toHaveBeenCalledWith({ period: '오후', hour: 6, minute: 50 });
   });
