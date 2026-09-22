@@ -111,6 +111,9 @@ describe('TimePicker', () => {
 
     expect(optionList).toHaveClass('transition-none');
     expect(screen.getByRole('option', { name: '50' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('option', { name: '50' }).firstElementChild).toHaveClass(
+      'transition-none',
+    );
     expect(screen.getByRole('option', { name: '40' })).toHaveAttribute(
       'data-selection-progress',
       '0.00',
