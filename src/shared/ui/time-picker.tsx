@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent, type WheelEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type WheelEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -39,6 +39,7 @@ const DEFAULT_TIME: TimePickerValue = {
 };
 
 const TIME_PICKER_SELECTED_ROW_OFFSET = 6;
+const WHEEL_DELTA_THRESHOLD = 120;
 const VISIBLE_ROW_OFFSETS = [-2, -1, 0, 1, 2] as const;
 
 function isTimePeriod(value: string | undefined): value is TimePeriod {
@@ -103,6 +104,12 @@ function TimePickerColumn({
   value,
 }: TimePickerColumnProps) {
   const selectedIndex = Math.max(0, options.indexOf(value));
+  const wheelDeltaRef = useRef(0);
+
+  const commitValue = (nextValue: string) => {
+    wheelDeltaRef.current = 0;
+    onValueChange(nextValue);
+  };
 
   const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     if (disabled) {
@@ -114,7 +121,7 @@ function TimePickerColumn({
     }
 
     event.preventDefault();
-    onValueChange(getAdjacentValue(options, value, event.key === 'ArrowUp' ? -1 : 1, cyclic));
+    commitValue(getAdjacentValue(options, value, event.key === 'ArrowUp' ? -1 : 1, cyclic));
   };
 
   const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
@@ -123,7 +130,23 @@ function TimePickerColumn({
     }
 
     event.preventDefault();
-    onValueChange(getAdjacentValue(options, value, event.deltaY > 0 ? 1 : -1, cyclic));
+
+    if (
+      wheelDeltaRef.current !== 0 &&
+      Math.sign(wheelDeltaRef.current) !== Math.sign(event.deltaY)
+    ) {
+      wheelDeltaRef.current = 0;
+    }
+
+    wheelDeltaRef.current += event.deltaY;
+
+    if (Math.abs(wheelDeltaRef.current) < WHEEL_DELTA_THRESHOLD) {
+      return;
+    }
+
+    const direction = wheelDeltaRef.current > 0 ? 1 : -1;
+    wheelDeltaRef.current = 0;
+    commitValue(getAdjacentValue(options, value, direction, cyclic));
   };
 
   return (
@@ -165,7 +188,7 @@ function TimePickerColumn({
                     disabled && 'cursor-not-allowed',
                   )}
                   disabled={disabled}
-                  onClick={() => onValueChange(option)}
+                  onClick={() => commitValue(option)}
                   role="option"
                   tabIndex={-1}
                   type="button"

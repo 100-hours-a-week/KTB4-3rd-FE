@@ -54,7 +54,25 @@ describe('TimePicker', () => {
     fireEvent.keyDown(hourColumn, { key: 'ArrowDown' });
     expect(handleValueChange).toHaveBeenLastCalledWith({ period: '오후', hour: 7, minute: 40 });
 
+    fireEvent.wheel(minuteColumn, { deltaY: 60 });
+    expect(handleValueChange).toHaveBeenCalledTimes(1);
+
+    fireEvent.wheel(minuteColumn, { deltaY: 60 });
+    expect(handleValueChange).toHaveBeenLastCalledWith({ period: '오후', hour: 6, minute: 50 });
+  });
+
+  it('휠 이동량이 임계치를 넘을 때만 한 칸 이동한다', () => {
+    const handleValueChange = vi.fn<(value: TimePickerValue) => void>();
+
+    render(<TimePicker onValueChange={handleValueChange} value={defaultTime} />);
+
+    const minuteColumn = screen.getByRole('listbox', { name: '분' });
+
+    fireEvent.wheel(minuteColumn, { deltaY: 119 });
+    expect(handleValueChange).not.toHaveBeenCalled();
+
     fireEvent.wheel(minuteColumn, { deltaY: 1 });
+    expect(handleValueChange).toHaveBeenCalledOnce();
     expect(handleValueChange).toHaveBeenLastCalledWith({ period: '오후', hour: 6, minute: 50 });
   });
 
