@@ -1,4 +1,4 @@
-import { useRef, useState, type KeyboardEvent, type WheelEvent } from 'react';
+import { useRef, useState, type KeyboardEvent, type PointerEvent, type WheelEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -38,8 +38,10 @@ const DEFAULT_TIME: TimePickerValue = {
   minute: 40,
 };
 
+const TIME_PICKER_ROW_HEIGHT = 42;
 const TIME_PICKER_SELECTED_ROW_OFFSET = 6;
 const WHEEL_DELTA_THRESHOLD = 120;
+const DRAG_ROW_COUNT = 2;
 const VISIBLE_ROW_OFFSETS = [-2, -1, 0, 1, 2] as const;
 
 function isTimePeriod(value: string | undefined): value is TimePeriod {
@@ -82,6 +84,22 @@ function getAdjacentValue(
   return options[Math.max(0, Math.min(options.length - 1, nextIndex))];
 }
 
+function getValueAfterSteps(
+  options: readonly string[],
+  value: string,
+  steps: number,
+  cyclic: boolean,
+) {
+  let nextValue = value;
+  const direction = steps > 0 ? 1 : -1;
+
+  for (let step = 0; step < Math.abs(steps); step += 1) {
+    nextValue = getAdjacentValue(options, nextValue, direction, cyclic);
+  }
+
+  return nextValue;
+}
+
 type TimePickerColumnProps = {
   'aria-label': string;
   className: string;
@@ -105,6 +123,11 @@ function TimePickerColumn({
 }: TimePickerColumnProps) {
   const selectedIndex = Math.max(0, options.indexOf(value));
   const wheelDeltaRef = useRef(0);
+  const dragStateRef = useRef<{ pointerId: number; startY: number } | null>(null);
+  const [dragOffset, setDragOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+
+  const maxDragOffset = TIME_PICKER_ROW_HEIGHT * DRAG_ROW_COUNT;
 
   const commitValue = (nextValue: string) => {
     wheelDeltaRef.current = 0;
@@ -149,21 +172,87 @@ function TimePickerColumn({
     commitValue(getAdjacentValue(options, value, direction, cyclic));
   };
 
+  const handlePointerDown = (event: PointerEvent<HTMLDivElement>) => {
+    if (disabled || (event.pointerType === 'mouse' && event.button !== 0)) {
+      return;
+    }
+
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    dragStateRef.current = { pointerId: event.pointerId, startY: event.clientY };
+    wheelDeltaRef.current = 0;
+    setIsDragging(true);
+  };
+
+  const handlePointerMove = (event: PointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    event.preventDefault();
+    const nextOffset = Math.max(
+      -maxDragOffset,
+      Math.min(maxDragOffset, event.clientY - dragState.startY),
+    );
+    setDragOffset(nextOffset);
+  };
+
+  const finishDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    const steps =
+      dragOffset === 0
+        ? 0
+        : Math.sign(-dragOffset) * Math.round(Math.abs(dragOffset) / TIME_PICKER_ROW_HEIGHT);
+
+    dragStateRef.current = null;
+    setDragOffset(0);
+    setIsDragging(false);
+
+    if (steps !== 0) {
+      commitValue(getValueAfterSteps(options, value, steps, cyclic));
+    }
+  };
+
+  const cancelDrag = (event: PointerEvent<HTMLDivElement>) => {
+    const dragState = dragStateRef.current;
+
+    if (!dragState || dragState.pointerId !== event.pointerId) {
+      return;
+    }
+
+    dragStateRef.current = null;
+    setDragOffset(0);
+    setIsDragging(false);
+  };
+
   return (
     <div
       aria-label={ariaLabel}
       aria-orientation="vertical"
       aria-disabled={disabled || undefined}
-      className={cn('absolute top-0 h-[224px] outline-none', className)}
+      className={cn('absolute top-0 h-[224px] touch-none outline-none', className)}
       data-time-picker-column={name}
       onKeyDown={handleKeyDown}
+      onPointerCancel={cancelDrag}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={finishDrag}
       onWheel={handleWheel}
       role="listbox"
       tabIndex={disabled ? -1 : 0}
     >
       <div
-        className="absolute inset-x-0 top-0 flex flex-col"
-        style={{ transform: `translateY(${TIME_PICKER_SELECTED_ROW_OFFSET}px)` }}
+        className={cn(
+          'absolute inset-x-0 top-0 flex flex-col transition-transform duration-150 ease-out',
+          isDragging && 'transition-none',
+        )}
+        style={{ transform: `translateY(${TIME_PICKER_SELECTED_ROW_OFFSET + dragOffset}px)` }}
       >
         {VISIBLE_ROW_OFFSETS.map((offset) => {
           const itemIndex = selectedIndex + offset;
