@@ -88,6 +88,14 @@ describe('TimePicker', () => {
     fireEvent.pointerMove(minuteColumn, { clientY: 120, pointerId: 1 });
 
     expect(optionList).toHaveStyle({ transform: 'translateY(-34px)' });
+    expect(screen.getByRole('option', { name: '50' })).toHaveAttribute(
+      'data-selection-progress',
+      '0.95',
+    );
+    expect(screen.getByRole('option', { name: '40' })).toHaveAttribute(
+      'data-selection-progress',
+      '0.05',
+    );
     expect(handleValueChange).not.toHaveBeenCalled();
 
     fireEvent.pointerUp(minuteColumn, { clientY: 110, pointerId: 1 });

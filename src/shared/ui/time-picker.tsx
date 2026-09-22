@@ -43,6 +43,8 @@ const TIME_PICKER_SELECTED_ROW_OFFSET = 6;
 const WHEEL_DELTA_THRESHOLD = 120;
 const DRAG_ROW_COUNT = 2;
 const VISIBLE_ROW_OFFSETS = [-2, -1, 0, 1, 2] as const;
+const UNSELECTED_TEXT_COLOR = [152, 162, 179] as const;
+const SELECTED_TEXT_COLOR = [29, 41, 57] as const;
 
 function isTimePeriod(value: string | undefined): value is TimePeriod {
   return value === '오전' || value === '오후';
@@ -98,6 +100,21 @@ function getValueAfterSteps(
   }
 
   return nextValue;
+}
+
+function getSelectionProgress(offset: number, dragOffset: number) {
+  const distanceFromSelection = Math.abs(offset * TIME_PICKER_ROW_HEIGHT + dragOffset);
+
+  return Math.max(0, Math.min(1, 1 - distanceFromSelection / TIME_PICKER_ROW_HEIGHT));
+}
+
+function getInterpolatedTextColor(progress: number) {
+  const channels = SELECTED_TEXT_COLOR.map((selectedChannel, index) => {
+    const unselectedChannel = UNSELECTED_TEXT_COLOR[index];
+    return Math.round(unselectedChannel + (selectedChannel - unselectedChannel) * progress);
+  });
+
+  return `rgb(${channels.join(', ')})`;
 }
 
 type TimePickerColumnProps = {
@@ -261,6 +278,7 @@ function TimePickerColumn({
             ? options[cyclic ? (itemIndex + options.length) % options.length : itemIndex]
             : null;
           const isSelected = offset === 0;
+          const selectionProgress = getSelectionProgress(offset, dragOffset);
 
           return (
             <div
@@ -276,6 +294,7 @@ function TimePickerColumn({
                     'active:bg-[var(--color-bg-transparent-pressed)]',
                     disabled && 'cursor-not-allowed',
                   )}
+                  data-selection-progress={selectionProgress.toFixed(2)}
                   disabled={disabled}
                   onClick={() => commitValue(option)}
                   role="option"
@@ -284,11 +303,15 @@ function TimePickerColumn({
                 >
                   <Text
                     as="span"
-                    className={cn(
-                      isSelected ? 'text-[#1d2939]' : 'text-[#98a2b3]',
-                      isSelected && 'translate-y-px',
-                    )}
-                    variant={isSelected ? 't9Bold' : 't8Regular'}
+                    className="transition-[color,font-size,line-height,font-weight,transform] duration-100 ease-out"
+                    style={{
+                      color: getInterpolatedTextColor(selectionProgress),
+                      fontSize: `${22 + selectionProgress * 2}px`,
+                      fontWeight: 400 + selectionProgress * 300,
+                      lineHeight: `${30 + selectionProgress * 2}px`,
+                      transform: `translateY(${selectionProgress}px)`,
+                    }}
+                    variant="t8Regular"
                   >
                     {option}
                   </Text>
