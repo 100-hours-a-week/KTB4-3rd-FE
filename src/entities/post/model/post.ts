@@ -3,6 +3,8 @@ export type PostAuthor = {
   profile_image_url: string | null;
 };
 
+export type PostType = 'COMPANION' | 'COMMUNITY';
+
 export type CompanionTransport = 'CAR' | 'TAXI' | 'SUBWAY' | 'BUS';
 
 export type CompanionPost = {
