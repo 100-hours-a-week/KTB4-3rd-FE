@@ -19,6 +19,16 @@ describe('BottomModal', () => {
     expect(screen.getByRole('link', { name: '크게보기' })).toHaveAttribute('href', '/posts/1');
   });
 
+  it('bottomOffset만큼 하단에서 띄운다', () => {
+    render(
+      <BottomModal bottomOffset="72px" href="/posts/1">
+        <p>게시글 상세</p>
+      </BottomModal>,
+    );
+
+    expect(screen.getByRole('dialog', { name: '바텀모달' })).toHaveStyle({ bottom: '72px' });
+  });
+
   it('닫기 버튼을 누르면 비제어 모달을 닫는다', () => {
     const onClose = vi.fn<() => void>();
     const onOpenChange = vi.fn<(open: boolean) => void>();
