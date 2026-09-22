@@ -39,7 +39,14 @@ describe('PostLocationPage', () => {
     expect(screen.getByRole('search')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '장소·주소 검색' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { level: 1, name: '판교역' })).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '이 위치에 핀 등록' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '이 위치에 핀 등록' })).toHaveClass(
+      'h-[52px]',
+      'min-h-[52px]',
+      '!rounded-[8px]',
+      '!bg-[#414650]',
+      '!px-4',
+      '!py-3',
+    );
     expect(screen.getByTestId('selection-marker-preview')).toHaveAttribute(
       'data-selection-marker-src',
       '/map-pins/accompany-marker.svg',

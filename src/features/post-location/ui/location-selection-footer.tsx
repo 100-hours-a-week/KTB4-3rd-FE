@@ -2,7 +2,7 @@
 
 import type { ComponentPropsWithoutRef } from 'react';
 
-import { Button } from '@/shared/ui/button';
+import { BottomActionButton, bottomActionPaddingClassName } from '@/shared/ui/bottom-action-button';
 import { cn } from '@/shared/lib/cn';
 import { Text } from '@/shared/ui/text';
 
@@ -24,7 +24,8 @@ export function LocationSelectionFooter({
       {...sectionProps}
       aria-label="선택한 장소"
       className={cn(
-        'h-[232px] w-full overflow-hidden rounded-tl-[24px] rounded-tr-[24px] bg-[var(--color-bg-layer-default)] px-5 pt-6',
+        'flex h-[232px] w-full flex-col overflow-hidden rounded-tl-[24px] rounded-tr-[24px] bg-[var(--color-bg-layer-default)] px-5 pt-6',
+        bottomActionPaddingClassName,
         className,
       )}
       data-testid="location-selection-footer"
@@ -38,16 +39,9 @@ export function LocationSelectionFooter({
         </Text>
       </div>
 
-      <Button
-        className="mt-[51px] h-[52px] min-h-[52px] w-full rounded-[8px] px-0 py-0"
-        size="large"
-        textVariant="t5Bold"
-        variant="neutral-solid"
-        width="fill"
-        onClick={onRegister}
-      >
+      <BottomActionButton className="mt-auto" onClick={onRegister}>
         이 위치에 핀 등록
-      </Button>
+      </BottomActionButton>
     </section>
   );
 }
