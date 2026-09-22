@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 import { Icon } from './icon';
-import { Snackbar, type SnackbarVariant } from './snackbar';
+import { Snackbar, type SnackbarType } from './snackbar';
 
-const variants: SnackbarVariant[] = ['default', 'positive', 'critical'];
+const types: SnackbarType[] = ['default', 'positive', 'critical'];
 
 const meta = {
   title: 'Shared/Snackbar',
@@ -12,21 +12,21 @@ const meta = {
     layout: 'padded',
   },
   args: {
-    content: '메시지를 입력하세요',
-    durationTime: 0,
-    variant: 'default',
+    description: '메시지를 입력하세요',
+    timeout: 0,
+    type: 'default',
   },
   argTypes: {
-    variant: {
+    type: {
       control: 'select',
-      options: variants,
+      options: types,
     },
-    durationTime: {
+    timeout: {
       control: {
         type: 'number',
         min: 0,
       },
-      description: '자동 숨김 시간(ms). 0이면 숨기지 않습니다.',
+      description: 'Base UI Toast timeout(ms). 0이면 숨기지 않습니다.',
     },
   },
 } satisfies Meta<typeof Snackbar>;
@@ -39,50 +39,55 @@ export const Playground: Story = {};
 
 export const WithAction: Story = {
   args: {
-    actionButton: '확인',
-    variant: 'default',
+    actionProps: { children: '확인' },
+    type: 'default',
   },
 };
 
 export const Positive: Story = {
   args: {
-    variant: 'positive',
+    type: 'positive',
   },
 };
 
 export const PositiveWithAction: Story = {
   args: {
-    actionButton: '확인',
-    variant: 'positive',
+    actionProps: { children: '확인' },
+    type: 'positive',
   },
 };
 
 export const Critical: Story = {
   args: {
-    variant: 'critical',
+    type: 'critical',
   },
 };
 
 export const CriticalWithAction: Story = {
   args: {
-    actionButton: '확인',
-    variant: 'critical',
+    actionProps: { children: '확인' },
+    type: 'critical',
   },
 };
 
 export const CustomIcon: Story = {
   args: {
     icon: <Icon color="var(--color-fg-warning)" name="info" size={24} />,
-    variant: 'default',
+    type: 'default',
   },
 };
 
 export const AllVariants: Story = {
   render: (args) => (
     <div className="flex flex-col gap-[var(--dimension-x3)]">
-      {variants.flatMap((variant) => [
-        <Snackbar {...args} key={`${variant}-none`} variant={variant} />,
-        <Snackbar {...args} actionButton="확인" key={`${variant}-action`} variant={variant} />,
+      {types.flatMap((type) => [
+        <Snackbar {...args} key={`${type}-none`} type={type} />,
+        <Snackbar
+          {...args}
+          actionProps={{ children: '확인' }}
+          key={`${type}-action`}
+          type={type}
+        />,
       ])}
     </div>
   ),

@@ -11,7 +11,7 @@ afterEach(() => {
 
 describe('Snackbar', () => {
   it('기본 변형은 아이콘과 액션 없이 메시지를 표시한다', () => {
-    render(<Snackbar content="저장되었습니다" />);
+    render(<Snackbar description="저장되었습니다" timeout={0} />);
 
     const snackbar = screen.getByRole('status');
 
@@ -30,7 +30,7 @@ describe('Snackbar', () => {
     ['positive', 'checkmarkCircle'],
     ['critical', 'exclamationmarkCircleFill'],
   ] as const)('%s 변형은 기본 prefix icon을 표시한다', (variant, iconName) => {
-    render(<Snackbar content="메시지를 입력하세요" variant={variant} />);
+    render(<Snackbar description="메시지를 입력하세요" timeout={0} type={variant} />);
 
     const icon = screen.getByRole('status').querySelector('span[aria-hidden="true"]');
 
@@ -40,16 +40,16 @@ describe('Snackbar', () => {
     });
   });
 
-  it('액션 버튼은 label을 표시하고 actionClick을 호출한다', async () => {
+  it('actionProps.children을 표시하고 actionProps.onClick을 호출한다', async () => {
     const user = userEvent.setup();
     const actionClick = vi.fn<() => void>();
 
     render(
       <Snackbar
-        actionButton="확인"
-        actionClick={actionClick}
-        content="완료되었습니다"
-        variant="positive"
+        actionProps={{ children: '확인', onClick: actionClick }}
+        description="완료되었습니다"
+        timeout={0}
+        type="positive"
       />,
     );
 
@@ -63,19 +63,19 @@ describe('Snackbar', () => {
   });
 
   it('icon을 null로 전달하면 기본 아이콘을 숨긴다', () => {
-    render(<Snackbar content="아이콘 없음" icon={null} variant="critical" />);
+    render(<Snackbar description="아이콘 없음" icon={null} timeout={0} type="critical" />);
 
     expect(
       screen.getByRole('status').querySelector('[aria-hidden="true"]'),
     ).not.toBeInTheDocument();
   });
 
-  it('durationTime이 지나면 자동으로 숨기고 onOpenChange를 호출한다', () => {
+  it('timeout이 지나면 자동으로 숨기고 onOpenChange를 호출한다', () => {
     vi.useFakeTimers();
     const onOpenChange = vi.fn<(open: boolean) => void>();
 
     render(
-      <Snackbar content="잠시 후 사라집니다" durationTime={1000} onOpenChange={onOpenChange} />,
+      <Snackbar description="잠시 후 사라집니다" onOpenChange={onOpenChange} timeout={1000} />,
     );
 
     expect(screen.getByRole('status')).toBeInTheDocument();
@@ -89,7 +89,7 @@ describe('Snackbar', () => {
   });
 
   it('open을 false로 전달하면 렌더링하지 않는다', () => {
-    render(<Snackbar content="숨겨진 메시지" open={false} />);
+    render(<Snackbar description="숨겨진 메시지" open={false} timeout={0} />);
 
     expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });

@@ -1,36 +1,28 @@
 'use client';
 
-import {
-  useEffect,
-  useState,
-  type ComponentPropsWithoutRef,
-  type MouseEventHandler,
-  type ReactNode,
-} from 'react';
+import { useEffect, useState, type ComponentPropsWithoutRef, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
 import { Text } from './text';
 
-export type SnackbarVariant = 'default' | 'positive' | 'critical';
+export type SnackbarType = 'default' | 'positive' | 'critical';
 
 type SnackbarOwnProps = {
-  /** Optional prefix content. Positive and critical variants use their SEED icon by default. */
+  /** Optional prefix content. Positive and critical types use their SEED icon by default. */
   icon?: ReactNode | null;
-  /** Message displayed in the snackbar. */
-  content: ReactNode;
-  /** Label displayed in the optional action button. */
-  actionButton?: ReactNode | null;
-  /** Called when the action button is clicked. */
-  actionClick?: MouseEventHandler<HTMLButtonElement>;
-  /** Auto-dismiss delay in milliseconds. Omit or pass 0 to keep the snackbar visible. */
-  durationTime?: number;
-  /** Visual variant from the Figma component. */
-  variant?: SnackbarVariant;
+  /** Base UI Toast description displayed in the snackbar. */
+  description: ReactNode;
+  /** Base UI Toast action props, including children and onClick. */
+  actionProps?: ComponentPropsWithoutRef<'button'>;
+  /** Base UI Toast timeout in milliseconds. Pass 0 to keep the snackbar visible. */
+  timeout?: number;
+  /** Base UI Toast type used as the visual variant. */
+  type?: SnackbarType;
   /** Controls visibility. When omitted, the snackbar starts visible and manages its own timeout. */
   open?: boolean;
-  /** Called when durationTime auto-dismisses the snackbar. */
+  /** Called when timeout auto-dismisses the snackbar. */
   onOpenChange?: (open: boolean) => void;
 };
 
@@ -38,28 +30,30 @@ export type SnackbarProps = SnackbarOwnProps &
   Omit<ComponentPropsWithoutRef<'div'>, keyof SnackbarOwnProps | 'children'>;
 
 const defaultIconNames: Record<
-  Exclude<SnackbarVariant, 'default'>,
+  Exclude<SnackbarType, 'default'>,
   'checkmarkCircle' | 'exclamationmarkCircleFill'
 > = {
   positive: 'checkmarkCircle',
   critical: 'exclamationmarkCircleFill',
 };
 
-const defaultIconColors: Record<Exclude<SnackbarVariant, 'default'>, string> = {
+const defaultIconColors: Record<Exclude<SnackbarType, 'default'>, string> = {
   positive: 'var(--color-fg-positive)',
   critical: 'var(--color-fg-critical)',
 };
 
-function getDefaultIcon(variant: SnackbarVariant): ReactNode | null {
-  if (variant === 'default') {
+const DEFAULT_TIMEOUT = 5000;
+
+function getDefaultIcon(type: SnackbarType): ReactNode | null {
+  if (type === 'default') {
     return null;
   }
 
   return (
     <Icon
       aria-hidden="true"
-      color={defaultIconColors[variant]}
-      name={defaultIconNames[variant]}
+      color={defaultIconColors[type]}
+      name={defaultIconNames[type]}
       size={24}
     />
   );
@@ -82,30 +76,26 @@ function getSpacingClassName(hasIcon: boolean, hasAction: boolean) {
 }
 
 export function Snackbar({
-  actionButton,
-  actionClick,
+  actionProps,
   className,
-  content,
-  durationTime,
+  description,
   icon,
   onOpenChange,
   open,
-  variant = 'default',
+  timeout,
+  type = 'default',
   ...props
 }: SnackbarProps) {
   const isControlled = open !== undefined;
   const [uncontrolledOpen, setUncontrolledOpen] = useState(true);
   const isOpen = isControlled ? open : uncontrolledOpen;
-  const resolvedIcon = icon === undefined ? getDefaultIcon(variant) : icon;
+  const resolvedIcon = icon === undefined ? getDefaultIcon(type) : icon;
   const hasIcon = resolvedIcon !== null && resolvedIcon !== undefined && resolvedIcon !== false;
-  const hasAction =
-    actionButton !== null &&
-    actionButton !== undefined &&
-    actionButton !== false &&
-    actionButton !== '';
+  const hasAction = actionProps?.children !== undefined && actionProps.children !== null;
+  const resolvedTimeout = timeout ?? DEFAULT_TIMEOUT;
 
   useEffect(() => {
-    if (!isOpen || durationTime === undefined || durationTime <= 0) {
+    if (!isOpen || resolvedTimeout <= 0) {
       return;
     }
 
@@ -115,10 +105,10 @@ export function Snackbar({
       }
 
       onOpenChange?.(false);
-    }, durationTime);
+    }, resolvedTimeout);
 
     return () => window.clearTimeout(timeoutId);
-  }, [durationTime, isControlled, isOpen, onOpenChange]);
+  }, [isControlled, isOpen, onOpenChange, resolvedTimeout]);
 
   if (!isOpen) {
     return null;
@@ -128,7 +118,7 @@ export function Snackbar({
     <div
       {...props}
       aria-atomic={props['aria-atomic'] ?? true}
-      aria-live={props['aria-live'] ?? (variant === 'critical' ? 'assertive' : 'polite')}
+      aria-live={props['aria-live'] ?? (type === 'critical' ? 'assertive' : 'polite')}
       className={cn(
         'flex h-[var(--dimension-x10)] w-[340px] max-w-[calc(100vw-32px)] items-center overflow-clip rounded-[var(--dimension-x2)] bg-[var(--color-bg-neutral-inverted)]',
         getSpacingClassName(hasIcon, hasAction),
@@ -141,17 +131,20 @@ export function Snackbar({
       ) : null}
 
       <Text className="min-w-0 flex-1 truncate" color="fg.neutralInverted" variant="t3Regular">
-        {content}
+        {description}
       </Text>
 
       {hasAction ? (
         <button
-          className="shrink-0 text-[var(--color-fg-brand)] focus-visible:rounded-[var(--dimension-x1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
-          onClick={actionClick}
-          type="button"
+          {...actionProps}
+          className={cn(
+            'shrink-0 text-[var(--color-fg-brand)] focus-visible:rounded-[var(--dimension-x1)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]',
+            actionProps.className,
+          )}
+          type={actionProps.type ?? 'button'}
         >
           <Text as="span" color="fg.brand" variant="t3Bold">
-            {actionButton}
+            {actionProps.children}
           </Text>
         </button>
       ) : null}
