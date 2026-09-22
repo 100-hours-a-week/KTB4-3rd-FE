@@ -3,6 +3,7 @@ import { useRef, useState, type KeyboardEvent, type WheelEvent } from 'react';
 import { cn } from '@/shared/lib/cn';
 
 import { Icon } from './icon';
+import { ScrollFog } from './scroll-fog';
 import { Text } from './text';
 
 export type DatePickerProps = {
@@ -229,21 +230,6 @@ function PickerColumn({
   );
 }
 
-function PickerFog() {
-  return (
-    <>
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 z-20 h-[84px] bg-[linear-gradient(180deg,rgb(255,255,255)_0%,rgba(255,255,255,0.98)_22%,rgba(255,255,255,0.82)_41%,rgba(255,255,255,0.42)_71%,rgba(255,255,255,0)_100%)]"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 bottom-0 z-20 h-[84px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(255,255,255,0.42)_29%,rgba(255,255,255,0.82)_59%,rgba(255,255,255,0.98)_78%,rgb(255,255,255)_100%)]"
-      />
-    </>
-  );
-}
-
 function normalizeDate(value: Date | null | undefined, fallback: Date) {
   return value ? startOfDay(value) : startOfDay(fallback);
 }
@@ -387,7 +373,7 @@ export function DatePicker({
                 options={months}
                 value={selectedMonth}
               />
-              <PickerFog />
+              <ScrollFog />
             </div>
           ) : (
             <>
