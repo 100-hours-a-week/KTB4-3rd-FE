@@ -82,6 +82,7 @@ _app → _pages → features → entities → shared
 - 커밋 타입은 `feat`, `fix`, `docs`, `refactor`, `chore`, `test` 등 영어 표기를 사용합니다.
 - 커밋 설명은 반드시 한글로 작성합니다.
 - 예시: `feat: 회원가입 입력 필드 추가`, `docs: 프로젝트 작업 규칙 추가`
+- 새 작업 브랜치는 항상 `develop` 브랜치를 기준으로 생성합니다.
 - PR 제목은 항상 한글로 작성합니다.
 - 모든 기능 브랜치의 PR 대상 브랜치는 `develop`으로 설정합니다.
 - 변경사항은 먼저 `develop`에 병합하며, `main` 병합은 별도 요청이 있을 때만 진행합니다.
