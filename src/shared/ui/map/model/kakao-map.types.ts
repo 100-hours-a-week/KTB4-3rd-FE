@@ -72,8 +72,10 @@ export type KakaoMapEvent = {
     handler: (cluster: KakaoCluster) => void,
   ): void;
   addListener(target: object, eventName: 'idle', handler: () => void): void;
+  addListener(target: object, eventName: 'bounds_changed', handler: () => void): void;
   addListener(target: object, eventName: 'click', handler: () => void): void;
   removeListener(target: object, eventName: 'idle', handler: () => void): void;
+  removeListener(target: object, eventName: 'bounds_changed', handler: () => void): void;
   removeListener(target: object, eventName: 'click', handler: () => void): void;
 };
 
