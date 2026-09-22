@@ -361,7 +361,7 @@ function TimePickerColumn({
                 >
                   <Text
                     as="span"
-                    className="transition-[color,font-size,line-height,font-weight,transform] duration-100 ease-out"
+                    className="transition-[color,font-size,line-height,font-weight,transform] duration-200 ease-out"
                     style={{
                       color: getInterpolatedTextColor(selectionProgress),
                       fontSize: `${22 + selectionProgress * 2}px`,

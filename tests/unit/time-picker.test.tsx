@@ -118,6 +118,32 @@ describe('TimePicker', () => {
     expect(handleValueChange).toHaveBeenCalledWith({ period: '오후', hour: 6, minute: 50 });
   });
 
+  it('한 칸 미만으로 드래그하면 인접 텍스트가 목록과 같은 속도로 원래 스타일로 돌아온다', () => {
+    render(
+      <TimePicker onValueChange={vi.fn<(value: TimePickerValue) => void>()} value={defaultTime} />,
+    );
+
+    const minuteColumn = screen.getByRole('listbox', { name: '분' });
+
+    fireEvent.pointerDown(minuteColumn, { button: 0, clientY: 160, pointerId: 1 });
+    fireEvent.pointerMove(minuteColumn, { clientY: 180, pointerId: 1 });
+
+    expect(screen.getByRole('option', { name: '30' })).toHaveAttribute(
+      'data-selection-progress',
+      '0.48',
+    );
+
+    fireEvent.pointerUp(minuteColumn, { clientY: 180, pointerId: 1 });
+
+    expect(screen.getByRole('option', { name: '30' })).toHaveAttribute(
+      'data-selection-progress',
+      '0.00',
+    );
+    expect(screen.getByRole('option', { name: '30' }).firstElementChild).toHaveClass(
+      'duration-200',
+    );
+  });
+
   it('비제어 모드에서 선택값을 내부 상태로 갱신한다', async () => {
     const user = userEvent.setup();
 
