@@ -6,7 +6,10 @@ import { MapPin } from '@/entities/map-pin';
 import type { PostType } from '@/entities/post';
 import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
 import { BackButton } from '@/shared/ui/back-button';
-import { Button } from '@/shared/ui/button';
+import {
+  BottomActionButton,
+  bottomActionPaddingImportantClassName,
+} from '@/shared/ui/bottom-action-button';
 import { Divider } from '@/shared/ui/divider';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
@@ -105,7 +108,7 @@ export function PostTypeSelectionPage({
   return (
     <PageLayout
       className={className}
-      contentClassName="!pb-[54px]"
+      contentClassName={bottomActionPaddingImportantClassName}
       header={<Header leftSlot={<BackButton href={backHref} />} />}
     >
       <div className="flex min-h-0 flex-1 flex-col pt-[43px]">
@@ -154,17 +157,9 @@ export function PostTypeSelectionPage({
           </div>
         </section>
 
-        <Button
-          className="mt-[67px] h-[52px] min-h-[52px] !rounded-[8px] !bg-[#414650] !px-4 !py-3"
-          size="large"
-          textVariant="t5Bold"
-          type="button"
-          variant="neutral-solid"
-          width="fill"
-          onClick={handleNext}
-        >
+        <BottomActionButton className="mt-[67px]" type="button" onClick={handleNext}>
           다음
-        </Button>
+        </BottomActionButton>
       </div>
     </PageLayout>
   );
