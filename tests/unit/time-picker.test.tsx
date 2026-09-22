@@ -110,6 +110,11 @@ describe('TimePicker', () => {
     fireEvent.transitionEnd(optionList, { propertyName: 'transform' });
 
     expect(optionList).toHaveClass('transition-none');
+    expect(screen.getByRole('option', { name: '50' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('option', { name: '40' })).toHaveAttribute(
+      'data-selection-progress',
+      '0.00',
+    );
     expect(handleValueChange).toHaveBeenCalledWith({ period: '오후', hour: 6, minute: 50 });
   });
 

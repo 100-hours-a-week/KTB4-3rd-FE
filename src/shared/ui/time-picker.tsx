@@ -145,15 +145,19 @@ function TimePickerColumn({
   options,
   value,
 }: TimePickerColumnProps) {
-  const selectedIndex = Math.max(0, options.indexOf(value));
   const wheelDeltaRef = useRef(0);
   const dragStateRef = useRef<{ pointerId: number; startY: number } | null>(null);
   const pendingSnapRef = useRef<{ value: string } | null>(null);
   const [dragOffset, setDragOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [isRebasing, setIsRebasing] = useState(false);
+  const [rebaseFromValue, setRebaseFromValue] = useState<string | null>(null);
+  const [rebaseValue, setRebaseValue] = useState<string | null>(null);
 
   const maxDragOffset = TIME_PICKER_ROW_HEIGHT * DRAG_ROW_COUNT;
+  const displayedValue =
+    isRebasing && rebaseFromValue === value && rebaseValue !== null ? rebaseValue : value;
+  const selectedIndex = Math.max(0, options.indexOf(displayedValue));
 
   const commitValue = (nextValue: string) => {
     wheelDeltaRef.current = 0;
@@ -205,6 +209,8 @@ function TimePickerColumn({
 
     pendingSnapRef.current = null;
     setIsRebasing(false);
+    setRebaseFromValue(null);
+    setRebaseValue(null);
     event.currentTarget.setPointerCapture?.(event.pointerId);
     dragStateRef.current = { pointerId: event.pointerId, startY: event.clientY };
     wheelDeltaRef.current = 0;
@@ -247,12 +253,15 @@ function TimePickerColumn({
       return;
     }
 
-    pendingSnapRef.current = { value: getValueAfterSteps(options, value, steps, cyclic) };
+    const nextValue = getValueAfterSteps(options, value, steps, cyclic);
+    pendingSnapRef.current = { value: nextValue };
 
     if (dragOffset === snapOffset) {
       pendingSnapRef.current = null;
+      setRebaseFromValue(value);
+      setRebaseValue(nextValue);
       setIsRebasing(true);
-      commitValue(getValueAfterSteps(options, value, steps, cyclic));
+      commitValue(nextValue);
       setDragOffset(0);
       return;
     }
@@ -270,6 +279,8 @@ function TimePickerColumn({
     dragStateRef.current = null;
     pendingSnapRef.current = null;
     setIsRebasing(false);
+    setRebaseFromValue(null);
+    setRebaseValue(null);
     setDragOffset(0);
     setIsDragging(false);
   };
@@ -286,6 +297,8 @@ function TimePickerColumn({
     }
 
     pendingSnapRef.current = null;
+    setRebaseFromValue(value);
+    setRebaseValue(pendingSnap.value);
     setIsRebasing(true);
     commitValue(pendingSnap.value);
     setDragOffset(0);
