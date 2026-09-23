@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { AnnouncementDropdown } from '@/entities/chat';
+import { AnnouncementDropdown } from '@/features/chatting';
 
 afterEach(cleanup);
 

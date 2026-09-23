@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
-import { AnnouncementDropdown } from '@/entities/chat';
+import { AnnouncementDropdown } from '@/features/chatting';
 
 const meta = {
-  title: 'Entities/Chat/AnnouncementDropdown',
+  title: 'Features/Chatting/AnnouncementDropdown',
   component: AnnouncementDropdown,
   parameters: {
     layout: 'centered',
