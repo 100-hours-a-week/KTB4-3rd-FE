@@ -23,10 +23,15 @@ describe('PostWritePage', () => {
   it('community 타입이면 커뮤니티 작성 UI를 보여준다', () => {
     render(<PostWritePage type="community" />);
 
-    expect(screen.getByRole('heading', { name: '커뮤니티 게시글 작성' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '커뮤니티' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '커뮤니티 게시글 작성' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '제목' })).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '내용' })).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '제목' })).toHaveAttribute('maxlength', '30');
+    expect(screen.getByRole('textbox', { name: '내용' })).toHaveAttribute('maxlength', '500');
+    const characterCounts = screen.getAllByLabelText('글자 수', { selector: 'span' });
+    expect(characterCounts[0]).toHaveTextContent('0 / 30');
+    expect(characterCounts[1]).toHaveTextContent('0 / 500');
+    expect(screen.queryByText('도움말 텍스트 입력')).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '등록하기' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '출발지' })).not.toBeInTheDocument();
   });
 });

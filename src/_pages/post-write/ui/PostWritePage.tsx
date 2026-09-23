@@ -51,28 +51,30 @@ function setDraftTextField(
 
 function CommunityPostWriteForm({ draft }: { draft: PostDraftState }) {
   return (
-    <section aria-label="커뮤니티 게시글 작성" className="flex flex-col gap-6">
+    <section aria-label="커뮤니티 게시글 작성" className="flex flex-col">
       <InputField
+        characterCount={draft.title.length}
         label="제목"
-        maxLength={50}
-        placeholder="제목을 입력해 주세요"
-        required
+        maxCharacterCount={30}
+        maxLength={30}
+        placeholder="제목을 입력해주세요"
         value={draft.title}
         onValueChange={(value) => draft.setField('title', value)}
       />
       <Field
+        characterCount={draft.content.length}
         inputSlot={
           <Textarea
             aria-label="내용"
-            maxLength={1000}
-            placeholder="내용을 입력해 주세요"
-            required
+            className="[&>div]:h-[170px]"
+            maxLength={500}
+            placeholder="공유하고싶은 내용을 입력해주세요"
             value={draft.content}
             onValueChange={(value) => draft.setField('content', value)}
           />
         }
         label="내용"
-        required
+        maxCharacterCount={500}
       />
     </section>
   );
@@ -181,25 +183,39 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     <PageLayout
       className={className}
       contentClassName={bottomActionPaddingImportantClassName}
-      header={<Header leftSlot={<BackButton href="/post/create/type" />} title="글 작성" />}
+      header={
+        <Header
+          leftSlot={<BackButton href="/post/create/type" />}
+          title={isCompanion ? '글 작성' : '커뮤니티'}
+        />
+      }
     >
-      <div className="flex min-h-0 flex-1 flex-col pt-8">
-        <Text as="h2" color="fg.neutral" variant="t8Bold">
-          {isCompanion ? '동행모집 게시글 작성' : '커뮤니티 게시글 작성'}
-        </Text>
+      {isCompanion ? (
+        <div className="flex min-h-0 flex-1 flex-col pt-8">
+          <Text as="h2" color="fg.neutral" variant="t8Bold">
+            동행모집 게시글 작성
+          </Text>
 
-        <div className="mt-8">
-          {isCompanion ? (
+          <div className="mt-8">
             <CompanionPostWriteForm draft={draft} />
-          ) : (
-            <CommunityPostWriteForm draft={draft} />
-          )}
-        </div>
+          </div>
 
-        <BottomActionButton className="mt-8" type="button">
-          등록
-        </BottomActionButton>
-      </div>
+          <BottomActionButton className="mt-8" type="button">
+            등록
+          </BottomActionButton>
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col pt-6">
+          <CommunityPostWriteForm draft={draft} />
+
+          <BottomActionButton
+            className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
+            type="button"
+          >
+            등록하기
+          </BottomActionButton>
+        </div>
+      )}
     </PageLayout>
   );
 }
