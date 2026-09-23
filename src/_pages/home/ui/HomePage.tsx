@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage, type MapPinMarkerVariant } from '@/entities/map-pin';
 import { PostList, type Post, type PostDetail } from '@/entities/post';
@@ -10,10 +10,17 @@ import { BottomSheet, type BottomSheetSnapPoint } from '@/shared/ui/bottom-sheet
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Avatar } from '@/shared/ui/avatar';
 import { BottomModal } from '@/shared/ui/bottom-modal';
+import { Dialog } from '@/shared/ui/dialog';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
-import { Map, MyLocationButton, type MapMarker } from '@/shared/ui/map';
+import {
+  Map,
+  MyLocationButton,
+  type MapLocationError,
+  type MapMarker,
+  type MapRef,
+} from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 
 type PositionedPost = {
@@ -205,8 +212,11 @@ function PostDetailContent({ post }: { post: PostDetail }) {
 }
 
 export function HomePage() {
+  const mapRef = useRef<MapRef>(null);
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
   const [activeSnapPoint, setActiveSnapPoint] = useState<BottomSheetSnapPoint>('110px');
+  const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
+  const [locationError, setLocationError] = useState<MapLocationError | null>(null);
   const mapMarkers = mockPosts.map(({ pinVariant, position, post }) => ({
     id: post.id,
     image: getMapPinMarkerImage(pinVariant),
@@ -237,6 +247,19 @@ export function HomePage() {
     }
   }, []);
 
+  const requestCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
+  const handleLocationError = useCallback((error: MapLocationError) => {
+    setLocationError(error);
+    setIsLocationDialogOpen(true);
+  }, []);
+
+  const requestLocationPermission = useCallback(() => {
+    mapRef.current?.requestLocationPermission();
+  }, []);
+
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
       <Header
@@ -261,6 +284,9 @@ export function HomePage() {
           markerFocusOffset={{ y: 160 }}
           markers={mapMarkers}
           onMarkerClick={handleMarkerClick}
+          onUserLocationError={handleLocationError}
+          ref={mapRef}
+          locateOnMount
           showCurrentLocationButton={false}
           showZoomControls={false}
         >
@@ -272,9 +298,30 @@ export function HomePage() {
             글쓰기
           </PostCreateFab>
 
-          <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
+          <MyLocationButton
+            className="absolute right-4 bottom-[134px] z-20"
+            onClick={requestCurrentLocation}
+          />
         </Map>
       </main>
+
+      <Dialog
+        buttons="primarySecondary"
+        className="!w-[calc(100%-40px)] !max-w-[353px]"
+        description={locationError?.message}
+        onOpenChange={setIsLocationDialogOpen}
+        open={isLocationDialogOpen}
+        primaryButtonProps={{
+          onClick:
+            locationError?.code === 'permission-denied'
+              ? requestLocationPermission
+              : requestCurrentLocation,
+        }}
+        primaryLabel={locationError?.code === 'permission-denied' ? '허용하기' : '재시도하기'}
+        secondaryLabel="닫기"
+        showCloseButton={false}
+        title="현재 위치를 확인할 수 없어요"
+      />
 
       <BottomSheet
         bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"

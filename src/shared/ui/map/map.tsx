@@ -5,13 +5,17 @@ import Image from 'next/image';
 import {
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useRef,
   useState,
   type ButtonHTMLAttributes,
+  type ForwardedRef,
+  forwardRef,
   type ReactNode,
 } from 'react';
 
+import { useLocationStore } from '@/shared/model/stores/location-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import { cn } from '@/shared/lib/cn';
 import { Icon } from '@/shared/ui/icon';
@@ -30,6 +34,7 @@ import type {
   KakaoMarkerClusterer,
   KakaoMapsApi,
   KakaoNamespace,
+  KakaoPoint,
 } from './model/kakao-map.types';
 import type {
   MapLoadError,
@@ -38,6 +43,7 @@ import type {
   MapMarkerImage,
   MapViewport,
 } from './model/map.types';
+import { MyLocation } from './my-location';
 
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
@@ -81,6 +87,11 @@ export type MapProps = {
   showZoomControls?: boolean;
   userLocation?: MapCoordinate | null;
   viewportDebounceMs?: number;
+};
+
+export type MapRef = {
+  requestCurrentLocation: () => void;
+  requestLocationPermission: () => void;
 };
 
 type MapControlButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
@@ -148,46 +159,55 @@ function getMarkerFocusCenter(
   return projection.coordsFromContainerPoint(targetCenterPoint);
 }
 
-export function Map({
-  apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
-  center,
-  children,
-  className,
-  clusterMarkers = true,
-  clusterMinLevel = 6,
-  defaultCenter = DEFAULT_MAP_CENTER,
-  defaultLevel = DEFAULT_LEVEL,
-  locateOnMount = false,
-  markerFocusOffset,
-  markerFocusLevel,
-  markers = [],
-  onLoadError,
-  onMarkerClick,
-  onUserLocationChange,
-  onUserLocationError,
-  onViewportChange,
-  onCenterChange,
-  selectionMode = false,
-  selectionMarker,
-  showCurrentLocationButton = true,
-  showZoomControls = true,
-  userLocation,
-  viewportDebounceMs = DEFAULT_VIEWPORT_DEBOUNCE_MS,
-}: MapProps) {
+function MapComponent(
+  {
+    apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
+    center,
+    children,
+    className,
+    clusterMarkers = true,
+    clusterMinLevel = 6,
+    defaultCenter = DEFAULT_MAP_CENTER,
+    defaultLevel = DEFAULT_LEVEL,
+    locateOnMount = false,
+    markerFocusOffset,
+    markerFocusLevel,
+    markers = [],
+    onLoadError,
+    onMarkerClick,
+    onUserLocationChange,
+    onUserLocationError,
+    onViewportChange,
+    onCenterChange,
+    selectionMode = false,
+    selectionMarker,
+    showCurrentLocationButton = true,
+    showZoomControls = true,
+    userLocation,
+    viewportDebounceMs = DEFAULT_VIEWPORT_DEBOUNCE_MS,
+  }: MapProps,
+  ref: ForwardedRef<MapRef>,
+) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<KakaoMap | null>(null);
   const kakaoRef = useRef<KakaoNamespace | null>(null);
   const clustererRef = useRef<KakaoMarkerClusterer | null>(null);
   const viewportTimerRef = useRef<number | null>(null);
   const pendingLocationRef = useRef<MapCoordinate | null>(null);
-  const initialCenterRef = useRef(center ?? defaultCenter);
   const [status, setStatus] = useState<MapStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
-  const [currentLocation, setCurrentLocation] = useState<MapCoordinate | null>(null);
-  const [isLocating, setIsLocating] = useState(false);
+  const [userLocationPoint, setUserLocationPoint] = useState<KakaoPoint | null>(null);
+
+  const currentLocation = useLocationStore((state) => state.coordinate);
+  const isLocating = useLocationStore((state) => state.isLoading);
+  const setCoordinate = useLocationStore((state) => state.setCoordinate);
+  const setPermissionStatus = useLocationStore((state) => state.setPermissionStatus);
+  const setLoading = useLocationStore((state) => state.setLoading);
+  const setLocationError = useLocationStore((state) => state.setError);
 
   const markerLocation = userLocation ?? currentLocation;
-  const hasUserLocation = markerLocation !== null;
+  const initialCenterRef = useRef(center ?? markerLocation ?? defaultCenter);
+  const markerLocationRef = useRef<MapCoordinate | null>(markerLocation);
   const markerList = useMemo(() => [...markers], [markers]);
 
   const onLoadErrorRef = useRef(onLoadError);
@@ -219,6 +239,29 @@ export function Map({
     onCenterChange,
   ]);
 
+  const updateUserLocationPoint = useCallback(() => {
+    const map = mapRef.current;
+    const kakao = kakaoRef.current;
+    const location = markerLocationRef.current;
+
+    if (!map || !kakao || !location) {
+      setUserLocationPoint(null);
+      return;
+    }
+
+    const point = map
+      .getProjection()
+      .containerPointFromCoords(new kakao.maps.LatLng(location.lat, location.lng));
+
+    setUserLocationPoint((previousPoint) => {
+      if (previousPoint?.x === point.x && previousPoint.y === point.y) {
+        return previousPoint;
+      }
+
+      return { x: point.x, y: point.y };
+    });
+  }, []);
+
   const emitMapState = useCallback(() => {
     const map = mapRef.current;
 
@@ -226,12 +269,14 @@ export function Map({
       return;
     }
 
+    updateUserLocationPoint();
+
     const mapCenter = toMapCoordinate(map.getCenter());
     const viewport = toMapViewport(map.getBounds());
 
     onViewportChangeRef.current?.(viewport);
     onCenterChangeRef.current?.(mapCenter);
-  }, []);
+  }, [updateUserLocationPoint]);
 
   const scheduleMapState = useCallback(() => {
     if (viewportTimerRef.current !== null) {
@@ -247,6 +292,7 @@ export function Map({
   useEffect(() => {
     let cancelled = false;
     let idleHandler: (() => void) | null = null;
+    let boundsChangedHandler: (() => void) | null = null;
 
     loadKakaoMaps(apiKey ?? '')
       .then((kakao) => {
@@ -263,7 +309,9 @@ export function Map({
         mapRef.current = map;
         kakaoRef.current = kakao;
         idleHandler = scheduleMapState;
+        boundsChangedHandler = updateUserLocationPoint;
         maps.event.addListener(map, 'idle', idleHandler);
+        maps.event.addListener(map, 'bounds_changed', boundsChangedHandler);
         setStatus('ready');
 
         if (pendingLocationRef.current) {
@@ -299,12 +347,20 @@ export function Map({
         kakaoRef.current.maps.event.removeListener(mapRef.current, 'idle', idleHandler);
       }
 
+      if (boundsChangedHandler && mapRef.current && kakaoRef.current) {
+        kakaoRef.current.maps.event.removeListener(
+          mapRef.current,
+          'bounds_changed',
+          boundsChangedHandler,
+        );
+      }
+
       clustererRef.current?.setMap(null);
       clustererRef.current = null;
       mapRef.current = null;
       kakaoRef.current = null;
     };
-  }, [apiKey, defaultLevel, emitMapState, scheduleMapState]);
+  }, [apiKey, defaultLevel, emitMapState, scheduleMapState, updateUserLocationPoint]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -398,23 +454,12 @@ export function Map({
   }, [clusterMarkers, clusterMinLevel, markerList, status]);
 
   useEffect(() => {
-    const map = mapRef.current;
-    const kakao = kakaoRef.current;
+    markerLocationRef.current = markerLocation;
 
-    if (status !== 'ready' || !map || !kakao || !hasUserLocation || !markerLocation) {
-      return;
+    if (status === 'ready') {
+      updateUserLocationPoint();
     }
-
-    const marker = new kakao.maps.Marker({
-      image: createMarkerImage(kakao.maps, 'user'),
-      position: new kakao.maps.LatLng(markerLocation.lat, markerLocation.lng),
-      title: '현재 위치',
-    });
-
-    marker.setMap(map);
-
-    return () => marker.setMap(null);
-  }, [hasUserLocation, markerLocation, status]);
+  }, [markerLocation, status, updateUserLocationPoint]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -447,50 +492,71 @@ export function Map({
     map.setLevel(Math.min(Math.max(map.getLevel() + delta, 1), 14), { animate: true });
   }, []);
 
-  const handleCurrentLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      const error: MapLocationError = {
-        code: 'unsupported',
-        message: '이 브라우저에서는 현재 위치를 사용할 수 없습니다.',
-      };
-
+  const reportLocationError = useCallback(
+    (error: MapLocationError) => {
+      setLoading(false);
+      setPermissionStatus(error.code === 'permission-denied' ? 'denied' : 'unavailable');
+      setLocationError(error.message);
       onUserLocationErrorRef.current?.(error);
-      return;
-    }
+    },
+    [setLoading, setLocationError, setPermissionStatus],
+  );
 
-    setIsLocating(true);
-    navigator.geolocation.getCurrentPosition(
-      ({ coords }) => {
-        const coordinate = {
-          lat: coords.latitude,
-          lng: coords.longitude,
-        };
+  const handleCurrentLocation = useCallback(
+    (maximumAge = 30_000) => {
+      if (!navigator.geolocation) {
+        reportLocationError({
+          code: 'unsupported',
+          message: '이 브라우저에서는 현재 위치를 사용할 수 없습니다.',
+        });
+        return;
+      }
 
-        setCurrentLocation(coordinate);
-        onUserLocationChangeRef.current?.(coordinate);
+      setLoading(true);
+      setPermissionStatus('requesting');
+      setLocationError(null);
+      navigator.geolocation.getCurrentPosition(
+        ({ coords }) => {
+          const coordinate = {
+            lat: coords.latitude,
+            lng: coords.longitude,
+          };
 
-        const map = mapRef.current;
-        const kakao = kakaoRef.current;
+          setCoordinate(coordinate);
+          setPermissionStatus('granted');
+          setLoading(false);
+          setLocationError(null);
+          onUserLocationChangeRef.current?.(coordinate);
 
-        if (map && kakao) {
-          map.panTo(new kakao.maps.LatLng(coordinate.lat, coordinate.lng));
-        } else {
-          pendingLocationRef.current = coordinate;
-        }
+          const map = mapRef.current;
+          const kakao = kakaoRef.current;
 
-        setIsLocating(false);
-      },
-      (positionError) => {
-        setIsLocating(false);
-        onUserLocationErrorRef.current?.(getMapLocationError(positionError));
-      },
-      {
-        enableHighAccuracy: true,
-        maximumAge: 30_000,
-        timeout: 10_000,
-      },
-    );
-  }, []);
+          if (map && kakao) {
+            map.panTo(new kakao.maps.LatLng(coordinate.lat, coordinate.lng));
+          } else {
+            pendingLocationRef.current = coordinate;
+          }
+        },
+        (positionError) => reportLocationError(getMapLocationError(positionError)),
+        {
+          enableHighAccuracy: true,
+          maximumAge,
+          timeout: 10_000,
+        },
+      );
+    },
+    [reportLocationError, setCoordinate, setLoading, setLocationError, setPermissionStatus],
+  );
+
+  const requestLocationPermission = useCallback(() => {
+    handleCurrentLocation(0);
+  }, [handleCurrentLocation]);
+
+  useImperativeHandle(
+    ref,
+    () => ({ requestCurrentLocation: () => handleCurrentLocation(), requestLocationPermission }),
+    [handleCurrentLocation, requestLocationPermission],
+  );
 
   useEffect(() => {
     if (!locateOnMount) {
@@ -514,6 +580,13 @@ export function Map({
         ref={mapContainerRef}
         role="application"
       />
+
+      {status === 'ready' && userLocationPoint ? (
+        <MyLocation
+          className="pointer-events-none absolute z-10 -translate-x-1/2 -translate-y-1/2"
+          style={{ left: userLocationPoint.x, top: userLocationPoint.y }}
+        />
+      ) : null}
 
       {children}
 
@@ -583,7 +656,7 @@ export function Map({
           className="absolute right-4 bottom-4 z-20"
           disabled={isLocating}
           label="현재 위치로 이동"
-          onClick={handleCurrentLocation}
+          onClick={() => handleCurrentLocation()}
         >
           <Icon color="var(--color-fg-brand)" name="crosshair" size={22} />
         </MapControlButton>
@@ -591,3 +664,5 @@ export function Map({
     </div>
   );
 }
+
+export const Map = forwardRef<MapRef, MapProps>(MapComponent);

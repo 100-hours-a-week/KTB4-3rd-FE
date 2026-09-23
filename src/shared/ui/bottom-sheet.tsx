@@ -42,7 +42,7 @@ const popupClassName = cn(
 );
 
 const backdropClassName = cn(
-  'fixed inset-0 z-40 min-h-dvh bg-[var(--color-bg-overlay)] opacity-[calc(1-var(--drawer-swipe-progress))]',
+  'fixed inset-0 z-30 min-h-dvh bg-[var(--color-bg-overlay)] opacity-[calc(1-var(--drawer-swipe-progress))]',
   'transition-opacity duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:duration-0',
   'data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)]',
 );
@@ -163,7 +163,7 @@ export function BottomSheet({
         />
         <Drawer.Viewport
           className={cn(
-            'fixed inset-x-0 top-0 z-50 flex touch-none items-end justify-center overflow-hidden',
+            'fixed inset-x-0 top-0 z-30 flex touch-none items-end justify-center overflow-hidden',
             modal !== true && 'pointer-events-none',
           )}
           data-testid="bottom-sheet-viewport"

@@ -1,6 +1,8 @@
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { useLocationStore } from '@/shared/model/stores/location-store';
 import type {
   KakaoCluster,
   KakaoLatLng,
@@ -12,7 +14,13 @@ import type {
   KakaoMapProjection,
   KakaoNamespace,
 } from '@/shared/ui/map/model/kakao-map.types';
-import { Map, type MapMarker, type MapViewport } from '@/shared/ui/map';
+import {
+  Map,
+  type MapLocationError,
+  type MapMarker,
+  type MapRef,
+  type MapViewport,
+} from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 
 const { loadKakaoMaps } = vi.hoisted(() => ({
@@ -48,7 +56,9 @@ class FakeMap implements KakaoMap {
   getCenter = vi.fn<() => KakaoLatLng>(() => new FakeLatLng(37.5665, 126.978));
   getLevel = vi.fn<() => number>(() => 5);
   getProjection = vi.fn<() => KakaoMapProjection>(() => ({
-    containerPointFromCoords: vi.fn<() => { x: number; y: number }>(() => ({ x: 0, y: 0 })),
+    containerPointFromCoords: vi.fn<() => { x: number; y: number }>(
+      () => projectedUserLocationPoint,
+    ),
     coordsFromContainerPoint: vi.fn<() => KakaoLatLng>(() => new FakeLatLng(37.51, 127.02)),
   }));
   panTo = vi.fn<(position: KakaoLatLng) => void>();
@@ -78,11 +88,14 @@ class FakeMarkerClusterer implements KakaoMarkerClusterer {
 
 const markerClickHandlers: (() => void)[] = [];
 const clusterClickHandlers: ((cluster: KakaoCluster) => void)[] = [];
+const boundsChangedHandlers: (() => void)[] = [];
 const clustererOptions: { styles?: KakaoMarkerClustererStyle[] }[] = [];
 const markerOptions: { position: KakaoLatLng; title?: string }[] = [];
 const markerImageSources: string[] = [];
 const markerImageOptions: { height: number; offsetX: number; offsetY: number; width: number }[] =
   [];
+const mapCreationOptions: { center: KakaoLatLng; level: number }[] = [];
+let projectedUserLocationPoint = { x: 0, y: 0 };
 let fakeMap: FakeMap;
 
 class FakeMarkerImage {
@@ -118,7 +131,11 @@ class FakePoint {
 const fakeKakao = {
   maps: {
     LatLng: FakeLatLng,
-    Map: function fakeMapConstructor() {
+    Map: function fakeMapConstructor(
+      _container: HTMLElement,
+      options: { center: KakaoLatLng; level: number },
+    ) {
+      mapCreationOptions.push(options);
       fakeMap = new FakeMap();
       return fakeMap;
     },
@@ -137,6 +154,10 @@ const fakeKakao = {
           if (eventName === 'clusterclick') {
             clusterClickHandlers.push(handler as (cluster: KakaoCluster) => void);
           }
+
+          if (eventName === 'bounds_changed') {
+            boundsChangedHandlers.push(handler as () => void);
+          }
         },
       ),
       removeListener: vi.fn<(target: object, eventName: string, handler: unknown) => void>(),
@@ -152,10 +173,14 @@ describe('Map', () => {
     vi.clearAllMocks();
     markerClickHandlers.length = 0;
     clusterClickHandlers.length = 0;
+    boundsChangedHandlers.length = 0;
     clustererOptions.length = 0;
     markerOptions.length = 0;
     markerImageSources.length = 0;
     markerImageOptions.length = 0;
+    mapCreationOptions.length = 0;
+    projectedUserLocationPoint = { x: 0, y: 0 };
+    useLocationStore.getState().reset();
     fakeMap = new FakeMap();
     loadKakaoMaps.mockResolvedValue(fakeKakao);
   });
@@ -183,6 +208,143 @@ describe('Map', () => {
       southWest: { lat: 37.4, lng: 126.8 },
     });
     expect(onCenterChange).toHaveBeenCalledWith({ lat: 37.5665, lng: 126.978 });
+  });
+
+  it('uses Seoul Station as the default initial center', async () => {
+    render(<Map apiKey="test-key" />);
+
+    await waitFor(() => expect(mapCreationOptions).toHaveLength(1));
+
+    expect(mapCreationOptions[0]?.center.getLat()).toBeCloseTo(37.5547);
+    expect(mapCreationOptions[0]?.center.getLng()).toBeCloseTo(126.9707);
+  });
+
+  it('requests the current location on mount and renders MyLocation after success', async () => {
+    const getCurrentPosition = vi.fn<(success: PositionCallback) => void>((success) =>
+      success({
+        coords: {
+          latitude: 37.51,
+          longitude: 127.02,
+        } as GeolocationCoordinates,
+      } as GeolocationPosition),
+    );
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<Map apiKey="test-key" locateOnMount />);
+
+    await waitFor(() => expect(getCurrentPosition).toHaveBeenCalledOnce());
+    expect(await screen.findByRole('img', { name: '현재 위치' })).toBeInTheDocument();
+    expect(fakeMap.panTo).toHaveBeenCalledOnce();
+  });
+
+  it('reprojects MyLocation while the map is dragged or zoomed', async () => {
+    const getCurrentPosition = vi.fn<(success: PositionCallback) => void>((success) =>
+      success({
+        coords: {
+          latitude: 37.51,
+          longitude: 127.02,
+        } as GeolocationCoordinates,
+      } as GeolocationPosition),
+    );
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    projectedUserLocationPoint = { x: 120, y: 180 };
+    render(<Map apiKey="test-key" locateOnMount />);
+
+    const userLocation = await screen.findByRole('img', { name: '현재 위치' });
+
+    expect(userLocation).toHaveStyle({ left: '120px', top: '180px' });
+    await waitFor(() => expect(boundsChangedHandlers).toHaveLength(1));
+
+    projectedUserLocationPoint = { x: 48, y: 76 };
+    boundsChangedHandlers[0]?.();
+
+    await waitFor(() => {
+      expect(userLocation).toHaveStyle({ left: '48px', top: '76px' });
+    });
+
+    projectedUserLocationPoint = { x: 24, y: 42 };
+    boundsChangedHandlers[0]?.();
+
+    await waitFor(() => {
+      expect(userLocation).toHaveStyle({ left: '24px', top: '42px' });
+    });
+  });
+
+  it('reports a location error and keeps MyLocation hidden after a failed request', async () => {
+    const onUserLocationError = vi.fn<(error: MapLocationError) => void>();
+    const getCurrentPosition = vi.fn<
+      (success: PositionCallback, error?: PositionErrorCallback) => void
+    >((_success, error) =>
+      error?.({
+        code: 1,
+        message: 'permission denied',
+        PERMISSION_DENIED: 1,
+        POSITION_UNAVAILABLE: 2,
+        TIMEOUT: 3,
+      } as GeolocationPositionError),
+    );
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<Map apiKey="test-key" locateOnMount onUserLocationError={onUserLocationError} />);
+
+    await waitFor(() =>
+      expect(onUserLocationError).toHaveBeenCalledWith({
+        code: 'permission-denied',
+        message: '위치 권한이 없어 현재 위치를 가져올 수 없습니다.',
+      }),
+    );
+    expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument();
+  });
+
+  it('exposes a current location request for a custom location button', async () => {
+    const mapRef = createRef<MapRef>();
+    const getCurrentPosition = vi.fn<(success: PositionCallback) => void>();
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<Map apiKey="test-key" ref={mapRef} />);
+
+    await waitFor(() => expect(mapRef.current).not.toBeNull());
+    mapRef.current?.requestCurrentLocation();
+
+    expect(getCurrentPosition).toHaveBeenCalledOnce();
+  });
+
+  it('requests a fresh browser location when permission is explicitly requested', async () => {
+    const mapRef = createRef<MapRef>();
+    const getCurrentPosition = vi.fn<(success: PositionCallback) => void>();
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<Map apiKey="test-key" ref={mapRef} />);
+
+    await waitFor(() => expect(mapRef.current).not.toBeNull());
+    mapRef.current?.requestLocationPermission();
+
+    expect(getCurrentPosition).toHaveBeenCalledWith(
+      expect.any(Function),
+      expect.any(Function),
+      expect.objectContaining({ maximumAge: 0 }),
+    );
   });
 
   it('moves the map when zoom and current location controls are used', async () => {
