@@ -23,7 +23,7 @@ export const LocationInputButton = forwardRef<
       clearButton = true,
       placeholder = '장소를 선택해 주세요',
       prefix = <Icon aria-hidden="true" name="search" size={20} />,
-      suffix = <Icon aria-hidden="true" name="chevronDown" size={20} />,
+      suffix = null,
       value,
       ...props
     },

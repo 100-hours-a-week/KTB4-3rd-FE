@@ -59,7 +59,7 @@ export const DateInputButton = forwardRef<ComponentRef<typeof InputButton>, Date
       onValueChange,
       placeholder = '날짜를 선택해 주세요',
       prefix = <Icon aria-hidden="true" name="calendarDays" size={20} />,
-      suffix = <Icon aria-hidden="true" name="chevronDown" size={20} />,
+      suffix = null,
       value,
       ...props
     },

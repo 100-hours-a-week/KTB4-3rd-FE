@@ -44,7 +44,7 @@ export const TimeInputButton = forwardRef<ComponentRef<typeof InputButton>, Time
       prefix = (
         <Icon aria-hidden="true" color="var(--color-fg-neutral-muted)" name="clock3" size={20} />
       ),
-      suffix = <Icon aria-hidden="true" name="chevronDown" size={20} />,
+      suffix = null,
       value,
       ...props
     },
