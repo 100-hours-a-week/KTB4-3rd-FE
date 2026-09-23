@@ -3,8 +3,8 @@ import { useState } from 'react';
 
 import { DatePicker, type DatePickerProps } from './date-picker';
 
-const defaultDate = new Date(2026, 1, 9);
-const today = new Date(2026, 1, 7);
+const today = new Date();
+const defaultDate = new Date(today);
 
 const meta = {
   title: 'Shared/DatePicker',
@@ -42,11 +42,6 @@ export const Playground: Story = {
 
 export const YearMonthSelector: Story = {
   render: (args) => <ControlledDatePicker {...args} />,
-  play: async ({ canvasElement }) => {
-    canvasElement
-      .querySelector('button[aria-controls="date-picker-content"]')
-      ?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
-  },
 };
 
 export const WithoutSelectedDate: Story = {
