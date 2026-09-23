@@ -53,52 +53,58 @@ export function AnnouncementDropdown({
 
   return (
     <section
-      className={cn(
-        'flex h-[68px] w-full flex-col overflow-hidden rounded-[12px] bg-[var(--color-bg-layer-default)] shadow-[0_0_10px_rgba(0,0,0,0.15)] transition-[height] duration-200 ease-out',
-        'data-[state=expanded]:h-[262px]',
-        className,
-      )}
+      className={cn('relative h-[68px] w-full', className)}
       data-state={isExpanded ? 'expanded' : 'collapsed'}
+      data-testid="announcement-dropdown"
     >
-      <button
-        aria-controls={contentId}
-        aria-expanded={isExpanded}
-        aria-label={`안내 ${isExpanded ? '접기' : '펼치기'}`}
-        className="flex h-[68px] shrink-0 appearance-none items-center gap-4 border-0 bg-transparent px-4 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
-        onClick={handleToggle}
-        type="button"
+      <div
+        className={cn(
+          'absolute inset-x-0 top-0 z-10 flex flex-col overflow-hidden rounded-[12px] bg-[var(--color-bg-layer-default)] shadow-[0_0_10px_rgba(0,0,0,0.15)] transition-[height] duration-200 ease-out',
+          isExpanded ? 'h-[262px]' : 'h-[68px]',
+        )}
+        data-state={isExpanded ? 'expanded' : 'collapsed'}
+        data-testid="announcement-dropdown-panel"
       >
-        <span className="flex min-w-0 flex-1 flex-col justify-center gap-2">
-          <Text as="span" className="truncate" color="fg.neutral" variant="t2Bold">
-            {title}
-          </Text>
-          <Text as="span" color="fg.neutralSubtle" variant="t1Regular">
-            출발 시간: {departureTime}
-          </Text>
-        </span>
-        <span className="inline-flex size-5 shrink-0 items-center justify-center text-[var(--color-fg-neutral-muted)]">
-          <Icon
-            aria-hidden="true"
-            className="transition-transform duration-200 ease-out"
-            name="chevronDown"
-            size="100%"
-            style={{ transform: isExpanded ? 'rotate(180deg)' : undefined }}
-          />
-        </span>
-      </button>
-
-      {isExpanded ? (
-        <div
-          aria-label="안내 내용"
-          className="min-h-0 flex-1 px-[15px] pt-2 pb-8"
-          id={contentId}
-          role="region"
+        <button
+          aria-controls={contentId}
+          aria-expanded={isExpanded}
+          aria-label={`안내 ${isExpanded ? '접기' : '펼치기'}`}
+          className="flex h-[68px] shrink-0 appearance-none items-center gap-4 border-0 bg-transparent px-4 text-left outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
+          onClick={handleToggle}
+          type="button"
         >
-          <Text as="p" color="fg.neutral" variant="t2Regular" whiteSpace="pre-line">
-            {ANNOUNCEMENT_CONTENT}
-          </Text>
-        </div>
-      ) : null}
+          <span className="flex min-w-0 flex-1 flex-col justify-center gap-2">
+            <Text as="span" className="truncate" color="fg.neutral" variant="t2Bold">
+              {title}
+            </Text>
+            <Text as="span" color="fg.neutralSubtle" variant="t1Regular">
+              출발 시간: {departureTime}
+            </Text>
+          </span>
+          <span className="inline-flex size-5 shrink-0 items-center justify-center text-[var(--color-fg-neutral-muted)]">
+            <Icon
+              aria-hidden="true"
+              className="transition-transform duration-200 ease-out"
+              name="chevronDown"
+              size="100%"
+              style={{ transform: isExpanded ? 'rotate(180deg)' : undefined }}
+            />
+          </span>
+        </button>
+
+        {isExpanded ? (
+          <div
+            aria-label="안내 내용"
+            className="min-h-0 flex-1 px-[15px] pt-2 pb-8"
+            id={contentId}
+            role="region"
+          >
+            <Text as="p" color="fg.neutral" variant="t2Regular" whiteSpace="pre-line">
+              {ANNOUNCEMENT_CONTENT}
+            </Text>
+          </div>
+        ) : null}
+      </div>
     </section>
   );
 }

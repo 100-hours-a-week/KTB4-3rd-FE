@@ -30,3 +30,17 @@ export const Expanded: Story = {
     defaultExpanded: true,
   },
 };
+
+export const ExpandedOverlay: Story = {
+  args: {
+    defaultExpanded: true,
+  },
+  render: (args) => (
+    <div className="flex flex-col gap-3">
+      <AnnouncementDropdown {...args} />
+      <div className="h-20 rounded-[12px] bg-[var(--color-bg-layer-default)] p-4 text-[var(--color-fg-neutral)]">
+        다음 콘텐츠 영역
+      </div>
+    </div>
+  ),
+};

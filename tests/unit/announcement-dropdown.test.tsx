@@ -14,6 +14,7 @@ describe('AnnouncementDropdown', () => {
       'aria-expanded',
       'false',
     );
+    expect(screen.getByTestId('announcement-dropdown')).toHaveClass('h-[68px]');
     expect(screen.getByText('출발 시간: 18:40')).toBeInTheDocument();
     expect(screen.queryByRole('region', { name: '안내 내용' })).not.toBeInTheDocument();
   });
@@ -28,6 +29,8 @@ describe('AnnouncementDropdown', () => {
       'aria-expanded',
       'true',
     );
+    expect(screen.getByTestId('announcement-dropdown')).toHaveClass('h-[68px]');
+    expect(screen.getByTestId('announcement-dropdown-panel')).toHaveClass('h-[262px]');
     expect(screen.getByRole('region', { name: '안내 내용' })).toHaveTextContent(
       '안전한 동승을 위해 확인해주세요',
     );
