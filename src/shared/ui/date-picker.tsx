@@ -372,7 +372,7 @@ function DatePickerContent({
       aria-disabled={disabled || undefined}
       aria-label={ariaLabel}
       className={cn(
-        'relative w-[620px] max-w-full rounded-[20px] bg-[var(--color-bg-layer-basement)] p-[24px]',
+        'relative w-[620px] max-w-full',
         disabled && 'cursor-not-allowed opacity-60',
         className,
       )}

@@ -23,9 +23,12 @@ export type BottomSheetProps = {
   onSnapPointChange?: (snapPoint: BottomSheetSnapPoint | null) => void;
 
   modal?: BottomSheetModal;
+  /** Allows the sheet to close from dismissive interactions or controlled state changes. */
+  dismissible?: boolean;
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
+  minHeight?: number | string;
   bottomOffset?: number | string;
   showBackdrop?: boolean;
   showViewAllButton?: boolean;
@@ -87,9 +90,11 @@ export function BottomSheet({
   snapPoint,
   onSnapPointChange,
   modal = true,
+  dismissible = false,
   title,
   description,
   children,
+  minHeight,
   bottomOffset,
   showBackdrop = true,
   showViewAllButton = false,
@@ -113,12 +118,12 @@ export function BottomSheet({
   const activeSnapPoint = isSnapPointControlled ? resolvedSnapPoint : internalSnapPoint;
 
   const handleOpenChange = (nextOpen: boolean, eventDetails: Drawer.Root.ChangeEventDetails) => {
-    if (!nextOpen) {
+    if (!nextOpen && !dismissible) {
       eventDetails.cancel();
       return;
     }
 
-    onOpenChange?.(true);
+    onOpenChange?.(nextOpen);
   };
 
   const handleSnapPointChange = (
@@ -163,7 +168,7 @@ export function BottomSheet({
         />
         <Drawer.Viewport
           className={cn(
-            'fixed inset-x-0 top-0 z-30 flex touch-none items-end justify-center overflow-hidden',
+            'fixed inset-x-0 top-0 bottom-0 z-30 flex touch-none items-end justify-center overflow-hidden',
             modal !== true && 'pointer-events-none',
           )}
           data-testid="bottom-sheet-viewport"
@@ -177,6 +182,7 @@ export function BottomSheet({
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
             className={cn(popupClassName, modal !== true && 'pointer-events-auto', className)}
+            style={minHeight === undefined ? undefined : { minHeight }}
           >
             <div className="shrink-0 touch-none px-[var(--dimension-x5)] pt-3 select-none">
               <div

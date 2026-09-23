@@ -91,6 +91,20 @@ describe('BottomSheet', () => {
     expect(screen.getByRole('heading', { name: '게시글' })).toBeInTheDocument();
   });
 
+  it('allows a dismissible sheet to close from Escape', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+
+    render(
+      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('can hide the backdrop for an inline map sheet', () => {
     render(
       <BottomSheet defaultOpen showBackdrop={false} title="게시글">
@@ -122,6 +136,16 @@ describe('BottomSheet', () => {
     expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveStyle({
       bottom: '72px',
     });
+  });
+
+  it('supports a custom minimum height for content-specific sheets', () => {
+    render(
+      <BottomSheet defaultOpen minHeight="420px" title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByRole('dialog').at(-1)).toHaveStyle({ minHeight: '420px' });
   });
 
   it('allows map interactions outside a non-modal sheet', () => {
