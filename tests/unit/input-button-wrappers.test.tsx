@@ -14,6 +14,36 @@ describe('DateInputButton', () => {
     expect(screen.getByRole('button', { name: '날짜 선택' })).toHaveTextContent('2026.09.23');
     expect(screen.getByRole('button', { name: '입력값 지우기' })).toBeInTheDocument();
   });
+
+  it('버튼을 누르면 날짜 선택 바텀시트를 열고 선택한 값을 적용한다', async () => {
+    render(<DateInputButton datePickerProps={{ today: new Date(2026, 8, 23) }} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '날짜 선택' }));
+
+    expect(screen.getByRole('heading', { name: '날짜' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '확인' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '2026년 9월 23일' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '2026년 9월 25일' }));
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: '날짜' })).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '날짜 선택' })).toHaveTextContent('2026.09.25');
+  });
+
+  it('사용처에서 바텀시트 제목을 지정할 수 있다', () => {
+    render(<DateInputButton bottomSheetTitle="약속 날짜" />);
+
+    fireEvent.click(screen.getByRole('button', { name: '날짜 선택' }));
+
+    expect(screen.getByRole('heading', { name: '약속 날짜' })).toBeInTheDocument();
+  });
 });
 
 describe('TimeInputButton', () => {

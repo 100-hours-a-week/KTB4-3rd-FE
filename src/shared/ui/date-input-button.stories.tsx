@@ -27,7 +27,14 @@ type Story = StoryObj<typeof meta>;
 function ControlledDateInputButton(args: DateInputButtonProps) {
   const [value, setValue] = useState<Date | null>(args.value ?? null);
 
-  return <DateInputButton {...args} onClear={() => setValue(null)} value={value} />;
+  return (
+    <DateInputButton
+      {...args}
+      onClear={() => setValue(null)}
+      onValueChange={setValue}
+      value={value}
+    />
+  );
 }
 
 export const Playground: Story = {
@@ -45,4 +52,11 @@ export const Disabled: Story = {
   args: {
     disabled: true,
   },
+};
+
+export const CustomBottomSheetTitle: Story = {
+  args: {
+    bottomSheetTitle: '약속 날짜',
+  },
+  render: (args) => <ControlledDateInputButton {...args} />,
 };
