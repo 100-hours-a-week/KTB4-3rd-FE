@@ -27,6 +27,12 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   IMAGE_NAME: moyeota-fe
+  NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
+  NEXT_PUBLIC_KAKAO_MAP_APP_KEY: ${{ vars.NEXT_PUBLIC_KAKAO_MAP_APP_KEY }}
+  NEXT_PUBLIC_GA_ID: ${{ vars.NEXT_PUBLIC_GA_ID }}
+  NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
+  NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}
+  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE }}
 
 jobs:
   test:
@@ -174,6 +180,12 @@ jobs:
             --build-arg "BUILD_SHA=${GITHUB_SHA}" \
             --build-arg "RELEASE_VERSION=${{ steps.meta.outputs.release_version }}" \
             --build-arg "BUILD_DATE=${{ steps.meta.outputs.build_date }}" \
+            --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api}" \
+            --build-arg "NEXT_PUBLIC_KAKAO_MAP_APP_KEY=${NEXT_PUBLIC_KAKAO_MAP_APP_KEY:-}" \
+            --build-arg "NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID:-}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}" \
             --build-arg "SENTRY_ORG=${SENTRY_ORG:-}" \
             --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT:-}" \
             "${docker_build_args[@]}" \
