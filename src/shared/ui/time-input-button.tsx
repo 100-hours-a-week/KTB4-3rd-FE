@@ -41,7 +41,9 @@ export const TimeInputButton = forwardRef<ComponentRef<typeof InputButton>, Time
       onClick,
       onValueChange,
       placeholder = '시간을 선택해 주세요',
-      prefix = <Icon aria-hidden="true" name="clock3" size={20} />,
+      prefix = (
+        <Icon aria-hidden="true" color="var(--color-fg-neutral-muted)" name="clock3" size={20} />
+      ),
       suffix = <Icon aria-hidden="true" name="chevronDown" size={20} />,
       value,
       ...props
