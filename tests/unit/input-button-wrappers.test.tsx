@@ -35,6 +35,7 @@ describe('TimeInputButton', () => {
 
     expect(screen.getByRole('heading', { name: '시간' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    expect(screen.getAllByRole('dialog').at(-1)).toHaveStyle({ minHeight: 'auto' });
 
     const minuteWheel = screen.getByRole('listbox', { name: '분' }).querySelector('[data-rwp]');
 

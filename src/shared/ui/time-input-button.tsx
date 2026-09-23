@@ -84,6 +84,13 @@ export const TimeInputButton = forwardRef<ComponentRef<typeof InputButton>, Time
       setDraftValue(DEFAULT_TIME_PICKER_VALUE);
     };
 
+    const resolvedBottomSheetProps: TimeInputButtonBottomSheetProps = {
+      defaultSnapPoint: 0.7,
+      minHeight: 'auto',
+      snapPoints: [0.5, 0.7],
+      ...bottomSheetProps,
+    };
+
     return (
       <>
         <InputButton
@@ -99,7 +106,7 @@ export const TimeInputButton = forwardRef<ComponentRef<typeof InputButton>, Time
           value={selectedValue === null ? null : formatValue(selectedValue)}
         />
         <BottomSheet
-          {...bottomSheetProps}
+          {...resolvedBottomSheetProps}
           dismissible
           open={isSheetOpen}
           onOpenChange={setIsSheetOpen}
@@ -117,7 +124,13 @@ export const TimeInputButton = forwardRef<ComponentRef<typeof InputButton>, Time
               >
                 초기화
               </Button>
-              <Button className="flex-1" onClick={handleConfirm} type="button" width="fill">
+              <Button
+                className="flex-1"
+                onClick={handleConfirm}
+                type="button"
+                variant="neutral-solid"
+                width="fill"
+              >
                 선택
               </Button>
             </div>

@@ -28,6 +28,7 @@ export type BottomSheetProps = {
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
+  minHeight?: number | string;
   bottomOffset?: number | string;
   showBackdrop?: boolean;
   showViewAllButton?: boolean;
@@ -93,6 +94,7 @@ export function BottomSheet({
   title,
   description,
   children,
+  minHeight,
   bottomOffset,
   showBackdrop = true,
   showViewAllButton = false,
@@ -166,7 +168,7 @@ export function BottomSheet({
         />
         <Drawer.Viewport
           className={cn(
-            'fixed inset-x-0 top-0 z-30 flex touch-none items-end justify-center overflow-hidden',
+            'fixed inset-x-0 top-0 bottom-0 z-30 flex touch-none items-end justify-center overflow-hidden',
             modal !== true && 'pointer-events-none',
           )}
           data-testid="bottom-sheet-viewport"
@@ -180,6 +182,7 @@ export function BottomSheet({
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
             className={cn(popupClassName, modal !== true && 'pointer-events-auto', className)}
+            style={minHeight === undefined ? undefined : { minHeight }}
           >
             <div className="shrink-0 touch-none px-[var(--dimension-x5)] pt-3 select-none">
               <div

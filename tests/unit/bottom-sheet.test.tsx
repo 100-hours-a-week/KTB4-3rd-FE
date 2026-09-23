@@ -138,6 +138,16 @@ describe('BottomSheet', () => {
     });
   });
 
+  it('supports a custom minimum height for content-specific sheets', () => {
+    render(
+      <BottomSheet defaultOpen minHeight="420px" title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByRole('dialog').at(-1)).toHaveStyle({ minHeight: '420px' });
+  });
+
   it('allows map interactions outside a non-modal sheet', () => {
     render(
       <BottomSheet defaultOpen modal={false} title="게시글">
