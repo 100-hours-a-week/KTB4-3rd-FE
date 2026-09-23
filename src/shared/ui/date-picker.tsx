@@ -6,11 +6,12 @@ import {
   fromDateToLocal,
   getLocalTimeZone,
 } from '@internationalized/date';
+import { WheelPicker, WheelPickerWrapper, type WheelPickerOption } from '@ncdai/react-wheel-picker';
 import { useButton } from '@react-aria/button';
 import { useCalendar, useCalendarCell, useCalendarGrid } from '@react-aria/calendar';
 import { I18nProvider } from '@react-aria/i18n';
 import { useCalendarState, type CalendarState as CalendarStateType } from '@react-stately/calendar';
-import { useRef, useState, type KeyboardEvent, type WheelEvent } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -39,9 +40,9 @@ export type DatePickerProps = {
 };
 
 const LOCALE = 'ko-KR';
-const VISIBLE_PICKER_ROWS = 7;
-const PICKER_CENTER_OFFSET = Math.floor(VISIBLE_PICKER_ROWS / 2);
-const WHEEL_DELTA_THRESHOLD = 120;
+const DATE_PICKER_ROW_HEIGHT = 52;
+const DATE_PICKER_VISIBLE_COUNT = 16;
+const DATE_PICKER_YEAR_RANGE = 100;
 
 function startOfDay(date: Date) {
   return new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -61,30 +62,34 @@ function isSameDate(firstDate: CalendarDate | null, secondDate: CalendarDate) {
   return firstDate?.compare(secondDate) === 0;
 }
 
-function getVisibleOptions<T>(options: readonly T[], selectedIndex: number) {
-  return Array.from({ length: VISIBLE_PICKER_ROWS }, (_, offset) => {
-    const index = selectedIndex + offset - PICKER_CENTER_OFFSET;
-
-    return {
-      value: index >= 0 && index < options.length ? options[index] : null,
-      isSelected: offset === PICKER_CENTER_OFFSET,
-    };
-  });
-}
-
-function getNextIndex(currentIndex: number, length: number, direction: -1 | 1) {
-  return Math.max(0, Math.min(length - 1, currentIndex + direction));
-}
+type DatePickerColumnName = 'year' | 'month';
 
 type PickerColumnProps = {
   'aria-label': string;
   className?: string;
   disabled: boolean;
-  name: 'year' | 'month';
+  name: DatePickerColumnName;
   onValueChange: (value: number) => void;
-  options: readonly number[];
+  options: WheelPickerOption<number>[];
   value: number;
 };
+
+function createWheelOption(
+  value: number,
+  label: string,
+  disabled = false,
+): WheelPickerOption<number> {
+  return {
+    disabled,
+    label: (
+      <Text as="span" className="date-picker-wheel-text" variant="t11Regular">
+        {label}
+      </Text>
+    ),
+    textValue: label,
+    value,
+  };
+}
 
 function PickerColumn({
   'aria-label': ariaLabel,
@@ -95,111 +100,36 @@ function PickerColumn({
   options,
   value,
 }: PickerColumnProps) {
-  const selectedIndex = Math.max(0, options.indexOf(value));
-  const wheelDeltaRef = useRef(0);
-
-  const commitValue = (nextValue: number) => {
-    wheelDeltaRef.current = 0;
-    onValueChange(nextValue);
-  };
-
-  const moveValue = (direction: -1 | 1) => {
-    const nextIndex = getNextIndex(selectedIndex, options.length, direction);
-
-    if (nextIndex !== selectedIndex) {
-      commitValue(options[nextIndex]);
-    }
-  };
-
-  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
-    if (disabled || (event.key !== 'ArrowUp' && event.key !== 'ArrowDown')) {
-      return;
-    }
-
-    event.preventDefault();
-    moveValue(event.key === 'ArrowUp' ? -1 : 1);
-  };
-
-  const handleWheel = (event: WheelEvent<HTMLDivElement>) => {
-    if (disabled || event.deltaY === 0) {
-      return;
-    }
-
-    event.preventDefault();
-
-    if (
-      wheelDeltaRef.current !== 0 &&
-      Math.sign(wheelDeltaRef.current) !== Math.sign(event.deltaY)
-    ) {
-      wheelDeltaRef.current = 0;
-    }
-
-    wheelDeltaRef.current += event.deltaY;
-
-    if (Math.abs(wheelDeltaRef.current) < WHEEL_DELTA_THRESHOLD) {
-      return;
-    }
-
-    const direction = wheelDeltaRef.current > 0 ? 1 : -1;
-    wheelDeltaRef.current = 0;
-    moveValue(direction);
-  };
+  const selectedLabel =
+    options.find((option) => option.value === value)?.textValue ?? String(value);
 
   return (
     <div
-      aria-activedescendant={`${name}-option-${value}`}
       aria-label={ariaLabel}
       aria-orientation="vertical"
       aria-disabled={disabled || undefined}
-      className={cn('absolute inset-y-0 z-10 w-1/2 outline-none', className)}
-      data-date-picker-column={name}
-      onKeyDown={handleKeyDown}
-      onWheel={handleWheel}
+      aria-valuetext={selectedLabel}
+      className={cn(
+        'date-picker-wheel absolute inset-y-0 z-10 w-1/2 touch-none',
+        disabled && 'pointer-events-none',
+        className,
+      )}
+      data-selected-value={value}
       role="listbox"
-      tabIndex={disabled ? -1 : 0}
     >
-      <div
-        className="absolute inset-x-0 top-0 flex flex-col"
-        style={{ transform: 'translateY(-52px)' }}
-      >
-        {getVisibleOptions(options, selectedIndex).map(({ value: option, isSelected }, index) => (
-          <div
-            className="flex h-[52px] w-full items-center justify-center"
-            key={`${name}-${option ?? 'empty'}-${index}`}
-          >
-            {option === null ? null : (
-              <button
-                aria-selected={isSelected}
-                className={cn(
-                  'flex h-full w-full items-center justify-center rounded-[12px] outline-none',
-                  'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]',
-                  'active:bg-[var(--color-bg-transparent-pressed)]',
-                  disabled && 'cursor-not-allowed',
-                )}
-                disabled={disabled}
-                id={`${name}-option-${option}`}
-                onClick={() => commitValue(option)}
-                role="option"
-                tabIndex={-1}
-                type="button"
-              >
-                <Text
-                  as="span"
-                  className={cn(
-                    isSelected
-                      ? 'text-[var(--color-fg-neutral)]'
-                      : 'text-[var(--color-fg-disabled)]',
-                    isSelected && 'translate-y-px',
-                  )}
-                  variant={isSelected ? 't12Bold' : 't11Regular'}
-                >
-                  {name === 'year' ? `${option}년` : `${option}월`}
-                </Text>
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
+      <WheelPicker
+        classNames={{
+          highlightItem: 'date-picker-wheel-highlight flex justify-center',
+          highlightWrapper: 'date-picker-wheel-highlight-wrapper',
+          optionItem: 'date-picker-wheel-option flex justify-center',
+        }}
+        defaultValue={value}
+        onValueChange={onValueChange}
+        optionItemHeight={DATE_PICKER_ROW_HEIGHT}
+        options={options}
+        visibleCount={DATE_PICKER_VISIBLE_COUNT}
+        key={`${name}-${value}`}
+      />
     </div>
   );
 }
@@ -307,6 +237,61 @@ function CalendarGrid({ state, today, year, month, ariaLabel }: CalendarGridProp
   );
 }
 
+function getYearOptions(
+  selectedYear: number,
+  minimumDate?: CalendarDate,
+  maximumDate?: CalendarDate,
+) {
+  const firstYear = minimumDate?.year ?? selectedYear - DATE_PICKER_YEAR_RANGE;
+  const lastYear = maximumDate?.year ?? selectedYear + DATE_PICKER_YEAR_RANGE;
+
+  return Array.from({ length: lastYear - firstYear + 1 }, (_, index) => {
+    const year = firstYear + index;
+
+    return createWheelOption(year, `${year}년`);
+  });
+}
+
+function isMonthDisabled(
+  year: number,
+  month: number,
+  minimumDate?: CalendarDate,
+  maximumDate?: CalendarDate,
+) {
+  const isBeforeMinimum =
+    minimumDate !== undefined &&
+    (year < minimumDate.year || (year === minimumDate.year && month < minimumDate.month));
+  const isAfterMaximum =
+    maximumDate !== undefined &&
+    (year > maximumDate.year || (year === maximumDate.year && month > maximumDate.month));
+
+  return isBeforeMinimum || isAfterMaximum;
+}
+
+function getMonthOptions(year: number, minimumDate?: CalendarDate, maximumDate?: CalendarDate) {
+  return Array.from({ length: 12 }, (_, index) => {
+    const month = index + 1;
+
+    return createWheelOption(
+      month,
+      `${month}월`,
+      isMonthDisabled(year, month, minimumDate, maximumDate),
+    );
+  });
+}
+
+function getSelectableMonth(
+  year: number,
+  month: number,
+  minimumDate?: CalendarDate,
+  maximumDate?: CalendarDate,
+) {
+  const minimumMonth = minimumDate?.year === year ? minimumDate.month : 1;
+  const maximumMonth = maximumDate?.year === year ? maximumDate.month : 12;
+
+  return Math.min(maximumMonth, Math.max(minimumMonth, month));
+}
+
 function DatePickerContent({
   value,
   defaultValue,
@@ -323,15 +308,10 @@ function DatePickerContent({
   const [internalValue, setInternalValue] = useState<CalendarDate | null>(
     defaultValue ? initialDate : normalizedToday,
   );
-  const [focusedDate, setFocusedDate] = useState(initialDate);
-  let currentValue = internalValue;
-
-  if (value !== undefined) {
-    currentValue = value ? toCalendarDate(value) : null;
-  }
-
-  const minimumDate = minDate ? toCalendarDate(minDate) : undefined;
-  const maximumDate = maxDate ? toCalendarDate(maxDate) : undefined;
+  const controlledValue = useMemo(() => (value ? toCalendarDate(value) : null), [value]);
+  const currentValue = value === undefined ? internalValue : controlledValue;
+  const minimumDate = useMemo(() => (minDate ? toCalendarDate(minDate) : undefined), [minDate]);
+  const maximumDate = useMemo(() => (maxDate ? toCalendarDate(maxDate) : undefined), [maxDate]);
   const [isYearMonthOpen, setIsYearMonthOpen] = useState(false);
 
   const handleValueChange = (nextValue: CalendarDate | null) => {
@@ -349,14 +329,13 @@ function DatePickerContent({
   };
 
   const calendarOptions = {
+    defaultFocusedValue: normalizedToday,
     selectionMode: 'single' as const,
     value: currentValue,
     onChange: handleValueChange,
     minValue: minimumDate,
     maxValue: maximumDate,
     isDisabled: disabled,
-    focusedValue: focusedDate,
-    onFocusChange: setFocusedDate,
     firstDayOfWeek: 'sun' as const,
   };
   const state = useCalendarState({
@@ -373,16 +352,19 @@ function DatePickerContent({
   const { buttonProps: previousButtonAriaProps } = useButton(prevButtonProps, previousButtonRef);
   const { buttonProps: nextButtonAriaProps } = useButton(nextButtonProps, nextButtonRef);
 
-  const selectedMonth = focusedDate.month;
-  const selectedYear = focusedDate.year;
-  const years = Array.from(
-    { length: VISIBLE_PICKER_ROWS },
-    (_, index) => selectedYear - PICKER_CENTER_OFFSET + index,
-  );
-  const months = Array.from({ length: 12 }, (_, index) => index + 1);
+  const selectedMonth = state.focusedDate.month;
+  const selectedYear = state.focusedDate.year;
+  const years = getYearOptions(selectedYear, minimumDate, maximumDate);
+  const months = getMonthOptions(selectedYear, minimumDate, maximumDate);
 
   const updateVisibleMonth = (year: number, month: number) => {
-    setFocusedDate(new CalendarDate(year, month, 1));
+    const nextFocusedDate = new CalendarDate(
+      year,
+      getSelectableMonth(year, month, minimumDate, maximumDate),
+      1,
+    );
+
+    state.setFocusedDate(nextFocusedDate);
   };
 
   return (
@@ -417,11 +399,11 @@ function DatePickerContent({
               aria-hidden="true"
               className="text-[var(--color-fg-neutral)]"
               name={isYearMonthOpen ? 'chevronUp' : 'chevronDown'}
-              size={24}
+              size={16}
             />
           </button>
 
-          <div className="flex items-center gap-[16px]">
+          <div className="flex items-center gap-[38px]">
             <button
               {...previousButtonAriaProps}
               aria-label="이전 달"
@@ -430,7 +412,7 @@ function DatePickerContent({
               ref={previousButtonRef}
               type="button"
             >
-              <Icon aria-hidden="true" name="chevronLeft" size={24} />
+              <Icon aria-hidden="true" name="chevronLeft" size={16} />
             </button>
             <button
               {...nextButtonAriaProps}
@@ -440,7 +422,7 @@ function DatePickerContent({
               ref={nextButtonRef}
               type="button"
             >
-              <Icon aria-hidden="true" name="chevronRight" size={24} />
+              <Icon aria-hidden="true" name="chevronRight" size={16} />
             </button>
           </div>
         </div>
@@ -450,25 +432,27 @@ function DatePickerContent({
             <div className="relative h-[260px] overflow-hidden" data-date-picker-panel="year-month">
               <div
                 aria-hidden="true"
-                className="absolute inset-x-0 top-[104px] z-10 h-[52px] rounded-[12px] bg-[var(--color-bg-neutral-weak)]"
+                className="absolute inset-x-0 top-[104px] z-0 h-[52px] rounded-[12px] bg-[var(--color-bg-neutral-weak)]"
               />
-              <PickerColumn
-                aria-label="연도"
-                disabled={disabled}
-                name="year"
-                onValueChange={(year) => updateVisibleMonth(year, selectedMonth)}
-                options={years}
-                value={selectedYear}
-              />
-              <PickerColumn
-                aria-label="월"
-                className="left-1/2"
-                disabled={disabled}
-                name="month"
-                onValueChange={(month) => updateVisibleMonth(selectedYear, month)}
-                options={months}
-                value={selectedMonth}
-              />
+              <WheelPickerWrapper className="date-picker-wheel-wrapper absolute inset-0 z-10">
+                <PickerColumn
+                  aria-label="연도"
+                  disabled={disabled}
+                  name="year"
+                  onValueChange={(year) => updateVisibleMonth(year, selectedMonth)}
+                  options={years}
+                  value={selectedYear}
+                />
+                <PickerColumn
+                  aria-label="월"
+                  className="left-1/2"
+                  disabled={disabled}
+                  name="month"
+                  onValueChange={(month) => updateVisibleMonth(selectedYear, month)}
+                  options={months}
+                  value={selectedMonth}
+                />
+              </WheelPickerWrapper>
               <ScrollFog />
             </div>
           ) : (

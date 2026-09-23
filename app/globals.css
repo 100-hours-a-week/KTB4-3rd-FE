@@ -32,6 +32,55 @@ textarea {
   font: inherit;
 }
 
+.date-picker-wheel [data-rwp] {
+  height: 260px !important;
+  -webkit-mask-image: none;
+  mask-image: none;
+}
+
+.date-picker-wheel-wrapper {
+  position: absolute !important;
+  inset: 0;
+}
+
+.date-picker-wheel [data-rwp-highlight-wrapper] {
+  z-index: 1;
+  border-radius: 12px;
+  background-color: var(--color-bg-neutral-weak);
+}
+
+.date-picker-wheel [data-rwp-option],
+.date-picker-wheel [data-rwp-highlight-item] {
+  width: 100%;
+  border-radius: 12px;
+}
+
+.date-picker-wheel-text {
+  color: var(--color-fg-disabled);
+  font-size: var(--font-size-t11);
+  font-weight: var(--font-weight-regular);
+  line-height: var(--line-height-t11);
+  transition:
+    color 200ms ease-out,
+    font-size 200ms ease-out,
+    line-height 200ms ease-out,
+    font-weight 200ms ease-out,
+    transform 200ms ease-out;
+}
+
+.date-picker-wheel [data-rwp-highlight-item] .date-picker-wheel-text {
+  color: var(--color-fg-neutral);
+  font-size: var(--font-size-t12);
+  font-weight: var(--font-weight-bold);
+  line-height: var(--line-height-t12);
+  transform: translateY(1px);
+}
+
+.date-picker-wheel [data-rwp-option][data-disabled] .date-picker-wheel-text,
+.date-picker-wheel [data-rwp-highlight-item][data-disabled] .date-picker-wheel-text {
+  color: var(--color-fg-disabled);
+}
+
 .time-picker-wheel [data-rwp] {
   height: 224px !important;
   -webkit-mask-image: none;
