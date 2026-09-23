@@ -3,6 +3,9 @@ export type LocationSearchResult = {
   placeName: string;
   distance: string;
   roadAddress: string;
+  latitude?: number;
+  longitude?: number;
+  placeUrl?: string;
 };
 
 export type LocationSelection = {

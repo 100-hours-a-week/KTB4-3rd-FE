@@ -8,10 +8,10 @@ import { Input } from '@/shared/ui/input';
 import { Text } from '@/shared/ui/text';
 
 import {
-  defaultLocationSearchResults,
   type LocationSearchResult,
   type LocationSelection,
 } from '@/features/location-search/model/location';
+import { useKakaoPlaceSearch } from '@/features/location-search/model/use-kakao-place-search';
 
 type LocationField = 'departure' | 'destination';
 
@@ -46,7 +46,7 @@ export function LocationSearchScreen({
   initialDestination = null,
   onCancel,
   onComplete,
-  results = defaultLocationSearchResults,
+  results,
 }: LocationSearchScreenProps) {
   const [departure, setDeparture] = useState<LocationSearchResult | null>(initialDeparture);
   const [destination, setDestination] = useState<LocationSearchResult | null>(initialDestination);
@@ -54,12 +54,15 @@ export function LocationSearchScreen({
     initialDeparture ? 'destination' : 'departure',
   );
   const [searchQuery, setSearchQuery] = useState('');
+  const kakaoSearch = useKakaoPlaceSearch(searchQuery, { enabled: results === undefined });
 
   const shouldShowResults =
-    searchQuery.trim().length > 0 || (activeField === 'destination' && !!departure);
+    searchQuery.trim().length > 0 ||
+    (results !== undefined && activeField === 'destination' && !!departure);
+  const searchResults = results ?? kakaoSearch.results;
   const visibleResults = useMemo(
-    () => results.filter((result) => matchesSearchResult(result, searchQuery)),
-    [results, searchQuery],
+    () => searchResults.filter((result) => matchesSearchResult(result, searchQuery)),
+    [searchQuery, searchResults],
   );
 
   const getFieldValue = (field: LocationField) => {
@@ -146,29 +149,57 @@ export function LocationSearchScreen({
 
         {shouldShowResults ? (
           <div aria-label="장소 검색 결과" className="mt-3 flex flex-col" role="list">
-            {visibleResults.map((result) => (
-              <div key={result.id} role="listitem">
-                <button
-                  aria-label={`${result.placeName}, ${result.distance}, ${result.roadAddress}`}
-                  className="flex h-[71px] w-full items-center overflow-hidden bg-[var(--color-bg-layer-default)] px-5 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
-                  onClick={() => handleResultSelect(result)}
-                  type="button"
-                >
-                  <span className="flex w-full flex-col items-start justify-center">
-                    <Text color="fg.neutral" variant="t5Regular">
-                      {result.placeName}
-                    </Text>
-                    <Text color="fg.neutralMuted" variant="t1Regular">
-                      {result.distance} <span aria-hidden="true">|</span> {result.roadAddress}
-                    </Text>
-                  </span>
-                </button>
-                <div
-                  aria-hidden="true"
-                  className="h-px w-full bg-[var(--color-stroke-neutral-subtle)]"
-                />
-              </div>
-            ))}
+            {results === undefined && kakaoSearch.status === 'loading' ? (
+              <p aria-live="polite" className="px-5 py-4" role="status">
+                <Text color="fg.neutralMuted" variant="t1Regular">
+                  장소를 검색 중이에요.
+                </Text>
+              </p>
+            ) : null}
+            {results === undefined && kakaoSearch.status === 'empty' ? (
+              <p aria-live="polite" className="px-5 py-4" role="status">
+                <Text color="fg.neutralMuted" variant="t1Regular">
+                  검색 결과가 없어요.
+                </Text>
+              </p>
+            ) : null}
+            {results === undefined && kakaoSearch.status === 'error' ? (
+              <p aria-live="polite" className="px-5 py-4" role="status">
+                <Text color="fg.neutralMuted" variant="t1Regular">
+                  장소를 검색할 수 없어요.
+                </Text>
+              </p>
+            ) : null}
+            {results !== undefined || kakaoSearch.status === 'success'
+              ? visibleResults.map((result) => (
+                  <div key={result.id} role="listitem">
+                    <button
+                      aria-label={`${result.placeName}${result.distance ? `, ${result.distance}` : ''}, ${result.roadAddress}`}
+                      className="flex h-[71px] w-full items-center overflow-hidden bg-[var(--color-bg-layer-default)] px-5 text-left focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
+                      onClick={() => handleResultSelect(result)}
+                      type="button"
+                    >
+                      <span className="flex w-full flex-col items-start justify-center">
+                        <Text color="fg.neutral" variant="t5Regular">
+                          {result.placeName}
+                        </Text>
+                        <Text color="fg.neutralMuted" variant="t1Regular">
+                          {result.distance ? (
+                            <>
+                              {result.distance} <span aria-hidden="true">|</span>{' '}
+                            </>
+                          ) : null}
+                          {result.roadAddress}
+                        </Text>
+                      </span>
+                    </button>
+                    <div
+                      aria-hidden="true"
+                      className="h-px w-full bg-[var(--color-stroke-neutral-subtle)]"
+                    />
+                  </div>
+                ))
+              : null}
           </div>
         ) : null}
       </main>

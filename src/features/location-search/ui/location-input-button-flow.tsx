@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { LocationInputButton } from '@/shared/ui/location-input-button';
 
 import {
-  defaultLocationSearchResults,
   type LocationSearchResult,
   type LocationSelection,
 } from '@/features/location-search/model/location';
@@ -21,7 +20,7 @@ export type LocationInputButtonFlowProps = {
 export function LocationInputButtonFlow({
   initialSelection = null,
   onComplete,
-  results = defaultLocationSearchResults,
+  results,
 }: LocationInputButtonFlowProps) {
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [selection, setSelection] = useState<LocationSelection | null>(initialSelection);
