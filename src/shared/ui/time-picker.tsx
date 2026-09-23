@@ -153,7 +153,7 @@ function TimePickerColumn({
       <WheelPicker
         classNames={{
           highlightItem: 'time-picker-wheel-highlight flex justify-center',
-          highlightWrapper: 'time-picker-wheel-highlight-wrapper',
+          highlightWrapper: 'time-picker-wheel-highlight-wrapper z-10 rounded-[12px] bg-[#eaecf0]',
           optionItem: 'time-picker-wheel-option flex justify-center',
         }}
         infinite={infinite}
