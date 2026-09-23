@@ -11,7 +11,7 @@ describe('DateInputButton', () => {
   it('날짜를 기본 표시 형식으로 렌더링한다', () => {
     render(<DateInputButton value={new Date(2026, 8, 23)} />);
 
-    expect(screen.getByRole('button', { name: '날짜 선택' })).toHaveTextContent('2026.09.23');
+    expect(screen.getByRole('button', { name: '날짜 선택' })).toHaveTextContent('2026/09/23');
     expect(screen.getByRole('button', { name: '입력값 지우기' })).toBeInTheDocument();
   });
 
@@ -34,7 +34,7 @@ describe('DateInputButton', () => {
     await waitFor(() => {
       expect(screen.queryByRole('heading', { name: '날짜' })).not.toBeInTheDocument();
     });
-    expect(screen.getByRole('button', { name: '날짜 선택' })).toHaveTextContent('2026.09.25');
+    expect(screen.getByRole('button', { name: '날짜 선택' })).toHaveTextContent('2026/09/25');
   });
 
   it('사용처에서 바텀시트 제목을 지정할 수 있다', () => {
