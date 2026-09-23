@@ -36,17 +36,6 @@ export const Playground: Story = {
   render: (args) => <ControlledTimePicker {...args} />,
 };
 
-export const Morning: Story = {
-  args: {
-    value: {
-      period: '오전',
-      hour: 9,
-      minute: 10,
-    },
-  },
-  render: (args) => <ControlledTimePicker {...args} />,
-};
-
 export const Disabled: Story = {
   args: {
     disabled: true,
