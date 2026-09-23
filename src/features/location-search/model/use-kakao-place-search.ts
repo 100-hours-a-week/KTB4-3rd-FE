@@ -44,7 +44,12 @@ export function useKakaoPlaceSearch(
 
     const currentRequestId = ++requestId.current;
     const timeoutId = window.setTimeout(() => {
-      setState({ error: null, query: normalizedQuery, results: [], status: 'loading' });
+      setState((previousState) => ({
+        error: null,
+        query: normalizedQuery,
+        results: previousState.results,
+        status: 'loading',
+      }));
 
       searchKakaoPlaces(normalizedQuery).then(
         (results) => {
@@ -84,7 +89,7 @@ export function useKakaoPlaceSearch(
   }
 
   if (state.query !== normalizedQuery) {
-    return { error: null, results: [], status: 'loading' };
+    return { error: null, results: state.results, status: 'loading' };
   }
 
   return {

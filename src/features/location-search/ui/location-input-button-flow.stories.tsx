@@ -13,9 +13,6 @@ const meta = {
       defaultViewport: 'mobile2',
     },
   },
-  args: {
-    results: defaultLocationSearchResults,
-  },
 } satisfies Meta<typeof LocationInputButtonFlow>;
 
 export default meta;
@@ -23,3 +20,9 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const Playground: Story = {};
+
+export const StaticPreview: Story = {
+  args: {
+    results: defaultLocationSearchResults,
+  },
+};

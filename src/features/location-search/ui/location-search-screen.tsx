@@ -61,8 +61,11 @@ export function LocationSearchScreen({
     (results !== undefined && activeField === 'destination' && !!departure);
   const searchResults = results ?? kakaoSearch.results;
   const visibleResults = useMemo(
-    () => searchResults.filter((result) => matchesSearchResult(result, searchQuery)),
-    [searchQuery, searchResults],
+    () =>
+      results === undefined
+        ? searchResults
+        : searchResults.filter((result) => matchesSearchResult(result, searchQuery)),
+    [results, searchQuery, searchResults],
   );
 
   const getFieldValue = (field: LocationField) => {
@@ -149,7 +152,9 @@ export function LocationSearchScreen({
 
         {shouldShowResults ? (
           <div aria-label="장소 검색 결과" className="mt-3 flex flex-col" role="list">
-            {results === undefined && kakaoSearch.status === 'loading' ? (
+            {results === undefined &&
+            kakaoSearch.status === 'loading' &&
+            !kakaoSearch.results.length ? (
               <p aria-live="polite" className="px-5 py-4" role="status">
                 <Text color="fg.neutralMuted" variant="t1Regular">
                   장소를 검색 중이에요.
