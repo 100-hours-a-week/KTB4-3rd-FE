@@ -6,6 +6,7 @@ import {
   LogOut,
   MessageSquare,
   MessageSquareWarning,
+  Search,
   UserRoundX,
   type LucideProps,
 } from 'lucide-react';
@@ -67,6 +68,7 @@ const iconRegistry = {
   document: { type: 'mask', source: '/icons/seed/icon_document_fill.svg' },
   logOut: { type: 'lucide', component: LogOut },
   messageSquareWarning: { type: 'lucide', component: MessageSquareWarning },
+  search: { type: 'lucide', component: Search },
   userRoundX: { type: 'lucide', component: UserRoundX },
   exclamationmarkCircleFill: {
     type: 'mask',
