@@ -91,6 +91,20 @@ describe('BottomSheet', () => {
     expect(screen.getByRole('heading', { name: '게시글' })).toBeInTheDocument();
   });
 
+  it('allows a dismissible sheet to close from Escape', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+
+    render(
+      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('can hide the backdrop for an inline map sheet', () => {
     render(
       <BottomSheet defaultOpen showBackdrop={false} title="게시글">

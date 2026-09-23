@@ -32,7 +32,14 @@ type Story = StoryObj<typeof meta>;
 function ControlledTimeInputButton(args: TimeInputButtonProps) {
   const [value, setValue] = useState<TimePickerValue | null>(args.value ?? null);
 
-  return <TimeInputButton {...args} onClear={() => setValue(null)} value={value} />;
+  return (
+    <TimeInputButton
+      {...args}
+      onClear={() => setValue(null)}
+      onValueChange={setValue}
+      value={value}
+    />
+  );
 }
 
 export const Playground: Story = {
@@ -50,4 +57,11 @@ export const Disabled: Story = {
   args: {
     disabled: true,
   },
+};
+
+export const CustomBottomSheetTitle: Story = {
+  args: {
+    bottomSheetTitle: '약속 시간',
+  },
+  render: (args) => <ControlledTimeInputButton {...args} />,
 };

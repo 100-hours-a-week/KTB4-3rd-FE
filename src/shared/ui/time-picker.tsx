@@ -47,7 +47,7 @@ const TIME_PERIODS = ['오전', '오후'] as const satisfies readonly TimePeriod
 const TIME_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const satisfies readonly TimeHour[];
 const TIME_MINUTES = [0, 10, 20, 30, 40, 50] as const satisfies readonly TimeMinute[];
 
-const DEFAULT_TIME: TimePickerValue = {
+export const DEFAULT_TIME_PICKER_VALUE: TimePickerValue = {
   period: '오후',
   hour: 6,
   minute: 40,
@@ -92,9 +92,9 @@ function isTimeMinute(value: number | undefined): value is TimeMinute {
 
 function normalizeTimeValue(value?: Partial<TimePickerValue>): TimePickerValue {
   return {
-    period: isTimePeriod(value?.period) ? value.period : DEFAULT_TIME.period,
-    hour: isTimeHour(value?.hour) ? value.hour : DEFAULT_TIME.hour,
-    minute: isTimeMinute(value?.minute) ? value.minute : DEFAULT_TIME.minute,
+    period: isTimePeriod(value?.period) ? value.period : DEFAULT_TIME_PICKER_VALUE.period,
+    hour: isTimeHour(value?.hour) ? value.hour : DEFAULT_TIME_PICKER_VALUE.hour,
+    minute: isTimeMinute(value?.minute) ? value.minute : DEFAULT_TIME_PICKER_VALUE.minute,
   };
 }
 
@@ -175,7 +175,9 @@ export function TimePicker({
   disabled = false,
   className,
 }: TimePickerProps) {
-  const [internalValue, setInternalValue] = useState(() => normalizeTimeValue(defaultValue));
+  const [internalValue, setInternalValue] = useState(() =>
+    normalizeTimeValue(defaultValue ?? DEFAULT_TIME_PICKER_VALUE),
+  );
   const currentValue = value === undefined ? internalValue : normalizeTimeValue(value);
 
   const updateColumnValue = (name: TimePickerColumnName, nextValue: string) => {

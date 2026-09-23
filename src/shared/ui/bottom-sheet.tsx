@@ -23,6 +23,8 @@ export type BottomSheetProps = {
   onSnapPointChange?: (snapPoint: BottomSheetSnapPoint | null) => void;
 
   modal?: BottomSheetModal;
+  /** Allows the sheet to close from dismissive interactions or controlled state changes. */
+  dismissible?: boolean;
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
@@ -87,6 +89,7 @@ export function BottomSheet({
   snapPoint,
   onSnapPointChange,
   modal = true,
+  dismissible = false,
   title,
   description,
   children,
@@ -113,12 +116,12 @@ export function BottomSheet({
   const activeSnapPoint = isSnapPointControlled ? resolvedSnapPoint : internalSnapPoint;
 
   const handleOpenChange = (nextOpen: boolean, eventDetails: Drawer.Root.ChangeEventDetails) => {
-    if (!nextOpen) {
+    if (!nextOpen && !dismissible) {
       eventDetails.cancel();
       return;
     }
 
-    onOpenChange?.(true);
+    onOpenChange?.(nextOpen);
   };
 
   const handleSnapPointChange = (
