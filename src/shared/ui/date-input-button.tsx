@@ -102,9 +102,9 @@ export const DateInputButton = forwardRef<ComponentRef<typeof InputButton>, Date
     };
 
     const resolvedBottomSheetProps: DateInputButtonBottomSheetProps = {
-      defaultSnapPoint: 0.7,
+      defaultSnapPoint: 0.9,
       minHeight: 'auto',
-      snapPoints: [0.5, 0.7],
+      snapPoints: [0.7, 0.9],
       ...bottomSheetProps,
     };
 
