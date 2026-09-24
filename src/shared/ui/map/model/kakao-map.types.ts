@@ -58,10 +58,46 @@ export type KakaoGeocoder = {
   ) => void;
 };
 
+export type KakaoPlace = {
+  address_name: string;
+  category_group_code?: string;
+  category_name?: string;
+  distance?: string;
+  id: string;
+  place_name: string;
+  place_url?: string;
+  phone?: string;
+  road_address_name?: string;
+  x: string;
+  y: string;
+};
+
+export type KakaoPlaceSearchOptions = {
+  category_group_code?: string;
+  page?: number;
+  radius?: number;
+  size?: number;
+  sort?: 'ACCURACY' | 'DISTANCE';
+  x?: string;
+  y?: string;
+};
+
+export type KakaoPlaces = {
+  keywordSearch: (
+    keyword: string,
+    callback: (data: KakaoPlace[], status: string) => void,
+    options?: KakaoPlaceSearchOptions,
+  ) => void;
+};
+
 export type KakaoServicesApi = {
   Geocoder: new () => KakaoGeocoder;
+  Places: new () => KakaoPlaces;
   Status: {
+    ERROR?: string;
     OK: string;
+    RESULT_NOT_FOUND?: string;
+    ZERO_RESULT?: string;
   };
 };
 
