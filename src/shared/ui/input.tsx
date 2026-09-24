@@ -23,6 +23,8 @@ type InputOwnProps = {
   onClear?: () => void;
   /** Visual invalid state. `aria-invalid` is also recognized when provided. */
   invalid?: boolean;
+  /** Keep the default border width while the input is focused. */
+  disableFocusBorder?: boolean;
   /** Class applied to the native input element. */
   inputClassName?: string;
   /** Class applied to the input surface. */
@@ -75,6 +77,7 @@ export const Input = forwardRef<ComponentRef<typeof BaseInput>, InputProps>(
       clearButton,
       onClear,
       invalid,
+      disableFocusBorder = false,
       value,
       onValueChange,
       disabled = false,
@@ -104,7 +107,8 @@ export const Input = forwardRef<ComponentRef<typeof BaseInput>, InputProps>(
         <div
           className={cn(
             'flex h-[52px] w-full items-center gap-[var(--dimension-x2)] overflow-hidden rounded-[12px] border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-layer-default)] px-[var(--dimension-x4)] py-[15px] transition-colors',
-            'focus-within:border-2 focus-within:border-[var(--color-stroke-neutral-contrast)]',
+            !disableFocusBorder &&
+              'focus-within:border-2 focus-within:border-[var(--color-stroke-neutral-contrast)]',
             'data-[invalid=true]:border-2 data-[invalid=true]:border-[var(--color-stroke-critical-solid)]',
             'data-[invalid=true]:focus-within:border-[var(--color-stroke-critical-solid)]',
             'data-[readonly=true]:bg-[var(--color-bg-neutral-weak)] data-[readonly=true]:focus-within:border-[var(--color-stroke-neutral-weak)]',
