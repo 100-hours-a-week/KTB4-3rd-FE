@@ -1,11 +1,12 @@
 'use client';
 
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage, type MapPinMarkerVariant } from '@/entities/map-pin';
 import { PostList, type Post, type PostDetail } from '@/entities/post';
 import { CompanionPostDetail, CommunityPostDetail } from '@/features/post-detail';
 import { PostCreateFab } from '@/features/post-create';
+import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { BottomSheet, type BottomSheetSnapPoint } from '@/shared/ui/bottom-sheet';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Avatar } from '@/shared/ui/avatar';
@@ -20,6 +21,7 @@ import {
   type MapLocationError,
   type MapMarker,
   type MapRef,
+  type MapViewport,
 } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 
@@ -102,6 +104,35 @@ const mockPosts: PositionedPost[] = [
       capacity: 4,
       departure_at: '2026-09-22T11:00:00.000Z',
       is_expired: false,
+    },
+  },
+  {
+    pinVariant: 'accompany',
+    position: { lat: 37.3945, lng: 127.1112 },
+    post: {
+      type: 'COMPANION',
+      id: 10,
+      title: '판교역 → 강남역',
+      author: { nickname: '우림', profile_image_url: null },
+      transport: 'TAXI',
+      distance_m: 320,
+      current_count: 2,
+      capacity: 4,
+      departure_at: '2026-09-05T08:30:00.000Z',
+      is_expired: false,
+    },
+  },
+  {
+    pinVariant: 'community',
+    position: { lat: 37.5123, lng: 127.041 },
+    post: {
+      type: 'COMMUNITY',
+      id: 88,
+      title: '판교역 근처 카페 추천',
+      author: { nickname: '루디', profile_image_url: null },
+      distance_m: 540,
+      comment_count: 3,
+      created_at: '2026-09-03T10:00:00.000Z',
     },
   },
 ];
@@ -196,9 +227,48 @@ const mockPostDetails: Record<number, PostDetail> = {
       { id: 6, nickname: '타요', profile_image_url: null },
     ],
   },
+  10: {
+    type: 'COMPANION',
+    id: 10,
+    title: '판교역 → 강남역',
+    description: '택시 같이 타실 분 구해요',
+    author: { nickname: '우림', profile_image_url: null },
+    transport: 'TAXI',
+    distance_m: 320,
+    current_count: 2,
+    capacity: 4,
+    departure_at: '2026-09-05T08:30:00.000Z',
+    departure_location: '판교역',
+    destination: '강남역',
+    is_expired: false,
+    participants: [
+      { id: 10, nickname: '우림', profile_image_url: null },
+      { id: 11, nickname: '루디', profile_image_url: null },
+    ],
+  },
+  88: {
+    type: 'COMMUNITY',
+    id: 88,
+    title: '판교역 근처 카페 추천',
+    description: '조용히 작업하기 좋은 카페가 있을까요?',
+    author: { nickname: '루디', profile_image_url: null },
+    distance_m: 540,
+    comment_count: 3,
+    created_at: '2026-09-03T10:00:00.000Z',
+    comments: [],
+  },
 };
 
 const posts = mockPosts.map(({ post }) => post);
+
+function getMapPinMarkerId(pin: MapPin) {
+  return `${pin.type}-${pin.id}`;
+}
+
+function getMapPinMarkerVariant(pin: MapPin): MapPinMarkerVariant {
+  return pin.type === 'COMPANION' ? 'accompany' : 'community';
+}
+
 type SelectedPost = PositionedPost & {
   detail: PostDetail;
 };
@@ -214,31 +284,76 @@ function PostDetailContent({ post }: { post: PostDetail }) {
 export function HomePage() {
   const mapRef = useRef<MapRef>(null);
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
+  const [selectedMapPinId, setSelectedMapPinId] = useState<string | null>(null);
+  const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
+  const [isLocationReady, setIsLocationReady] = useState(false);
   const [activeSnapPoint, setActiveSnapPoint] = useState<BottomSheetSnapPoint>('110px');
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
   const [locationError, setLocationError] = useState<MapLocationError | null>(null);
-  const mapMarkers = mockPosts.map(({ pinVariant, position, post }) => ({
-    id: post.id,
-    image: getMapPinMarkerImage(pinVariant),
-    isSelected: selectedPost?.post.id === post.id,
-    position,
-    title: post.title,
-  }));
 
-  const handleMarkerClick = useCallback((marker: MapMarker) => {
-    const nextPost = mockPosts.find(({ post }) => post.id === marker.id);
+  const mapPinsQuery = useMapPinsQuery(mapViewport, isLocationReady);
+  const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
+  const mapMarkers = useMemo(
+    () =>
+      mapPins.map((pin) => ({
+        id: getMapPinMarkerId(pin),
+        image: getMapPinMarkerImage(getMapPinMarkerVariant(pin)),
+        isSelected: selectedMapPinId === getMapPinMarkerId(pin),
+        position: { lat: pin.lat, lng: pin.lng },
+        title: `${pin.type === 'COMPANION' ? '동행모집' : '커뮤니티'} 게시글 ${pin.id}`,
+      })),
+    [mapPins, selectedMapPinId],
+  );
 
-    if (!nextPost) {
-      return;
-    }
+  const handleMarkerClick = useCallback(
+    (marker: MapMarker) => {
+      const mapPinId = String(marker.id);
+      const mapPin = mapPins.find((pin) => getMapPinMarkerId(pin) === mapPinId);
 
-    const detail = mockPostDetails[nextPost.post.id];
+      if (mapPin) {
+        setSelectedMapPinId(mapPinId);
 
-    if (!detail) {
-      return;
-    }
+        const nextPost = mockPosts.find(
+          ({ post }) => post.id === mapPin.id && post.type === mapPin.type,
+        );
+        const detail = nextPost ? mockPostDetails[nextPost.post.id] : undefined;
 
-    setSelectedPost({ ...nextPost, detail });
+        if (nextPost && detail) {
+          setSelectedPost({
+            ...nextPost,
+            detail,
+            position: { lat: mapPin.lat, lng: mapPin.lng },
+          });
+        }
+
+        return;
+      }
+
+      const nextPost = mockPosts.find(({ post }) => post.id === marker.id);
+
+      if (!nextPost) {
+        return;
+      }
+
+      const detail = mockPostDetails[nextPost.post.id];
+
+      if (!detail) {
+        return;
+      }
+
+      setSelectedPost({ ...nextPost, detail });
+    },
+    [mapPins],
+  );
+
+  const handleMapViewportChange = useCallback((viewport: MapViewport) => {
+    setSelectedMapPinId(null);
+    setMapViewport(viewport);
+  }, []);
+
+  const handleUserLocationChange = useCallback(() => {
+    setIsLocationReady(true);
+    setMapViewport(null);
   }, []);
 
   const handleSnapPointChange = useCallback((snapPoint: BottomSheetSnapPoint | null) => {
@@ -284,11 +399,14 @@ export function HomePage() {
           markerFocusOffset={{ y: 160 }}
           markers={mapMarkers}
           onMarkerClick={handleMarkerClick}
+          onUserLocationChange={handleUserLocationChange}
           onUserLocationError={handleLocationError}
+          onViewportChange={handleMapViewportChange}
           ref={mapRef}
           locateOnMount
           showCurrentLocationButton={false}
           showZoomControls={false}
+          viewportDebounceMs={300}
         >
           <PostCreateFab
             className="absolute right-4 bottom-[190px] z-30"
@@ -346,6 +464,7 @@ export function HomePage() {
           onOpenChange={(open) => {
             if (!open) {
               setSelectedPost(null);
+              setSelectedMapPinId(null);
             }
           }}
           open

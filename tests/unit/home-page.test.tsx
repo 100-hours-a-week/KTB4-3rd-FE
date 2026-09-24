@@ -1,9 +1,11 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { forwardRef, useImperativeHandle, type ReactNode } from 'react';
+import { forwardRef, useEffect, useImperativeHandle, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import type { MapLocationError, MapMarker, MapRef } from '@/shared/ui/map';
+import { QueryProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
+import type { MapCoordinate } from '@/shared/types/common';
+import type { MapLocationError, MapMarker, MapRef, MapViewport } from '@/shared/ui/map';
 
 const mockLocationError = vi.hoisted(() => ({
   code: 'permission-denied' as MapLocationError['code'],
@@ -15,12 +17,24 @@ type MockMapProps = {
   children?: ReactNode;
   markers?: readonly MapMarker[];
   onMarkerClick?: (marker: MapMarker) => void;
+  onUserLocationChange?: (coordinate: MapCoordinate) => void;
   onUserLocationError?: (error: MapLocationError) => void;
+  onViewportChange?: (viewport: MapViewport) => void;
 };
 
 vi.mock('@/shared/ui/map', () => ({
   Map: forwardRef<MapRef, MockMapProps>(
-    ({ children, markers = [], onMarkerClick, onUserLocationError }, ref) => {
+    (
+      {
+        children,
+        markers = [],
+        onMarkerClick,
+        onUserLocationChange,
+        onUserLocationError,
+        onViewportChange,
+      },
+      ref,
+    ) => {
       useImperativeHandle(
         ref,
         () => ({
@@ -32,6 +46,16 @@ vi.mock('@/shared/ui/map', () => ({
         }),
         [onUserLocationError],
       );
+
+      useEffect(() => {
+        onUserLocationChange?.({ lat: 37.3945, lng: 127.1112 });
+        onViewportChange?.({
+          northEast: { lat: 37.6, lng: 127.2 },
+          northWest: { lat: 37.6, lng: 127 },
+          southEast: { lat: 37.3, lng: 127.2 },
+          southWest: { lat: 37.3, lng: 127 },
+        });
+      }, [onUserLocationChange, onViewportChange]);
 
       return (
         <div data-testid="map">
@@ -55,6 +79,14 @@ vi.mock('@/shared/ui/map', () => ({
   ),
 }));
 
+function renderHomePage() {
+  return render(
+    <QueryProvider>
+      <HomePage />
+    </QueryProvider>,
+  );
+}
+
 const navigation = vi.hoisted(() => ({
   push: vi.fn<(path: string) => void>(),
 }));
@@ -74,7 +106,7 @@ afterEach(() => {
 
 describe('HomePage', () => {
   it('지도, 글쓰기 버튼, 바텀시트, 하단 네비게이션을 조합한다', () => {
-    render(<HomePage />);
+    renderHomePage();
 
     expect(screen.getByTestId('map')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument();
@@ -87,54 +119,59 @@ describe('HomePage', () => {
   });
 
   it('글쓰기 FAB을 누르면 글 작성 위치 등록 화면으로 이동한다', () => {
-    render(<HomePage />);
+    renderHomePage();
 
     fireEvent.click(screen.getByRole('button', { hidden: true, name: '글쓰기' }));
 
     expect(navigation.push).toHaveBeenCalledWith('/post/create/location');
   });
 
-  it('커뮤니티 핀을 클릭하면 커뮤니티 상세 데이터가 바텀모달에 표시된다', () => {
-    render(<HomePage />);
+  it('지도 핀 목록 조회 응답을 지도 마커로 렌더링한다', async () => {
+    renderHomePage();
 
-    fireEvent.click(screen.getByTestId('map-marker-3'));
+    expect(await screen.findByTestId('map-marker-COMPANION-10')).toBeInTheDocument();
+    expect(screen.getByTestId('map-marker-COMMUNITY-88')).toBeInTheDocument();
+  });
+
+  it('지도 핀을 클릭하면 해당 핀만 선택 상태로 표시된다', async () => {
+    renderHomePage();
+
+    const communityMarker = await screen.findByTestId('map-marker-COMMUNITY-88');
+    fireEvent.click(communityMarker);
+
+    expect(communityMarker).toHaveAttribute('data-selected', 'true');
+    expect(screen.getByTestId('map-marker-COMPANION-10')).toHaveAttribute('data-selected', 'false');
+  });
+
+  it('커뮤니티 핀을 클릭하면 커뮤니티 상세 데이터가 바텀모달에 표시된다', async () => {
+    renderHomePage();
+
+    fireEvent.click(await screen.findByTestId('map-marker-COMMUNITY-88'));
 
     expect(screen.getByRole('dialog', { name: '바텀모달' })).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: '판교역 근처 카페 추천' })).toBeInTheDocument();
-    expect(screen.getByText('조용히 작업하기 좋은 카페를 찾고 있어요.')).toBeInTheDocument();
+    expect(screen.getByText('조용히 작업하기 좋은 카페가 있을까요?')).toBeInTheDocument();
     expect(screen.getByText('루디')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
   });
 
-  it('선택한 핀만 선택 상태로 표시된다', () => {
-    render(<HomePage />);
+  it('동행 모집 핀을 클릭하면 동행 모집 상세 데이터가 바텀모달에 표시된다', async () => {
+    renderHomePage();
 
-    fireEvent.click(screen.getByTestId('map-marker-3'));
-
-    expect(screen.getByTestId('map-marker-3')).toHaveAttribute('data-selected', 'true');
-    expect(screen.getByTestId('map-marker-1')).toHaveAttribute('data-selected', 'false');
-  });
-
-  it('동행 모집 핀을 클릭하면 동행 모집 상세 데이터가 바텀모달에 표시된다', () => {
-    render(<HomePage />);
-
-    fireEvent.click(screen.getByTestId('map-marker-1'));
+    fireEvent.click(await screen.findByTestId('map-marker-COMPANION-10'));
 
     expect(screen.getByRole('dialog', { name: '바텀모달' })).toBeInTheDocument();
-    expect(
-      screen.getByRole('heading', { name: '판교역까지 카풀할 분 찾아요' }),
-    ).toBeInTheDocument();
-    expect(screen.getByText('서울역에서 판교역까지 함께 이동할 분을 구해요.')).toBeInTheDocument();
-    expect(screen.getByText('서울역 10번 출구')).toBeInTheDocument();
-    expect(screen.getByText('판교역 1번 출구')).toBeInTheDocument();
+    expect(screen.getByRole('heading', { name: '판교역 → 강남역' })).toBeInTheDocument();
+    expect(screen.getByText('판교역')).toBeInTheDocument();
+    expect(screen.getByText('강남역')).toBeInTheDocument();
     expect(screen.getByText('2 / 4명')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
   });
 
-  it('바텀모달을 닫으면 선택한 게시글 상세가 사라진다', () => {
-    render(<HomePage />);
+  it('바텀모달을 닫으면 선택한 게시글 상세가 사라진다', async () => {
+    renderHomePage();
 
-    fireEvent.click(screen.getByTestId('map-marker-3'));
+    fireEvent.click(await screen.findByTestId('map-marker-COMMUNITY-88'));
     fireEvent.click(screen.getByRole('button', { name: '닫기' }));
 
     expect(screen.queryByRole('dialog', { name: '바텀모달' })).not.toBeInTheDocument();
@@ -145,7 +182,7 @@ describe('HomePage', () => {
   });
 
   it('위치 권한이 없으면 허용하기와 닫기 버튼이 있는 dialog를 표시한다', () => {
-    render(<HomePage />);
+    renderHomePage();
 
     fireEvent.click(screen.getByRole('button', { hidden: true, name: '현재 위치로 이동' }));
 
@@ -166,7 +203,7 @@ describe('HomePage', () => {
   });
 
   it('허용하기를 누르면 브라우저 위치 권한 요청을 호출한다', () => {
-    render(<HomePage />);
+    renderHomePage();
 
     fireEvent.click(screen.getByRole('button', { hidden: true, name: '현재 위치로 이동' }));
     fireEvent.click(screen.getByRole('button', { name: '허용하기' }));
@@ -178,7 +215,7 @@ describe('HomePage', () => {
     mockLocationError.code = 'timeout';
     mockLocationError.message = '현재 위치 확인 시간이 초과되었습니다.';
 
-    render(<HomePage />);
+    renderHomePage();
 
     fireEvent.click(screen.getByRole('button', { hidden: true, name: '현재 위치로 이동' }));
 
