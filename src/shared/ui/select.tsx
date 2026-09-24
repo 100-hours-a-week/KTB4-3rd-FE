@@ -1,6 +1,9 @@
 import { Select as BaseSelect } from '@base-ui/react/select';
 import {
   forwardRef,
+  useCallback,
+  useEffect,
+  useState,
   type ComponentPropsWithoutRef,
   type ComponentRef,
   type ForwardedRef,
@@ -47,6 +50,28 @@ function hasOption<T extends string>(options: SelectOption<T>[], value: T | null
   return value !== null && options.some((option) => option.value === value);
 }
 
+type SelectScrollState = {
+  canScroll: boolean;
+  isAtBottom: boolean;
+  isAtTop: boolean;
+};
+
+const INITIAL_SCROLL_STATE: SelectScrollState = {
+  canScroll: false,
+  isAtBottom: true,
+  isAtTop: true,
+};
+
+function readScrollState(element: HTMLDivElement): SelectScrollState {
+  const maxScrollTop = Math.max(0, element.scrollHeight - element.clientHeight);
+
+  return {
+    canScroll: maxScrollTop > 0,
+    isAtBottom: maxScrollTop === 0 || element.scrollTop >= maxScrollTop - 1,
+    isAtTop: element.scrollTop <= 0,
+  };
+}
+
 function SelectComponent<T extends string = string>(
   {
     options,
@@ -71,6 +96,41 @@ function SelectComponent<T extends string = string>(
   const normalizedValue = hasOption(options, value) ? value : null;
   const selectedOption = options.find((option) => option.value === normalizedValue);
   const triggerPrefixIcon = selectedOption?.prefixIcon ?? prefixIcon;
+  const [listElement, setListElement] = useState<HTMLDivElement | null>(null);
+  const [scrollState, setScrollState] = useState<SelectScrollState>(INITIAL_SCROLL_STATE);
+
+  const updateScrollState = useCallback(() => {
+    if (!listElement) {
+      return;
+    }
+
+    setScrollState(readScrollState(listElement));
+  }, [listElement]);
+
+  useEffect(() => {
+    if (!listElement) {
+      return;
+    }
+
+    listElement.addEventListener('scroll', updateScrollState);
+    const initialUpdate = window.setTimeout(updateScrollState, 0);
+
+    if (typeof ResizeObserver === 'undefined') {
+      return () => {
+        window.clearTimeout(initialUpdate);
+        listElement.removeEventListener('scroll', updateScrollState);
+      };
+    }
+
+    const resizeObserver = new ResizeObserver(updateScrollState);
+    resizeObserver.observe(listElement);
+
+    return () => {
+      window.clearTimeout(initialUpdate);
+      listElement.removeEventListener('scroll', updateScrollState);
+      resizeObserver.disconnect();
+    };
+  }, [listElement, options.length, updateScrollState]);
 
   return (
     <div className={cn('w-full', className)}>
@@ -138,69 +198,86 @@ function SelectComponent<T extends string = string>(
           >
             <BaseSelect.Popup
               className={cn(
-                'flex max-h-[min(480px,var(--available-height))] flex-col gap-[var(--dimension-x2)] overflow-y-auto rounded-[12px] bg-[var(--color-bg-layer-floating)] px-[var(--dimension-x1)] py-[var(--dimension-x2)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] outline-none',
+                'relative max-h-[min(200px,var(--available-height))] overflow-hidden rounded-[12px] bg-[var(--color-bg-layer-floating)] shadow-[0_8px_24px_rgba(0,0,0,0.12)] outline-none',
                 'data-[starting-style]:scale-y-0 data-[starting-style]:opacity-0 data-[ending-style]:scale-y-0 data-[ending-style]:opacity-0',
                 'origin-top transition-[scale,opacity] duration-200 ease-out',
               )}
             >
-              {options.length > 0 ? (
-                options.map((option) => (
-                  <BaseSelect.Item
-                    className={cn(
-                      'group relative flex w-full cursor-pointer items-center rounded-[12px] px-[var(--dimension-x4)] outline-none',
-                      'gap-[var(--dimension-x3)] py-[var(--dimension-x3)] text-[var(--font-size-t5)] leading-[var(--line-height-t5)]',
-                      'active:bg-[var(--color-bg-transparent-pressed)] data-[pressed]:bg-[var(--color-bg-transparent-pressed)]',
-                      'data-[highlighted]:bg-[var(--color-bg-neutral-weak)]',
-                      'data-[disabled]:pointer-events-none data-[disabled]:text-[var(--color-fg-disabled)]',
-                    )}
-                    disabled={option.disabled}
-                    key={option.value}
-                    value={option.value}
-                  >
-                    {option.prefixIcon !== null && option.prefixIcon !== undefined ? (
-                      <span
-                        aria-hidden="true"
-                        className={cn(
-                          'inline-flex shrink-0 items-center justify-center text-[var(--color-fg-neutral)] group-data-[disabled]:text-[var(--color-fg-disabled)]',
-                          'size-[22px]',
-                        )}
-                      >
-                        {option.prefixIcon}
-                      </span>
-                    ) : null}
-                    <span className="flex min-w-0 flex-1 flex-col gap-[var(--dimension-x0_5)]">
-                      <BaseSelect.ItemText className="font-normal break-words text-[var(--color-fg-neutral)] group-data-[disabled]:text-[var(--color-fg-disabled)]">
-                        {option.label}
-                      </BaseSelect.ItemText>
-                      {option.description !== null && option.description !== undefined ? (
+              <BaseSelect.List
+                className="flex max-h-[200px] flex-col gap-[var(--dimension-x2)] overflow-y-auto overscroll-contain px-[var(--dimension-x1)] py-[var(--dimension-x2)]"
+                ref={setListElement}
+              >
+                {options.length > 0 ? (
+                  options.map((option) => (
+                    <BaseSelect.Item
+                      className={cn(
+                        'group relative flex w-full cursor-pointer items-center rounded-[12px] px-[var(--dimension-x4)] outline-none',
+                        'gap-[var(--dimension-x3)] py-[var(--dimension-x3)] text-[var(--font-size-t5)] leading-[var(--line-height-t5)]',
+                        'active:bg-[var(--color-bg-transparent-pressed)] data-[pressed]:bg-[var(--color-bg-transparent-pressed)]',
+                        'data-[highlighted]:bg-[var(--color-bg-neutral-weak)]',
+                        'data-[disabled]:pointer-events-none data-[disabled]:text-[var(--color-fg-disabled)]',
+                      )}
+                      disabled={option.disabled}
+                      key={option.value}
+                      value={option.value}
+                    >
+                      {option.prefixIcon !== null && option.prefixIcon !== undefined ? (
                         <span
+                          aria-hidden="true"
                           className={cn(
-                            'break-words font-normal text-[var(--color-fg-neutral-subtle)] group-data-[disabled]:text-[var(--color-fg-disabled)]',
-                            'text-[var(--font-size-t3)] leading-[var(--line-height-t3)]',
+                            'inline-flex shrink-0 items-center justify-center text-[var(--color-fg-neutral)] group-data-[disabled]:text-[var(--color-fg-disabled)]',
+                            'size-[22px]',
                           )}
                         >
-                          {option.description}
+                          {option.prefixIcon}
                         </span>
                       ) : null}
-                    </span>
-                    <BaseSelect.ItemIndicator
-                      className={cn(
-                        'inline-flex shrink-0 items-center justify-center text-[var(--color-fg-neutral)] group-data-[disabled]:text-[var(--color-fg-disabled)]',
-                        'size-[var(--dimension-x3_5)]',
-                      )}
-                    >
-                      <Icon aria-hidden="true" name="checkmark" size="100%" />
-                    </BaseSelect.ItemIndicator>
-                  </BaseSelect.Item>
-                ))
-              ) : (
+                      <span className="flex min-w-0 flex-1 flex-col gap-[var(--dimension-x0_5)]">
+                        <BaseSelect.ItemText className="font-normal break-words text-[var(--color-fg-neutral)] group-data-[disabled]:text-[var(--color-fg-disabled)]">
+                          {option.label}
+                        </BaseSelect.ItemText>
+                        {option.description !== null && option.description !== undefined ? (
+                          <span
+                            className={cn(
+                              'break-words font-normal text-[var(--color-fg-neutral-subtle)] group-data-[disabled]:text-[var(--color-fg-disabled)]',
+                              'text-[var(--font-size-t3)] leading-[var(--line-height-t3)]',
+                            )}
+                          >
+                            {option.description}
+                          </span>
+                        ) : null}
+                      </span>
+                      <BaseSelect.ItemIndicator
+                        className={cn(
+                          'inline-flex shrink-0 items-center justify-center text-[var(--color-fg-neutral)] group-data-[disabled]:text-[var(--color-fg-disabled)]',
+                          'size-[var(--dimension-x3_5)]',
+                        )}
+                      >
+                        <Icon aria-hidden="true" name="checkmark" size="100%" />
+                      </BaseSelect.ItemIndicator>
+                    </BaseSelect.Item>
+                  ))
+                ) : (
+                  <div
+                    className="px-[var(--dimension-x3)] py-[var(--dimension-x3)] leading-[var(--line-height-t4)] text-[var(--color-fg-neutral-muted)] text-[var(--font-size-t4)]"
+                    role="status"
+                  >
+                    선택 가능한 항목이 없습니다
+                  </div>
+                )}
+              </BaseSelect.List>
+              {scrollState.canScroll && !scrollState.isAtTop ? (
                 <div
-                  className="px-[var(--dimension-x3)] py-[var(--dimension-x3)] leading-[var(--line-height-t4)] text-[var(--color-fg-neutral-muted)] text-[var(--font-size-t4)]"
-                  role="status"
-                >
-                  선택 가능한 항목이 없습니다
-                </div>
-              )}
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 top-0 z-10 h-8 bg-gradient-to-b from-[var(--color-bg-layer-floating)] to-transparent"
+                />
+              ) : null}
+              {scrollState.canScroll && !scrollState.isAtBottom ? (
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-8 bg-gradient-to-t from-[var(--color-bg-layer-floating)] to-transparent"
+                />
+              ) : null}
             </BaseSelect.Popup>
           </BaseSelect.Positioner>
         </BaseSelect.Portal>

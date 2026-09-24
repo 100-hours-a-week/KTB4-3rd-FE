@@ -25,7 +25,7 @@ const categoryBackground = {
 } as const;
 
 const transportLabel: Record<CompanionTransport, string> = {
-  CAR: '자차',
+  OWNED_CAR: '자차',
   TAXI: '택시',
   SUBWAY: '지하철',
   BUS: '버스',

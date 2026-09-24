@@ -54,6 +54,38 @@ describe('Select', () => {
     expect(handleValueChange).toHaveBeenCalledWith('subway');
   });
 
+  it('스크롤 가능한 목록은 네 항목 높이의 내부 스크롤 영역과 포그를 사용한다', () => {
+    const scrollOptions: SelectOption[] = Array.from({ length: 9 }, (_, index) => ({
+      value: String(index + 1),
+      label: `${index + 1}명`,
+    }));
+
+    render(
+      <Select
+        aria-label="모집 인원"
+        onValueChange={() => {}}
+        options={scrollOptions}
+        value={null}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('combobox', { name: '모집 인원' }));
+
+    const list = screen.getByRole('listbox');
+    expect(list).toHaveClass('max-h-[200px]', 'overflow-y-auto', 'overscroll-contain');
+    expect(list.parentElement).toHaveClass('overflow-hidden');
+
+    Object.defineProperties(list, {
+      clientHeight: { configurable: true, value: 240 },
+      scrollHeight: { configurable: true, value: 494 },
+      scrollTop: { configurable: true, value: 100, writable: true },
+    });
+    fireEvent.scroll(list);
+
+    expect(document.querySelector('[class*="bg-gradient-to-b"]')).toBeInTheDocument();
+    expect(document.querySelector('[class*="bg-gradient-to-t"]')).toBeInTheDocument();
+  });
+
   it('비활성화된 옵션은 선택하지 않는다', () => {
     const handleValueChange = vi.fn<(value: Transport | null) => void>();
 
