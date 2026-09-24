@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { getMapPins, type MapPinsQuery } from './get-map-pins';
+import { getMapPins } from './get-map-pins';
+import type { MapPinsQuery } from './map-pins.types';
 
 export const mapPinsQueries = {
   all: () => ['map-pins'] as const,
