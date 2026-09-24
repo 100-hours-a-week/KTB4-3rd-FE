@@ -15,6 +15,7 @@ describe('ChatComposer', () => {
     );
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
     expect(screen.getByRole('textbox').closest('form')).toHaveClass('h-[78px]');
+    expect(screen.getByRole('textbox').parentElement).not.toHaveClass('focus-within:border-2');
   });
 
   it('메시지를 입력하면 전송 버튼을 활성화하고 제출 후 값을 비운다', () => {

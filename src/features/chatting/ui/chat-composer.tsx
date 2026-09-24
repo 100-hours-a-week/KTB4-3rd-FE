@@ -64,6 +64,7 @@ export function ChatComposer({
         <Input
           aria-label="메시지 입력"
           disabled={disabled}
+          disableFocusBorder
           inputClassName="!text-[length:var(--font-size-t5)] !leading-[var(--line-height-t5)] !font-[var(--font-weight-regular)] placeholder:!text-[var(--color-fg-neutral-muted)]"
           onValueChange={handleValueChange}
           placeholder={placeholder}

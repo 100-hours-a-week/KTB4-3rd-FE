@@ -89,6 +89,12 @@ describe('Input', () => {
     expect(input.parentElement).toHaveAttribute('data-invalid', 'true');
   });
 
+  it('keeps the default border width when focus border is disabled', () => {
+    render(<Input aria-label="메시지" disableFocusBorder onValueChange={() => {}} value="" />);
+
+    expect(screen.getByRole('textbox').parentElement).not.toHaveClass('focus-within:border-2');
+  });
+
   it('forwards native input props and disabled state', () => {
     render(
       <Input
