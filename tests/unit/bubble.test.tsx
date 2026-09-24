@@ -30,7 +30,7 @@ describe('Bubble', () => {
     expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
     const loadingArea = screen.getByRole('status').querySelector('[aria-hidden="true"]');
 
-    expect(loadingArea).toHaveClass('ml-2');
+    expect(loadingArea).toHaveClass('ml-3');
     expect(loadingArea?.querySelectorAll('span')).toHaveLength(3);
 
     rerender(

@@ -53,7 +53,7 @@ export function Bubble({
       {isLoading ? (
         <span
           aria-hidden="true"
-          className="ml-2 flex w-[43px] shrink-0 items-center justify-between"
+          className="ml-3 flex w-[43px] shrink-0 items-center justify-between"
         >
           <span
             className={cn('size-[10px] rounded-full bg-[var(--color-fg-brand)]', styles.loadingDot)}
