@@ -28,7 +28,10 @@ describe('Bubble', () => {
     );
 
     expect(screen.getByRole('status')).toHaveAttribute('aria-busy', 'true');
-    expect(screen.getByRole('status').querySelectorAll('[aria-hidden="true"]')).toHaveLength(1);
+    const loadingArea = screen.getByRole('status').querySelector('[aria-hidden="true"]');
+
+    expect(loadingArea).toHaveClass('ml-2');
+    expect(loadingArea?.querySelectorAll('span')).toHaveLength(3);
 
     rerender(
       <Bubble loading variant="me">
