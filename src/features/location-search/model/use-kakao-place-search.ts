@@ -69,8 +69,14 @@ export function useKakaoPlaceSearch(
             return;
           }
 
+          const searchError =
+            error instanceof Error ? error : new Error('장소 검색에 실패했습니다.');
+
+          // eslint-disable-next-line no-console
+          console.error('[LocationSearch] 카카오 장소 검색에 실패했습니다.', searchError);
+
           setState({
-            error: error instanceof Error ? error : new Error('장소 검색에 실패했습니다.'),
+            error: searchError,
             query: normalizedQuery,
             results: [],
             status: 'error',
