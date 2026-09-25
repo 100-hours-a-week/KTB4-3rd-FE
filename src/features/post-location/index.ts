@@ -1,4 +1,8 @@
-export { LocationSearchHeader, type LocationSearchHeaderProps } from './ui/location-search-header';
+export {
+  LocationSearchHeader,
+  type LocationSearchHeaderProps,
+  type LocationSearchHeaderResult,
+} from './ui/location-search-header';
 export {
   LocationSelectionFooter,
   type LocationSelectionFooterProps,
