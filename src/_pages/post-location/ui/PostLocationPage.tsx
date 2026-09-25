@@ -29,7 +29,6 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
 
   const handleCenterChange = useCallback((center: MapCoordinate) => {
     setSelectedCoordinate(center);
-    setLocationDetails(null);
   }, []);
 
   useEffect(() => {
@@ -46,9 +45,7 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
         }
       })
       .catch(() => {
-        if (!cancelled) {
-          setLocationDetails(null);
-        }
+        // 새 위치 조회에 실패해도 이전 위치 정보를 유지해 화면이 깜빡이지 않도록 한다.
       });
 
     return () => {

@@ -3,7 +3,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 import { PostLocationPage } from '@/_pages/post-location';
-import type { reverseGeocodeLocation as ReverseGeocodeLocation } from '@/features/post-location';
+import type {
+  ReverseGeocodedLocation,
+  reverseGeocodeLocation as ReverseGeocodeLocation,
+} from '@/features/post-location';
 import type { MapCoordinate } from '@/shared/types/common';
 
 const { reverseGeocodeLocation } = vi.hoisted(() => ({
@@ -25,6 +28,9 @@ vi.mock('@/shared/ui/map', () => ({
     <div className={className} data-testid="map" role="application">
       <button type="button" onClick={() => onCenterChange?.({ lat: 37.3945, lng: 127.1112 })}>
         테스트 지도 중앙 이동
+      </button>
+      <button type="button" onClick={() => onCenterChange?.({ lat: 37.402, lng: 127.108 })}>
+        테스트 지도 다른 위치 이동
       </button>
       {selectionMarker ? (
         <span
@@ -113,5 +119,39 @@ describe('PostLocationPage', () => {
 
     expect(await screen.findByText('경기 성남시 분당구 판교역로 160')).toBeInTheDocument();
     expect(reverseGeocodeLocation).toHaveBeenCalledWith({ lat: 37.3945, lng: 127.1112 });
+  });
+
+  it('새 위치를 조회하는 동안 이전 위치 정보를 유지한다', async () => {
+    const firstLocation = {
+      placeName: '판교역',
+      roadAddress: '경기 성남시 분당구 판교역로 160',
+    };
+    const secondLocation = {
+      placeName: '강남역',
+      roadAddress: '서울특별시 강남구 강남대로 396',
+    };
+    let resolveSecondLocation: ((location: ReverseGeocodedLocation) => void) | undefined;
+
+    reverseGeocodeLocation.mockResolvedValueOnce(firstLocation).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          resolveSecondLocation = resolve;
+        }),
+    );
+
+    render(<PostLocationPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트 지도 중앙 이동' }));
+    expect(await screen.findByText(firstLocation.roadAddress)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트 지도 다른 위치 이동' }));
+
+    expect(screen.getByText(firstLocation.roadAddress)).toBeInTheDocument();
+    expect(screen.queryByText(secondLocation.roadAddress)).not.toBeInTheDocument();
+
+    resolveSecondLocation?.(secondLocation);
+
+    expect(await screen.findByText(secondLocation.roadAddress)).toBeInTheDocument();
+    expect(screen.queryByText(firstLocation.roadAddress)).not.toBeInTheDocument();
   });
 });
