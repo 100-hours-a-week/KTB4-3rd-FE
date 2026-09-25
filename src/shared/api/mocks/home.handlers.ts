@@ -64,6 +64,79 @@ const MOCK_COMMUNITY_POST = {
   created_at: '2026-09-03T10:00:00.000Z',
 } as const;
 
+const MOCK_HOME_COMPANION_POSTS = [
+  {
+    id: 1,
+    title: '판교역까지 카풀할 분 찾아요',
+    content: '판교역까지 함께 이동할 분을 찾아요.',
+    transport_type: 'OWNED_CAR',
+    origin_name: '서울역 10번 출구',
+    dest_name: '판교역 1번 출구',
+    departure_at: '2026-09-22T09:40:00.000Z',
+    is_expired: false,
+    current_count: 2,
+    capacity: 4,
+    is_full: false,
+    author: { nickname: '모여타' },
+    participants: [{ nickname: '모여타', profile_image_url: null }],
+    chat_room_id: 101,
+    joined: false,
+  },
+  {
+    id: 2,
+    title: '신논현까지 함께 이동해요',
+    content: '신논현역까지 같이 이동하실 분을 구해요.',
+    transport_type: 'SUBWAY',
+    origin_name: '서울역 12번 출구',
+    dest_name: '신논현역 3번 출구',
+    departure_at: '2026-09-22T10:20:00.000Z',
+    is_expired: false,
+    current_count: 1,
+    capacity: 4,
+    is_full: false,
+    author: { nickname: '타요' },
+    participants: [{ nickname: '타요', profile_image_url: null }],
+    chat_room_id: null,
+    joined: false,
+  },
+  {
+    id: 5,
+    title: '퇴근길 카풀 동행 구해요',
+    content: '퇴근 시간에 강남역까지 카풀하실 분을 구해요.',
+    transport_type: 'OWNED_CAR',
+    origin_name: '판교역 2번 출구',
+    dest_name: '강남역 10번 출구',
+    departure_at: '2026-09-22T11:00:00.000Z',
+    is_expired: false,
+    current_count: 3,
+    capacity: 4,
+    is_full: false,
+    author: { nickname: '길동' },
+    participants: [{ nickname: '길동', profile_image_url: null }],
+    chat_room_id: 105,
+    joined: true,
+  },
+] as const;
+
+const MOCK_HOME_COMMUNITY_POSTS = [
+  {
+    id: 3,
+    title: '판교역 근처 카페 추천',
+    content: '판교역 근처에서 조용히 작업하기 좋은 카페를 추천해주세요.',
+    author: { nickname: '루디' },
+    comment_count: 3,
+    created_at: '2026-09-22T08:00:00.000Z',
+  },
+  {
+    id: 4,
+    title: '오늘 저녁 같이 먹어요',
+    content: '오늘 저녁 판교역 근처에서 같이 식사하실 분 있나요?',
+    author: { nickname: '하루' },
+    comment_count: 5,
+    created_at: '2026-09-22T08:30:00.000Z',
+  },
+] as const;
+
 type ViewportField = 'sw_lat' | 'sw_lng' | 'ne_lat' | 'ne_lng';
 type CoordinateField = ViewportField | 'lat' | 'lng';
 type Viewport = Record<ViewportField, number>;
@@ -218,6 +291,9 @@ export const homeHandlers = [
   }),
   http.get('*/companion-posts/:companionId', ({ params }) => {
     const companionId = Number(params.companionId);
+    const companionPost = [MOCK_COMPANION_POST, ...MOCK_HOME_COMPANION_POSTS].find(
+      (post) => post.id === companionId,
+    );
 
     if (companionId === 11) {
       return errorResponse('취소된 동행모집입니다', 'COMPANION_POST_CLOSED', null, 410);
@@ -227,17 +303,20 @@ export const homeHandlers = [
       return errorResponse('서버 오류가 발생했습니다', 'INTERNAL_SERVER_ERROR', null, 500);
     }
 
-    if (companionId !== MOCK_COMPANION_POST.id) {
+    if (!companionPost) {
       return errorResponse('존재하지 않는 게시글입니다', 'POST_NOT_FOUND', null, 404);
     }
 
     return HttpResponse.json({
       message: '조회에 성공했습니다',
-      data: MOCK_COMPANION_POST,
+      data: companionPost,
     });
   }),
   http.get('*/community-posts/:postId', ({ params }) => {
     const postId = Number(params.postId);
+    const communityPost = [MOCK_COMMUNITY_POST, ...MOCK_HOME_COMMUNITY_POSTS].find(
+      (post) => post.id === postId,
+    );
 
     if (postId === 89) {
       return errorResponse('삭제된 게시글입니다', 'GONE', null, 410);
@@ -247,13 +326,13 @@ export const homeHandlers = [
       return errorResponse('서버 오류가 발생했습니다', 'INTERNAL_SERVER_ERROR', null, 500);
     }
 
-    if (postId !== MOCK_COMMUNITY_POST.id) {
+    if (!communityPost) {
       return errorResponse('존재하지 않는 게시글입니다', 'POST_NOT_FOUND', null, 404);
     }
 
     return HttpResponse.json({
       message: '조회에 성공했습니다',
-      data: MOCK_COMMUNITY_POST,
+      data: communityPost,
     });
   }),
 ];

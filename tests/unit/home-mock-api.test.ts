@@ -102,6 +102,19 @@ describe('홈 화면 MSW mock API', () => {
     });
   });
 
+  it('홈 화면의 mock 핀에 대응하는 동행모집 상세를 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/companion-posts/1');
+    const body =
+      await readJson<ApiResponse<{ id: number; title: string; content: string }>>(response);
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({
+      id: 1,
+      title: '판교역까지 카풀할 분 찾아요',
+      content: '판교역까지 함께 이동할 분을 찾아요.',
+    });
+  });
+
   it('취소된 동행모집 게시글은 410으로 반환한다', async () => {
     const response = await fetch('http://localhost:8080/companion-posts/11');
     const body = await readJson<ApiErrorResponse>(response);
@@ -147,6 +160,19 @@ describe('홈 화면 MSW mock API', () => {
       id: 88,
       title: '판교역 근처 카페 추천',
       comment_count: 3,
+    });
+  });
+
+  it('홈 화면의 mock 핀에 대응하는 커뮤니티 상세를 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/community-posts/3');
+    const body =
+      await readJson<ApiResponse<{ id: number; title: string; content: string }>>(response);
+
+    expect(response.status).toBe(200);
+    expect(body.data).toMatchObject({
+      id: 3,
+      title: '판교역 근처 카페 추천',
+      content: '판교역 근처에서 조용히 작업하기 좋은 카페를 추천해주세요.',
     });
   });
 
