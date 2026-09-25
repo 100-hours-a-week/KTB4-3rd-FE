@@ -44,7 +44,7 @@ describe('Menu', () => {
     expect(screen.getByRole('menu')).toHaveClass('w-[186px]', 'rounded-[16px]');
     expect(screen.getAllByRole('menuitem')).toHaveLength(2);
     expect(screen.getByRole('menuitem', { name: '채팅 신고하기' })).toHaveClass(
-      'p-[var(--dimension-x1)]',
+      'p-[var(--dimension-x2)]',
     );
     expect(screen.getByRole('menuitem', { name: '유저 신고하기' })).toBeInTheDocument();
   });
