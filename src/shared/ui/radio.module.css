@@ -90,33 +90,33 @@
   height: 10px;
 }
 
-.root[data-selection-color='figma'][data-size='medium'] .indicator[data-checked] {
+.root[data-selection-color='default'][data-size='medium'] .indicator[data-checked] {
   background-image: url('/icons/radio/medium-selected-enabled.svg');
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
 
-.root[data-selection-color='figma'][data-size='large'] .indicator[data-checked] {
+.root[data-selection-color='default'][data-size='large'] .indicator[data-checked] {
   background-image: url('/icons/radio/large-selected-enabled.svg');
   background-position: center;
   background-repeat: no-repeat;
   background-size: 100% 100%;
 }
 
-.row:active .root[data-selection-color='figma'][data-size='medium'] .indicator[data-checked] {
+.row:active .root[data-selection-color='default'][data-size='medium'] .indicator[data-checked] {
   background-image: url('/icons/radio/medium-selected-pressed.svg');
 }
 
-.row:active .root[data-selection-color='figma'][data-size='large'] .indicator[data-checked] {
+.row:active .root[data-selection-color='default'][data-size='large'] .indicator[data-checked] {
   background-image: url('/icons/radio/large-selected-pressed.svg');
 }
 
-.root[data-disabled][data-selection-color='figma'][data-size='medium'] .indicator[data-checked] {
+.root[data-disabled][data-selection-color='default'][data-size='medium'] .indicator[data-checked] {
   background-image: url('/icons/radio/medium-selected-disabled.svg');
 }
 
-.root[data-disabled][data-selection-color='figma'][data-size='large'] .indicator[data-checked] {
+.root[data-disabled][data-selection-color='default'][data-size='large'] .indicator[data-checked] {
   background-image: url('/icons/radio/large-selected-disabled.svg');
 }
 

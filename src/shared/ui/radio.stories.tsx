@@ -12,7 +12,7 @@ import { Text } from './text';
 
 const sizes: RadioSize[] = ['medium', 'large'];
 const weights: RadioWeight[] = ['regular', 'bold'];
-const selectionColors: RadioSelectionColor[] = ['figma', 'brand'];
+const selectionColors: RadioSelectionColor[] = ['default', 'brand'];
 
 const meta = {
   title: 'Shared/Radio',
@@ -21,7 +21,7 @@ const meta = {
     label: 'Radio option',
     size: 'medium',
     weight: 'regular',
-    selectionColor: 'figma',
+    selectionColor: 'default',
     value: 'option',
     disabled: false,
   },

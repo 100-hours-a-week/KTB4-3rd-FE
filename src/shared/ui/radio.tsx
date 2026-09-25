@@ -15,7 +15,7 @@ import { Text } from './text';
 
 export type RadioSize = 'medium' | 'large';
 export type RadioWeight = 'regular' | 'bold';
-export type RadioSelectionColor = 'figma' | 'brand';
+export type RadioSelectionColor = 'default' | 'brand';
 
 type BaseRadioProps = ComponentPropsWithoutRef<typeof BaseRadio.Root>;
 
@@ -66,7 +66,7 @@ export const Radio = forwardRef<ComponentRef<typeof BaseRadio.Root>, RadioProps>
       id,
       label = 'Radio option',
       size = 'medium',
-      selectionColor = 'figma',
+      selectionColor = 'default',
       value,
       weight = 'regular',
       ...props

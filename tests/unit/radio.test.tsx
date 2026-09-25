@@ -17,7 +17,7 @@ describe('Radio', () => {
 
     expect(radio).toHaveAttribute('data-unchecked', '');
     expect(radio).toHaveAttribute('data-size', 'medium');
-    expect(radio).toHaveAttribute('data-selection-color', 'figma');
+    expect(radio).toHaveAttribute('data-selection-color', 'default');
     expect(screen.getByText('대중교통').className).toMatch(/t4Regular/);
   });
 
