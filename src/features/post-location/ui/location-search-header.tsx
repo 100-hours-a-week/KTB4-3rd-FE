@@ -31,14 +31,11 @@ export function LocationSearchHeader({
   };
 
   return (
-    <div
-      className={cn('relative w-full', className)}
-      data-testid="location-search-header"
-      role="search"
-    >
+    <div className={cn(className)} data-testid="location-search-header" role="search">
       <Input
         aria-label="장소·주소 검색"
         className="w-full"
+        disableFocusBorder
         inputClassName="text-[var(--font-size-t5)] leading-[var(--line-height-t5)] text-[var(--color-fg-neutral-muted)] placeholder:text-[var(--color-fg-neutral-muted)]"
         placeholder={placeholder}
         prefix={<BackButton href={backHref} />}

@@ -14,6 +14,8 @@ describe('LocationSearchHeader', () => {
     const searchInput = screen.getByRole('textbox', { name: '장소·주소 검색' });
 
     expect(searchInput).toHaveAttribute('placeholder', '장소 · 주소를 검색해보세요');
+    expect(screen.getByRole('search')).not.toHaveClass('w-full');
+    expect(searchInput.parentElement).not.toHaveClass('focus-within:border-2');
     expect(screen.getByRole('link', { name: '뒤로가기' })).toHaveAttribute('href', '/');
 
     fireEvent.change(searchInput, { target: { value: '판교역' } });

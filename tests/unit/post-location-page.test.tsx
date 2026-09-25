@@ -68,6 +68,7 @@ describe('PostLocationPage', () => {
     expect(screen.getByRole('main', { name: '글 등록 장소 선택' })).toBeInTheDocument();
     expect(screen.getByTestId('map')).toBeInTheDocument();
     expect(screen.getByRole('search')).toBeInTheDocument();
+    expect(screen.getByRole('search')).toHaveClass('z-50');
     expect(screen.getByRole('button', { name: '현재 위치로 이동' })).toHaveClass(
       'bottom-[248px]',
       'z-30',

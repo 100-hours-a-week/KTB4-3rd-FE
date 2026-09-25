@@ -81,7 +81,7 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
           />
         </Map>
 
-        <LocationSearchHeader className="absolute top-5 right-5 left-5 z-20" />
+        <LocationSearchHeader className="absolute top-5 right-5 left-5 z-50" />
       </main>
 
       <LocationSelectionFooter
