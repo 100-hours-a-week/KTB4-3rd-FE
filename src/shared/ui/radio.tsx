@@ -1,25 +1,23 @@
+import { Radio as BaseRadio } from '@base-ui/react/radio';
+import { RadioGroup as BaseRadioGroup } from '@base-ui/react/radio-group';
 import {
   forwardRef,
   useId,
-  type ChangeEventHandler,
   type ComponentPropsWithoutRef,
+  type ComponentRef,
   type ReactNode,
 } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
-import { Text } from './text';
-
 import styles from './radio.module.css';
+import { Text } from './text';
 
 export type RadioSize = 'medium' | 'large';
 export type RadioWeight = 'regular' | 'bold';
 export type RadioSelectionColor = 'figma' | 'brand';
 
-type RadioInputProps = Omit<
-  ComponentPropsWithoutRef<'input'>,
-  'children' | 'className' | 'size' | 'type'
->;
+type BaseRadioProps = ComponentPropsWithoutRef<typeof BaseRadio.Root>;
 
 type RadioOwnProps = {
   /** Label rendered next to the radio button. */
@@ -32,11 +30,15 @@ type RadioOwnProps = {
   selectionColor?: RadioSelectionColor;
   /** Class applied to the radio row. */
   className?: string;
-  /** Called when this radio becomes selected. */
-  onCheckedChange?: (checked: boolean) => void;
 };
 
-export type RadioProps = RadioInputProps & RadioOwnProps;
+export type RadioProps = Omit<BaseRadioProps, 'children' | 'className'> & RadioOwnProps;
+
+type BaseRadioGroupProps = ComponentPropsWithoutRef<typeof BaseRadioGroup>;
+
+export type RadioGroupProps = Omit<BaseRadioGroupProps, 'className'> & {
+  className?: string;
+};
 
 const textVariantBySizeAndWeight: Record<
   RadioSize,
@@ -52,23 +54,27 @@ const textVariantBySizeAndWeight: Record<
   },
 };
 
-export const Radio = forwardRef<HTMLInputElement, RadioProps>(
+export const RadioGroup = forwardRef<ComponentRef<typeof BaseRadioGroup>, RadioGroupProps>(
+  ({ className, ...props }, ref) => (
+    <BaseRadioGroup {...props} className={cn('flex flex-col', className)} ref={ref} />
+  ),
+);
+
+RadioGroup.displayName = 'RadioGroup';
+
+export const Radio = forwardRef<ComponentRef<typeof BaseRadio.Root>, RadioProps>(
   (
     {
       'aria-labelledby': ariaLabelledBy,
-      checked,
       className,
-      defaultChecked,
       disabled = false,
       id,
       label = 'Radio option',
-      onChange,
-      onCheckedChange,
-      required,
       size = 'medium',
       selectionColor = 'figma',
+      value,
       weight = 'regular',
-      ...inputProps
+      ...props
     },
     ref,
   ) => {
@@ -76,49 +82,33 @@ export const Radio = forwardRef<HTMLInputElement, RadioProps>(
     const radioId = id ?? generatedId;
     const labelId = `${radioId}-label`;
     const combinedAriaLabelledBy = [labelId, ariaLabelledBy].filter(Boolean).join(' ') || undefined;
-    const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
-      onChange?.(event);
-
-      if (event.currentTarget.checked) {
-        onCheckedChange?.(true);
-      }
-    };
 
     return (
       <label
         className={cn(
           styles.row,
           'group/radio flex w-fit cursor-pointer items-center gap-[var(--dimension-x2)] py-[var(--dimension-x1)]',
-          'data-[disabled]:cursor-not-allowed',
           className,
         )}
-        data-disabled={disabled || undefined}
         htmlFor={radioId}
       >
-        <input
-          {...inputProps}
+        <BaseRadio.Root
+          {...props}
           aria-labelledby={combinedAriaLabelledBy}
-          checked={checked}
-          className={styles.input}
-          defaultChecked={defaultChecked}
-          disabled={disabled}
-          id={radioId}
-          onChange={handleChange}
-          ref={ref}
-          required={required}
-          type="radio"
-        />
-
-        <span
-          aria-hidden="true"
-          className={styles.mark}
+          className={styles.root}
           data-selection-color={selectionColor}
           data-size={size}
-        />
+          disabled={disabled}
+          id={radioId}
+          ref={ref}
+          value={value}
+        >
+          <BaseRadio.Indicator className={styles.indicator} keepMounted />
+        </BaseRadio.Root>
 
         <Text
           as="span"
-          className="whitespace-nowrap group-data-[disabled]/radio:text-[var(--color-fg-disabled)]"
+          className={cn(styles.label, 'whitespace-nowrap')}
           id={labelId}
           variant={textVariantBySizeAndWeight[size][weight]}
         >

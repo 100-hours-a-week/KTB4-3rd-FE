@@ -1,7 +1,13 @@
 import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useState, type ComponentProps } from 'react';
 
-import { Radio, type RadioSelectionColor, type RadioSize, type RadioWeight } from './radio';
+import {
+  Radio,
+  RadioGroup,
+  type RadioSelectionColor,
+  type RadioSize,
+  type RadioWeight,
+} from './radio';
 import { Text } from './text';
 
 const sizes: RadioSize[] = ['medium', 'large'];
@@ -16,6 +22,7 @@ const meta = {
     size: 'medium',
     weight: 'regular',
     selectionColor: 'figma',
+    value: 'option',
     disabled: false,
   },
   argTypes: {
@@ -45,14 +52,30 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 function ControlledRadio(args: ComponentProps<typeof Radio>) {
-  const [checked, setChecked] = useState(args.checked ?? args.defaultChecked ?? false);
+  const [value, setValue] = useState(args.value);
 
-  return <Radio {...args} checked={checked} onCheckedChange={setChecked} />;
+  return (
+    <RadioGroup onValueChange={setValue} value={value}>
+      <Radio {...args} />
+    </RadioGroup>
+  );
+}
+
+function SingleRadio({
+  selected = false,
+  ...args
+}: ComponentProps<typeof Radio> & { selected?: boolean }) {
+  return (
+    <RadioGroup defaultValue={selected ? args.value : undefined}>
+      <Radio {...args} />
+    </RadioGroup>
+  );
 }
 
 type RadioStateExample = {
   label: string;
-  props?: Partial<ComponentProps<typeof Radio>>;
+  props?: Partial<Omit<ComponentProps<typeof Radio>, 'label' | 'value'>>;
+  selected?: boolean;
 };
 
 function RadioStateSection({ examples, title }: { examples: RadioStateExample[]; title: string }) {
@@ -62,8 +85,8 @@ function RadioStateSection({ examples, title }: { examples: RadioStateExample[];
         {title}
       </Text>
       <div className="grid grid-cols-2 gap-x-[var(--dimension-x4)] gap-y-[var(--dimension-x2)]">
-        {examples.map(({ label, props }) => (
-          <Radio key={label} {...props} label={label} />
+        {examples.map(({ label, props, selected }) => (
+          <SingleRadio {...props} key={label} label={label} selected={selected} value="option" />
         ))}
       </div>
     </section>
@@ -75,32 +98,30 @@ export const Playground: Story = {
 };
 
 export const Selected: Story = {
-  args: {
-    defaultChecked: true,
-  },
+  render: (args) => <SingleRadio {...args} selected />,
 };
 
 export const BrandSelection: Story = {
   args: {
-    defaultChecked: true,
     selectionColor: 'brand',
   },
+  render: (args) => <SingleRadio {...args} selected />,
 };
 
 export const Disabled: Story = {
   args: {
-    defaultChecked: true,
     disabled: true,
   },
+  render: (args) => <SingleRadio {...args} selected />,
 };
 
 export const Group: Story = {
   render: (args) => (
-    <div className="flex flex-col gap-[var(--dimension-x2)]">
-      <Radio {...args} defaultChecked name="transport" label="대중교통" value="public" />
-      <Radio {...args} name="transport" label="자차" value="car" />
-      <Radio {...args} name="transport" label="도보" value="walk" />
-    </div>
+    <RadioGroup defaultValue="public" className="gap-[var(--dimension-x2)]">
+      <Radio {...args} label="대중교통" value="public" />
+      <Radio {...args} label="자차" value="car" />
+      <Radio {...args} label="도보" value="walk" />
+    </RadioGroup>
   ),
 };
 
@@ -108,20 +129,20 @@ export const AllStates: Story = {
   render: () => (
     <div className="flex w-full max-w-[720px] flex-col gap-[var(--dimension-x6)]">
       <RadioStateSection
-        examples={[{ label: '미선택' }, { label: '선택됨', props: { defaultChecked: true } }]}
+        examples={[{ label: '미선택' }, { label: '선택됨', selected: true }]}
         title="Medium · Regular"
       />
       <RadioStateSection
         examples={[
           { label: '미선택', props: { weight: 'bold' } },
-          { label: '선택됨', props: { defaultChecked: true, weight: 'bold' } },
+          { label: '선택됨', props: { weight: 'bold' }, selected: true },
         ]}
         title="Medium · Bold"
       />
       <RadioStateSection
         examples={[
           { label: '미선택', props: { size: 'large' } },
-          { label: '선택됨', props: { defaultChecked: true, size: 'large' } },
+          { label: '선택됨', props: { size: 'large' }, selected: true },
         ]}
         title="Large · Regular"
       />
@@ -130,7 +151,8 @@ export const AllStates: Story = {
           { label: '미선택', props: { size: 'large', weight: 'bold' } },
           {
             label: '선택됨',
-            props: { defaultChecked: true, size: 'large', weight: 'bold' },
+            props: { size: 'large', weight: 'bold' },
+            selected: true,
           },
         ]}
         title="Large · Bold"
@@ -138,7 +160,7 @@ export const AllStates: Story = {
       <RadioStateSection
         examples={[
           { label: '비활성화 · 미선택', props: { disabled: true } },
-          { label: '비활성화 · 선택됨', props: { defaultChecked: true, disabled: true } },
+          { label: '비활성화 · 선택됨', props: { disabled: true }, selected: true },
         ]}
         title="Disabled"
       />
