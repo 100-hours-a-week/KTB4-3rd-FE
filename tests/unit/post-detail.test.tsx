@@ -15,7 +15,7 @@ const companionPost: CompanionPostDetailProps['post'] = {
   title: '택시 같이 타실 분 구해요!',
   description: '판교역 → 유스페이스까지 차 같이 타실 분을 찾아요.',
   author: { nickname: '우림', profile_image_url: null },
-  transport: 'TAXI',
+  transport_type: 'TAXI',
   distance_m: 320,
   current_count: 2,
   capacity: 4,

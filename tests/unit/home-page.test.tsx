@@ -133,6 +133,14 @@ describe('HomePage', () => {
     expect(screen.getByTestId('map-marker-COMMUNITY-88')).toBeInTheDocument();
   });
 
+  it('주변 게시글 목록 조회 응답을 바텀시트에 렌더링한다', async () => {
+    renderHomePage();
+
+    expect(await screen.findByRole('button', { name: /판교역 → 강남역/ })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /판교역 근처 카페 추천/ })).toBeInTheDocument();
+    expect(screen.getByText(/택시 · 320m/)).toBeInTheDocument();
+  });
+
   it('지도 핀을 클릭하면 해당 핀만 선택 상태로 표시된다', async () => {
     renderHomePage();
 

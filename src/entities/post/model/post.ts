@@ -12,7 +12,7 @@ export type CompanionPost = {
   id: number;
   title: string;
   author: PostAuthor;
-  transport: CompanionTransport;
+  transport_type: CompanionTransport;
   distance_m: number;
   current_count: number;
   capacity: number;

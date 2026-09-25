@@ -7,6 +7,7 @@ import { PostList, type Post, type PostDetail } from '@/entities/post';
 import { CompanionPostDetail, CommunityPostDetail } from '@/features/post-detail';
 import { PostCreateFab } from '@/features/post-create';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
+import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import { BottomSheet, type BottomSheetSnapPoint } from '@/shared/ui/bottom-sheet';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Avatar } from '@/shared/ui/avatar';
@@ -40,7 +41,7 @@ const mockPosts: PositionedPost[] = [
       id: 1,
       title: '판교역까지 카풀할 분 찾아요',
       author: { nickname: '모여타', profile_image_url: null },
-      transport: 'OWNED_CAR',
+      transport_type: 'OWNED_CAR',
       distance_m: 320,
       current_count: 2,
       capacity: 4,
@@ -56,7 +57,7 @@ const mockPosts: PositionedPost[] = [
       id: 2,
       title: '신논현까지 함께 이동해요',
       author: { nickname: '타요', profile_image_url: null },
-      transport: 'SUBWAY',
+      transport_type: 'SUBWAY',
       distance_m: 540,
       current_count: 1,
       capacity: 4,
@@ -98,7 +99,7 @@ const mockPosts: PositionedPost[] = [
       id: 5,
       title: '퇴근길 카풀 동행 구해요',
       author: { nickname: '길동', profile_image_url: null },
-      transport: 'OWNED_CAR',
+      transport_type: 'OWNED_CAR',
       distance_m: 1100,
       current_count: 3,
       capacity: 4,
@@ -114,7 +115,7 @@ const mockPosts: PositionedPost[] = [
       id: 10,
       title: '판교역 → 강남역',
       author: { nickname: '우림', profile_image_url: null },
-      transport: 'TAXI',
+      transport_type: 'TAXI',
       distance_m: 320,
       current_count: 2,
       capacity: 4,
@@ -144,7 +145,7 @@ const mockPostDetails: Record<number, PostDetail> = {
     title: '판교역까지 카풀할 분 찾아요',
     description: '서울역에서 판교역까지 함께 이동할 분을 구해요.',
     author: { nickname: '모여타', profile_image_url: null },
-    transport: 'OWNED_CAR',
+    transport_type: 'OWNED_CAR',
     distance_m: 320,
     current_count: 2,
     capacity: 4,
@@ -163,7 +164,7 @@ const mockPostDetails: Record<number, PostDetail> = {
     title: '신논현까지 함께 이동해요',
     description: '신논현역까지 지하철로 같이 이동해요.',
     author: { nickname: '타요', profile_image_url: null },
-    transport: 'SUBWAY',
+    transport_type: 'SUBWAY',
     distance_m: 540,
     current_count: 1,
     capacity: 4,
@@ -213,7 +214,7 @@ const mockPostDetails: Record<number, PostDetail> = {
     title: '퇴근길 카풀 동행 구해요',
     description: '퇴근 시간에 함께 이동할 분을 구해요.',
     author: { nickname: '길동', profile_image_url: null },
-    transport: 'OWNED_CAR',
+    transport_type: 'OWNED_CAR',
     distance_m: 1100,
     current_count: 3,
     capacity: 4,
@@ -233,7 +234,7 @@ const mockPostDetails: Record<number, PostDetail> = {
     title: '판교역 → 강남역',
     description: '택시 같이 타실 분 구해요',
     author: { nickname: '우림', profile_image_url: null },
-    transport: 'TAXI',
+    transport_type: 'TAXI',
     distance_m: 320,
     current_count: 2,
     capacity: 4,
@@ -259,8 +260,6 @@ const mockPostDetails: Record<number, PostDetail> = {
   },
 };
 
-const posts = mockPosts.map(({ post }) => post);
-
 function getMapPinMarkerId(pin: MapPin) {
   return `${pin.type}-${pin.id}`;
 }
@@ -285,6 +284,7 @@ export function HomePage() {
   const mapRef = useRef<MapRef>(null);
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
   const [selectedMapPinId, setSelectedMapPinId] = useState<string | null>(null);
+  const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const [isLocationReady, setIsLocationReady] = useState(false);
   const [activeSnapPoint, setActiveSnapPoint] = useState<BottomSheetSnapPoint>('110px');
@@ -293,6 +293,8 @@ export function HomePage() {
 
   const mapPinsQuery = useMapPinsQuery(mapViewport, isLocationReady);
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
+  const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
+  const posts = useMemo(() => nearbyPostsQuery.data?.data.items ?? [], [nearbyPostsQuery.data]);
   const mapMarkers = useMemo(
     () =>
       mapPins.map((pin) => ({
@@ -313,14 +315,17 @@ export function HomePage() {
       if (mapPin) {
         setSelectedMapPinId(mapPinId);
 
-        const nextPost = mockPosts.find(
+        const nearbyPost = posts.find((post) => post.id === mapPin.id && post.type === mapPin.type);
+        const mockPost = mockPosts.find(
           ({ post }) => post.id === mapPin.id && post.type === mapPin.type,
         );
-        const detail = nextPost ? mockPostDetails[nextPost.post.id] : undefined;
+        const nextPost = nearbyPost ?? mockPost?.post;
+        const detail = nextPost ? mockPostDetails[nextPost.id] : undefined;
 
         if (nextPost && detail) {
           setSelectedPost({
-            ...nextPost,
+            pinVariant: getMapPinMarkerVariant(mapPin),
+            post: nextPost,
             detail,
             position: { lat: mapPin.lat, lng: mapPin.lng },
           });
@@ -343,7 +348,7 @@ export function HomePage() {
 
       setSelectedPost({ ...nextPost, detail });
     },
-    [mapPins],
+    [mapPins, posts],
   );
 
   const handleMapViewportChange = useCallback((viewport: MapViewport) => {
@@ -351,7 +356,8 @@ export function HomePage() {
     setMapViewport(viewport);
   }, []);
 
-  const handleUserLocationChange = useCallback(() => {
+  const handleUserLocationChange = useCallback((coordinate: MapCoordinate) => {
+    setUserLocation(coordinate);
     setIsLocationReady(true);
     setMapViewport(null);
   }, []);
