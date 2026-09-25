@@ -20,15 +20,10 @@ export type RadioSelectionColor = 'figma' | 'brand';
 type BaseRadioProps = ComponentPropsWithoutRef<typeof BaseRadio.Root>;
 
 type RadioOwnProps = {
-  /** Label rendered next to the radio button. */
   label?: ReactNode;
-  /** Radio mark size from the design. */
   size?: RadioSize;
-  /** Label font weight from the design. */
   weight?: RadioWeight;
-  /** Color used for the selected radio mark. */
   selectionColor?: RadioSelectionColor;
-  /** Class applied to the radio row. */
   className?: string;
 };
 
