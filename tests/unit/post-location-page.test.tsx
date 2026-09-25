@@ -1,8 +1,13 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { PostLocationPage } from '@/_pages/post-location';
+import type { reverseGeocodeLocation as ReverseGeocodeLocation } from '@/features/post-location';
 import type { MapCoordinate } from '@/shared/types/common';
+
+const { reverseGeocodeLocation } = vi.hoisted(() => ({
+  reverseGeocodeLocation: vi.fn<typeof ReverseGeocodeLocation>(),
+}));
 
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
@@ -28,7 +33,20 @@ vi.mock('@/shared/ui/map', () => ({
   ),
 }));
 
-afterEach(cleanup);
+vi.mock('@/features/post-location', async () => {
+  const actual = await vi.importActual('@/features/post-location');
+
+  return { ...actual, reverseGeocodeLocation };
+});
+
+beforeEach(() => {
+  reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
+});
+
+afterEach(() => {
+  cleanup();
+  reverseGeocodeLocation.mockReset();
+});
 
 describe('PostLocationPage', () => {
   it('장소 선택 화면의 지도, 검색 헤더, 하단 푸터를 구성한다', () => {
@@ -38,7 +56,8 @@ describe('PostLocationPage', () => {
     expect(screen.getByTestId('map')).toBeInTheDocument();
     expect(screen.getByRole('search')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '장소·주소 검색' })).toBeInTheDocument();
-    expect(screen.getByRole('heading', { level: 1, name: '판교역' })).toBeInTheDocument();
+    expect(screen.queryByText('판교역')).not.toBeInTheDocument();
+    expect(screen.queryByText('경기도 성남시 분당구 판교역로 166')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '이 위치에 핀 등록' })).toHaveClass(
       'h-[52px]',
       'min-h-[52px]',
@@ -62,5 +81,19 @@ describe('PostLocationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '이 위치에 핀 등록' }));
 
     expect(onLocationRegister).toHaveBeenCalledWith({ lat: 37.3945, lng: 127.1112 });
+  });
+
+  it('지도 중앙이 변경되면 해당 위치의 장소명과 도로명주소를 표시한다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: '판교역',
+      roadAddress: '경기 성남시 분당구 판교역로 160',
+    });
+
+    render(<PostLocationPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트 지도 중앙 이동' }));
+
+    expect(await screen.findByText('경기 성남시 분당구 판교역로 160')).toBeInTheDocument();
+    expect(reverseGeocodeLocation).toHaveBeenCalledWith({ lat: 37.3945, lng: 127.1112 });
   });
 });
