@@ -1,5 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
 
 import { PostLocationPage } from '@/_pages/post-location';
 import type { reverseGeocodeLocation as ReverseGeocodeLocation } from '@/features/post-location';
@@ -12,9 +13,11 @@ const { reverseGeocodeLocation } = vi.hoisted(() => ({
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
     className,
+    children,
     onCenterChange,
     selectionMarker,
   }: {
+    children?: ReactNode;
     className?: string;
     onCenterChange?: (center: MapCoordinate) => void;
     selectionMarker?: { src: string };
@@ -29,7 +32,17 @@ vi.mock('@/shared/ui/map', () => ({
           data-testid="selection-marker-preview"
         />
       ) : null}
+      {children}
     </div>
+  ),
+  MyLocationButton: ({ className, onClick }: { className?: string; onClick?: () => void }) => (
+    <button
+      aria-label="현재 위치로 이동"
+      className={className}
+      data-testid="my-location-button"
+      type="button"
+      onClick={onClick}
+    />
   ),
 }));
 
@@ -55,6 +68,10 @@ describe('PostLocationPage', () => {
     expect(screen.getByRole('main', { name: '글 등록 장소 선택' })).toBeInTheDocument();
     expect(screen.getByTestId('map')).toBeInTheDocument();
     expect(screen.getByRole('search')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '현재 위치로 이동' })).toHaveClass(
+      'bottom-[248px]',
+      'z-30',
+    );
     expect(screen.getByRole('textbox', { name: '장소·주소 검색' })).toBeInTheDocument();
     expect(screen.queryByText('판교역')).not.toBeInTheDocument();
     expect(screen.queryByText('경기도 성남시 분당구 판교역로 166')).not.toBeInTheDocument();

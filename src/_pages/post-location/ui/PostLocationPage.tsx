@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import {
@@ -10,7 +10,7 @@ import {
   type ReverseGeocodedLocation,
 } from '@/features/post-location';
 import type { MapCoordinate } from '@/shared/types/common';
-import { Map } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
 
 const companionMarker = getMapPinMarkerImage('accompany');
 
@@ -19,13 +19,18 @@ export type PostLocationPageProps = {
 };
 
 export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) {
+  const mapRef = useRef<MapRef>(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState<MapCoordinate | null>(null);
   const [locationDetails, setLocationDetails] = useState<ReverseGeocodedLocation | null>(null);
 
-  const handleCenterChange = (center: MapCoordinate) => {
+  const requestCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
+  const handleCenterChange = useCallback((center: MapCoordinate) => {
     setSelectedCoordinate(center);
     setLocationDetails(null);
-  };
+  }, []);
 
   useEffect(() => {
     if (!selectedCoordinate) {
@@ -64,11 +69,17 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
           className="absolute inset-0 h-full"
           clusterMarkers={false}
           onCenterChange={handleCenterChange}
+          ref={mapRef}
           selectionMode
           selectionMarker={companionMarker}
           showCurrentLocationButton={false}
           showZoomControls={false}
-        />
+        >
+          <MyLocationButton
+            className="absolute right-4 bottom-[248px] z-30"
+            onClick={requestCurrentLocation}
+          />
+        </Map>
 
         <LocationSearchHeader className="absolute top-5 right-5 left-5 z-20" />
       </main>
