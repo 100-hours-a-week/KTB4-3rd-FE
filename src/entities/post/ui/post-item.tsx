@@ -52,7 +52,7 @@ function formatDepartureTime(departureAt: string) {
 function getPostMeta(post: Post) {
   if (post.type === 'COMPANION') {
     return [
-      transportLabel[post.transport],
+      transportLabel[post.transport_type],
       formatDistance(post.distance_m),
       `${formatDepartureTime(post.departure_at)} 출발`,
       `${post.current_count}/${post.capacity}명 참여 중`,

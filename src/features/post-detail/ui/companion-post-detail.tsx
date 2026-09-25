@@ -22,7 +22,7 @@ export function CompanionPostDetail({ className, onJoinClick, post }: CompanionP
       <PostDetailInfo description={post.description} title={post.title} type={post.type} />
 
       <div className="px-6 pb-5">
-        <TransportTag transport={post.transport} />
+        <TransportTag transport={post.transport_type} />
       </div>
 
       <Divider className="mb-5" color="neutral-subtle" inset />
