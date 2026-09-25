@@ -110,6 +110,28 @@ describe('홈 화면 MSW mock API', () => {
     expect(body.error).toEqual({ code: 'COMPANION_POST_CLOSED', field: null });
   });
 
+  it('존재하지 않는 동행모집 게시글은 404로 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/companion-posts/12');
+    const body = await readJson<ApiErrorResponse>(response);
+
+    expect(response.status).toBe(404);
+    expect(body).toEqual({
+      message: '존재하지 않는 게시글입니다',
+      error: { code: 'POST_NOT_FOUND', field: null },
+    });
+  });
+
+  it('동행모집 상세 조회 중 서버 오류가 발생하면 500으로 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/companion-posts/999');
+    const body = await readJson<ApiErrorResponse>(response);
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      message: '서버 오류가 발생했습니다',
+      error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+    });
+  });
+
   it('커뮤니티 게시글 상세를 반환한다', async () => {
     const response = await fetch('http://localhost:8080/community-posts/88');
     const body = await readJson<
@@ -134,5 +156,27 @@ describe('홈 화면 MSW mock API', () => {
 
     expect(response.status).toBe(410);
     expect(body.error).toEqual({ code: 'GONE', field: null });
+  });
+
+  it('존재하지 않는 커뮤니티 게시글은 404로 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/community-posts/90');
+    const body = await readJson<ApiErrorResponse>(response);
+
+    expect(response.status).toBe(404);
+    expect(body).toEqual({
+      message: '존재하지 않는 게시글입니다',
+      error: { code: 'POST_NOT_FOUND', field: null },
+    });
+  });
+
+  it('커뮤니티 상세 조회 중 서버 오류가 발생하면 500으로 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/community-posts/999');
+    const body = await readJson<ApiErrorResponse>(response);
+
+    expect(response.status).toBe(500);
+    expect(body).toEqual({
+      message: '서버 오류가 발생했습니다',
+      error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+    });
   });
 });
