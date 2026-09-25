@@ -212,7 +212,7 @@ export function Menu({
               {items.map((item) => (
                 <BaseMenu.Item
                   className={cn(
-                    'group flex min-h-[28px] w-full cursor-pointer items-center gap-[20px] rounded-[4px] p-0 text-left outline-none',
+                    'group flex min-h-[24px] w-full cursor-pointer items-center gap-[20px] rounded-[4px] p-[var(--dimension-x1)] text-left outline-none',
                     'data-[highlighted]:bg-[var(--color-bg-transparent-pressed)]',
                     'data-[disabled]:pointer-events-none data-[disabled]:cursor-not-allowed data-[disabled]:opacity-50',
                     'focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]',
