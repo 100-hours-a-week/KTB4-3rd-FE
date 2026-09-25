@@ -3,29 +3,39 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 import { PostLocationPage } from '@/_pages/post-location';
+import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
 import type {
   ReverseGeocodedLocation,
   reverseGeocodeLocation as ReverseGeocodeLocation,
 } from '@/features/post-location';
 import type { MapCoordinate } from '@/shared/types/common';
 
-const { reverseGeocodeLocation } = vi.hoisted(() => ({
+const { reverseGeocodeLocation, useKakaoPlaceSearch } = vi.hoisted(() => ({
   reverseGeocodeLocation: vi.fn<typeof ReverseGeocodeLocation>(),
+  useKakaoPlaceSearch: vi.fn<() => UseKakaoPlaceSearchResult>(),
 }));
 
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
     className,
+    center,
     children,
     onCenterChange,
     selectionMarker,
   }: {
     children?: ReactNode;
     className?: string;
+    center?: MapCoordinate;
     onCenterChange?: (center: MapCoordinate) => void;
     selectionMarker?: { src: string };
   }) => (
-    <div className={className} data-testid="map" role="application">
+    <div
+      className={className}
+      data-center-lat={center?.lat}
+      data-center-lng={center?.lng}
+      data-testid="map"
+      role="application"
+    >
       <button type="button" onClick={() => onCenterChange?.({ lat: 37.3945, lng: 127.1112 })}>
         테스트 지도 중앙 이동
       </button>
@@ -58,8 +68,15 @@ vi.mock('@/features/post-location', async () => {
   return { ...actual, reverseGeocodeLocation };
 });
 
+vi.mock('@/features/location-search', async () => {
+  const actual = await vi.importActual('@/features/location-search');
+
+  return { ...actual, useKakaoPlaceSearch };
+});
+
 beforeEach(() => {
   reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
+  useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
 });
 
 afterEach(() => {
@@ -119,6 +136,33 @@ describe('PostLocationPage', () => {
 
     expect(await screen.findByText('경기 성남시 분당구 판교역로 160')).toBeInTheDocument();
     expect(reverseGeocodeLocation).toHaveBeenCalledWith({ lat: 37.3945, lng: 127.1112 });
+  });
+
+  it('검색 결과를 선택하면 지도 중심을 해당 장소로 이동한다', () => {
+    useKakaoPlaceSearch.mockReturnValue({
+      error: null,
+      results: [
+        {
+          distance: '100m',
+          id: 'pangyo-station',
+          latitude: 37.3945,
+          longitude: 127.1112,
+          placeName: '판교역',
+          roadAddress: '경기 성남시 분당구 판교역로 160',
+        },
+      ],
+      status: 'success',
+    });
+
+    render(<PostLocationPage />);
+
+    fireEvent.change(screen.getByRole('textbox', { name: '장소·주소 검색' }), {
+      target: { value: '판교' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /판교역/ }));
+
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lat', '37.3945');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lng', '127.1112');
   });
 
   it('새 위치를 조회하는 동안 이전 위치 정보를 유지한다', async () => {

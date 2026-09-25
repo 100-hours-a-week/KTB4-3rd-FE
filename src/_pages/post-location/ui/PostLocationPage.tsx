@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
+import { type LocationSearchResult, useKakaoPlaceSearch } from '@/features/location-search';
 import {
   LocationSearchHeader,
   LocationSelectionFooter,
@@ -21,7 +22,10 @@ export type PostLocationPageProps = {
 export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) {
   const mapRef = useRef<MapRef>(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState<MapCoordinate | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCenter, setSearchCenter] = useState<MapCoordinate>();
   const [locationDetails, setLocationDetails] = useState<ReverseGeocodedLocation | null>(null);
+  const kakaoSearch = useKakaoPlaceSearch(searchQuery);
 
   const requestCurrentLocation = useCallback(() => {
     mapRef.current?.requestCurrentLocation();
@@ -29,6 +33,14 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
 
   const handleCenterChange = useCallback((center: MapCoordinate) => {
     setSelectedCoordinate(center);
+  }, []);
+
+  const handleSearchResultSelect = useCallback((result: LocationSearchResult) => {
+    if (result.latitude === undefined || result.longitude === undefined) {
+      return;
+    }
+
+    setSearchCenter({ lat: result.latitude, lng: result.longitude });
   }, []);
 
   useEffect(() => {
@@ -65,6 +77,7 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
         <Map
           className="absolute inset-0 h-full"
           clusterMarkers={false}
+          center={searchCenter}
           onCenterChange={handleCenterChange}
           ref={mapRef}
           selectionMode
@@ -78,7 +91,13 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
           />
         </Map>
 
-        <LocationSearchHeader className="absolute top-5 right-5 left-5 z-50" />
+        <LocationSearchHeader
+          className="absolute top-5 right-5 left-5 z-50"
+          results={kakaoSearch.results}
+          searchStatus={kakaoSearch.status}
+          onResultSelect={handleSearchResultSelect}
+          onValueChange={setSearchQuery}
+        />
       </main>
 
       <LocationSelectionFooter
