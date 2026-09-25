@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Icon } from '@/shared/ui/icon';
@@ -13,10 +13,11 @@ import {
 } from '@/features/location-search/model/location';
 import { useKakaoPlaceSearch } from '@/features/location-search/model/use-kakao-place-search';
 
-type LocationField = 'departure' | 'destination';
+export type LocationField = 'departure' | 'destination';
 
 export type LocationSearchScreenProps = {
   className?: string;
+  initialActiveField?: LocationField;
   initialDeparture?: LocationSearchResult | null;
   initialDestination?: LocationSearchResult | null;
   onCancel?: () => void;
@@ -42,19 +43,34 @@ function matchesSearchResult(result: LocationSearchResult, query: string) {
 
 export function LocationSearchScreen({
   className,
+  initialActiveField,
   initialDeparture = null,
   initialDestination = null,
   onCancel,
   onComplete,
   results,
 }: LocationSearchScreenProps) {
+  const resolvedInitialActiveField =
+    initialActiveField ?? (initialDeparture ? 'destination' : 'departure');
   const [departure, setDeparture] = useState<LocationSearchResult | null>(initialDeparture);
   const [destination, setDestination] = useState<LocationSearchResult | null>(initialDestination);
-  const [activeField, setActiveField] = useState<LocationField>(
-    initialDeparture ? 'destination' : 'departure',
-  );
-  const [searchQuery, setSearchQuery] = useState('');
+  const [activeField, setActiveField] = useState<LocationField>(resolvedInitialActiveField);
+  const [searchQuery, setSearchQuery] = useState(() => {
+    const initialLocation =
+      resolvedInitialActiveField === 'departure' ? initialDeparture : initialDestination;
+
+    return initialLocation?.placeName ?? '';
+  });
+  const departureInputRef = useRef<ComponentRef<typeof Input>>(null);
+  const destinationInputRef = useRef<ComponentRef<typeof Input>>(null);
   const kakaoSearch = useKakaoPlaceSearch(searchQuery, { enabled: results === undefined });
+
+  useEffect(() => {
+    const input =
+      activeField === 'departure' ? departureInputRef.current : destinationInputRef.current;
+
+    input?.focus();
+  }, [activeField]);
 
   const shouldShowResults =
     searchQuery.trim().length > 0 ||
@@ -143,6 +159,7 @@ export function LocationSearchScreen({
               inputClassName="text-[var(--font-size-t5)] leading-[var(--line-height-t5)] text-[var(--color-fg-neutral)] placeholder:text-[var(--color-fg-neutral-muted)]"
               key={field}
               placeholder={getFieldLabel(field)}
+              ref={field === 'departure' ? departureInputRef : destinationInputRef}
               value={getFieldValue(field)}
               onFocus={() => handleFieldFocus(field)}
               onValueChange={(value) => handleFieldChange(field, value)}

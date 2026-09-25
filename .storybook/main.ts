@@ -4,7 +4,6 @@ import { loadEnv, type ViteDevServer } from 'vite';
 
 const KAKAO_MAP_SDK_PROXY_PATH = '/__moyeota-kakao-map-sdk__/dapi.kakao.com/v2/maps/sdk.js';
 const KAKAO_MAP_CDN_PROXY_PREFIX = '/__moyeota-kakao-map-cdn__';
-const KAKAO_PLACE_SEARCH_PROXY_PATH = '/__moyeota-kakao-place-search__';
 
 async function proxyKakaoResponse(
   targetUrl: URL,
@@ -27,7 +26,7 @@ async function proxyKakaoResponse(
   response.end(body);
 }
 
-function createKakaoMapProxyPlugin(apiKey: string) {
+function createKakaoMapProxyPlugin() {
   return {
     name: 'moyeota-kakao-map-storybook-proxy',
     configureServer(server: ViteDevServer) {
@@ -40,23 +39,6 @@ function createKakaoMapProxyPlugin(apiKey: string) {
         }
 
         try {
-          if (requestUrl.startsWith(KAKAO_PLACE_SEARCH_PROXY_PATH)) {
-            const requestUrlObject = new URL(requestUrl, 'http://storybook.local');
-            const targetUrl = new URL('https://dapi.kakao.com/v2/local/search/keyword.json');
-            targetUrl.search = requestUrlObject.search;
-            const forwardedProtocol = request.headers['x-forwarded-proto'];
-            const protocol = typeof forwardedProtocol === 'string' ? forwardedProtocol : 'http';
-            const host = request.headers.host ?? 'localhost:6006';
-
-            await proxyKakaoResponse(targetUrl, response, {
-              headers: {
-                Authorization: `KakaoAK ${apiKey}`,
-                KA: `sdk/4.5.26 os/javascript lang/ko-KR device/MacIntel origin/${encodeURIComponent(`${protocol}://${host}`)}`,
-              },
-            });
-            return;
-          }
-
           if (requestUrl.startsWith(KAKAO_MAP_SDK_PROXY_PATH)) {
             const targetUrl = new URL('https://dapi.kakao.com/v2/maps/sdk.js');
             targetUrl.search = new URL(requestUrl, 'http://storybook.local').search;
@@ -101,10 +83,7 @@ const config: StorybookConfig = {
 
     return {
       ...config,
-      plugins: [
-        ...(config.plugins ?? []),
-        createKakaoMapProxyPlugin(env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? ''),
-      ],
+      plugins: [...(config.plugins ?? []), createKakaoMapProxyPlugin()],
       define: {
         ...config.define,
         'process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY': JSON.stringify(
@@ -112,9 +91,6 @@ const config: StorybookConfig = {
         ),
         'process.env.NEXT_PUBLIC_KAKAO_MAP_SDK_URL': JSON.stringify(
           isStorybookBuild ? null : KAKAO_MAP_SDK_PROXY_PATH,
-        ),
-        'process.env.NEXT_PUBLIC_KAKAO_PLACE_SEARCH_URL': JSON.stringify(
-          isStorybookBuild ? null : KAKAO_PLACE_SEARCH_PROXY_PATH,
         ),
       },
     };

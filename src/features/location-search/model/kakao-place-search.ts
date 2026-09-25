@@ -17,33 +17,7 @@ function toLocationSearchResult(place: KakaoPlace): LocationSearchResult {
   };
 }
 
-async function searchKakaoPlacesWithRestApi(
-  endpoint: string,
-  keyword: string,
-): Promise<LocationSearchResult[]> {
-  const url = new URL(endpoint, window.location.origin);
-  url.searchParams.set('query', keyword);
-  url.searchParams.set('size', '15');
-  url.searchParams.set('sort', 'accuracy');
-
-  const response = await fetch(url);
-
-  if (!response.ok) {
-    throw new Error(`카카오 장소 검색 API 요청에 실패했습니다. (${response.status})`);
-  }
-
-  const data = (await response.json()) as { documents: KakaoPlace[] };
-
-  return data.documents.map(toLocationSearchResult);
-}
-
 export async function searchKakaoPlaces(keyword: string): Promise<LocationSearchResult[]> {
-  const restApiEndpoint = process.env.NEXT_PUBLIC_KAKAO_PLACE_SEARCH_URL;
-
-  if (restApiEndpoint) {
-    return searchKakaoPlacesWithRestApi(restApiEndpoint, keyword);
-  }
-
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? '';
   await loadKakaoMaps(apiKey);
   const services = await loadKakaoServices();
@@ -68,7 +42,7 @@ export async function searchKakaoPlaces(keyword: string): Promise<LocationSearch
       },
       {
         size: 15,
-        sort: 'ACCURACY',
+        sort: 'accuracy',
       },
     );
   });

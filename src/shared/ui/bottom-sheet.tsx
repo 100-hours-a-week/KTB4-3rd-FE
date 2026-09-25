@@ -1,7 +1,7 @@
 'use client';
 
-import { Drawer } from '@base-ui/react/drawer';
-import { useState, type ReactNode } from 'react';
+import { Drawer, type DrawerRootActions } from '@base-ui/react/drawer';
+import { useRef, useState, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -104,6 +104,7 @@ export function BottomSheet({
   const hasTitle = title !== undefined && title !== null;
   const hasDescription = description !== undefined && description !== null;
   const hasViewAllButton = showViewAllButton && onViewAll !== undefined;
+  const actionsRef = useRef<DrawerRootActions | null>(null);
   const resolvedSnapPoints = (snapPoints ?? defaultSnapPoints).filter(
     (point) => !isDismissiveSnapPoint(point),
   );
@@ -142,6 +143,11 @@ export function BottomSheet({
   };
 
   const handleBackdropClick = () => {
+    if (dismissible) {
+      actionsRef.current?.close();
+      return;
+    }
+
     if (!isSnapPointControlled) {
       setInternalSnapPoint(minimumSnapPoint);
     }
@@ -150,7 +156,8 @@ export function BottomSheet({
 
   return (
     <Drawer.Root
-      disablePointerDismissal
+      actionsRef={actionsRef}
+      disablePointerDismissal={!dismissible}
       defaultOpen={defaultOpen}
       defaultSnapPoint={resolvedDefaultSnapPoint}
       modal={modal}
@@ -165,6 +172,7 @@ export function BottomSheet({
         <Drawer.Backdrop
           className={showBackdrop ? backdropClassName : 'hidden'}
           data-testid="bottom-sheet-backdrop"
+          onClick={dismissible ? handleBackdropClick : undefined}
         />
         <Drawer.Viewport
           className={cn(

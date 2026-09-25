@@ -99,8 +99,13 @@ export function loadKakaoMaps(apiKey: string): Promise<KakaoNamespace> {
       scriptUrl.searchParams.set('appkey', apiKey);
       scriptUrl.searchParams.set('autoload', 'false');
       scriptUrl.searchParams.set('libraries', KAKAO_MAP_LIBRARIES);
-      mapScript.src = scriptUrl.toString();
-      mapScript.async = true;
+      mapScript.src = scriptUrl
+        .toString()
+        .replace(
+          `libraries=${encodeURIComponent(KAKAO_MAP_LIBRARIES)}`,
+          `libraries=${KAKAO_MAP_LIBRARIES}`,
+        );
+      mapScript.async = false;
       mapScript.setAttribute(KAKAO_MAP_SCRIPT_ATTRIBUTE, 'true');
       document.head.appendChild(mapScript);
     }

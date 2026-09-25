@@ -77,7 +77,7 @@ export type KakaoPlaceSearchOptions = {
   page?: number;
   radius?: number;
   size?: number;
-  sort?: 'ACCURACY' | 'DISTANCE';
+  sort?: 'accuracy' | 'distance';
   x?: string;
   y?: string;
 };

@@ -105,6 +105,20 @@ describe('BottomSheet', () => {
     expect(onOpenChange).toHaveBeenCalledWith(false);
   });
 
+  it('allows a dismissible sheet to close from backdrop click', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+
+    render(
+      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    fireEvent.click(screen.getAllByTestId('bottom-sheet-backdrop').at(-1) as HTMLElement);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
   it('can hide the backdrop for an inline map sheet', () => {
     render(
       <BottomSheet defaultOpen showBackdrop={false} title="게시글">

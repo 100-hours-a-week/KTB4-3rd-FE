@@ -7,4 +7,8 @@ export {
   LocationInputButtonFlow,
   type LocationInputButtonFlowProps,
 } from './ui/location-input-button-flow';
-export { LocationSearchScreen, type LocationSearchScreenProps } from './ui/location-search-screen';
+export {
+  LocationSearchScreen,
+  type LocationField,
+  type LocationSearchScreenProps,
+} from './ui/location-search-screen';

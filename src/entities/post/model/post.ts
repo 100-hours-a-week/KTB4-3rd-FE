@@ -5,7 +5,7 @@ export type PostAuthor = {
 
 export type PostType = 'COMPANION' | 'COMMUNITY';
 
-export type CompanionTransport = 'CAR' | 'TAXI' | 'SUBWAY' | 'BUS';
+export type CompanionTransport = 'OWNED_CAR' | 'TAXI' | 'SUBWAY' | 'BUS';
 
 export type CompanionPost = {
   type: 'COMPANION';

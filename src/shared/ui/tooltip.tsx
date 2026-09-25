@@ -30,6 +30,7 @@ export type TooltipProps = {
   longPressDelay?: number;
   fadeDuration?: number;
   className?: string;
+  contentClassName?: string;
 };
 
 const DEFAULT_FADE_DURATION = 250;
@@ -114,6 +115,7 @@ export function Tooltip({
   longPressDelay = DEFAULT_LONG_PRESS_DELAY,
   fadeDuration = DEFAULT_FADE_DURATION,
   className,
+  contentClassName,
 }: TooltipProps) {
   const tooltipId = `tooltip-${useId().replaceAll(':', '')}`;
   const [isVisible, setIsVisible] = useState(true);
@@ -239,6 +241,7 @@ export function Tooltip({
             'pointer-events-none absolute z-10 flex w-max max-w-[calc(100vw-32px)] transition-opacity ease-out',
             isExiting ? 'opacity-0' : 'opacity-100',
             tooltipPositionClassNames[position][align],
+            contentClassName,
           )}
           data-position={position}
           data-state={isExiting ? 'closing' : 'open'}

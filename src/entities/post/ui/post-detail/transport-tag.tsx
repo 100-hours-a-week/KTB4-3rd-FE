@@ -4,7 +4,7 @@ import { Text } from '@/shared/ui/text';
 
 const transportLabels: Record<CompanionTransport, string> = {
   BUS: '버스',
-  CAR: '자차',
+  OWNED_CAR: '자차',
   SUBWAY: '지하철',
   TAXI: '택시',
 };

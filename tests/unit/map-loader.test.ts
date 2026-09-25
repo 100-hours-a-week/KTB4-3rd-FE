@@ -40,6 +40,7 @@ describe('map-loader', () => {
     }
 
     expect(new URL(script.src).searchParams.get('libraries')).toBe('services,clusterer');
+    expect(script.src).toContain('libraries=services,clusterer');
     expect(document.querySelector('script[data-moyeota-kakao-services]')).toBeNull();
 
     window.kakao = createKakaoNamespace();
