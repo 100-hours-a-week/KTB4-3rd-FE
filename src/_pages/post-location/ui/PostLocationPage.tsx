@@ -1,11 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
-import { LocationSearchHeader, LocationSelectionFooter } from '@/features/post-location';
+import { type LocationSearchResult, useKakaoPlaceSearch } from '@/features/location-search';
+import {
+  LocationSearchHeader,
+  LocationSelectionFooter,
+  reverseGeocodeLocation,
+  type ReverseGeocodedLocation,
+} from '@/features/post-location';
 import type { MapCoordinate } from '@/shared/types/common';
-import { Map } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
 
 const companionMarker = getMapPinMarkerImage('accompany');
 
@@ -14,7 +20,50 @@ export type PostLocationPageProps = {
 };
 
 export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) {
+  const mapRef = useRef<MapRef>(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState<MapCoordinate | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCenter, setSearchCenter] = useState<MapCoordinate>();
+  const [locationDetails, setLocationDetails] = useState<ReverseGeocodedLocation | null>(null);
+  const kakaoSearch = useKakaoPlaceSearch(searchQuery);
+
+  const requestCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
+  const handleCenterChange = useCallback((center: MapCoordinate) => {
+    setSelectedCoordinate(center);
+  }, []);
+
+  const handleSearchResultSelect = useCallback((result: LocationSearchResult) => {
+    if (result.latitude === undefined || result.longitude === undefined) {
+      return;
+    }
+
+    setSearchCenter({ lat: result.latitude, lng: result.longitude });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCoordinate) {
+      return;
+    }
+
+    let cancelled = false;
+
+    reverseGeocodeLocation(selectedCoordinate)
+      .then((details) => {
+        if (!cancelled) {
+          setLocationDetails(details);
+        }
+      })
+      .catch(() => {
+        // 새 위치 조회에 실패해도 이전 위치 정보를 유지해 화면이 깜빡이지 않도록 한다.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCoordinate]);
 
   const handleRegister = () => {
     if (selectedCoordinate) {
@@ -28,18 +77,33 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
         <Map
           className="absolute inset-0 h-full"
           clusterMarkers={false}
-          onCenterChange={setSelectedCoordinate}
+          center={searchCenter}
+          onCenterChange={handleCenterChange}
+          ref={mapRef}
           selectionMode
           selectionMarker={companionMarker}
           showCurrentLocationButton={false}
           showZoomControls={false}
-        />
+        >
+          <MyLocationButton
+            className="absolute right-4 bottom-[248px] z-30"
+            onClick={requestCurrentLocation}
+          />
+        </Map>
 
-        <LocationSearchHeader className="absolute top-5 right-5 left-5 z-20" />
+        <LocationSearchHeader
+          className="absolute top-5 right-5 left-5 z-50"
+          results={kakaoSearch.results}
+          searchStatus={kakaoSearch.status}
+          onResultSelect={handleSearchResultSelect}
+          onValueChange={setSearchQuery}
+        />
       </main>
 
       <LocationSelectionFooter
         className="absolute right-0 bottom-0 left-0 z-20"
+        placeName={locationDetails ? (locationDetails.placeName ?? '건물명 정보 없음') : ''}
+        roadAddress={locationDetails ? (locationDetails.roadAddress ?? '도로명주소 정보 없음') : ''}
         onRegister={handleRegister}
       />
     </div>

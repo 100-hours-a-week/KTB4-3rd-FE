@@ -12,3 +12,9 @@ export {
   type LocationField,
   type LocationSearchScreenProps,
 } from './ui/location-search-screen';
+export {
+  useKakaoPlaceSearch,
+  type KakaoPlaceSearchStatus,
+  type UseKakaoPlaceSearchOptions,
+  type UseKakaoPlaceSearchResult,
+} from './model/use-kakao-place-search';
