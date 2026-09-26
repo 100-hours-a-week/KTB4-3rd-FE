@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import { PostLocationPage } from '@/_pages/post-location';
 import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
+import { usePostCreateStore } from '@/features/post-create';
 import type {
   ReverseGeocodedLocation,
   reverseGeocodeLocation as ReverseGeocodeLocation,
@@ -13,6 +14,13 @@ import type { MapCoordinate } from '@/shared/types/common';
 const { reverseGeocodeLocation, useKakaoPlaceSearch } = vi.hoisted(() => ({
   reverseGeocodeLocation: vi.fn<typeof ReverseGeocodeLocation>(),
   useKakaoPlaceSearch: vi.fn<() => UseKakaoPlaceSearchResult>(),
+}));
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => navigation,
 }));
 
 vi.mock('@/shared/ui/map', () => ({
@@ -81,7 +89,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  usePostCreateStore.getState().resetDraft();
   reverseGeocodeLocation.mockReset();
+  navigation.push.mockReset();
 });
 
 describe('PostLocationPage', () => {
@@ -113,15 +123,26 @@ describe('PostLocationPage', () => {
     );
   });
 
-  it('등록 시 지도 중앙의 좌표를 전달한다', () => {
+  it('등록 시 지도 중앙의 좌표와 장소명을 저장하고 전달한다', async () => {
     const onLocationRegister = vi.fn<(coordinate: MapCoordinate) => void>();
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: '판교역',
+      roadAddress: '경기 성남시 분당구 판교역로 160',
+    });
 
     render(<PostLocationPage onLocationRegister={onLocationRegister} />);
 
     fireEvent.click(screen.getByRole('button', { name: '테스트 지도 중앙 이동' }));
+    await screen.findByText('경기 성남시 분당구 판교역로 160');
     fireEvent.click(screen.getByRole('button', { name: '이 위치에 핀 등록' }));
 
     expect(onLocationRegister).toHaveBeenCalledWith({ lat: 37.3945, lng: 127.1112 });
+    expect(usePostCreateStore.getState().postLocation).toEqual({
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    expect(usePostCreateStore.getState().postLocationName).toBe('판교역');
+    expect(navigation.push).toHaveBeenCalledWith('/post/create/type');
   });
 
   it('지도 중앙이 변경되면 해당 위치의 장소명과 도로명주소를 표시한다', async () => {

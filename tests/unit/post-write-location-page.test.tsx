@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PostWriteLocationPage } from '@/_pages/post-write-location';
-import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
+import { usePostCreateStore } from '@/features/post-create';
 
 const navigation = vi.hoisted(() => ({
   back: vi.fn<() => void>(),
@@ -44,7 +44,7 @@ afterEach(() => {
   cleanup();
   navigation.back.mockReset();
   searchParams.field = 'departure';
-  usePostDraftStore.getState().resetDraft();
+  usePostCreateStore.getState().resetDraft();
 });
 
 describe('PostWriteLocationPage', () => {
@@ -56,8 +56,16 @@ describe('PostWriteLocationPage', () => {
 
   it('목적지 검색 라우트는 출발지를 유지하고 목적지만 초기화한다', () => {
     searchParams.field = 'destination';
-    usePostDraftStore.getState().setField('origin', '판교역');
-    usePostDraftStore.getState().setField('destination', '강남역');
+    usePostCreateStore.getState().setCompanionLocation('origin', {
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    usePostCreateStore.getState().setCompanionLocation('destination', {
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+    });
 
     render(<PostWriteLocationPage />);
 
@@ -82,9 +90,17 @@ describe('PostWriteLocationPage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /강남역/ }));
 
-    expect(usePostDraftStore.getState()).toMatchObject({
-      destination: '강남역',
-      origin: '판교역',
+    expect(usePostCreateStore.getState().companion).toMatchObject({
+      destination: {
+        name: '강남역',
+        lat: null,
+        lng: null,
+      },
+      origin: {
+        name: '판교역',
+        lat: null,
+        lng: null,
+      },
     });
     expect(navigation.back).toHaveBeenCalledOnce();
   });

@@ -2,7 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PostWritePage } from '@/_pages/post-write';
-import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
+import { usePostCreateStore } from '@/features/post-create';
 
 const navigation = vi.hoisted(() => ({
   back: vi.fn<() => void>(),
@@ -17,7 +17,7 @@ afterEach(() => {
   cleanup();
   navigation.back.mockReset();
   navigation.push.mockReset();
-  usePostDraftStore.getState().resetDraft();
+  usePostCreateStore.getState().resetDraft();
 });
 
 describe('PostWritePage', () => {
@@ -41,9 +41,7 @@ describe('PostWritePage', () => {
     expect(navigation.push).toHaveBeenCalledWith('/posts/write/location?field=destination');
     expect(screen.getByRole('button', { name: '출발 날짜' })).toHaveTextContent('날짜 선택');
     expect(screen.getByRole('button', { name: '출발 시간' })).toHaveTextContent('시간 선택');
-    expect(screen.getByRole('combobox', { name: '이동 수단' })).toHaveTextContent(
-      '이동수단을 선택해주세요',
-    );
+    expect(screen.getByRole('combobox', { name: '이동 수단' })).toHaveTextContent('택시');
     expect(screen.getByRole('combobox', { name: '모집 인원' })).toHaveTextContent(
       '인원을선택해주세요',
     );

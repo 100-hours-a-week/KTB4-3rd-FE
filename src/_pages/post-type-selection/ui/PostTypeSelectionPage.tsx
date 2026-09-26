@@ -1,16 +1,17 @@
 'use client';
 
-import { useCallback } from 'react';
+import { useCallback, useState } from 'react';
 
 import { MapPin } from '@/entities/map-pin';
 import type { PostType } from '@/entities/post';
-import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
+import { usePostCreateStore } from '@/features/post-create';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
   bottomActionPaddingImportantClassName,
 } from '@/shared/ui/bottom-action-button';
 import { Divider } from '@/shared/ui/divider';
+import { Dialog } from '@/shared/ui/dialog';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Text } from '@/shared/ui/text';
@@ -87,18 +88,51 @@ export function PostTypeSelectionPage({
   backHref = '/',
   className,
   onNext,
-  placeName = '판교역',
+  placeName: placeNameProp,
 }: PostTypeSelectionPageProps) {
-  const draftType = usePostDraftStore((state) => state.type);
-  const setType = usePostDraftStore((state) => state.setType);
+  const draftType = usePostCreateStore((state) => state.type);
+  const postLocationName = usePostCreateStore((state) => state.postLocationName);
+  const setType = usePostCreateStore((state) => state.setType);
+  const hasDraftData = usePostCreateStore((state) => state.hasDraftData);
+  const resetDraft = usePostCreateStore((state) => state.resetDraft);
   const selectedType = draftType ?? 'COMMUNITY';
+  const placeName = placeNameProp ?? postLocationName ?? '위치 정보 없음';
+  const [isTypeChangeDialogOpen, setIsTypeChangeDialogOpen] = useState(false);
+  const [pendingType, setPendingType] = useState<PostType | null>(null);
 
   const handleSelect = useCallback(
     (type: PostType) => {
+      if (type === selectedType) {
+        return;
+      }
+
+      if (hasDraftData()) {
+        setPendingType(type);
+        setIsTypeChangeDialogOpen(true);
+        return;
+      }
+
       setType(type);
     },
-    [setType],
+    [hasDraftData, selectedType, setType],
   );
+
+  const handleTypeChangeConfirm = useCallback(() => {
+    if (pendingType === null) {
+      return;
+    }
+
+    resetDraft();
+    setType(pendingType);
+  }, [pendingType, resetDraft, setType]);
+
+  const handleTypeChangeDialogOpenChange = useCallback((open: boolean) => {
+    setIsTypeChangeDialogOpen(open);
+
+    if (!open) {
+      setPendingType(null);
+    }
+  }, []);
 
   const handleNext = useCallback(() => {
     setType(selectedType);
@@ -161,6 +195,18 @@ export function PostTypeSelectionPage({
           다음
         </BottomActionButton>
       </div>
+
+      <Dialog
+        buttons="primarySecondary"
+        className="!w-[calc(100%-40px)] !max-w-[353px]"
+        open={isTypeChangeDialogOpen}
+        primaryButtonProps={{ onClick: handleTypeChangeConfirm }}
+        primaryLabel="바꾸기"
+        secondaryLabel="취소"
+        showCloseButton={false}
+        title="게시글 타입을 바꾸면 작성한 게시글 정보가 사라져요."
+        onOpenChange={handleTypeChangeDialogOpenChange}
+      />
     </PageLayout>
   );
 }

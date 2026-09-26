@@ -3,8 +3,12 @@
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 
-import { usePostDraftStore, type PostDraftState } from '@/shared/model/stores/post-draft-store';
-import type { Transport } from '@/shared/types/common';
+import type { CompanionTransport } from '@/entities/post';
+import {
+  usePostCreateStore,
+  type PostCreateState,
+  type PostCreateTime,
+} from '@/features/post-create';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
@@ -31,22 +35,22 @@ export type PostWritePageProps = {
 
 const LOCATION_SEARCH_ROUTE = '/posts/write/location';
 
-const transportOptions: SelectOption<Transport>[] = [
+const transportOptions: SelectOption<CompanionTransport>[] = [
   { value: 'OWNED_CAR', label: '자차' },
   { value: 'TAXI', label: '택시' },
   { value: 'SUBWAY', label: '지하철' },
   { value: 'BUS', label: '버스' },
 ];
 
-const capacityMaxByTransport: Record<Transport, number> = {
+const capacityMaxByTransport: Record<CompanionTransport, number> = {
   BUS: 9,
   OWNED_CAR: 3,
   SUBWAY: 9,
   TAXI: 3,
 };
 
-function getCapacityOptions(transport: Transport | null): SelectOption<string>[] {
-  const maxCapacity = transport === null ? 9 : capacityMaxByTransport[transport];
+function getCapacityOptions(transport: CompanionTransport): SelectOption<string>[] {
+  const maxCapacity = capacityMaxByTransport[transport];
 
   return Array.from({ length: maxCapacity }, (_, index) => {
     const capacity = index + 1;
@@ -64,28 +68,51 @@ const draftTypeByPostWriteType: Record<PostWriteType, 'COMPANION' | 'COMMUNITY'>
   community: 'COMMUNITY',
 };
 
-function CommunityPostWriteForm({ draft }: { draft: PostDraftState }) {
+function toDateInputValue(value: string | null) {
+  if (!value) {
+    return null;
+  }
+
+  const [year, month, day] = value.split('-').map(Number);
+  const date = new Date(year, month - 1, day);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function toDateDraftValue(value: Date | null) {
+  if (!value) {
+    return null;
+  }
+
+  const year = value.getFullYear();
+  const month = String(value.getMonth() + 1).padStart(2, '0');
+  const day = String(value.getDate()).padStart(2, '0');
+
+  return `${year}-${month}-${day}`;
+}
+
+function CommunityPostWriteForm({ draft }: { draft: PostCreateState }) {
   return (
     <section aria-label="커뮤니티 게시글 작성" className="flex flex-col gap-2">
       <InputField
-        characterCount={draft.title.length}
+        characterCount={draft.community.title.length}
         label="제목"
         maxCharacterCount={30}
         maxLength={30}
         placeholder="제목을 입력해주세요"
-        value={draft.title}
-        onValueChange={(value) => draft.setField('title', value)}
+        value={draft.community.title}
+        onValueChange={(value) => draft.setCommunityField('title', value)}
       />
       <Field
-        characterCount={draft.content.length}
+        characterCount={draft.community.content.length}
         inputSlot={
           <Textarea
             aria-label="내용"
             className="[&>div]:h-[170px]"
             maxLength={280}
             placeholder="공유하고싶은 내용을 입력해주세요"
-            value={draft.content}
-            onValueChange={(value) => draft.setField('content', value)}
+            value={draft.community.content}
+            onValueChange={(value) => draft.setCommunityField('content', value)}
           />
         }
         label="내용"
@@ -122,7 +149,7 @@ function CompanionPostWriteForm({
   draft,
   onOpenLocationSearch,
 }: {
-  draft: PostDraftState;
+  draft: PostCreateState;
   onOpenLocationSearch: (field: 'departure' | 'destination') => void;
 }) {
   return (
@@ -134,8 +161,8 @@ function CompanionPostWriteForm({
             <LocationInputButton
               aria-label="출발지"
               placeholder="출발지 검색"
-              value={draft.origin || null}
-              onClear={() => draft.setField('origin', '')}
+              value={draft.companion.origin?.name ?? null}
+              onClear={() => draft.setCompanionLocation('origin', null)}
               onClick={() => onOpenLocationSearch('departure')}
             />
           }
@@ -147,8 +174,8 @@ function CompanionPostWriteForm({
             <LocationInputButton
               aria-label="목적지"
               placeholder="목적지 검색"
-              value={draft.destination || null}
-              onClear={() => draft.setField('destination', '')}
+              value={draft.companion.destination?.name ?? null}
+              onClear={() => draft.setCompanionLocation('destination', null)}
               onClick={() => onOpenLocationSearch('destination')}
             />
           }
@@ -161,6 +188,10 @@ function CompanionPostWriteForm({
               aria-label="출발 날짜"
               bottomSheetProps={postWriteBottomSheetProps}
               placeholder="날짜 선택"
+              value={toDateInputValue(draft.companion.departureDate)}
+              onValueChange={(value) =>
+                draft.setCompanionField('departureDate', toDateDraftValue(value))
+              }
             />
           }
           label="출발 날짜"
@@ -172,6 +203,10 @@ function CompanionPostWriteForm({
               aria-label="출발 시간"
               bottomSheetProps={postWriteBottomSheetProps}
               placeholder="시간 선택"
+              value={draft.companion.departureTime}
+              onValueChange={(value) =>
+                draft.setCompanionField('departureTime', value as PostCreateTime | null)
+              }
             />
           }
           label="출발 시간"
@@ -183,8 +218,10 @@ function CompanionPostWriteForm({
               aria-label="이동 수단"
               options={transportOptions}
               placeholder="이동수단을 선택해주세요"
-              value={draft.transport}
-              onValueChange={(value) => draft.setField('transport', value)}
+              value={draft.companion.transportType}
+              onValueChange={(value) =>
+                draft.setCompanionField('transportType', value as CompanionTransport)
+              }
             />
           }
           label="이동 수단"
@@ -194,11 +231,13 @@ function CompanionPostWriteForm({
           inputSlot={
             <Select
               aria-label="모집 인원"
-              options={getCapacityOptions(draft.transport)}
+              options={getCapacityOptions(draft.companion.transportType)}
               placeholder="인원을선택해주세요"
-              value={draft.capacity === null ? null : String(draft.capacity)}
+              value={
+                draft.companion.recruitCount === null ? null : String(draft.companion.recruitCount)
+              }
               onValueChange={(value) =>
-                draft.setField('capacity', value === null ? null : Number(value))
+                draft.setCompanionField('recruitCount', value === null ? null : Number(value))
               }
             />
           }
@@ -207,15 +246,15 @@ function CompanionPostWriteForm({
       </div>
 
       <Field
-        characterCount={draft.content.length}
+        characterCount={draft.companion.content.length}
         inputSlot={
           <Textarea
             aria-label="모집 내용"
             className="[&>div]:h-[170px]"
             maxLength={200}
             placeholder="동행 모집 글의 내용을 적어주세요."
-            value={draft.content}
-            onValueChange={(value) => draft.setField('content', value)}
+            value={draft.companion.content}
+            onValueChange={(value) => draft.setCompanionField('content', value)}
           />
         }
         label="모집 내용"
@@ -226,7 +265,7 @@ function CompanionPostWriteForm({
 }
 
 export function PostWritePage({ className, type }: PostWritePageProps) {
-  const draft = usePostDraftStore();
+  const draft = usePostCreateStore();
   const router = useRouter();
   const draftType = draftTypeByPostWriteType[type];
 
