@@ -1,4 +1,5 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { http, HttpResponse } from 'msw';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
@@ -7,6 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { LoginRequiredProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
 import { useAuthStore } from '@/entities/auth';
+import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapMarker, MapViewport } from '@/shared/ui/map';
@@ -147,6 +149,45 @@ describe('HomePage', () => {
     expect(await screen.findByText('택시 같이 타실 분 구해요')).toBeInTheDocument();
     expect(screen.getByText('판교역')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
+  });
+
+  it('동행모집 상세에서 채팅 참여에 성공하면 응답의 채팅방으로 이동한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 → 강남역/ }));
+    await user.click(await screen.findByRole('button', { name: '채팅 참여하기' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/501'));
+  });
+
+  it('채팅 참여 API 오류를 버튼 위 Snackbar로 표시한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    server.use(
+      http.post('*/companion-posts/10/participants', () =>
+        HttpResponse.json(
+          {
+            message: '이미 참여 중인 게시글입니다',
+            error: { code: 'ALREADY_JOINED', field: null },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 → 강남역/ }));
+    const joinButton = await screen.findByRole('button', { name: '채팅 참여하기' });
+
+    await user.click(joinButton);
+
+    const snackbar = await screen.findByRole('status');
+
+    expect(snackbar).toHaveTextContent('이미 참여 중인 게시글입니다');
+    expect(snackbar.nextElementSibling).toBe(joinButton);
+    expect(navigation.push).not.toHaveBeenCalled();
   });
 
   it('가입 완료 Snackbar를 홈 하단에 표시한다', () => {

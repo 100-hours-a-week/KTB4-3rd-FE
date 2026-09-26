@@ -19,6 +19,7 @@ import {
 } from '@/features/post-detail';
 import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
+import { useJoinCompanionMutation } from '@/features/join-companion';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import {
@@ -38,8 +39,8 @@ import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
 import { Map, MyLocationButton, type MapMarker, type MapViewport } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
-import { Text } from '@/shared/ui/text';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
+import { Text } from '@/shared/ui/text';
 
 type PositionedPost = {
   position: MapCoordinate;
@@ -107,6 +108,7 @@ export function HomePage() {
   const router = useRouter();
   const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<PositionedPost | null>(null);
+  const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
 
@@ -114,6 +116,7 @@ export function HomePage() {
   const selectedCommunityId = selectedPost?.post.type === 'COMMUNITY' ? selectedPost.post.id : null;
 
   const companionDetailQuery = useCompanionPostDetailQuery(selectedCompanionId);
+  const joinCompanionMutation = useJoinCompanionMutation();
   const communityDetailQuery = useCommunityPostDetailQuery(selectedCommunityId);
   const mapPinsQuery = useMapPinsQuery(mapViewport, userLocation !== null);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
@@ -188,9 +191,29 @@ export function HomePage() {
 
   const handleDetailModalChange = useCallback((open: boolean) => {
     if (!open) {
+      setJoinErrorMessage(null);
       setSelectedPost(null);
     }
   }, []);
+
+  const handleJoinCompanion = useCallback(() => {
+    if (selectedDetail?.type !== 'COMPANION') {
+      return;
+    }
+
+    setJoinErrorMessage(null);
+    joinCompanionMutation.mutate(selectedDetail.id, {
+      onSuccess: ({ data }) => {
+        setJoinErrorMessage(null);
+        router.push(`/chatroom/${data.chat_room_id}`);
+      },
+      onError: (error) => {
+        setJoinErrorMessage(
+          error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
+        );
+      },
+    });
+  }, [joinCompanionMutation, router, selectedDetail]);
 
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
@@ -295,7 +318,13 @@ export function HomePage() {
             </Text>
           ) : null}
           {selectedDetail?.type === 'COMPANION' ? (
-            <CompanionPostDetailView post={selectedDetail} />
+            <CompanionPostDetailView
+              joinErrorMessage={joinErrorMessage}
+              isJoining={joinCompanionMutation.isPending}
+              onJoinClick={handleJoinCompanion}
+              onJoinErrorDismiss={() => setJoinErrorMessage(null)}
+              post={selectedDetail}
+            />
           ) : null}
           {selectedDetail?.type === 'COMMUNITY' ? (
             <CommunityPostDetailView post={selectedDetail} />

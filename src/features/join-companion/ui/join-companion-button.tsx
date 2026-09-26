@@ -6,14 +6,21 @@ import { Button } from '@/shared/ui/button';
 export type JoinCompanionButtonProps = {
   className?: string;
   disabled?: boolean;
+  loading?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
 };
 
-export function JoinCompanionButton({ className, disabled, onClick }: JoinCompanionButtonProps) {
+export function JoinCompanionButton({
+  className,
+  disabled,
+  loading,
+  onClick,
+}: JoinCompanionButtonProps) {
   return (
     <Button
       className={cn('!rounded-[22px]', className)}
       disabled={disabled}
+      loading={loading}
       onClick={onClick}
       variant="brand-solid"
       width="fill"
