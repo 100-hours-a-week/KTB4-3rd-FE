@@ -3,11 +3,18 @@
 import { useState } from 'react';
 import Link from 'next/link';
 
-import { Bubble, ChatComposer, ChatNotice } from '@/features/chatting';
+import {
+  Bubble,
+  ChatComposer,
+  ChatNotice,
+  ChatReportDialog,
+  type ChatReportDialogProps,
+} from '@/features/chatting';
 import { cn } from '@/shared/lib/cn';
 import { BackButton } from '@/shared/ui/back-button';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
+import { Menu, type MenuItem } from '@/shared/ui/menu';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Text } from '@/shared/ui/text';
 
@@ -29,29 +36,69 @@ function getMessageClassName(message: ChatRoomMessage, index: number) {
   return cn(spacing, message.variant === 'me' && 'self-end mr-[10px]');
 }
 
-function ChatMessage({ message, index }: { message: ChatRoomMessage; index: number }) {
+type ChatMessageProps = {
+  message: ChatRoomMessage;
+  index: number;
+  onReport: NonNullable<ChatReportDialogProps['onOpenChange']>;
+};
+
+function ChatMessage({ message, index, onReport }: ChatMessageProps) {
   if (message.kind === 'notice') {
     return (
       <ChatNotice className={getMessageClassName(message, index)}>{message.content}</ChatNotice>
     );
   }
 
-  return (
+  const bubble = (
     <Bubble
+      aria-label={message.variant === 'other' ? '메시지 메뉴 열기' : undefined}
       className={cn(
         getMessageClassName(message, index),
         '!py-[14px]',
         message.layout === 'tall' && '!h-[82px] !w-[248px] !max-w-none !p-4',
       )}
+      role={message.variant === 'other' ? 'button' : undefined}
+      tabIndex={message.variant === 'other' ? 0 : undefined}
       variant={message.variant}
     >
       {message.content}
     </Bubble>
   );
+
+  if (message.variant !== 'other') {
+    return bubble;
+  }
+
+  const menuItems: MenuItem[] = [
+    {
+      id: 'report-chat',
+      icon: <Icon aria-hidden="true" name="messageSquareWarning" size={24} />,
+      content: '채팅 신고하기',
+      onClick: () => onReport(true),
+    },
+    {
+      id: 'report-user',
+      icon: <Icon aria-hidden="true" name="userRoundX" size={24} />,
+      content: '유저 신고하기',
+      onClick: () => onReport(true),
+    },
+  ];
+
+  return (
+    <Menu
+      aria-label="메시지 메뉴"
+      items={menuItems}
+      longPressDelay={1000}
+      triggerNativeButton={false}
+    >
+      {bubble}
+    </Menu>
+  );
 }
 
 export function ChattingPage({ room }: ChattingPageProps) {
   const [messages, setMessages] = useState(() => [...room.messages]);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
 
   const handleSubmit = (content: string) => {
     setMessages((currentMessages) => [
@@ -97,7 +144,12 @@ export function ChattingPage({ room }: ChattingPageProps) {
           className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
         >
           {messages.map((message, index) => (
-            <ChatMessage index={index} key={message.id} message={message} />
+            <ChatMessage
+              index={index}
+              key={message.id}
+              message={message}
+              onReport={setIsReportDialogOpen}
+            />
           ))}
         </div>
         <ChatComposer
@@ -105,6 +157,7 @@ export function ChattingPage({ room }: ChattingPageProps) {
           onSubmit={handleSubmit}
         />
       </section>
+      <ChatReportDialog onOpenChange={setIsReportDialogOpen} open={isReportDialogOpen} />
     </PageLayout>
   );
 }
