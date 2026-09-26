@@ -1,9 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import { type LocationSearchResult, useKakaoPlaceSearch } from '@/features/location-search';
+import { usePostCreateStore } from '@/features/post-create';
 import {
   LocationSearchHeader,
   LocationSelectionFooter,
@@ -20,11 +22,16 @@ export type PostLocationPageProps = {
 };
 
 export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) {
+  const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const [selectedCoordinate, setSelectedCoordinate] = useState<MapCoordinate | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchCenter, setSearchCenter] = useState<MapCoordinate>();
   const [locationDetails, setLocationDetails] = useState<ReverseGeocodedLocation | null>(null);
+  const [locationDetailsCoordinate, setLocationDetailsCoordinate] = useState<MapCoordinate | null>(
+    null,
+  );
+  const setPostLocation = usePostCreateStore((state) => state.setPostLocation);
   const kakaoSearch = useKakaoPlaceSearch(searchQuery);
 
   const requestCurrentLocation = useCallback(() => {
@@ -54,6 +61,7 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
       .then((details) => {
         if (!cancelled) {
           setLocationDetails(details);
+          setLocationDetailsCoordinate(selectedCoordinate);
         }
       })
       .catch(() => {
@@ -67,7 +75,16 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
 
   const handleRegister = () => {
     if (selectedCoordinate) {
+      const hasCurrentLocationDetails =
+        locationDetailsCoordinate?.lat === selectedCoordinate.lat &&
+        locationDetailsCoordinate?.lng === selectedCoordinate.lng;
+      const placeName = hasCurrentLocationDetails
+        ? (locationDetails?.placeName ?? locationDetails?.roadAddress ?? null)
+        : null;
+
+      setPostLocation(selectedCoordinate, placeName);
       onLocationRegister?.(selectedCoordinate);
+      router.push('/post/create/type');
     }
   };
 

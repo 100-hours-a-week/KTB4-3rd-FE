@@ -4,7 +4,7 @@ import { useCallback } from 'react';
 
 import { MapPin } from '@/entities/map-pin';
 import type { PostType } from '@/entities/post';
-import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
+import { usePostCreateStore } from '@/features/post-create';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
@@ -87,17 +87,23 @@ export function PostTypeSelectionPage({
   backHref = '/',
   className,
   onNext,
-  placeName = '판교역',
+  placeName: placeNameProp,
 }: PostTypeSelectionPageProps) {
-  const draftType = usePostDraftStore((state) => state.type);
-  const setType = usePostDraftStore((state) => state.setType);
+  const draftType = usePostCreateStore((state) => state.type);
+  const postLocationName = usePostCreateStore((state) => state.postLocationName);
+  const setType = usePostCreateStore((state) => state.setType);
   const selectedType = draftType ?? 'COMMUNITY';
+  const placeName = placeNameProp ?? postLocationName ?? '위치 정보 없음';
 
   const handleSelect = useCallback(
     (type: PostType) => {
+      if (type === selectedType) {
+        return;
+      }
+
       setType(type);
     },
-    [setType],
+    [selectedType, setType],
   );
 
   const handleNext = useCallback(() => {

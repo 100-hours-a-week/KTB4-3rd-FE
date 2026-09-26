@@ -8,20 +8,25 @@ import {
   type LocationSearchResult,
   type LocationSelection,
 } from '@/features/location-search';
-import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
+import { usePostCreateStore, type PostCreateLocation } from '@/features/post-create';
 
 function getLocationField(value: string | null): LocationField {
   return value === 'destination' ? 'destination' : 'departure';
 }
 
-function toDraftLocation(placeName: string, field: LocationField): LocationSearchResult | null {
-  if (!placeName) {
+function toSearchLocation(
+  location: PostCreateLocation | null,
+  field: LocationField,
+): LocationSearchResult | null {
+  if (!location) {
     return null;
   }
 
   return {
     id: `draft-${field}`,
-    placeName,
+    latitude: location.lat ?? undefined,
+    longitude: location.lng ?? undefined,
+    placeName: location.name,
     distance: '',
     roadAddress: '',
   };
@@ -30,21 +35,31 @@ function toDraftLocation(placeName: string, field: LocationField): LocationSearc
 export function PostWriteLocationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const draft = usePostDraftStore();
+  const draft = usePostCreateStore();
   const activeField = getLocationField(searchParams.get('field'));
 
   const handleComplete = ({ departure, destination }: LocationSelection) => {
-    draft.setField('origin', departure.placeName);
-    draft.setField('destination', destination.placeName);
+    draft.setCompanionLocation('origin', {
+      name: departure.placeName,
+      lat: departure.latitude ?? null,
+      lng: departure.longitude ?? null,
+    });
+    draft.setCompanionLocation('destination', {
+      name: destination.placeName,
+      lat: destination.latitude ?? null,
+      lng: destination.longitude ?? null,
+    });
     router.back();
   };
 
   return (
     <LocationSearchScreen
       initialActiveField={activeField}
-      initialDeparture={toDraftLocation(draft.origin, 'departure')}
+      initialDeparture={toSearchLocation(draft.companion.origin, 'departure')}
       initialDestination={
-        activeField === 'departure' ? toDraftLocation(draft.destination, 'destination') : null
+        activeField === 'departure'
+          ? toSearchLocation(draft.companion.destination, 'destination')
+          : null
       }
       onCancel={() => router.back()}
       onComplete={handleComplete}

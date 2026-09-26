@@ -4,15 +4,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { PostTypeSelectionPage } from '@/_pages/post-type-selection';
 import type { PostType } from '@/entities/post';
-import { usePostDraftStore } from '@/shared/model/stores/post-draft-store';
+import { usePostCreateStore } from '@/features/post-create';
 
 afterEach(() => {
   cleanup();
-  usePostDraftStore.getState().resetDraft();
+  usePostCreateStore.getState().resetDraft();
 });
 
 describe('PostTypeSelectionPage', () => {
   it('글 타입과 선택 위치를 디자인 문구로 렌더링한다', () => {
+    usePostCreateStore.getState().setPostLocation({ lat: 37.3945, lng: 127.1112 }, '강남역');
+
     render(<PostTypeSelectionPage backHref="/post/create/location" />);
 
     expect(screen.getByRole('heading', { name: '어떤 글을 등록할까요?' })).toBeInTheDocument();
@@ -24,12 +26,14 @@ describe('PostTypeSelectionPage', () => {
     expect(screen.getByRole('button', { name: /동행 모집/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /커뮤니티 글/ })).toBeInTheDocument();
     expect(screen.getByText('선택 위치')).toBeInTheDocument();
-    expect(screen.getByText('판교역')).toBeInTheDocument();
+    expect(screen.getByText('강남역')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
   });
 
   it('커뮤니티 글을 기본 선택하고 다른 글 타입을 선택할 수 있다', async () => {
     const user = userEvent.setup();
+    usePostCreateStore.getState().setPostLocation({ lat: 37.3945, lng: 127.1112 }, '판교역');
+
     render(<PostTypeSelectionPage />);
 
     const companionOption = screen.getByRole('button', { name: /동행 모집/ });
@@ -42,7 +46,7 @@ describe('PostTypeSelectionPage', () => {
 
     expect(companionOption).toHaveAttribute('aria-pressed', 'true');
     expect(communityOption).toHaveAttribute('aria-pressed', 'false');
-    expect(usePostDraftStore.getState().type).toBe('COMPANION');
+    expect(usePostCreateStore.getState().type).toBe('COMPANION');
   });
 
   it('다음 버튼을 누르면 선택한 글 타입을 전달한다', async () => {
