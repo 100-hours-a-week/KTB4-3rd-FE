@@ -1,6 +1,8 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { useAuthStore } from '@/entities/auth';
 import { PostWritePage } from '@/_pages/post-write';
 import { usePostCreateStore } from '@/features/post-create';
 
@@ -15,14 +17,28 @@ vi.mock('next/navigation', () => ({
 
 afterEach(() => {
   cleanup();
+  vi.restoreAllMocks();
   navigation.back.mockReset();
   navigation.push.mockReset();
+  useAuthStore.getState().clearTokens();
   usePostCreateStore.getState().resetDraft();
 });
 
+function renderPostWritePage(type: 'accompany' | 'community') {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <PostWritePage type={type} />
+    </QueryClientProvider>,
+  );
+}
+
 describe('PostWritePage', () => {
   it('accompany 타입이면 동행모집 작성 UI를 보여준다', () => {
-    render(<PostWritePage type="accompany" />);
+    renderPostWritePage('accompany');
 
     expect(screen.getByRole('heading', { name: '동행 모집' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '동행모집 게시글 작성' })).toBeInTheDocument();
@@ -54,7 +70,7 @@ describe('PostWritePage', () => {
   });
 
   it('community 타입이면 커뮤니티 작성 UI를 보여준다', () => {
-    render(<PostWritePage type="community" />);
+    renderPostWritePage('community');
 
     expect(screen.getByRole('heading', { name: '커뮤니티' })).toBeInTheDocument();
     expect(screen.getByRole('region', { name: '커뮤니티 게시글 작성' })).toBeInTheDocument();
@@ -66,5 +82,57 @@ describe('PostWritePage', () => {
     expect(screen.queryByText('도움말 텍스트 입력')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '등록하기' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '출발지' })).not.toBeInTheDocument();
+  });
+
+  it('커뮤니티 등록하기 버튼을 누르면 커뮤니티 게시글 등록 API를 요청한다', async () => {
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    usePostCreateStore.getState().setPostLocation({ lat: 37.3945, lng: 127.1112 }, '판교역');
+    usePostCreateStore.getState().setCommunityField('title', '판교역 근처 카페 추천');
+    usePostCreateStore
+      .getState()
+      .setCommunityField('content', '조용히 작업하기 좋은 카페가 있을까요?');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    renderPostWritePage('community');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'http://localhost:8080/community-posts',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
+  });
+
+  it('동행모집 등록하기 버튼을 누르면 동행모집 게시글 등록 API를 요청한다', async () => {
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    usePostCreateStore.getState().setCompanionLocation('origin', {
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    usePostCreateStore.getState().setCompanionLocation('destination', {
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+    });
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-09-05');
+    usePostCreateStore.getState().setCompanionField('departureTime', {
+      period: '오전',
+      hour: 8,
+      minute: 30,
+    });
+    usePostCreateStore.getState().setCompanionField('recruitCount', 3);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    await waitFor(() =>
+      expect(fetchSpy).toHaveBeenCalledWith(
+        'http://localhost:8080/companion-posts',
+        expect.objectContaining({ method: 'POST' }),
+      ),
+    );
   });
 });
