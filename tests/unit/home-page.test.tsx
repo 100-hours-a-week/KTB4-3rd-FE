@@ -5,6 +5,7 @@ import { useEffect, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { HomePage } from '@/_pages/home';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapMarker, MapViewport } from '@/shared/ui/map';
 
@@ -54,7 +55,10 @@ vi.mock('@/shared/ui/map', () => ({
   ),
 }));
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  useSnackbarStore.getState().reset();
+});
 
 function renderHomePage() {
   const queryClient = new QueryClient({
@@ -117,5 +121,16 @@ describe('HomePage', () => {
     expect(await screen.findByText('택시 같이 타실 분 구해요')).toBeInTheDocument();
     expect(screen.getByText('판교역')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
+  });
+
+  it('가입 완료 Snackbar를 홈 하단에 표시한다', () => {
+    useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive');
+
+    renderHomePage();
+
+    const snackbar = screen.getByText('가입이 완료되었어요').closest('[role="status"]');
+
+    expect(snackbar).toBeInTheDocument();
+    expect(snackbar).toHaveClass('z-[2147483647]');
   });
 });

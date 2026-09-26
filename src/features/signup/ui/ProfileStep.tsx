@@ -5,9 +5,11 @@ import { Controller, useFormContext } from 'react-hook-form';
 import { VStack } from '@/shared/ui/stack';
 
 import { type BankCode } from '@/features/signup/model/bank';
+import { type GenderCode } from '@/features/signup/model/gender';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
 import { AccountNumberField } from './AccountNumberField';
 import { BankSelectField } from './BankSelectField';
+import { GenderSelectField } from './GenderSelectField';
 import { NicknameField } from './NicknameField';
 import { ProfileImageField } from './ProfileImageField';
 
@@ -39,6 +41,19 @@ export function ProfileStep() {
             invalid={fieldState.invalid}
             onChange={field.onChange}
             value={field.value}
+          />
+        )}
+      />
+
+      <Controller
+        control={control}
+        name="gender"
+        render={({ field, fieldState }) => (
+          <GenderSelectField
+            errorMessage={fieldState.error?.message}
+            invalid={fieldState.invalid}
+            onChange={field.onChange}
+            value={field.value as GenderCode | null}
           />
         )}
       />

@@ -5,6 +5,7 @@ import {
   MOCK_SIGNUP_TOKEN,
   errorResponse,
   getBearerToken,
+  getCookieValue,
   isValidNickname,
 } from './mock-utils';
 
@@ -18,6 +19,7 @@ const MOCK_BANK_NAMES = new Set([
   '카카오뱅크',
   '토스뱅크',
 ]);
+const MOCK_GENDERS = new Set(['MALE', 'FEMALE']);
 
 const REQUIRED_AGREEMENT_FIELDS = ['service', 'location', 'gender'] as const;
 const ALL_AGREEMENT_FIELDS = [
@@ -29,6 +31,7 @@ const consumedSignupTokens = new Set<string>();
 
 type MockSignupRequest = {
   nickname?: unknown;
+  gender?: unknown;
   bank_name?: unknown;
   account_no?: unknown;
   profile_image_key?: unknown;
@@ -55,7 +58,7 @@ export const signupHandlers = [
     });
   }),
   http.post('*/users', async ({ request }) => {
-    const signupToken = getBearerToken(request);
+    const signupToken = getBearerToken(request) ?? getCookieValue(request, 'signup_token');
     if (signupToken !== MOCK_SIGNUP_TOKEN || consumedSignupTokens.has(signupToken)) {
       return errorResponse(
         '회원가입 진행 시간이 만료됐어요. 카카오 로그인부터 다시 시도해주세요',
@@ -104,6 +107,10 @@ export const signupHandlers = [
 
     if (body.nickname === '중복닉네임') {
       return errorResponse('이미 사용 중인 닉네임이에요', 'NICKNAME_DUPLICATE', 'nickname', 409);
+    }
+
+    if (!MOCK_GENDERS.has(String(body.gender))) {
+      return errorResponse('성별을 선택해주세요', 'VALIDATION_ERROR', 'gender', 422);
     }
 
     if (body.bank_name !== undefined && !MOCK_BANK_NAMES.has(String(body.bank_name))) {

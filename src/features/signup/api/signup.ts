@@ -2,6 +2,7 @@ import { apiFetch } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/api/types';
 
 import { BankCode } from '@/features/signup/model/bank';
+import type { GenderCode } from '@/features/signup/model/gender';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
 
 const BANK_API_NAMES: Record<BankCode, string> = {
@@ -25,6 +26,7 @@ export type SignupAgreements = {
 
 export type SignupPayload = {
   nickname: string;
+  gender: GenderCode;
   bank_name?: string;
   profile_image_key?: string;
   account_no?: string;
@@ -41,8 +43,13 @@ export function toSignupPayload(
   values: SignupFormValues,
   profileImageKey?: string | null,
 ): SignupPayload {
+  if (values.gender === null) {
+    throw new Error('성별을 선택해주세요.');
+  }
+
   const payload: SignupPayload = {
     nickname: values.nickname.trim(),
+    gender: values.gender,
     agreements: values.agreements,
   };
 
@@ -62,10 +69,9 @@ export function toSignupPayload(
   return payload;
 }
 
-export async function completeSignup(signupToken: string, payload: SignupPayload) {
+export async function completeSignup(payload: SignupPayload) {
   return apiFetch<ApiResponse<SignupData>>('/users', {
     method: 'POST',
-    token: signupToken,
     body: JSON.stringify(payload),
   });
 }
