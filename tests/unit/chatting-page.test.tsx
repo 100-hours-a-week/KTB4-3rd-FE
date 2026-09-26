@@ -49,7 +49,9 @@ describe('ChattingPage', () => {
     expect(screen.getByText('3/4')).toBeInTheDocument();
     expect(screen.getByText('3분 뒤 도착합니다')).toBeInTheDocument();
     expect(screen.getByText('루디 님이 입장하셨어요')).toBeInTheDocument();
+    expect(screen.getByText('민준 님이 퇴장하셨어요')).toBeInTheDocument();
     expect(screen.getByText('운행이 시작됐나요?')).toBeInTheDocument();
+    expect(screen.getByText('운행이 종료됐어요')).toBeInTheDocument();
     expect(screen.getByLabelText('채팅 메시지')).toHaveClass('overflow-y-auto');
   });
 
@@ -129,9 +131,12 @@ describe('ChattingPage', () => {
 
     const input = screen.getByRole('textbox', { name: '메시지 입력' });
     await user.type(input, '새로운 메시지');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '메시지 전송' })).toBeEnabled();
+    });
     await user.click(screen.getByRole('button', { name: '메시지 전송' }));
 
-    expect(screen.getByText('새로운 메시지')).toBeInTheDocument();
+    expect(await screen.findByText('새로운 메시지')).toBeInTheDocument();
     expect(input).toHaveValue('');
   });
 

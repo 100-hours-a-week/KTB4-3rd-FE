@@ -29,7 +29,7 @@ export function ChatMessageList({
     );
 
     lastReadMessage?.scrollIntoView?.({ block: 'center' });
-  }, [roomId, lastReadMessageId, messages.length]);
+  }, [roomId, lastReadMessageId]);
 
   return (
     <div

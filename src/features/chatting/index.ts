@@ -22,3 +22,7 @@ export {
 } from './ui/chat-satisfaction-dialog';
 export { ChatNotice, type ChatNoticeProps, type ChatNoticeVariant } from './ui/chat-notice';
 export { ChatComposer, type ChatComposerProps } from './ui/chat-composer';
+export {
+  useChatRoomWebSocket,
+  type UseChatRoomWebSocketOptions,
+} from './model/use-chat-room-websocket';

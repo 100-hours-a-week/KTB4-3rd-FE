@@ -29,12 +29,23 @@ export type ChatRoomMessageJoiner = {
   name: string;
 };
 
+export type ChatRoomMessageLeaver = {
+  id: number;
+  name: string;
+};
+
 export type ChatRoomMessageData = {
   id: number;
-  type: 'TEXT' | 'SYSTEM_JOIN' | 'SYSTEM_RIDE_START_REQUESTED';
-  content: string | null;
+  type:
+    | 'TEXT'
+    | 'SYSTEM_JOIN'
+    | 'SYSTEM_LEAVE'
+    | 'SYSTEM_RIDE_START_REQUESTED'
+    | 'SYSTEM_RIDE_ENDED';
+  content?: string | null;
   sender?: ChatRoomMessageSender;
   joiner?: ChatRoomMessageJoiner;
+  leaver?: ChatRoomMessageLeaver;
   created_at: string;
 };
 

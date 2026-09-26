@@ -13,3 +13,10 @@ export type {
   ChatRoomListItem,
   ChatRoomListResponse,
 } from './model/chat';
+export {
+  ChatWebSocketClient,
+  getChatWebSocketUrl,
+  type ChatWebSocketClientOptions,
+  type ChatWebSocketMessage,
+  type ChatWebSocketStatus,
+} from './api/chat-websocket-client';

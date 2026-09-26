@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 
-import { ChatComposer, ChatReportDialog } from '@/features/chatting';
+import { ChatComposer, ChatReportDialog, useChatRoomWebSocket } from '@/features/chatting';
+import type { ChatWebSocketMessage } from '@/entities/chat';
 
-import type { ChatRoom } from '@/_pages/chatting/model/chat-room';
+import { createChatRoomMessageFromApi, type ChatRoom } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageList } from './chat-message-list';
 
@@ -13,17 +14,24 @@ type ChatRoomContentProps = {
 export function ChatRoomContent({ room }: ChatRoomContentProps) {
   const [messages, setMessages] = useState(() => [...room.messages]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const handleMessage = useCallback((message: ChatWebSocketMessage) => {
+    const nextMessage = createChatRoomMessageFromApi(message);
+
+    setMessages((currentMessages) => {
+      if (currentMessages.some((currentMessage) => currentMessage.id === nextMessage.id)) {
+        return currentMessages;
+      }
+
+      return [...currentMessages, nextMessage];
+    });
+  }, []);
+  const { sendMessage, status } = useChatRoomWebSocket({
+    onMessage: handleMessage,
+    roomId: room.id,
+  });
 
   const handleSubmit = (content: string) => {
-    setMessages((currentMessages) => [
-      ...currentMessages,
-      {
-        id: `local-message-${currentMessages.length}`,
-        kind: 'bubble',
-        content,
-        variant: 'me',
-      },
-    ]);
+    sendMessage(content);
   };
 
   return (
@@ -37,6 +45,7 @@ export function ChatRoomContent({ room }: ChatRoomContentProps) {
         />
         <ChatComposer
           className="!fixed bottom-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)]"
+          disabled={status !== 'open'}
           onSubmit={handleSubmit}
         />
       </section>
