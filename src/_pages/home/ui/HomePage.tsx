@@ -1,8 +1,9 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import Image from 'next/image';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import {
@@ -37,6 +38,8 @@ import {
   useCommunityPostCommentsQuery,
   useCommunityPostDetailQuery,
 } from '@/_pages/post-detail/api/community-posts';
+import { ApiError } from '@/shared/api/client';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { BottomModal } from '@/shared/ui/bottom-modal';
 import { BottomNav } from '@/shared/ui/BottomNav';
@@ -46,6 +49,8 @@ import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
 import { Map, MyLocationButton, type MapMarker, type MapViewport } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
+import { ResultSection } from '@/shared/ui/result-section';
+import { Snackbar } from '@/shared/ui/snackbar';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 import { Text } from '@/shared/ui/text';
 
@@ -55,6 +60,27 @@ type PositionedPost = {
 };
 
 const POST_LOCATION_ROUTE = '/post/create/location';
+const POST_ERROR_TITLE = '게시글을 불러올 수 없어요';
+const POST_ERROR_DESCRIPTION =
+  '게시글을 불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.';
+
+const postErrorIcon = (
+  <Icon
+    aria-hidden="true"
+    color="var(--color-fg-critical)"
+    name="exclamationmarkCircleFill"
+    size={66}
+  />
+);
+const emptyPostsIcon = (
+  <Image
+    alt=""
+    aria-hidden="true"
+    height={66}
+    src="/icons/seed/icon_document_tray_line.svg"
+    width={66}
+  />
+);
 
 function getPostMarkerId(post: Pick<Post, 'type' | 'id'> | MapPin) {
   return `${post.type}-${post.id}`;
@@ -186,6 +212,24 @@ export function HomePage() {
 
     return null;
   }, [companionDetailQuery.data, communityComments, communityDetailQuery.data, selectedPost]);
+
+  let selectedDetailQuery: typeof companionDetailQuery | typeof communityDetailQuery | null = null;
+
+  if (selectedPost?.post.type === 'COMPANION') {
+    selectedDetailQuery = companionDetailQuery;
+  } else if (selectedPost?.post.type === 'COMMUNITY') {
+    selectedDetailQuery = communityDetailQuery;
+  }
+  const selectedDetailIsNotFound =
+    selectedDetailQuery?.error instanceof ApiError && selectedDetailQuery.error.status === 404;
+
+  useEffect(() => {
+    if (!selectedPost || !selectedDetailIsNotFound) {
+      return;
+    }
+
+    useSnackbarStore.getState().showSnackbar('존재하지 않는 게시글이에요.', 'critical');
+  }, [selectedDetailIsNotFound, selectedPost]);
 
   const handleMarkerClick = useCallback(
     (marker: MapMarker) => {
@@ -354,21 +398,33 @@ export function HomePage() {
           </Text>
         ) : null}
         {nearbyPostsQuery.isError ? (
-          <Text className="block p-6" color="fg.critical" variant="t4Regular">
-            주변 게시글을 불러오지 못했어요.
-          </Text>
+          <ResultSection
+            buttons="primary"
+            description={POST_ERROR_DESCRIPTION}
+            icon={postErrorIcon}
+            primaryButtonProps={{ onClick: () => void nearbyPostsQuery.refetch() }}
+            primaryLabel="다시 불러오기"
+            size="medium"
+            title={POST_ERROR_TITLE}
+          />
         ) : null}
         {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length === 0 ? (
-          <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
-            주변에 게시글이 없어요.
-          </Text>
+          <ResultSection
+            buttons="primary"
+            description="가장 먼저 글을 등록하고 동행자를 찾아보세요"
+            icon={emptyPostsIcon}
+            primaryButtonProps={{ onClick: handlePostCreate }}
+            primaryLabel="글 등록하기"
+            size="medium"
+            title="등록된 게시글이 없어요"
+          />
         ) : null}
         {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length > 0 ? (
           <PostList items={nearbyPosts} onItemClick={handlePostClick} />
         ) : null}
       </BottomSheet>
 
-      {selectedPost ? (
+      {selectedPost && !selectedDetailIsNotFound ? (
         <BottomModal
           bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px) + 8px)"
           href={`/posts/${selectedPost.post.id}`}
@@ -385,15 +441,16 @@ export function HomePage() {
               게시글을 불러오는 중이에요.
             </Text>
           ) : null}
-          {selectedPost.post.type === 'COMPANION' && companionDetailQuery.isError ? (
-            <Text className="block p-6" color="fg.critical" variant="t4Regular">
-              게시글을 불러오지 못했어요.
-            </Text>
-          ) : null}
-          {selectedPost.post.type === 'COMMUNITY' && communityDetailQuery.isError ? (
-            <Text className="block p-6" color="fg.critical" variant="t4Regular">
-              게시글을 불러오지 못했어요.
-            </Text>
+          {selectedDetailQuery?.isError && !selectedDetailIsNotFound ? (
+            <ResultSection
+              buttons="primary"
+              description={POST_ERROR_DESCRIPTION}
+              icon={postErrorIcon}
+              primaryButtonProps={{ onClick: () => void selectedDetailQuery.refetch() }}
+              primaryLabel="다시 불러오기"
+              size="medium"
+              title={POST_ERROR_TITLE}
+            />
           ) : null}
           {selectedDetail?.type === 'COMPANION' ? (
             <CompanionPostDetailView
@@ -422,6 +479,19 @@ export function HomePage() {
       ) : null}
 
       <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
+      {mapPinsQuery.isError ? (
+        <Snackbar
+          actionProps={{
+            children: '다시 시도',
+            onClick: () => void mapPinsQuery.refetch(),
+          }}
+          className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto"
+          description="핀 목록 조회 중 오류가 발생했어요"
+          open
+          timeout={0}
+          type="critical"
+        />
+      ) : null}
       <SnackbarViewport className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto" />
     </div>
   );
