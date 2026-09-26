@@ -44,6 +44,7 @@ describe('PostTypeSelectionPage', () => {
 
     await user.click(companionOption);
 
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
     expect(companionOption).toHaveAttribute('aria-pressed', 'true');
     expect(communityOption).toHaveAttribute('aria-pressed', 'false');
     expect(usePostCreateStore.getState().type).toBe('COMPANION');
@@ -59,5 +60,47 @@ describe('PostTypeSelectionPage', () => {
 
     expect(onNext).toHaveBeenCalledOnce();
     expect(onNext).toHaveBeenCalledWith('COMPANION');
+  });
+
+  it('작성 데이터가 있으면 타입 변경 전에 확인하고 취소할 수 있다', async () => {
+    const user = userEvent.setup();
+    const store = usePostCreateStore.getState();
+
+    store.setType('COMMUNITY');
+    store.setCommunityField('title', '작성 중인 게시글');
+
+    render(<PostTypeSelectionPage />);
+
+    await user.click(screen.getByRole('button', { name: /동행 모집/ }));
+
+    const dialog = screen.getByRole('dialog', {
+      name: '게시글 타입을 바꾸면 작성한 게시글 정보가 사라져요.',
+    });
+
+    expect(dialog).toHaveClass('!w-[calc(100%-40px)]', '!max-w-[353px]');
+    expect(usePostCreateStore.getState().type).toBe('COMMUNITY');
+    expect(usePostCreateStore.getState().community.title).toBe('작성 중인 게시글');
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByText('게시글 타입을 바꾸면 작성한 게시글 정보가 사라져요.')).toBeNull();
+    expect(usePostCreateStore.getState().type).toBe('COMMUNITY');
+  });
+
+  it('타입 변경을 확인하면 작성 데이터와 세션스토리지 상태를 초기화한다', async () => {
+    const user = userEvent.setup();
+    const store = usePostCreateStore.getState();
+
+    store.setType('COMMUNITY');
+    store.setCommunityField('title', '작성 중인 게시글');
+
+    render(<PostTypeSelectionPage />);
+
+    await user.click(screen.getByRole('button', { name: /동행 모집/ }));
+    await user.click(screen.getByRole('button', { name: '바꾸기' }));
+
+    expect(usePostCreateStore.getState().type).toBe('COMPANION');
+    expect(usePostCreateStore.getState().community.title).toBe('');
+    expect(sessionStorage.getItem('post-create-draft')).not.toContain('작성 중인 게시글');
   });
 });
