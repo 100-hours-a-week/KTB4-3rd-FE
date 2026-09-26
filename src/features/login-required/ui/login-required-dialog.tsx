@@ -15,6 +15,7 @@ export function LoginRequiredDialog({ onOpenChange, open }: LoginRequiredDialogP
   return (
     <Dialog
       buttons="primarySecondary"
+      className="!w-[calc(100%-40px)] !max-w-[353px]"
       description="로그인 페이지로 이동할까요?"
       open={open}
       primaryButtonProps={{ onClick: () => router.push('/login') }}

@@ -56,7 +56,10 @@ describe('useRequireAuth', () => {
     fireEvent.click(screen.getByRole('button', { name: '보호된 기능' }));
 
     expect(onAuthenticated).not.toHaveBeenCalled();
-    expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
+    const dialog = screen.getByRole('dialog', { name: '로그인이 필요해요' });
+
+    expect(dialog).toBeInTheDocument();
+    expect(dialog).toHaveClass('!w-[calc(100%-40px)]', '!max-w-[353px]');
     expect(screen.getByText('로그인 페이지로 이동할까요?')).toBeInTheDocument();
   });
 
