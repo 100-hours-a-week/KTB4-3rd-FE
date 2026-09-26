@@ -1,3 +1,7 @@
+'use client';
+
+import { useEffect, useRef } from 'react';
+
 import {
   CommentList,
   CommentSummary,
@@ -31,6 +35,35 @@ export function CommunityPostDetail({
   onLoadMoreComments,
   post,
 }: CommunityPostDetailProps) {
+  const loadMoreCommentsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = loadMoreCommentsRef.current;
+
+    if (
+      !target ||
+      commentsError ||
+      !hasMoreComments ||
+      !onLoadMoreComments ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !isLoadingMoreComments) {
+          onLoadMoreComments();
+        }
+      },
+      { rootMargin: '0px 0px 160px 0px' },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [commentsError, hasMoreComments, isLoadingMoreComments, onLoadMoreComments]);
+
   return (
     <article className={cn('flex flex-col', className)}>
       <PostDetailInfo description={post.description} title={post.title} type={post.type} />
@@ -59,15 +92,17 @@ export function CommunityPostDetail({
       ) : null}
       {post.comments.length > 0 ? <CommentList comments={post.comments} /> : null}
       {hasMoreComments && onLoadMoreComments ? (
-        <button
-          aria-busy={isLoadingMoreComments}
-          className="mx-auto my-2 rounded-lg px-4 py-2 text-[length:var(--font-size-t4)] text-[var(--color-fg-neutral)] underline underline-offset-2 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50"
-          disabled={isLoadingMoreComments}
-          onClick={onLoadMoreComments}
-          type="button"
+        <div
+          aria-live="polite"
+          className="flex min-h-8 items-center justify-center px-6 py-2"
+          ref={loadMoreCommentsRef}
         >
-          {isLoadingMoreComments ? '댓글을 불러오는 중이에요.' : '댓글 더보기'}
-        </button>
+          {isLoadingMoreComments ? (
+            <Text color="fg.neutralSubtle" variant="t4Regular">
+              댓글을 불러오는 중이에요.
+            </Text>
+          ) : null}
+        </div>
       ) : null}
       <CommentComposer disabled={isCommentSubmitting} onSubmit={onCommentSubmit} />
     </article>

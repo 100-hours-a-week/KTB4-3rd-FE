@@ -141,6 +141,13 @@ export function HomePage() {
   const communityDetailQuery = useCommunityPostDetailQuery(selectedCommunityId);
   const communityCommentsQuery = useCommunityPostCommentsQuery(selectedCommunityId);
   const createCommentMutation = useCreateCommunityPostCommentMutation();
+  const {
+    fetchNextPage: fetchNextComments,
+    hasNextPage: hasNextComments,
+    isError: isCommentsError,
+    isFetchingNextPage: isFetchingNextComments,
+    isPending: isCommentsPending,
+  } = communityCommentsQuery;
   const mapPinsQuery = useMapPinsQuery(mapViewport, userLocation !== null);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
@@ -248,12 +255,12 @@ export function HomePage() {
   }, [joinCompanionMutation, router, selectedDetail]);
 
   const handleLoadMoreComments = useCallback(() => {
-    if (!communityCommentsQuery.hasNextPage || communityCommentsQuery.isFetchingNextPage) {
+    if (!hasNextComments || isCommentsError || isFetchingNextComments) {
       return;
     }
 
-    void communityCommentsQuery.fetchNextPage();
-  }, [communityCommentsQuery]);
+    void fetchNextComments();
+  }, [fetchNextComments, hasNextComments, isCommentsError, isFetchingNextComments]);
 
   const handleCommentSubmit = useCallback(
     (content: string) => {
@@ -398,11 +405,11 @@ export function HomePage() {
           ) : null}
           {selectedDetail?.type === 'COMMUNITY' ? (
             <CommunityPostDetailView
-              commentsError={communityCommentsQuery.isError}
-              commentsLoading={communityCommentsQuery.isPending}
-              hasMoreComments={communityCommentsQuery.hasNextPage}
+              commentsError={isCommentsError}
+              commentsLoading={isCommentsPending}
+              hasMoreComments={hasNextComments}
               isCommentSubmitting={createCommentMutation.isPending}
-              isLoadingMoreComments={communityCommentsQuery.isFetchingNextPage}
+              isLoadingMoreComments={isFetchingNextComments}
               onCommentSubmit={handleCommentSubmit}
               onLoadMoreComments={handleLoadMoreComments}
               post={selectedDetail}
