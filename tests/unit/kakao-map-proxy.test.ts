@@ -17,13 +17,11 @@ describe('kakao-map-proxy', () => {
 
     const response = await proxyKakaoMapSdk(
       new Request(
-        'http://localhost:3001/api/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js?appkey=test&autoload=false',
+        'http://localhost:3001/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js?appkey=test&autoload=false',
       ),
     );
 
-    expect(await response.text()).toBe(
-      '/api/moyeota-kakao-map-cdn/mapjsapi/js/main/4.5.26/kakao.js',
-    );
+    expect(await response.text()).toBe('/moyeota-kakao-map-cdn/mapjsapi/js/main/4.5.26/kakao.js');
     expect(fetch).toHaveBeenCalledWith(
       new URL('https://dapi.kakao.com/v2/maps/sdk.js?appkey=test&autoload=false'),
       { cache: 'no-store' },
@@ -36,7 +34,7 @@ describe('kakao-map-proxy', () => {
     );
 
     const response = await proxyKakaoMapCdn(
-      new Request('http://localhost:3001/api/moyeota-kakao-map-cdn/mapjsapi/js/main.js'),
+      new Request('http://localhost:3001/moyeota-kakao-map-cdn/mapjsapi/js/main.js'),
       ['main', '4.5.26', 'kakao.js'],
     );
 

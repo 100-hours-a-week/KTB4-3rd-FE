@@ -370,8 +370,23 @@ function MapComponent(
       return;
     }
 
-    if (center && !isSameCoordinate(center, toMapCoordinate(map.getCenter()))) {
-      map.setCenter(new kakao.maps.LatLng(center.lat, center.lng));
+    if (center) {
+      const centerPosition = new kakao.maps.LatLng(center.lat, center.lng);
+      const focusOffset = markerFocusOffsetRef.current;
+      const targetLevel = Math.min(Math.max(markerFocusLevelRef.current ?? map.getLevel(), 1), 14);
+
+      if (map.getLevel() !== targetLevel) {
+        map.setLevel(targetLevel, {
+          anchor: centerPosition,
+          animate: !focusOffset,
+        });
+      }
+
+      if (focusOffset) {
+        map.panTo(getMarkerFocusCenter(kakao.maps, map, centerPosition, focusOffset));
+      } else if (!isSameCoordinate(center, toMapCoordinate(map.getCenter()))) {
+        map.setCenter(centerPosition);
+      }
     }
   }, [center, status]);
 

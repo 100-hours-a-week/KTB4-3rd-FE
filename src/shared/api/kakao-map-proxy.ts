@@ -1,6 +1,6 @@
 const KAKAO_MAP_SDK_URL = 'https://dapi.kakao.com/v2/maps/sdk.js';
 const KAKAO_MAP_CDN_URL = 'https://t1.daumcdn.net';
-const KAKAO_MAP_CDN_PROXY_PREFIX = '/api/moyeota-kakao-map-cdn';
+const KAKAO_MAP_CDN_PROXY_PREFIX = '/moyeota-kakao-map-cdn';
 
 function createProxyResponse(upstreamResponse: Response, body: string) {
   return new Response(body, {
