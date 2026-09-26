@@ -4,6 +4,7 @@ import { homeHandlers } from './home.handlers';
 import { kakaoLoginHandlers } from './kakao-login.handlers';
 import { postCreateHandlers } from './post-create.handlers';
 import { signupHandlers } from './signup.handlers';
+import { taxiPotsHandlers } from './taxi-pots.handlers';
 
 export const handlers = [
   ...healthHandlers,
@@ -11,5 +12,6 @@ export const handlers = [
   ...kakaoLoginHandlers,
   ...signupHandlers,
   ...postCreateHandlers,
+  ...taxiPotsHandlers,
   ...homeHandlers,
 ];
