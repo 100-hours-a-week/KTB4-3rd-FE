@@ -86,7 +86,7 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
   return message.content ?? '채팅방 시스템 알림';
 }
 
-function mapChatRoomMessage(message: ChatRoomMessageData): ChatRoomMessage {
+export function createChatRoomMessageFromApi(message: ChatRoomMessageData): ChatRoomMessage {
   if (message.type === 'TEXT') {
     return {
       id: String(message.id),
@@ -113,6 +113,6 @@ export function createChatRoomFromApi(
     title: detail.title,
     memberCount: detail.current_count,
     memberLimit: detail.capacity,
-    messages: [...messages].reverse().map(mapChatRoomMessage),
+    messages: [...messages].reverse().map(createChatRoomMessageFromApi),
   };
 }

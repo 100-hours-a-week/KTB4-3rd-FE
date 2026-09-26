@@ -129,9 +129,12 @@ describe('ChattingPage', () => {
 
     const input = screen.getByRole('textbox', { name: '메시지 입력' });
     await user.type(input, '새로운 메시지');
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '메시지 전송' })).toBeEnabled();
+    });
     await user.click(screen.getByRole('button', { name: '메시지 전송' }));
 
-    expect(screen.getByText('새로운 메시지')).toBeInTheDocument();
+    expect(await screen.findByText('새로운 메시지')).toBeInTheDocument();
     expect(input).toHaveValue('');
   });
 
