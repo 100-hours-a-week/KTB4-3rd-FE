@@ -14,7 +14,7 @@ export function ChatListPageContentLoading() {
       className="flex min-h-0 flex-1 flex-col"
     >
       <ChatListTabs />
-      <div className="mt-8 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+      <div className="mt-8 min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
         <ul className="m-0 w-full list-none p-0">
           {SKELETON_ROWS.map((row) => (
             <li

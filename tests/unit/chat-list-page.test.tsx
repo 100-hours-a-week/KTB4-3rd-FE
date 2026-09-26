@@ -36,6 +36,9 @@ describe('ChatListPageContent', () => {
     expect(screen.queryByTestId('chat-list-empty')).not.toBeInTheDocument();
     expect(screen.getByRole('list').parentElement).toHaveClass(
       'flex-1',
+      '-mx-5',
+      '!w-[calc(100%+2.5rem)]',
+      'overflow-x-hidden',
       'overflow-y-auto',
       'overscroll-contain',
     );

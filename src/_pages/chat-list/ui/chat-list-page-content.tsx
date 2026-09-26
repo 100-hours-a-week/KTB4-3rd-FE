@@ -86,8 +86,13 @@ function ChatListPageStateView({
   }
 
   return (
-    <div className="mt-8 min-h-0 flex-1 overflow-y-auto overscroll-contain">
-      <ChatList fullWidth items={state.data.items} onItemClick={onChatRoomClick} />
+    <div className="-mx-5 mt-8 min-h-0 !w-[calc(100%+2.5rem)] flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
+      <ChatList
+        className="!mx-0 !w-full"
+        fullWidth
+        items={state.data.items}
+        onItemClick={onChatRoomClick}
+      />
     </div>
   );
 }
