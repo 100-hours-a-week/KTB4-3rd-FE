@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 
 import {
@@ -18,10 +18,15 @@ import { Menu, type MenuItem } from '@/shared/ui/menu';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Text } from '@/shared/ui/text';
 
-import type { ChatRoom, ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
+import { useChatRoomQueries } from '@/_pages/chatting/api/chat-room';
+import {
+  createChatRoomFromApi,
+  type ChatRoom,
+  type ChatRoomMessage,
+} from '@/_pages/chatting/model/chat-room';
 
 export type ChattingPageProps = {
-  room: ChatRoom;
+  roomId: string;
 };
 
 const initialMessageSpacing = ['', 'mt-[41px]', 'mt-[47px]', 'mt-[27px]', 'mt-[41px]'];
@@ -45,7 +50,9 @@ type ChatMessageProps = {
 function ChatMessage({ message, index, onReport }: ChatMessageProps) {
   if (message.kind === 'notice') {
     return (
-      <ChatNotice className={getMessageClassName(message, index)}>{message.content}</ChatNotice>
+      <ChatNotice className={getMessageClassName(message, index)} data-message-id={message.id}>
+        {message.content}
+      </ChatNotice>
     );
   }
 
@@ -57,6 +64,7 @@ function ChatMessage({ message, index, onReport }: ChatMessageProps) {
         '!py-[14px]',
         message.layout === 'tall' && '!h-[82px] !w-[248px] !max-w-none !p-4',
       )}
+      data-message-id={message.id}
       role={message.variant === 'other' ? 'button' : undefined}
       tabIndex={message.variant === 'other' ? 0 : undefined}
       variant={message.variant}
@@ -96,9 +104,61 @@ function ChatMessage({ message, index, onReport }: ChatMessageProps) {
   );
 }
 
-export function ChattingPage({ room }: ChattingPageProps) {
+function ChatRoomLayout({ children, room }: { children: ReactNode; room?: ChatRoom }) {
+  return (
+    <PageLayout
+      className="relative h-dvh min-h-0 overflow-hidden"
+      contentClassName="min-h-0 flex-1 gap-0 !px-0 !pt-[56px] !pb-[78px]"
+      header={
+        <Header
+          className="!fixed top-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2"
+          leftSlot={<BackButton href="/" />}
+          rightSlot={
+            <div
+              className={cn(
+                'flex w-[145px] items-center',
+                room ? 'justify-between' : 'justify-end',
+              )}
+            >
+              {room ? (
+                <Text as="span" color="fg.neutralMuted" variant="t4Regular">
+                  {room.memberCount}/{room.memberLimit}
+                </Text>
+              ) : null}
+              <Link
+                aria-label="채팅방 나가기"
+                className="inline-flex size-11 items-center justify-center rounded-[var(--dimension-x2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
+                href="/"
+              >
+                <Icon aria-hidden="true" color="var(--color-fg-critical)" name="logOut" size={24} />
+              </Link>
+            </div>
+          }
+          title={room?.title ?? '채팅방'}
+        />
+      }
+    >
+      {children}
+    </PageLayout>
+  );
+}
+
+function ChatRoomContent({ room }: { room: ChatRoom }) {
   const [messages, setMessages] = useState(() => [...room.messages]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const messagesRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (room.lastReadMessageId === null) {
+      return;
+    }
+
+    const lastReadMessage = messagesRef.current?.querySelector<HTMLElement>(
+      `[data-message-id="${room.lastReadMessageId}"]`,
+    );
+
+    lastReadMessage?.scrollIntoView?.({ block: 'center' });
+  }, [room.id, room.lastReadMessageId, room.messages.length]);
 
   const handleSubmit = (content: string) => {
     setMessages((currentMessages) => [
@@ -113,35 +173,12 @@ export function ChattingPage({ room }: ChattingPageProps) {
   };
 
   return (
-    <PageLayout
-      className="relative h-dvh min-h-0 overflow-hidden"
-      contentClassName="min-h-0 flex-1 gap-0 !px-0 !pt-[56px] !pb-[78px]"
-      header={
-        <Header
-          className="!fixed top-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2"
-          leftSlot={<BackButton href="/" />}
-          rightSlot={
-            <div className="flex w-[145px] items-center justify-between">
-              <Text as="span" color="fg.neutralMuted" variant="t4Regular">
-                {room.memberCount}/{room.memberLimit}
-              </Text>
-              <Link
-                aria-label="채팅방 나가기"
-                className="inline-flex size-11 items-center justify-center rounded-[var(--dimension-x2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
-                href="/"
-              >
-                <Icon aria-hidden="true" color="var(--color-fg-critical)" name="logOut" size={24} />
-              </Link>
-            </div>
-          }
-          title={room.title}
-        />
-      }
-    >
+    <>
       <section className="flex min-h-0 flex-1 flex-col">
         <div
           aria-label="채팅 메시지"
           className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
+          ref={messagesRef}
         >
           {messages.map((message, index) => (
             <ChatMessage
@@ -158,6 +195,53 @@ export function ChattingPage({ room }: ChattingPageProps) {
         />
       </section>
       <ChatReportDialog onOpenChange={setIsReportDialogOpen} open={isReportDialogOpen} />
-    </PageLayout>
+    </>
+  );
+}
+
+function ChatRoomState({ children, label }: { children: ReactNode; label: string }) {
+  return (
+    <section
+      aria-busy="true"
+      aria-label={label}
+      className="flex min-h-0 flex-1 items-center justify-center"
+    >
+      <Text color="fg.neutralSubtle" variant="t4Regular">
+        {children}
+      </Text>
+    </section>
+  );
+}
+
+export function ChattingPage({ roomId }: ChattingPageProps) {
+  const { detailQuery, messagesQuery } = useChatRoomQueries(roomId);
+  const room =
+    detailQuery.data && messagesQuery.data
+      ? createChatRoomFromApi(detailQuery.data.data, messagesQuery.data.data.items)
+      : undefined;
+
+  if (detailQuery.isPending || messagesQuery.isPending) {
+    return (
+      <ChatRoomLayout>
+        <ChatRoomState label="채팅방을 불러오는 중">채팅방을 불러오는 중이에요.</ChatRoomState>
+      </ChatRoomLayout>
+    );
+  }
+
+  if (detailQuery.isError || messagesQuery.isError || !room) {
+    return (
+      <ChatRoomLayout>
+        <ChatRoomState label="채팅방을 불러오지 못함">채팅방을 불러오지 못했어요.</ChatRoomState>
+      </ChatRoomLayout>
+    );
+  }
+
+  return (
+    <ChatRoomLayout room={room}>
+      <ChatRoomContent
+        key={`${room.id}:${room.messages.map((message) => message.id).join(',')}`}
+        room={room}
+      />
+    </ChatRoomLayout>
   );
 }
