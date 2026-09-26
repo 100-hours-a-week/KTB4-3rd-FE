@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 
-type AuthState = {
+export type AuthState = {
   accessToken: string | null;
   signupToken: string | null;
   setAccessToken: (accessToken: string) => void;
@@ -8,6 +8,8 @@ type AuthState = {
   clearSignupToken: () => void;
   clearTokens: () => void;
 };
+
+export const selectIsAuthenticated = (state: AuthState) => state.accessToken !== null;
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,

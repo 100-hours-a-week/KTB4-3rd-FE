@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
@@ -16,6 +17,7 @@ import {
   CompanionPostDetail as CompanionPostDetailView,
   CommunityPostDetail as CommunityPostDetailView,
 } from '@/features/post-detail';
+import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
@@ -43,6 +45,8 @@ type PositionedPost = {
   position: MapCoordinate;
   post: Post;
 };
+
+const POST_LOCATION_ROUTE = '/post/create/location';
 
 function getPostMarkerId(post: Pick<Post, 'type' | 'id'> | MapPin) {
   return `${post.type}-${post.id}`;
@@ -100,6 +104,8 @@ function toCommunityPostDetail(
 }
 
 export function HomePage() {
+  const router = useRouter();
+  const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<PositionedPost | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
@@ -176,6 +182,10 @@ export function HomePage() {
     setMapViewport(null);
   }, []);
 
+  const handlePostCreate = useCallback(() => {
+    requireAuth(() => router.push(POST_LOCATION_ROUTE));
+  }, [requireAuth, router]);
+
   const handleDetailModalChange = useCallback((open: boolean) => {
     if (!open) {
       setSelectedPost(null);
@@ -217,6 +227,7 @@ export function HomePage() {
           <PostCreateFab
             className="absolute right-4 bottom-[190px] z-30"
             leftSlot={<Icon name="plus" size={24} />}
+            onClick={handlePostCreate}
           >
             글쓰기
           </PostCreateFab>

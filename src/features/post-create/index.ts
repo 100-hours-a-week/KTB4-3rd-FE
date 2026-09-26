@@ -15,3 +15,7 @@ export {
   type PostCreateState,
   type PostCreateTime,
 } from './model/post-create-store';
+export {
+  usePostCreateMutation,
+  type PostCreateMutationVariables,
+} from './model/use-post-create-mutation';

@@ -4,7 +4,9 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { LoginRequiredProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
+import { useAuthStore } from '@/entities/auth';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapMarker, MapViewport } from '@/shared/ui/map';
@@ -67,6 +69,7 @@ vi.mock('@/shared/ui/map', () => ({
 afterEach(() => {
   cleanup();
   navigation.push.mockReset();
+  useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
 });
 
@@ -79,7 +82,9 @@ function renderHomePage() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <HomePage />
+      <LoginRequiredProvider>
+        <HomePage />
+      </LoginRequiredProvider>
     </QueryClientProvider>,
   );
 }
@@ -103,6 +108,7 @@ describe('HomePage', () => {
 
   it('글쓰기 버튼을 누르면 게시글 등록 위치선택 화면으로 이동한다', async () => {
     const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
 
     renderHomePage();
 
