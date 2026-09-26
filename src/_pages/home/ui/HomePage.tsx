@@ -16,6 +16,7 @@ import {
   CompanionPostDetail as CompanionPostDetailView,
   CommunityPostDetail as CommunityPostDetailView,
 } from '@/features/post-detail';
+import { PostCreateFab } from '@/features/post-create';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import {
@@ -30,7 +31,6 @@ import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { BottomModal } from '@/shared/ui/bottom-modal';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Avatar } from '@/shared/ui/avatar';
-import { Fab } from '@/shared/ui/fab';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
@@ -214,13 +214,12 @@ export function HomePage() {
           showZoomControls={false}
           viewportDebounceMs={300}
         >
-          <Fab
+          <PostCreateFab
             className="absolute right-4 bottom-[190px] z-30"
             leftSlot={<Icon name="plus" size={24} />}
-            type="button"
           >
             글쓰기
-          </Fab>
+          </PostCreateFab>
 
           <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
         </Map>
