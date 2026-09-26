@@ -1,0 +1,19 @@
+#!/bin/sh
+
+set -eu
+
+# Keep developer-local environment variables available in linked worktrees.
+# The source .env is never committed or printed; a missing source is a no-op.
+
+worktree_root="$(git rev-parse --show-toplevel 2>/dev/null || exit 0)"
+common_git_dir="$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null || exit 0)"
+repository_root="$(dirname "$common_git_dir")"
+source_env="$repository_root/.env"
+target_env="$worktree_root/.env"
+
+[ "$worktree_root" = "$repository_root" ] && exit 0
+[ -f "$source_env" ] || exit 0
+[ -e "$target_env" ] || [ -L "$target_env" ] && exit 0
+
+(umask 077 && cp "$source_env" "$target_env")
+printf '%s\n' "Copied local .env to $worktree_root" >&2
