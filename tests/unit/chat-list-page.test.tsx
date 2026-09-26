@@ -34,10 +34,15 @@ describe('ChatListPageContent', () => {
 
     expect(screen.getByRole('button', { name: /8시 판교역/ })).toBeInTheDocument();
     expect(screen.queryByTestId('chat-list-empty')).not.toBeInTheDocument();
-    expect(screen.getByRole('list').parentElement).toHaveClass(
+    expect(screen.getByTestId('chat-list-scroll-region')).toBeInTheDocument();
+    expect(screen.getByTestId('chat-list-scroll-region')).toHaveClass(
       'flex-1',
       '-mx-5',
       '!w-[calc(100%+2.5rem)]',
+      'overflow-hidden',
+    );
+    expect(screen.getByRole('list').parentElement).toHaveClass(
+      'h-full',
       'overflow-x-hidden',
       'overflow-y-auto',
       'overscroll-contain',

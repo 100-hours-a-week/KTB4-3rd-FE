@@ -11,6 +11,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { Icon } from '@/shared/ui/icon';
 import { ResultSection } from '@/shared/ui/result-section';
+import { ScrollFog } from '@/shared/ui/scroll-fog';
 
 import {
   DEFAULT_CHAT_LIST_STATES,
@@ -86,13 +87,19 @@ function ChatListPageStateView({
   }
 
   return (
-    <div className="-mx-5 mt-8 min-h-0 !w-[calc(100%+2.5rem)] flex-1 overflow-x-hidden overflow-y-auto overscroll-contain">
-      <ChatList
-        className="!mx-0 !w-full"
-        fullWidth
-        items={state.data.items}
-        onItemClick={onChatRoomClick}
-      />
+    <div
+      className="relative -mx-5 mt-8 min-h-0 !w-[calc(100%+2.5rem)] flex-1 overflow-hidden"
+      data-testid="chat-list-scroll-region"
+    >
+      <div className="h-full overflow-x-hidden overflow-y-auto overscroll-contain">
+        <ChatList
+          className="!mx-0 !w-full"
+          fullWidth
+          items={state.data.items}
+          onItemClick={onChatRoomClick}
+        />
+      </div>
+      <ScrollFog />
     </div>
   );
 }
