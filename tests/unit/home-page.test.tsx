@@ -161,6 +161,103 @@ describe('HomePage', () => {
     expect(screen.getByText(/택시 · 320m/)).toBeInTheDocument();
   });
 
+  it('주변 게시글 조회 오류를 ResultSection으로 표시하고 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+
+    server.use(
+      http.get('*/nearby-posts', () => {
+        requestCount += 1;
+
+        if (requestCount === 1) {
+          return HttpResponse.json(
+            {
+              message: '서버 오류가 발생했습니다',
+              error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+            },
+            { status: 500 },
+          );
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], next_cursor: null },
+        });
+      }),
+    );
+
+    renderHomePage();
+
+    expect(
+      await screen.findByRole('heading', { name: '게시글을 불러올 수 없어요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/게시글을 불러오는 중 오류가 발생했어요/)).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
+
+    await waitFor(() => expect(requestCount).toBe(2));
+    expect(
+      await screen.findByRole('heading', { name: '등록된 게시글이 없어요' }),
+    ).toBeInTheDocument();
+  });
+
+  it('주변 게시글이 없으면 게시글 등록 ResultSection을 표시한다', async () => {
+    server.use(
+      http.get('*/nearby-posts', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], next_cursor: null },
+        }),
+      ),
+    );
+
+    renderHomePage();
+
+    expect(
+      await screen.findByRole('heading', { name: '등록된 게시글이 없어요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '글 등록하기' })).toBeInTheDocument();
+  });
+
+  it('핀 목록 조회 오류를 재시도 가능한 Snackbar로 표시한다', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+
+    server.use(
+      http.get('*/map-pins', () => {
+        requestCount += 1;
+
+        if (requestCount === 1) {
+          return HttpResponse.json(
+            {
+              message: '서버 오류가 발생했습니다',
+              error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+            },
+            { status: 500 },
+          );
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], limit: 500, limit_exceeded: false },
+        });
+      }),
+    );
+
+    renderHomePage();
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '핀 목록 조회 중 오류가 발생했어요',
+    );
+
+    await user.click(screen.getByRole('button', { name: '다시 시도' }));
+
+    await waitFor(() => expect(requestCount).toBe(2));
+    await waitFor(() =>
+      expect(screen.queryByText('핀 목록 조회 중 오류가 발생했어요')).not.toBeInTheDocument(),
+    );
+  });
+
   it('API로 받은 게시글을 선택하면 상세 API 응답으로 바텀모달을 연다', async () => {
     const user = userEvent.setup();
 
@@ -211,6 +308,81 @@ describe('HomePage', () => {
 
     expect(snackbar).toHaveTextContent('댓글이 등록되었어요');
     expect(snackbar).toHaveClass('mx-6', 'mb-2', '!w-auto', '!max-w-none');
+  });
+
+  it('존재하지 않는 게시글이면 바텀모달을 닫고 Snackbar를 표시한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/companion-posts/10', () =>
+        HttpResponse.json(
+          {
+            message: '존재하지 않는 게시글입니다',
+            error: { code: 'POST_NOT_FOUND', field: null },
+          },
+          { status: 404 },
+        ),
+      ),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 → 강남역/ }));
+
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '바텀모달' })).not.toBeInTheDocument(),
+    );
+    expect(await screen.findByText('존재하지 않는 게시글이에요.')).toBeInTheDocument();
+  });
+
+  it('게시글 상세 조회 오류를 ResultSection으로 표시하고 다시 조회한다', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+
+    server.use(
+      http.get('*/companion-posts/10', () => {
+        requestCount += 1;
+
+        if (requestCount === 1) {
+          return HttpResponse.json(
+            {
+              message: '서버 오류가 발생했습니다',
+              error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+            },
+            { status: 500 },
+          );
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 10,
+            title: '택시 같이 타실 분 구해요!',
+            content: '판교역에서 강남역까지 같이 이동해요.',
+            author: { nickname: '우림', profile_image_url: null },
+            transport_type: 'TAXI',
+            departure_at: '2026-08-24T09:40:00.000Z',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            current_count: 2,
+            capacity: 4,
+            is_expired: false,
+            participants: [],
+          },
+        });
+      }),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 → 강남역/ }));
+
+    expect(
+      await screen.findByRole('heading', { name: '게시글을 불러올 수 없어요' }),
+    ).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
+
+    await waitFor(() => expect(requestCount).toBe(2));
+    expect(await screen.findByText('택시 같이 타실 분 구해요!')).toBeInTheDocument();
   });
 
   it('동행모집 상세에서 채팅 참여에 성공하면 응답의 채팅방으로 이동한다', async () => {
