@@ -1,4 +1,6 @@
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
+
+import { getCommunityPostComments } from '@/entities/post';
 
 import { getCommunityPostDetail } from './get-community-post-detail';
 
@@ -15,5 +17,19 @@ export const communityPostQueries = {
 
         return getCommunityPostDetail(postId);
       },
+    }),
+  comments: (postId: number | null) =>
+    infiniteQueryOptions({
+      queryKey: [...communityPostQueries.all(), 'comments', postId] as const,
+      enabled: postId !== null,
+      initialPageParam: null as string | null,
+      queryFn: ({ pageParam }) => {
+        if (postId === null) {
+          throw new Error('커뮤니티 게시글 ID가 없어 댓글을 조회할 수 없습니다.');
+        }
+
+        return getCommunityPostComments(postId, pageParam);
+      },
+      getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
     }),
 };
