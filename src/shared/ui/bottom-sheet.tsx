@@ -1,7 +1,7 @@
 'use client';
 
-import { Drawer, type DrawerRootActions } from '@base-ui/react/drawer';
-import { useRef, useState, type ReactNode } from 'react';
+import { Drawer } from '@base-ui/react/drawer';
+import { useState, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -23,12 +23,9 @@ export type BottomSheetProps = {
   onSnapPointChange?: (snapPoint: BottomSheetSnapPoint | null) => void;
 
   modal?: BottomSheetModal;
-  /** Allows the sheet to close from dismissive interactions or controlled state changes. */
-  dismissible?: boolean;
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
-  minHeight?: number | string;
   bottomOffset?: number | string;
   showBackdrop?: boolean;
   showViewAllButton?: boolean;
@@ -45,7 +42,7 @@ const popupClassName = cn(
 );
 
 const backdropClassName = cn(
-  'fixed inset-0 z-30 min-h-dvh bg-[var(--color-bg-overlay)] opacity-[calc(1-var(--drawer-swipe-progress))]',
+  'fixed inset-0 z-40 min-h-dvh bg-[var(--color-bg-overlay)] opacity-[calc(1-var(--drawer-swipe-progress))]',
   'transition-opacity duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:duration-0',
   'data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)]',
 );
@@ -90,11 +87,9 @@ export function BottomSheet({
   snapPoint,
   onSnapPointChange,
   modal = true,
-  dismissible = false,
   title,
   description,
   children,
-  minHeight,
   bottomOffset,
   showBackdrop = true,
   showViewAllButton = false,
@@ -104,7 +99,6 @@ export function BottomSheet({
   const hasTitle = title !== undefined && title !== null;
   const hasDescription = description !== undefined && description !== null;
   const hasViewAllButton = showViewAllButton && onViewAll !== undefined;
-  const actionsRef = useRef<DrawerRootActions | null>(null);
   const resolvedSnapPoints = (snapPoints ?? defaultSnapPoints).filter(
     (point) => !isDismissiveSnapPoint(point),
   );
@@ -119,12 +113,12 @@ export function BottomSheet({
   const activeSnapPoint = isSnapPointControlled ? resolvedSnapPoint : internalSnapPoint;
 
   const handleOpenChange = (nextOpen: boolean, eventDetails: Drawer.Root.ChangeEventDetails) => {
-    if (!nextOpen && !dismissible) {
+    if (!nextOpen) {
       eventDetails.cancel();
       return;
     }
 
-    onOpenChange?.(nextOpen);
+    onOpenChange?.(true);
   };
 
   const handleSnapPointChange = (
@@ -143,11 +137,6 @@ export function BottomSheet({
   };
 
   const handleBackdropClick = () => {
-    if (dismissible) {
-      actionsRef.current?.close();
-      return;
-    }
-
     if (!isSnapPointControlled) {
       setInternalSnapPoint(minimumSnapPoint);
     }
@@ -156,8 +145,7 @@ export function BottomSheet({
 
   return (
     <Drawer.Root
-      actionsRef={actionsRef}
-      disablePointerDismissal={!dismissible}
+      disablePointerDismissal
       defaultOpen={defaultOpen}
       defaultSnapPoint={resolvedDefaultSnapPoint}
       modal={modal}
@@ -172,11 +160,10 @@ export function BottomSheet({
         <Drawer.Backdrop
           className={showBackdrop ? backdropClassName : 'hidden'}
           data-testid="bottom-sheet-backdrop"
-          onClick={dismissible ? handleBackdropClick : undefined}
         />
         <Drawer.Viewport
           className={cn(
-            'fixed inset-x-0 top-0 bottom-0 z-30 flex touch-none items-end justify-center overflow-hidden',
+            'fixed inset-x-0 top-0 z-50 flex touch-none items-end justify-center overflow-hidden',
             modal !== true && 'pointer-events-none',
           )}
           data-testid="bottom-sheet-viewport"
@@ -190,7 +177,6 @@ export function BottomSheet({
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
             className={cn(popupClassName, modal !== true && 'pointer-events-auto', className)}
-            style={minHeight === undefined ? undefined : { minHeight }}
           >
             <div className="shrink-0 touch-none px-[var(--dimension-x5)] pt-3 select-none">
               <div

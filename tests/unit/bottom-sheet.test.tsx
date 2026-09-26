@@ -91,34 +91,6 @@ describe('BottomSheet', () => {
     expect(screen.getByRole('heading', { name: '게시글' })).toBeInTheDocument();
   });
 
-  it('allows a dismissible sheet to close from Escape', () => {
-    const onOpenChange = vi.fn<(open: boolean) => void>();
-
-    render(
-      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
-        <p>콘텐츠</p>
-      </BottomSheet>,
-    );
-
-    fireEvent.keyDown(document, { key: 'Escape' });
-
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
-  it('allows a dismissible sheet to close from backdrop click', () => {
-    const onOpenChange = vi.fn<(open: boolean) => void>();
-
-    render(
-      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
-        <p>콘텐츠</p>
-      </BottomSheet>,
-    );
-
-    fireEvent.click(screen.getAllByTestId('bottom-sheet-backdrop').at(-1) as HTMLElement);
-
-    expect(onOpenChange).toHaveBeenCalledWith(false);
-  });
-
   it('can hide the backdrop for an inline map sheet', () => {
     render(
       <BottomSheet defaultOpen showBackdrop={false} title="게시글">
@@ -127,17 +99,6 @@ describe('BottomSheet', () => {
     );
 
     expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('hidden');
-  });
-
-  it('renders below the dialog backdrop layer', () => {
-    render(
-      <BottomSheet defaultOpen title="게시글">
-        <p>콘텐츠</p>
-      </BottomSheet>,
-    );
-
-    expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('z-30');
-    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveClass('z-30');
   });
 
   it('keeps the viewport above the bottom navigation when an offset is provided', () => {
@@ -150,16 +111,6 @@ describe('BottomSheet', () => {
     expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveStyle({
       bottom: '72px',
     });
-  });
-
-  it('supports a custom minimum height for content-specific sheets', () => {
-    render(
-      <BottomSheet defaultOpen minHeight="420px" title="게시글">
-        <p>콘텐츠</p>
-      </BottomSheet>,
-    );
-
-    expect(screen.getAllByRole('dialog').at(-1)).toHaveStyle({ minHeight: '420px' });
   });
 
   it('allows map interactions outside a non-modal sheet', () => {
