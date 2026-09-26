@@ -5,6 +5,7 @@ import type { ReactNode } from 'react';
 import {
   MatchingLocationAdjustPage,
   MatchingLocationPage,
+  MatchingConfirmationPage,
   MatchingPage,
   MatchingTimePage,
 } from '@/_pages/matching';
@@ -256,6 +257,17 @@ describe('MatchingTimePage', () => {
     expect(minuteColumn).toHaveAttribute('aria-valuetext', '10');
   });
 
+  it('유효한 시간을 다음으로 진행하면 정보 확인 화면으로 이동한다', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 26, 18, 0));
+
+    render(<MatchingTimePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/matching/confirm');
+  });
+
   it('탑승 희망 시간 선택 화면을 표시한다', () => {
     render(<MatchingTimePage />);
 
@@ -266,5 +278,18 @@ describe('MatchingTimePage', () => {
     expect(screen.getByRole('group', { name: '탑승 희망 시간' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
+  });
+});
+
+describe('MatchingConfirmationPage', () => {
+  it('선택 정보 확인 화면의 안내와 선택 정보를 표시한다', () => {
+    render(<MatchingConfirmationPage />);
+
+    expect(screen.getByRole('heading', { name: '이 정보가 맞나요?' })).toBeInTheDocument();
+    expect(screen.getByText('매칭 등록 이후에는 수정할 수 없어요.')).toBeInTheDocument();
+    expect(screen.getByText('판교역 2번 출구')).toBeInTheDocument();
+    expect(screen.getByText('강남역')).toBeInTheDocument();
+    expect(screen.getByText('오후 6:40')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '매칭 시작하기' })).toBeInTheDocument();
   });
 });
