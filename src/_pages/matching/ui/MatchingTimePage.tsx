@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useState } from 'react';
+import { useRouter } from 'next/navigation';
 
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
@@ -14,6 +15,7 @@ import {
 } from '@/_pages/matching/model/matching-time';
 
 export function MatchingTimePage() {
+  const router = useRouter();
   const [initialTime] = useState(getMatchingTimePickerInitialValue);
   const [selectedTime, setSelectedTime] = useState<TimePickerValue>(initialTime);
   const [isValidationDialogOpen, setIsValidationDialogOpen] = useState(false);
@@ -21,8 +23,11 @@ export function MatchingTimePage() {
   const handleNext = useCallback(() => {
     if (!isMatchingTimeWithinThreeHours(selectedTime)) {
       setIsValidationDialogOpen(true);
+      return;
     }
-  }, [selectedTime]);
+
+    router.push('/matching/confirm');
+  }, [router, selectedTime]);
 
   const handleReset = () => {
     setSelectedTime(initialTime);
