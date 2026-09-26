@@ -29,7 +29,7 @@ type ChatRoomSubscription = {
 const MOCK_CHAT_ROOM_IDS = new Set(['101', '501']);
 const subscriptions = new Map<string, ChatRoomSubscription>();
 const processedMessages = new Map<string, MockChatMessage>();
-let nextMessageId = 1453;
+let nextMessageId = 1454;
 
 function getHeader(headers: Record<string, string>, name: string) {
   const headerName = name.toLowerCase();

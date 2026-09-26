@@ -83,6 +83,14 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
     return '운행이 시작됐나요?';
   }
 
+  if (message.type === 'SYSTEM_RIDE_ENDED') {
+    return '운행이 종료됐어요';
+  }
+
+  if (message.type === 'SYSTEM_LEAVE') {
+    return message.leaver ? `${message.leaver.name} 님이 퇴장하셨어요` : '새로운 멤버가 퇴장했어요';
+  }
+
   return message.content ?? '채팅방 시스템 알림';
 }
 

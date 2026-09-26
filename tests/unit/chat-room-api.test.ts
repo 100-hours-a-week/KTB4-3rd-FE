@@ -30,12 +30,21 @@ describe('chat room API', () => {
   it('채팅방 메시지 목록과 다음 커서를 조회한다', async () => {
     const response = await getChatRoomMessages('501');
 
-    expect(response.data.items).toHaveLength(3);
+    expect(response.data.items).toHaveLength(5);
     expect(response.data.items[0]).toMatchObject({
-      id: 1452,
-      type: 'SYSTEM_RIDE_START_REQUESTED',
+      id: 1441,
+      type: 'TEXT',
     });
-    expect(response.data.next_cursor).toBe('v1.eyJsYXN0X2lkIjoxNDQwfQ');
+    expect(response.data.items[2]).toMatchObject({
+      id: 1453,
+      type: 'SYSTEM_RIDE_ENDED',
+    });
+    expect(response.data.items[4]).toMatchObject({
+      id: 1439,
+      type: 'SYSTEM_LEAVE',
+      leaver: { name: '민준' },
+    });
+    expect(response.data.next_cursor).toBe('v1.eyJsYXN0X2lkIjoxNDM5fQ');
   });
 
   it('존재하지 않는 채팅방 오류를 반환한다', async () => {

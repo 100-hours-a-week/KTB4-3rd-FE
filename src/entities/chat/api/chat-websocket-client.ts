@@ -1,13 +1,22 @@
 export type ChatWebSocketMessage = {
   id: number;
-  type: 'TEXT' | 'SYSTEM_JOIN' | 'SYSTEM_RIDE_START_REQUESTED';
-  content: string | null;
+  type:
+    | 'TEXT'
+    | 'SYSTEM_JOIN'
+    | 'SYSTEM_LEAVE'
+    | 'SYSTEM_RIDE_START_REQUESTED'
+    | 'SYSTEM_RIDE_ENDED';
+  content?: string | null;
   sender?: {
     id: number;
     nickname: string;
     profile_image_url: string | null;
   };
   joiner?: {
+    id: number;
+    name: string;
+  };
+  leaver?: {
     id: number;
     name: string;
   };

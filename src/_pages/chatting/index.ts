@@ -4,6 +4,7 @@ export type {
   ChatRoomDetailResponse,
   ChatRoomMessageData,
   ChatRoomMessageJoiner,
+  ChatRoomMessageLeaver,
   ChatRoomMessageSender,
   ChatRoomMessagesData,
   ChatRoomMessagesResponse,

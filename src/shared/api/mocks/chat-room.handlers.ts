@@ -58,27 +58,36 @@ const MOCK_CHAT_MESSAGES = {
   501: {
     items: [
       {
+        id: 1441,
+        type: 'TEXT',
+        sender: { id: 7, nickname: '우림', profile_image_url: null },
+        content: '3분 뒤 도착합니다',
+        created_at: '2026-09-05T07:41:12.000Z',
+      },
+      {
         id: 1452,
         type: 'SYSTEM_RIDE_START_REQUESTED',
-        content: null,
         created_at: '2026-09-05T07:58:12.000Z',
       },
       {
-        id: 1441,
-        type: 'TEXT',
-        content: '3분 뒤 도착합니다',
-        sender: { id: 7, nickname: '우림', profile_image_url: null },
-        created_at: '2026-09-05T07:41:12.000Z',
+        id: 1453,
+        type: 'SYSTEM_RIDE_ENDED',
+        created_at: '2026-09-05T08:10:00.000Z',
       },
       {
         id: 1440,
         type: 'SYSTEM_JOIN',
-        content: null,
         joiner: { id: 9, name: '루디' },
         created_at: '2026-09-05T07:40:00.000Z',
       },
+      {
+        id: 1439,
+        type: 'SYSTEM_LEAVE',
+        leaver: { id: 12, name: '민준' },
+        created_at: '2026-09-05T07:35:00.000Z',
+      },
     ],
-    next_cursor: 'v1.eyJsYXN0X2lkIjoxNDQwfQ',
+    next_cursor: 'v1.eyJsYXN0X2lkIjoxNDM5fQ',
   },
 } as const;
 
