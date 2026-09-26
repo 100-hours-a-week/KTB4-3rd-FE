@@ -80,6 +80,11 @@ describe('ChatList', () => {
       '!w-[calc(100%+2.5rem)]',
     );
     expect(screen.getByRole('button', { name: /8시 판교역/ })).toHaveClass('px-5');
+    expect(
+      screen
+        .getByRole('button', { name: /8시 판교역/ })
+        .parentElement?.querySelector('[aria-hidden="true"]'),
+    ).toHaveClass('left-5', '!w-[calc(100%-2.5rem)]');
   });
 });
 

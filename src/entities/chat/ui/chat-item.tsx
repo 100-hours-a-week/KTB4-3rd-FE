@@ -58,7 +58,7 @@ export function ChatItem({ chatRoom, className, fullWidth = false, onClick }: Ch
       <Divider
         aria-hidden="true"
         as="div"
-        className="absolute bottom-0 left-0"
+        className={cn('absolute bottom-0', fullWidth ? 'left-5 !w-[calc(100%-2.5rem)]' : 'left-0')}
         color="neutral-subtle"
       />
     </li>
