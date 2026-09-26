@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
@@ -10,6 +11,7 @@ import {
   MatchingTimePage,
 } from '@/_pages/matching';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
+import { useAuthStore } from '@/entities/auth';
 import {
   getMatchingTimePickerInitialValue,
   isMatchingTimeWithinThreeHours,
@@ -41,6 +43,16 @@ const searchResult = {
   placeName: '유스페이스1빌딩',
   roadAddress: '경기 성남시 분당구 대왕판교로 660',
 };
+
+function createQueryWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
 
 vi.mock('next/navigation', () => ({
   useRouter: () => navigation,
@@ -85,6 +97,7 @@ afterEach(() => {
   navigation.replace.mockReset();
   useKakaoPlaceSearch.mockReset();
   reverseGeocodeLocation.mockReset();
+  useAuthStore.getState().clearTokens();
   useMatchingStore.getState().reset();
   useMatchingRegistrationStore.getState().reset();
   searchParams.delete('field');
@@ -308,7 +321,7 @@ describe('MatchingConfirmationPage', () => {
     store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
     store.setDepartureAt(new Date(2026, 8, 26, 18, 40).toISOString());
 
-    render(<MatchingConfirmationPage />);
+    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByRole('heading', { name: '이 정보가 맞나요?' })).toBeInTheDocument();
     expect(screen.getByText('매칭 등록 이후에는 수정할 수 없어요.')).toBeInTheDocument();
@@ -316,5 +329,19 @@ describe('MatchingConfirmationPage', () => {
     expect(screen.getByText('강남역')).toBeInTheDocument();
     expect(screen.getByText('오후 6:40')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '매칭 시작하기' })).toBeInTheDocument();
+  });
+
+  it('매칭 시작에 성공하면 응답의 채팅방으로 이동한다', async () => {
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    const store = useMatchingRegistrationStore.getState();
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+
+    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/599'));
   });
 });
