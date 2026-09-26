@@ -46,6 +46,9 @@ describe('ChatListPageContent', () => {
       'overflow-x-hidden',
       'overflow-y-auto',
       'overscroll-contain',
+      '[scrollbar-width:none]',
+      '[-ms-overflow-style:none]',
+      '[&::-webkit-scrollbar]:hidden',
     );
   });
 

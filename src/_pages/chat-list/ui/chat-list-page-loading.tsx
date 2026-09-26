@@ -16,7 +16,7 @@ export function ChatListPageContentLoading() {
     >
       <ChatListTabs />
       <div className="relative mt-8 min-h-0 flex-1 overflow-hidden">
-        <div className="h-full overflow-x-hidden overflow-y-auto overscroll-contain">
+        <div className="h-full [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
           <ul className="m-0 w-full list-none p-0">
             {SKELETON_ROWS.map((row) => (
               <li

@@ -91,7 +91,7 @@ function ChatListPageStateView({
       className="relative -mx-5 mt-8 min-h-0 !w-[calc(100%+2.5rem)] flex-1 overflow-hidden"
       data-testid="chat-list-scroll-region"
     >
-      <div className="h-full overflow-x-hidden overflow-y-auto overscroll-contain">
+      <div className="h-full [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
         <ChatList
           className="!mx-0 !w-full"
           fullWidth
