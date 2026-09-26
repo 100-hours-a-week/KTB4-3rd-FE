@@ -1,5 +1,7 @@
-import { ChattingPage, generalChatRoom } from '@/_pages/chatting';
+import { redirect } from 'next/navigation';
+
+import { generalChatRoom } from '@/_pages/chatting';
 
 export default function ChattingRoute() {
-  return <ChattingPage room={generalChatRoom} />;
+  redirect(`/chatroom/${generalChatRoom.id}`);
 }

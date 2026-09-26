@@ -15,6 +15,7 @@ export type ChatRoomMessage =
     };
 
 export type ChatRoom = {
+  id: string;
   title: string;
   memberCount: number;
   memberLimit: number;
@@ -22,6 +23,7 @@ export type ChatRoom = {
 };
 
 export const generalChatRoom: ChatRoom = {
+  id: 'general-1',
   title: '5시 판교역',
   memberCount: 1,
   memberLimit: 4,
