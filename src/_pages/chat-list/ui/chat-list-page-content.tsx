@@ -87,7 +87,7 @@ function ChatListPageStateView({
 
   return (
     <div className="mt-8">
-      <ChatList items={state.data.items} onItemClick={onChatRoomClick} />
+      <ChatList fullWidth items={state.data.items} onItemClick={onChatRoomClick} />
     </div>
   );
 }

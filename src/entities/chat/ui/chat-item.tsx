@@ -12,15 +12,19 @@ const CHAT_AVATAR_PLACEHOLDER_SRC = '/avatars/chat-avatar-placeholder.svg';
 export type ChatItemProps = {
   chatRoom: ChatRoomListItem;
   className?: string;
+  fullWidth?: boolean;
   onClick?: MouseEventHandler<HTMLButtonElement>;
 };
 
-export function ChatItem({ chatRoom, className, onClick }: ChatItemProps) {
+export function ChatItem({ chatRoom, className, fullWidth = false, onClick }: ChatItemProps) {
   return (
     <li className={cn('relative h-[84px] w-full', className)}>
       <button
         aria-label={`${chatRoom.title}, ${chatRoom.current_count}명 참여`}
-        className="group flex h-full w-full min-w-0 appearance-none items-start border-0 bg-transparent p-0 pt-[18px] text-left transition-colors hover:bg-[var(--color-bg-transparent-pressed)] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)] active:bg-[var(--color-bg-transparent-selected)]"
+        className={cn(
+          'group flex h-full w-full min-w-0 appearance-none items-start border-0 bg-transparent p-0 pt-[18px] text-left transition-colors hover:bg-[var(--color-bg-transparent-pressed)] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)] active:bg-[var(--color-bg-transparent-selected)]',
+          fullWidth && 'px-5',
+        )}
         data-chat-room-id={chatRoom.id}
         data-has-unread={chatRoom.has_unread}
         onClick={onClick}
