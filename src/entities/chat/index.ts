@@ -1,5 +1,11 @@
 export { ChatItem, type ChatItemProps } from './ui/chat-item';
 export { ChatList, type ChatListProps } from './ui/chat-list';
+export {
+  ChatListTabs,
+  chatListTabValues,
+  type ChatListTabsProps,
+  type ChatListTabValue,
+} from './ui/chat-list-tabs';
 export type {
   ChatRoomHost,
   ChatRoomKind,
