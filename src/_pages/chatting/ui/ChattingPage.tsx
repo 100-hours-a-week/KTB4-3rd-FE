@@ -14,7 +14,6 @@ import { cn } from '@/shared/lib/cn';
 import { BackButton } from '@/shared/ui/back-button';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
-import { Menu, type MenuItem } from '@/shared/ui/menu';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Text } from '@/shared/ui/text';
 
@@ -24,6 +23,8 @@ import {
   type ChatRoom,
   type ChatRoomMessage,
 } from '@/_pages/chatting/model/chat-room';
+
+import { ChatMessageMenu } from './chat-message-menu';
 
 export type ChattingPageProps = {
   roomId: string;
@@ -77,31 +78,7 @@ function ChatMessage({ message, index, onReport }: ChatMessageProps) {
     return bubble;
   }
 
-  const menuItems: MenuItem[] = [
-    {
-      id: 'report-chat',
-      icon: <Icon aria-hidden="true" name="messageSquareWarning" size={24} />,
-      content: '채팅 신고하기',
-      onClick: () => onReport(true),
-    },
-    {
-      id: 'report-user',
-      icon: <Icon aria-hidden="true" name="userRoundX" size={24} />,
-      content: '유저 신고하기',
-      onClick: () => onReport(true),
-    },
-  ];
-
-  return (
-    <Menu
-      aria-label="메시지 메뉴"
-      items={menuItems}
-      longPressDelay={1000}
-      triggerNativeButton={false}
-    >
-      {bubble}
-    </Menu>
-  );
+  return <ChatMessageMenu onReport={() => onReport(true)}>{bubble}</ChatMessageMenu>;
 }
 
 function ChatRoomLayout({ children, room }: { children: ReactNode; room?: ChatRoom }) {

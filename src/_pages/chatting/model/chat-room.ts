@@ -80,7 +80,7 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
   }
 
   if (message.type === 'SYSTEM_RIDE_START_REQUESTED') {
-    return '탑승 시작 요청이 등록되었어요';
+    return '운행이 시작됐나요?';
   }
 
   return message.content ?? '채팅방 시스템 알림';
