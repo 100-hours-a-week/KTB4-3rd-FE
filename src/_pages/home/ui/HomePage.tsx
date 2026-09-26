@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
+import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
@@ -338,161 +339,170 @@ export function HomePage() {
   );
 
   return (
-    <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
-      <Header
-        className="!absolute inset-x-0 top-0 z-30 bg-transparent"
-        leftSlot={
-          <span className="pt-2 pl-1.5">
-            <Logo alt="모여타" size={27} variant="text" />
-          </span>
-        }
-        rightSlot={
-          <span className="pt-3 pr-1.5">
-            <Avatar alt="프로필" className="size-[42px]" size="md" />
-          </span>
-        }
-      />
+    <>
+      <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
+        <Header
+          className="!absolute inset-x-0 top-0 z-30 bg-transparent"
+          leftSlot={
+            <span className="pt-2 pl-1.5">
+              <Logo alt="모여타" size={27} variant="text" />
+            </span>
+          }
+          rightSlot={
+            <span className="pt-3 pr-1.5">
+              <Avatar alt="프로필" className="size-[42px]" size="md" />
+            </span>
+          }
+        />
 
-      <main className="relative h-[calc(100dvh-72px)] min-h-[780px]">
-        <Map
-          center={selectedPost?.position}
-          className="h-full"
-          clusterMarkers
-          markerFocusLevel={2}
-          markerFocusOffset={{ y: 160 }}
-          markers={mapMarkers}
-          onMarkerClick={handleMarkerClick}
-          onUserLocationChange={handleUserLocationChange}
-          onViewportChange={handleMapViewportChange}
-          locateOnMount
-          showCurrentLocationButton={false}
-          showZoomControls={false}
-          viewportDebounceMs={300}
-        >
-          <PostCreateFab
-            className="absolute right-4 bottom-[190px] z-30"
-            leftSlot={<Icon name="plus" size={24} />}
-            onClick={handlePostCreate}
+        <main className="relative h-[calc(100dvh-72px)] min-h-[780px]">
+          <Map
+            center={selectedPost?.position}
+            className="h-full"
+            clusterMarkers
+            markerFocusLevel={2}
+            markerFocusOffset={{ y: 160 }}
+            markers={mapMarkers}
+            onMarkerClick={handleMarkerClick}
+            onUserLocationChange={handleUserLocationChange}
+            onViewportChange={handleMapViewportChange}
+            locateOnMount
+            showCurrentLocationButton={false}
+            showZoomControls={false}
+            viewportDebounceMs={300}
           >
-            글쓰기
-          </PostCreateFab>
+            <PostCreateFab
+              className="absolute right-4 bottom-[190px] z-30"
+              leftSlot={<Icon name="plus" size={24} />}
+              onClick={handlePostCreate}
+            >
+              글쓰기
+            </PostCreateFab>
 
-          <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
-        </Map>
-      </main>
+            <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
+          </Map>
+        </main>
 
-      <BottomSheet
-        bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
-        className="mx-auto w-full max-w-[393px]"
-        defaultSnapPoint="110px"
-        modal={false}
-        open={selectedPost === null}
-        showBackdrop={false}
-        snapPoints={['110px', 0.5, 0.7]}
-        title="근처 핀 게시글"
-        description="가까운 순"
-      >
-        {nearbyPostsQuery.isPending ? (
-          <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
-            게시글을 불러오는 중이에요.
-          </Text>
-        ) : null}
-        {nearbyPostsQuery.isError ? (
-          <ResultSection
-            buttons="primary"
-            description={POST_ERROR_DESCRIPTION}
-            icon={postErrorIcon}
-            primaryButtonProps={{ onClick: () => void nearbyPostsQuery.refetch() }}
-            primaryLabel="다시 불러오기"
-            size="medium"
-            title={POST_ERROR_TITLE}
-          />
-        ) : null}
-        {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length === 0 ? (
-          <ResultSection
-            buttons="primary"
-            description="가장 먼저 글을 등록하고 동행자를 찾아보세요"
-            icon={emptyPostsIcon}
-            primaryButtonProps={{ onClick: handlePostCreate }}
-            primaryLabel="글 등록하기"
-            size="medium"
-            title="등록된 게시글이 없어요"
-          />
-        ) : null}
-        {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length > 0 ? (
-          <PostList items={nearbyPosts} onItemClick={handlePostClick} />
-        ) : null}
-      </BottomSheet>
-
-      {selectedPost && !selectedDetailIsNotFound ? (
-        <BottomModal
-          bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px) + 8px)"
-          href={`/posts/${selectedPost.post.id}`}
-          open
-          onOpenChange={handleDetailModalChange}
+        <BottomSheet
+          bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
+          className="mx-auto w-full max-w-[393px]"
+          defaultSnapPoint="110px"
+          modal={false}
+          open={selectedPost === null}
+          showBackdrop={false}
+          snapPoints={['110px', 0.5, 0.7]}
+          title="근처 핀 게시글"
+          description="가까운 순"
         >
-          {selectedPost.post.type === 'COMPANION' && companionDetailQuery.isPending ? (
+          {nearbyPostsQuery.isPending ? (
             <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
               게시글을 불러오는 중이에요.
             </Text>
           ) : null}
-          {selectedPost.post.type === 'COMMUNITY' && communityDetailQuery.isPending ? (
-            <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
-              게시글을 불러오는 중이에요.
-            </Text>
-          ) : null}
-          {selectedDetailQuery?.isError && !selectedDetailIsNotFound ? (
+          {nearbyPostsQuery.isError ? (
             <ResultSection
               buttons="primary"
               description={POST_ERROR_DESCRIPTION}
               icon={postErrorIcon}
-              primaryButtonProps={{ onClick: () => void selectedDetailQuery.refetch() }}
+              primaryButtonProps={{ onClick: () => void nearbyPostsQuery.refetch() }}
               primaryLabel="다시 불러오기"
               size="medium"
               title={POST_ERROR_TITLE}
             />
           ) : null}
-          {selectedDetail?.type === 'COMPANION' ? (
-            <CompanionPostDetailView
-              joinErrorMessage={joinErrorMessage}
-              isJoining={joinCompanionMutation.isPending}
-              onJoinClick={handleJoinCompanion}
-              onJoinErrorDismiss={() => setJoinErrorMessage(null)}
-              post={selectedDetail}
+          {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length === 0 ? (
+            <ResultSection
+              buttons="primary"
+              description="가장 먼저 글을 등록하고 동행자를 찾아보세요"
+              icon={emptyPostsIcon}
+              primaryButtonProps={{ onClick: handlePostCreate }}
+              primaryLabel="글 등록하기"
+              size="medium"
+              title="등록된 게시글이 없어요"
             />
           ) : null}
-          {selectedDetail?.type === 'COMMUNITY' ? (
-            <CommunityPostDetailView
-              commentFeedback={commentFeedback}
-              commentsError={isCommentsError}
-              commentsLoading={isCommentsPending}
-              hasMoreComments={hasNextComments}
-              isCommentSubmitting={createCommentMutation.isPending}
-              isLoadingMoreComments={isFetchingNextComments}
-              onCommentFeedbackDismiss={() => setCommentFeedback(null)}
-              onCommentSubmit={handleCommentSubmit}
-              onLoadMoreComments={handleLoadMoreComments}
-              post={selectedDetail}
-            />
+          {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length > 0 ? (
+            <PostList items={nearbyPosts} onItemClick={handlePostClick} />
           ) : null}
-        </BottomModal>
-      ) : null}
+        </BottomSheet>
 
-      <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
-      {mapPinsQuery.isError ? (
-        <Snackbar
-          actionProps={{
-            children: '다시 시도',
-            onClick: () => void mapPinsQuery.refetch(),
-          }}
-          className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto"
-          description="핀 목록 조회 중 오류가 발생했어요"
-          open
-          timeout={0}
-          type="critical"
-        />
-      ) : null}
-      <SnackbarViewport className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto" />
-    </div>
+        {selectedPost && !selectedDetailIsNotFound ? (
+          <BottomModal
+            bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px) + 8px)"
+            href={`/posts/${selectedPost.post.id}`}
+            open
+            onOpenChange={handleDetailModalChange}
+          >
+            {selectedPost.post.type === 'COMPANION' && companionDetailQuery.isPending ? (
+              <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
+                게시글을 불러오는 중이에요.
+              </Text>
+            ) : null}
+            {selectedPost.post.type === 'COMMUNITY' && communityDetailQuery.isPending ? (
+              <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
+                게시글을 불러오는 중이에요.
+              </Text>
+            ) : null}
+            {selectedDetailQuery?.isError && !selectedDetailIsNotFound ? (
+              <ResultSection
+                buttons="primary"
+                description={POST_ERROR_DESCRIPTION}
+                icon={postErrorIcon}
+                primaryButtonProps={{ onClick: () => void selectedDetailQuery.refetch() }}
+                primaryLabel="다시 불러오기"
+                size="medium"
+                title={POST_ERROR_TITLE}
+              />
+            ) : null}
+            {selectedDetail?.type === 'COMPANION' ? (
+              <CompanionPostDetailView
+                joinErrorMessage={joinErrorMessage}
+                isJoining={joinCompanionMutation.isPending}
+                onJoinClick={handleJoinCompanion}
+                onJoinErrorDismiss={() => setJoinErrorMessage(null)}
+                post={selectedDetail}
+              />
+            ) : null}
+            {selectedDetail?.type === 'COMMUNITY' ? (
+              <CommunityPostDetailView
+                commentFeedback={commentFeedback}
+                commentsError={isCommentsError}
+                commentsLoading={isCommentsPending}
+                hasMoreComments={hasNextComments}
+                isCommentSubmitting={createCommentMutation.isPending}
+                isLoadingMoreComments={isFetchingNextComments}
+                onCommentFeedbackDismiss={() => setCommentFeedback(null)}
+                onCommentSubmit={handleCommentSubmit}
+                onLoadMoreComments={handleLoadMoreComments}
+                post={selectedDetail}
+              />
+            ) : null}
+          </BottomModal>
+        ) : null}
+
+        <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
+      </div>
+      {typeof document === 'undefined'
+        ? null
+        : createPortal(
+            <>
+              {mapPinsQuery.isError ? (
+                <Snackbar
+                  actionProps={{
+                    children: '다시 시도',
+                    onClick: () => void mapPinsQuery.refetch(),
+                  }}
+                  className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto"
+                  description="핀 목록 조회 중 오류가 발생했어요"
+                  open
+                  timeout={0}
+                  type="critical"
+                />
+              ) : null}
+              <SnackbarViewport className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto" />
+            </>,
+            document.body,
+          )}
+    </>
   );
 }
