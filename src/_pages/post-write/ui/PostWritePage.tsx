@@ -5,6 +5,7 @@ import { useEffect } from 'react';
 
 import type { CompanionTransport } from '@/entities/post';
 import {
+  usePostCreateMutation,
   usePostCreateStore,
   type PostCreateState,
   type PostCreateTime,
@@ -267,7 +268,9 @@ function CompanionPostWriteForm({
 export function PostWritePage({ className, type }: PostWritePageProps) {
   const draft = usePostCreateStore();
   const router = useRouter();
+  const postCreateMutation = usePostCreateMutation();
   const draftType = draftTypeByPostWriteType[type];
+  const isCompanion = type === 'accompany';
 
   const openLocationSearch = (field: 'departure' | 'destination') => {
     router.push(`${LOCATION_SEARCH_ROUTE}?field=${field}`);
@@ -279,7 +282,23 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     }
   }, [draft, draftType]);
 
-  const isCompanion = type === 'accompany';
+  const handlePostCreate = () => {
+    if (isCompanion) {
+      const payload = draft.getCompanionPayload();
+
+      if (payload) {
+        postCreateMutation.mutate({ payload, type: 'COMPANION' });
+      }
+
+      return;
+    }
+
+    const payload = draft.getCommunityPayload();
+
+    if (payload) {
+      postCreateMutation.mutate({ payload, type: 'COMMUNITY' });
+    }
+  };
 
   return (
     <PageLayout
@@ -298,7 +317,9 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
 
           <BottomActionButton
             className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
+            loading={postCreateMutation.isPending}
             type="button"
+            onClick={handlePostCreate}
           >
             등록하기
           </BottomActionButton>
@@ -309,7 +330,9 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
 
           <BottomActionButton
             className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
+            loading={postCreateMutation.isPending}
             type="button"
+            onClick={handlePostCreate}
           >
             등록하기
           </BottomActionButton>
