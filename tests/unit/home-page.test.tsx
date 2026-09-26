@@ -9,6 +9,15 @@ import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapMarker, MapViewport } from '@/shared/ui/map';
 
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/',
+  useRouter: () => ({ push: navigation.push }),
+}));
+
 type MockMapProps = {
   children?: ReactNode;
   markers?: readonly MapMarker[];
@@ -57,6 +66,7 @@ vi.mock('@/shared/ui/map', () => ({
 
 afterEach(() => {
   cleanup();
+  navigation.push.mockReset();
   useSnackbarStore.getState().reset();
 });
 
@@ -89,6 +99,16 @@ describe('HomePage', () => {
 
     expect(bottomNav).toBeInTheDocument();
     expect(bottomNav).toHaveClass('!fixed', '!max-w-[393px]', '!-translate-x-1/2');
+  });
+
+  it('글쓰기 버튼을 누르면 게시글 등록 위치선택 화면으로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    renderHomePage();
+
+    await user.click(screen.getByRole('button', { hidden: true, name: '글쓰기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/post/create/location');
   });
 
   it('지도 핀 API 응답을 지도 마커로 렌더링한다', async () => {

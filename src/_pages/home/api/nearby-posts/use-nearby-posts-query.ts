@@ -5,6 +5,11 @@ import type { MapViewport } from '@/shared/ui/map';
 
 import { nearbyPostsQueries } from './nearby-posts.query';
 
+const SEOUL_STATION_COORDINATE: MapCoordinate = {
+  lat: 37.5547,
+  lng: 126.9707,
+};
+
 function toNearbyPostsQuery(location: MapCoordinate, viewport: MapViewport) {
   return {
     lat: location.lat,
@@ -17,10 +22,12 @@ function toNearbyPostsQuery(location: MapCoordinate, viewport: MapViewport) {
 }
 
 export function useNearbyPostsQuery(location: MapCoordinate | null, viewport: MapViewport | null) {
-  const query = location && viewport ? toNearbyPostsQuery(location, viewport) : null;
+  const query = viewport
+    ? toNearbyPostsQuery(location ?? SEOUL_STATION_COORDINATE, viewport)
+    : null;
 
   return useQuery({
     ...nearbyPostsQueries.list(query),
-    enabled: query !== null,
+    enabled: viewport !== null,
   });
 }
