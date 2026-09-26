@@ -1,5 +1,6 @@
 import { authHandlers } from './auth.handlers';
 import { chatRoomHandlers } from './chat-room.handlers';
+import { chatRoomWebSocketHandlers } from './chat-room-websocket.handlers';
 import { communityCommentsHandlers } from './community-comments.handlers';
 import { healthHandlers } from './health.handlers';
 import { homeHandlers } from './home.handlers';
@@ -13,6 +14,7 @@ export const handlers = [
   ...healthHandlers,
   ...authHandlers,
   ...chatRoomHandlers,
+  ...chatRoomWebSocketHandlers,
   ...communityCommentsHandlers,
   ...kakaoLoginHandlers,
   ...signupHandlers,
