@@ -18,6 +18,7 @@ import {
   type ChatListPageState,
   type ChatListPageStates,
 } from '@/_pages/chat-list/model/chat-list-state';
+import { useScrollFog } from './use-scroll-fog';
 
 export type ChatListPageContentProps = {
   className?: string;
@@ -87,19 +88,37 @@ function ChatListPageStateView({
   }
 
   return (
+    <ChatListScrollableState
+      items={state.data.items}
+      onChatRoomClick={onChatRoomClick}
+      scrollKey={`${tab}:${state.data.items.length}`}
+    />
+  );
+}
+
+function ChatListScrollableState({
+  items,
+  onChatRoomClick,
+  scrollKey,
+}: {
+  items: readonly ChatRoomListItem[];
+  onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  scrollKey: string;
+}) {
+  const { scrollRef, showBottom, showTop } = useScrollFog(scrollKey);
+
+  return (
     <div
       className="relative -mx-5 mt-8 min-h-0 !w-[calc(100%+2.5rem)] flex-1 overflow-hidden"
       data-testid="chat-list-scroll-region"
     >
-      <div className="h-full [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
-        <ChatList
-          className="!mx-0 !w-full"
-          fullWidth
-          items={state.data.items}
-          onItemClick={onChatRoomClick}
-        />
+      <div
+        className="h-full [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+        ref={scrollRef}
+      >
+        <ChatList className="!mx-0 !w-full" fullWidth items={items} onItemClick={onChatRoomClick} />
       </div>
-      <ScrollFog />
+      <ScrollFog showBottom={showBottom} showTop={showTop} />
     </div>
   );
 }

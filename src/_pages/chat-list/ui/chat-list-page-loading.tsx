@@ -5,9 +5,13 @@ import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { ScrollFog } from '@/shared/ui/scroll-fog';
 
+import { useScrollFog } from './use-scroll-fog';
+
 const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index);
 
 export function ChatListPageContentLoading() {
+  const { scrollRef, showBottom, showTop } = useScrollFog(SKELETON_ROWS.length);
+
   return (
     <section
       aria-busy="true"
@@ -16,7 +20,10 @@ export function ChatListPageContentLoading() {
     >
       <ChatListTabs />
       <div className="relative mt-8 min-h-0 flex-1 overflow-hidden">
-        <div className="h-full [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+        <div
+          className="h-full [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+          ref={scrollRef}
+        >
           <ul className="m-0 w-full list-none p-0">
             {SKELETON_ROWS.map((row) => (
               <li
@@ -33,7 +40,7 @@ export function ChatListPageContentLoading() {
             ))}
           </ul>
         </div>
-        <ScrollFog />
+        <ScrollFog showBottom={showBottom} showTop={showTop} />
       </div>
     </section>
   );
