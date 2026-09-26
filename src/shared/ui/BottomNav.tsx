@@ -38,7 +38,7 @@ const BOTTOM_NAV_ITEMS: readonly BottomNavItem[] = [
   {
     key: 'chatting',
     label: '채팅',
-    href: '/chatting',
+    href: '/chat',
     inactiveIcon: 'chatbubbleLine',
     activeIcon: 'chatbubbleFill',
   },

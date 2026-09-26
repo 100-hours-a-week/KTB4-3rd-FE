@@ -71,6 +71,21 @@ describe('ChatList', () => {
     expect(onItemClick).toHaveBeenCalledOnce();
     expect(onItemClick).toHaveBeenCalledWith(secondChatRoom);
   });
+
+  it('전체 폭 모드에서 목록과 항목의 호버 영역을 확장한다', () => {
+    render(<ChatList fullWidth items={[chatRoom]} />);
+
+    expect(screen.getByRole('list', { name: '채팅방 목록' })).toHaveClass(
+      '-mx-5',
+      '!w-[calc(100%+2.5rem)]',
+    );
+    expect(screen.getByRole('button', { name: /8시 판교역/ })).toHaveClass('px-5');
+    expect(
+      screen
+        .getByRole('button', { name: /8시 판교역/ })
+        .parentElement?.querySelector('[aria-hidden="true"]'),
+    ).toHaveClass('left-5', '!w-[calc(100%-2.5rem)]');
+  });
 });
 
 describe('ChatListTabs', () => {
