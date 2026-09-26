@@ -11,7 +11,6 @@ const RATING_STARS_SRC = '/icons/rating-stars.svg';
 export type ChatSatisfactionParticipant = {
   id: string;
   name: string;
-  defaultRating?: number;
 };
 
 export type ChatSatisfactionDialogSubmitPayload = {
@@ -44,14 +43,8 @@ const defaultParticipants: readonly ChatSatisfactionParticipant[] = [
   { id: 'participant-3', name: '이xx' },
 ];
 
-function clampRating(rating: number | undefined) {
-  return Math.min(MAX_RATING, Math.max(0, Math.round(rating ?? MAX_RATING)));
-}
-
 function createInitialRatings(participants: readonly ChatSatisfactionParticipant[]) {
-  return Object.fromEntries(
-    participants.map((participant) => [participant.id, clampRating(participant.defaultRating)]),
-  );
+  return Object.fromEntries(participants.map((participant) => [participant.id, MAX_RATING]));
 }
 
 function RatingStars({
