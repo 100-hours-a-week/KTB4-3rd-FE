@@ -1,3 +1,9 @@
+export {
+  createCompanionPost,
+  createCommunityPost,
+  type PostCreateData,
+  type PostCreateResponse,
+} from './api';
 export { PostCreateFab, type PostCreateFabProps } from './ui/post-create-fab';
 export {
   usePostCreateStore,

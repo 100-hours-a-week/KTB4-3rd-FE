@@ -4,6 +4,10 @@ import { createJSONStorage, persist } from 'zustand/middleware';
 import type { CompanionTransport, PostType } from '@/entities/post';
 import type { MapCoordinate } from '@/shared/types/common';
 
+import type { CompanionPostCreatePayload, CommunityPostCreatePayload } from './post-create.types';
+
+export type { CompanionPostCreatePayload, CommunityPostCreatePayload } from './post-create.types';
+
 export type PostCreateLocation = {
   name: string;
   lat: number | null;
@@ -29,26 +33,6 @@ export type CompanionPostCreateDraft = {
 export type CommunityPostCreateDraft = {
   title: string;
   content: string;
-};
-
-export type CompanionPostCreatePayload = {
-  origin_name: string;
-  origin_lat: number;
-  origin_lng: number;
-  dest_name: string;
-  dest_lat: number;
-  dest_lng: number;
-  departure_at: string;
-  transport_type: CompanionTransport;
-  recruit_count: number;
-  content?: string;
-};
-
-export type CommunityPostCreatePayload = {
-  title: string;
-  content: string;
-  lat: number;
-  lng: number;
 };
 
 export type PostCreateState = {
