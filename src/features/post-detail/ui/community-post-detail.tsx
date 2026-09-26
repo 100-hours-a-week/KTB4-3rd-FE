@@ -10,15 +10,23 @@ import {
 } from '@/entities/post';
 import { CommentComposer } from '@/features/post-comment';
 import { cn } from '@/shared/lib/cn';
+import { Snackbar } from '@/shared/ui/snackbar';
 import { Text } from '@/shared/ui/text';
+
+export type CommunityPostCommentFeedback = {
+  description: string;
+  type: 'critical' | 'positive';
+};
 
 export type CommunityPostDetailProps = {
   className?: string;
+  commentFeedback?: CommunityPostCommentFeedback | null;
   commentsError?: boolean;
   commentsLoading?: boolean;
   hasMoreComments?: boolean;
   isCommentSubmitting?: boolean;
   isLoadingMoreComments?: boolean;
+  onCommentFeedbackDismiss?: () => void;
   onCommentSubmit?: (content: string) => void;
   onLoadMoreComments?: () => void;
   post: CommunityPostDetail;
@@ -26,11 +34,13 @@ export type CommunityPostDetailProps = {
 
 export function CommunityPostDetail({
   className,
+  commentFeedback,
   commentsError = false,
   commentsLoading = false,
   hasMoreComments = false,
   isCommentSubmitting = false,
   isLoadingMoreComments = false,
+  onCommentFeedbackDismiss,
   onCommentSubmit,
   onLoadMoreComments,
   post,
@@ -103,6 +113,20 @@ export function CommunityPostDetail({
             </Text>
           ) : null}
         </div>
+      ) : null}
+      {commentFeedback ? (
+        <Snackbar
+          className="mx-6 mb-2 !w-auto !max-w-none"
+          description={commentFeedback.description}
+          onOpenChange={(open) => {
+            if (!open) {
+              onCommentFeedbackDismiss?.();
+            }
+          }}
+          open
+          timeout={commentFeedback.type === 'positive' ? 3000 : undefined}
+          type={commentFeedback.type}
+        />
       ) : null}
       <CommentComposer disabled={isCommentSubmitting} onSubmit={onCommentSubmit} />
     </article>

@@ -19,6 +19,7 @@ import {
 import {
   CompanionPostDetail as CompanionPostDetailView,
   CommunityPostDetail as CommunityPostDetailView,
+  type CommunityPostCommentFeedback,
 } from '@/features/post-detail';
 import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
@@ -46,7 +47,6 @@ import { Logo } from '@/shared/ui/logo';
 import { Map, MyLocationButton, type MapMarker, type MapViewport } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
-import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { Text } from '@/shared/ui/text';
 
 type PositionedPost = {
@@ -127,8 +127,8 @@ export function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
-  const showSnackbar = useSnackbarStore((state) => state.showSnackbar);
   const [selectedPost, setSelectedPost] = useState<PositionedPost | null>(null);
+  const [commentFeedback, setCommentFeedback] = useState<CommunityPostCommentFeedback | null>(null);
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
@@ -230,6 +230,7 @@ export function HomePage() {
 
   const handleDetailModalChange = useCallback((open: boolean) => {
     if (!open) {
+      setCommentFeedback(null);
       setJoinErrorMessage(null);
       setSelectedPost(null);
     }
@@ -276,20 +277,20 @@ export function HomePage() {
           },
           {
             onError: (error) => {
-              showSnackbar(
-                error.message || '댓글 등록에 실패했어요. 다시 시도해주세요.',
-                'critical',
-              );
+              setCommentFeedback({
+                description: error.message || '댓글 등록에 실패했어요. 다시 시도해주세요.',
+                type: 'critical',
+              });
             },
             onSuccess: () => {
-              showSnackbar('댓글이 등록되었어요', 'positive');
+              setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
               void queryClient.invalidateQueries({ queryKey: communityPostQueries.all() });
             },
           },
         );
       });
     },
-    [createCommentMutation, queryClient, requireAuth, selectedCommunityId, showSnackbar],
+    [createCommentMutation, queryClient, requireAuth, selectedCommunityId],
   );
 
   return (
@@ -405,11 +406,13 @@ export function HomePage() {
           ) : null}
           {selectedDetail?.type === 'COMMUNITY' ? (
             <CommunityPostDetailView
+              commentFeedback={commentFeedback}
               commentsError={isCommentsError}
               commentsLoading={isCommentsPending}
               hasMoreComments={hasNextComments}
               isCommentSubmitting={createCommentMutation.isPending}
               isLoadingMoreComments={isFetchingNextComments}
+              onCommentFeedbackDismiss={() => setCommentFeedback(null)}
               onCommentSubmit={handleCommentSubmit}
               onLoadMoreComments={handleLoadMoreComments}
               post={selectedDetail}

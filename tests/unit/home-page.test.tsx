@@ -207,7 +207,10 @@ describe('HomePage', () => {
     await user.type(input, '새로 남긴 댓글입니다');
     await user.click(screen.getByRole('button', { name: '댓글 전송' }));
 
-    expect(await screen.findByRole('status')).toHaveTextContent('댓글이 등록되었어요');
+    const snackbar = await screen.findByRole('status');
+
+    expect(snackbar).toHaveTextContent('댓글이 등록되었어요');
+    expect(snackbar).toHaveClass('mx-6', 'mb-2', '!w-auto', '!max-w-none');
   });
 
   it('동행모집 상세에서 채팅 참여에 성공하면 응답의 채팅방으로 이동한다', async () => {
