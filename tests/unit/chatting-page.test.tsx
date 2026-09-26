@@ -1,10 +1,14 @@
 import userEvent from '@testing-library/user-event';
-import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it } from 'vitest';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { ChattingPage, generalChatRoom } from '@/_pages/chatting';
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  document.querySelectorAll('[data-base-ui-portal]').forEach((portal) => portal.remove());
+  vi.useRealTimers();
+});
 
 describe('ChattingPage', () => {
   it('일반 채팅방 헤더와 초기 메시지를 렌더링한다', () => {
@@ -35,4 +39,39 @@ describe('ChattingPage', () => {
     expect(screen.getByText('새로운 메시지')).toBeInTheDocument();
     expect(input).toHaveValue('');
   });
+
+  it('타인의 메시지를 1초 이상 누르면 신고 메뉴를 연다', () => {
+    vi.useFakeTimers();
+    render(<ChattingPage room={generalChatRoom} />);
+
+    const trigger = screen.getAllByLabelText('메시지 메뉴 열기')[0];
+    fireEvent.pointerDown(trigger, { button: 0, pointerId: 1, pointerType: 'touch' });
+
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(999);
+    });
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+
+    act(() => {
+      vi.advanceTimersByTime(1);
+    });
+    expect(screen.getByRole('menu', { name: '메시지 메뉴 열기' })).toBeInTheDocument();
+
+    fireEvent.pointerUp(trigger, { pointerId: 1, pointerType: 'touch' });
+  });
+
+  it.each(['채팅 신고하기', '유저 신고하기'])(
+    '신고 메뉴의 %s를 누르면 신고 모달을 연다',
+    async (item) => {
+      const user = userEvent.setup();
+      render(<ChattingPage room={generalChatRoom} />);
+
+      await user.click(screen.getAllByLabelText('메시지 메뉴 열기')[0]);
+      await user.click(screen.getByRole('menuitem', { name: item }));
+
+      expect(screen.getByRole('dialog', { name: '신고 사유를 선택해주세요' })).toBeInTheDocument();
+    },
+  );
 });
