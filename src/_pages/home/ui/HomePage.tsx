@@ -2,13 +2,16 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import {
   PostList,
   type CommunityPost,
   type CompanionPost,
+  type CommunityPostComment,
   type Post,
+  type PostComment,
   type PostDetail,
   type CompanionPostDetail,
   type CommunityPostDetail,
@@ -16,10 +19,12 @@ import {
 import {
   CompanionPostDetail as CompanionPostDetailView,
   CommunityPostDetail as CommunityPostDetailView,
+  type CommunityPostCommentFeedback,
 } from '@/features/post-detail';
 import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
+import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import {
@@ -28,6 +33,8 @@ import {
 } from '@/_pages/post-detail/api/companion-posts';
 import {
   type CommunityPostDetailData,
+  communityPostQueries,
+  useCommunityPostCommentsQuery,
   useCommunityPostDetailQuery,
 } from '@/_pages/post-detail/api/community-posts';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
@@ -91,6 +98,7 @@ function toCompanionPostDetail(
 function toCommunityPostDetail(
   post: CommunityPost,
   data: CommunityPostDetailData,
+  comments: readonly PostComment[],
 ): CommunityPostDetail {
   return {
     ...post,
@@ -100,14 +108,27 @@ function toCommunityPostDetail(
     author: { ...post.author, nickname: data.author.nickname },
     comment_count: data.comment_count,
     created_at: data.created_at,
-    comments: [],
+    comments,
   };
+}
+
+function toPostComments(comments: readonly CommunityPostComment[]): PostComment[] {
+  return comments.map((comment) => ({
+    id: comment.id,
+    author: {
+      nickname: comment.author.nickname,
+      profile_image_url: null,
+    },
+    content: comment.content,
+  }));
 }
 
 export function HomePage() {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<PositionedPost | null>(null);
+  const [commentFeedback, setCommentFeedback] = useState<CommunityPostCommentFeedback | null>(null);
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
@@ -118,12 +139,26 @@ export function HomePage() {
   const companionDetailQuery = useCompanionPostDetailQuery(selectedCompanionId);
   const joinCompanionMutation = useJoinCompanionMutation();
   const communityDetailQuery = useCommunityPostDetailQuery(selectedCommunityId);
+  const communityCommentsQuery = useCommunityPostCommentsQuery(selectedCommunityId);
+  const createCommentMutation = useCreateCommunityPostCommentMutation();
+  const {
+    fetchNextPage: fetchNextComments,
+    hasNextPage: hasNextComments,
+    isError: isCommentsError,
+    isFetchingNextPage: isFetchingNextComments,
+    isPending: isCommentsPending,
+  } = communityCommentsQuery;
   const mapPinsQuery = useMapPinsQuery(mapViewport, userLocation !== null);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
   const nearbyPosts = useMemo(
     () => nearbyPostsQuery.data?.data.items ?? [],
     [nearbyPostsQuery.data],
+  );
+  const communityComments = useMemo(
+    () =>
+      toPostComments(communityCommentsQuery.data?.pages.flatMap((page) => page.data.items) ?? []),
+    [communityCommentsQuery.data],
   );
   const mapMarkers = useMemo(
     () =>
@@ -142,11 +177,15 @@ export function HomePage() {
     }
 
     if (selectedPost?.post.type === 'COMMUNITY' && communityDetailQuery.data) {
-      return toCommunityPostDetail(selectedPost.post, communityDetailQuery.data.data);
+      return toCommunityPostDetail(
+        selectedPost.post,
+        communityDetailQuery.data.data,
+        communityComments,
+      );
     }
 
     return null;
-  }, [companionDetailQuery.data, communityDetailQuery.data, selectedPost]);
+  }, [companionDetailQuery.data, communityComments, communityDetailQuery.data, selectedPost]);
 
   const handleMarkerClick = useCallback(
     (marker: MapMarker) => {
@@ -191,6 +230,7 @@ export function HomePage() {
 
   const handleDetailModalChange = useCallback((open: boolean) => {
     if (!open) {
+      setCommentFeedback(null);
       setJoinErrorMessage(null);
       setSelectedPost(null);
     }
@@ -214,6 +254,44 @@ export function HomePage() {
       },
     });
   }, [joinCompanionMutation, router, selectedDetail]);
+
+  const handleLoadMoreComments = useCallback(() => {
+    if (!hasNextComments || isCommentsError || isFetchingNextComments) {
+      return;
+    }
+
+    void fetchNextComments();
+  }, [fetchNextComments, hasNextComments, isCommentsError, isFetchingNextComments]);
+
+  const handleCommentSubmit = useCallback(
+    (content: string) => {
+      if (selectedCommunityId === null) {
+        return;
+      }
+
+      requireAuth(() => {
+        createCommentMutation.mutate(
+          {
+            payload: { content },
+            postId: selectedCommunityId,
+          },
+          {
+            onError: (error) => {
+              setCommentFeedback({
+                description: error.message || '댓글 등록에 실패했어요. 다시 시도해주세요.',
+                type: 'critical',
+              });
+            },
+            onSuccess: () => {
+              setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
+              void queryClient.invalidateQueries({ queryKey: communityPostQueries.all() });
+            },
+          },
+        );
+      });
+    },
+    [createCommentMutation, queryClient, requireAuth, selectedCommunityId],
+  );
 
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
@@ -327,7 +405,18 @@ export function HomePage() {
             />
           ) : null}
           {selectedDetail?.type === 'COMMUNITY' ? (
-            <CommunityPostDetailView post={selectedDetail} />
+            <CommunityPostDetailView
+              commentFeedback={commentFeedback}
+              commentsError={isCommentsError}
+              commentsLoading={isCommentsPending}
+              hasMoreComments={hasNextComments}
+              isCommentSubmitting={createCommentMutation.isPending}
+              isLoadingMoreComments={isFetchingNextComments}
+              onCommentFeedbackDismiss={() => setCommentFeedback(null)}
+              onCommentSubmit={handleCommentSubmit}
+              onLoadMoreComments={handleLoadMoreComments}
+              post={selectedDetail}
+            />
           ) : null}
         </BottomModal>
       ) : null}

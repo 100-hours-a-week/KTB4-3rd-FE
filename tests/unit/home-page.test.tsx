@@ -3,7 +3,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useEffect, type ReactNode } from 'react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LoginRequiredProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
@@ -29,6 +29,24 @@ type MockMapProps = {
   onUserLocationChange?: (coordinate: MapCoordinate) => void;
   onViewportChange?: (viewport: MapViewport) => void;
 };
+
+class MockIntersectionObserver {
+  static callbacks: IntersectionObserverCallback[] = [];
+
+  static trigger() {
+    for (const callback of MockIntersectionObserver.callbacks) {
+      callback([{ isIntersecting: true } as IntersectionObserverEntry], {} as IntersectionObserver);
+    }
+  }
+
+  constructor(callback: IntersectionObserverCallback) {
+    MockIntersectionObserver.callbacks.push(callback);
+  }
+
+  observe() {}
+
+  disconnect() {}
+}
 
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
@@ -70,9 +88,15 @@ vi.mock('@/shared/ui/map', () => ({
 
 afterEach(() => {
   cleanup();
+  MockIntersectionObserver.callbacks = [];
   navigation.push.mockReset();
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
+  vi.unstubAllGlobals();
+});
+
+beforeEach(() => {
+  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 });
 
 function renderHomePage() {
@@ -82,13 +106,16 @@ function renderHomePage() {
     },
   });
 
-  return render(
-    <QueryClientProvider client={queryClient}>
-      <LoginRequiredProvider>
-        <HomePage />
-      </LoginRequiredProvider>
-    </QueryClientProvider>,
-  );
+  return {
+    queryClient,
+    ...render(
+      <QueryClientProvider client={queryClient}>
+        <LoginRequiredProvider>
+          <HomePage />
+        </LoginRequiredProvider>
+      </QueryClientProvider>,
+    ),
+  };
 }
 
 describe('HomePage', () => {
@@ -149,6 +176,41 @@ describe('HomePage', () => {
     expect(await screen.findByText('택시 같이 타실 분 구해요')).toBeInTheDocument();
     expect(screen.getByText('판교역')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
+  });
+
+  it('커뮤니티 게시글 상세에서 하단에 도달하면 다음 댓글 페이지를 조회한다', async () => {
+    const user = userEvent.setup();
+
+    const { queryClient } = renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 근처 카페 추천/ }));
+
+    expect(await screen.findByText('저도 궁금해요!')).toBeInTheDocument();
+    expect(MockIntersectionObserver.callbacks).not.toHaveLength(0);
+
+    MockIntersectionObserver.trigger();
+
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<{ pages: unknown[] }>(['community-posts', 'comments', 88])?.pages,
+      ).toHaveLength(2),
+    );
+  });
+
+  it('커뮤니티 댓글 작성 API를 호출하고 성공 Snackbar를 표시한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 근처 카페 추천/ }));
+
+    const input = await screen.findByRole('textbox', { name: '댓글 입력' });
+    await user.type(input, '새로 남긴 댓글입니다');
+    await user.click(screen.getByRole('button', { name: '댓글 전송' }));
+
+    const snackbar = await screen.findByRole('status');
+
+    expect(snackbar).toHaveTextContent('댓글이 등록되었어요');
+    expect(snackbar).toHaveClass('mx-6', 'mb-2', '!w-auto', '!max-w-none');
   });
 
   it('동행모집 상세에서 채팅 참여에 성공하면 응답의 채팅방으로 이동한다', async () => {
