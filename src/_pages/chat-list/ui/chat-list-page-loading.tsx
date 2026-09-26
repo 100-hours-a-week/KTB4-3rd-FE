@@ -1,3 +1,5 @@
+'use client';
+
 import { ChatListTabs } from '@/entities/chat';
 import { BackButton } from '@/shared/ui/back-button';
 import { BottomNav } from '@/shared/ui/BottomNav';
