@@ -1,7 +1,7 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
-const KAKAO_MAP_SDK_PROXY_PATH = '/api/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js';
+const KAKAO_MAP_SDK_PROXY_PATH = '/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js';
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
