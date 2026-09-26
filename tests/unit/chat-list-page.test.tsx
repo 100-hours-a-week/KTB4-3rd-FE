@@ -34,6 +34,11 @@ describe('ChatListPageContent', () => {
 
     expect(screen.getByRole('button', { name: /8시 판교역/ })).toBeInTheDocument();
     expect(screen.queryByTestId('chat-list-empty')).not.toBeInTheDocument();
+    expect(screen.getByRole('list').parentElement).toHaveClass(
+      'flex-1',
+      'overflow-y-auto',
+      'overscroll-contain',
+    );
   });
 
   it('목록이 비어 있으면 빈 상태를 표시한다', () => {

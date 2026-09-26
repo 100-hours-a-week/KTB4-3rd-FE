@@ -86,7 +86,7 @@ function ChatListPageStateView({
   }
 
   return (
-    <div className="mt-8">
+    <div className="mt-8 min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <ChatList fullWidth items={state.data.items} onItemClick={onChatRoomClick} />
     </div>
   );
@@ -109,7 +109,7 @@ export function ChatListPageContent({
   };
 
   return (
-    <section aria-label="채팅 목록" className={cn('min-h-0 flex-1', className)}>
+    <section aria-label="채팅 목록" className={cn('flex min-h-0 flex-1 flex-col', className)}>
       <ChatListTabs onValueChange={handleTabChange} value={selectedTab} />
       <ChatListPageStateView
         onChatRoomClick={onChatRoomClick}
