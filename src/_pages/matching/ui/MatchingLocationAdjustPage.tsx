@@ -97,7 +97,7 @@ export function MatchingLocationAdjustPage() {
       longitude: center.lng,
     });
     setPendingLocation(null);
-    router.push('/matching');
+    router.push(field === 'destination' ? '/matching/time' : '/matching');
   };
 
   return (

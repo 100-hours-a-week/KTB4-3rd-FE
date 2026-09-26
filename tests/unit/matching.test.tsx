@@ -2,7 +2,16 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
-import { MatchingLocationAdjustPage, MatchingLocationPage, MatchingPage } from '@/_pages/matching';
+import {
+  MatchingLocationAdjustPage,
+  MatchingLocationPage,
+  MatchingPage,
+  MatchingTimePage,
+} from '@/_pages/matching';
+import {
+  getMatchingTimePickerInitialValue,
+  isMatchingTimeWithinThreeHours,
+} from '@/_pages/matching/model/matching-time';
 import { useMatchingStore } from '@/_pages/matching/model/matching-store';
 import type * as LocationSearchModule from '@/features/location-search';
 import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
@@ -69,6 +78,7 @@ vi.mock('@/shared/ui/map', () => ({
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   navigation.push.mockReset();
   navigation.replace.mockReset();
   useKakaoPlaceSearch.mockReset();
@@ -137,7 +147,7 @@ describe('MatchingLocationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '도착 유스페이스1빌딩' }));
 
     expect(useMatchingStore.getState().destination).toEqual(searchResult);
-    expect(navigation.push).toHaveBeenCalledWith('/matching');
+    expect(navigation.push).toHaveBeenCalledWith('/matching/time');
   });
 
   it('검색 결과 본문을 누르면 위치 세부 조정 화면으로 이동한다', () => {
@@ -178,7 +188,83 @@ describe('MatchingLocationAdjustPage', () => {
       placeName: '새로운 장소',
       roadAddress: '새로운 도로명주소',
     });
-    expect(navigation.push).toHaveBeenCalledWith('/matching');
+    expect(navigation.push).toHaveBeenCalledWith('/matching/time');
     expect(navigation.replace).not.toHaveBeenCalled();
+  });
+});
+
+describe('MatchingTimePage', () => {
+  it('현재 시각을 다음 10분 단위로 올림해 초기 시간으로 사용한다', () => {
+    expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 18, 41, 5))).toEqual({
+      period: '오후',
+      hour: 6,
+      minute: 50,
+    });
+    expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 23, 59))).toEqual({
+      period: '오전',
+      hour: 12,
+      minute: 0,
+    });
+  });
+
+  it('선택 시간이 현재 시각으로부터 3시간 이내인지 확인한다', () => {
+    const now = new Date(2026, 8, 26, 18, 0);
+
+    expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 0 }, now)).toBe(true);
+    expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 10 }, now)).toBe(
+      false,
+    );
+  });
+
+  it('유효하지 않은 시간을 다음으로 진행하면 안내 Dialog를 표시한다', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 26, 18, 0));
+
+    render(<MatchingTimePage />);
+
+    vi.setSystemTime(new Date(2026, 8, 26, 21, 1));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByRole('dialog', { name: '시간을 다시 입력해주세요' })).toBeInTheDocument();
+    expect(screen.getByText('현재 시각으로부터 3시간 이내로 설정해주세요')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('초기화 버튼을 누르면 페이지 진입 시각 기준 초기 시간으로 되돌린다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 26, 18, 1));
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(performance.now() + 1000);
+      return 0;
+    });
+
+    render(<MatchingTimePage />);
+
+    const minuteColumn = screen.getByRole('listbox', { name: '분' });
+    const minuteWheel = minuteColumn.querySelector('[data-rwp]');
+
+    if (!(minuteWheel instanceof HTMLElement)) {
+      throw new Error('분 휠을 찾을 수 없습니다.');
+    }
+
+    fireEvent.keyDown(minuteWheel, { key: 'ArrowDown' });
+    expect(minuteColumn).toHaveAttribute('aria-valuetext', '20');
+
+    fireEvent.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(minuteColumn).toHaveAttribute('aria-valuetext', '10');
+  });
+
+  it('탑승 희망 시간 선택 화면을 표시한다', () => {
+    render(<MatchingTimePage />);
+
+    expect(
+      screen.getByRole('heading', { name: '탑승 희망 시간을 입력해주세요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('현재 시각으로부터 3시간 이내만 가능해요')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '탑승 희망 시간' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
   });
 });

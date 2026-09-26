@@ -90,7 +90,7 @@ export function MatchingLocationPage() {
       return;
     }
 
-    router.push('/matching');
+    router.push(activeField === 'destination' ? '/matching/time' : '/matching');
   };
 
   const handleDetailSelection = (result: LocationSearchResult) => {
