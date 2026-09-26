@@ -1,20 +1,9 @@
 import { apiFetch } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/api/types';
 
-import { BankCode } from '@/features/signup/model/bank';
+import type { BankCode } from '@/features/signup/model/bank';
 import type { GenderCode } from '@/features/signup/model/gender';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
-
-const BANK_API_NAMES: Record<BankCode, string> = {
-  [BankCode.KB]: 'KB국민은행',
-  [BankCode.SHINHAN]: '신한은행',
-  [BankCode.WOORI]: '우리은행',
-  [BankCode.HANA]: '하나은행',
-  [BankCode.NH]: 'NH농협은행',
-  [BankCode.IBK]: 'IBK기업은행',
-  [BankCode.KAKAO]: '카카오뱅크',
-  [BankCode.TOSS]: '토스뱅크',
-};
 
 export type SignupAgreements = {
   service: boolean;
@@ -27,7 +16,7 @@ export type SignupAgreements = {
 export type SignupPayload = {
   nickname: string;
   gender: GenderCode;
-  bank_name?: string;
+  bank_name?: BankCode;
   profile_image_key?: string;
   account_no?: string;
   agreements: SignupAgreements;
@@ -54,7 +43,7 @@ export function toSignupPayload(
   };
 
   if (values.bank_name) {
-    payload.bank_name = BANK_API_NAMES[values.bank_name];
+    payload.bank_name = values.bank_name;
   }
 
   const accountNumber = values.account_no.replaceAll('-', '');

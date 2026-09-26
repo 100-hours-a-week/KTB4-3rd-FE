@@ -22,7 +22,7 @@ async function readJson<T>(response: Response) {
 const validSignupPayload = {
   nickname: '제리',
   gender: 'MALE',
-  bank_name: 'KB국민은행',
+  bank_name: 'kb',
   account_no: '11012345678',
   agreements: {
     service: true,
@@ -94,7 +94,10 @@ describe('MSW mock API', () => {
   });
 
   it('토큰 재발급 응답과 refresh token 쿠키를 반환한다', async () => {
-    const response = await fetch('http://localhost:8080/auth/tokens', { method: 'POST' });
+    const response = await fetch('http://localhost:8080/auth/tokens', {
+      method: 'POST',
+      headers: { Cookie: 'refresh_token=mock-refresh-token' },
+    });
     const body = await readJson<MockApiResponse<{ access_token: string }>>(response);
 
     expect(response.status).toBe(200);

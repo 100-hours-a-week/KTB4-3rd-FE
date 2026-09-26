@@ -2,7 +2,12 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
-import { LoginRequiredProvider, MockApiProvider, QueryProvider } from '@/_app/providers';
+import {
+  AuthBootstrapProvider,
+  LoginRequiredProvider,
+  MockApiProvider,
+  QueryProvider,
+} from '@/_app/providers';
 
 import './globals.css';
 
@@ -31,7 +36,9 @@ export default function RootLayout({ children }: RootLayoutProps) {
         <div id="app-root" className="isolate min-h-dvh">
           <MockApiProvider>
             <QueryProvider>
-              <LoginRequiredProvider>{children}</LoginRequiredProvider>
+              <AuthBootstrapProvider>
+                <LoginRequiredProvider>{children}</LoginRequiredProvider>
+              </AuthBootstrapProvider>
             </QueryProvider>
           </MockApiProvider>
         </div>

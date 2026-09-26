@@ -1,3 +1,4 @@
+import { http, HttpResponse } from 'msw';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import type { ReactNode } from 'react';
@@ -8,6 +9,7 @@ import {
   useCreateCommunityPostCommentMutation,
   type CreateCommunityPostCommentVariables,
 } from '@/features/post-comment';
+import { server } from '@/shared/api/mocks/server';
 
 const variables: CreateCommunityPostCommentVariables = {
   postId: 88,
@@ -26,6 +28,7 @@ function createWrapper() {
 
 afterEach(() => {
   useAuthStore.getState().clearTokens();
+  server.resetHandlers();
 });
 
 describe('useCreateCommunityPostCommentMutation', () => {
@@ -43,6 +46,15 @@ describe('useCreateCommunityPostCommentMutation', () => {
   });
 
   it('access token이 없으면 refresh API로 토큰을 발급받아 저장한다', async () => {
+    server.use(
+      http.post('*/auth/tokens', () =>
+        HttpResponse.json({
+          message: '토큰이 재발급되었습니다',
+          data: { access_token: 'mock-access-token' },
+        }),
+      ),
+    );
+
     const { result } = renderHook(() => useCreateCommunityPostCommentMutation(), {
       wrapper: createWrapper(),
     });
