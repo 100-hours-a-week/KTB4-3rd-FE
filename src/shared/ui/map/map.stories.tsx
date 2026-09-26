@@ -127,15 +127,6 @@ export const PostMarkers: Story = {
   },
 };
 
-export const UserLocation: Story = {
-  args: {
-    className: 'h-screen',
-    clusterMarkers: false,
-    markers: [],
-    userLocation: { lat: 37.5547, lng: 126.9707 },
-  },
-};
-
 export const OverlayContent: Story = {
   args: {
     children: (
@@ -158,19 +149,6 @@ export const LocationSelection: Story = {
     className: 'h-full',
     clusterMarkers: false,
     markers: [],
-    selectionMode: true,
-  },
-};
-
-export const CustomSelectionMarker: Story = {
-  args: {
-    className: 'h-screen',
-    clusterMarkers: false,
-    selectionMarker: {
-      height: 56,
-      src: '/map-pins/accompany-marker.svg',
-      width: 54,
-    },
     selectionMode: true,
   },
 };

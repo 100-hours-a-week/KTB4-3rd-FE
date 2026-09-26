@@ -15,7 +15,6 @@ export type MapMarkerImage = {
 export type MapMarker = {
   id: MapMarkerId;
   image?: MapMarkerImage;
-  isSelected?: boolean;
   position: MapCoordinate;
   title?: string;
 };
