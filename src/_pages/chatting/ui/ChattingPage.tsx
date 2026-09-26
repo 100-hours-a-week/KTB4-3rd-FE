@@ -67,10 +67,11 @@ export function ChattingPage({ room }: ChattingPageProps) {
 
   return (
     <PageLayout
-      className="h-dvh min-h-0 overflow-hidden"
-      contentClassName="min-h-0 flex-1 gap-0 !px-0 !pb-0"
+      className="relative h-dvh min-h-0 overflow-hidden"
+      contentClassName="min-h-0 flex-1 gap-0 !px-0 !pt-[56px] !pb-[78px]"
       header={
         <Header
+          className="!fixed top-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2"
           leftSlot={<BackButton href="/" />}
           rightSlot={
             <div className="flex w-[145px] items-center justify-between">
@@ -93,14 +94,14 @@ export function ChattingPage({ room }: ChattingPageProps) {
       <section className="flex min-h-0 flex-1 flex-col">
         <div
           aria-label="채팅 메시지"
-          className="flex min-h-0 flex-1 flex-col overflow-y-auto px-5 pt-[95px] pb-8"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
         >
           {messages.map((message, index) => (
             <ChatMessage index={index} key={message.id} message={message} />
           ))}
         </div>
         <ChatComposer
-          className="shrink-0 border-t border-[var(--color-stroke-neutral-weak)]"
+          className="!fixed bottom-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)]"
           onSubmit={handleSubmit}
         />
       </section>

@@ -11,11 +11,16 @@ describe('ChattingPage', () => {
     render(<ChattingPage room={generalChatRoom} />);
 
     expect(screen.getByRole('heading', { name: '5시 판교역' })).toBeInTheDocument();
+    expect(screen.getByRole('banner')).toHaveClass('!fixed');
     expect(screen.getByText('1/4')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '채팅방 나가기' })).toHaveAttribute('href', '/');
     expect(screen.getByText('첫번째 유저예요!')).toBeInTheDocument();
     expect(screen.getByText('ㅇㅇ 님이 입장하셨어요')).toBeInTheDocument();
     expect(screen.getByText('어디서 만나실건가요')).toBeInTheDocument();
+    expect(screen.getByLabelText('채팅 메시지')).toHaveClass('overflow-y-auto');
+
+    const composer = screen.getByRole('textbox', { name: '메시지 입력' }).closest('form');
+    expect(composer).toHaveClass('!fixed');
   });
 
   it('메시지를 입력하고 전송하면 내 메시지를 추가한다', async () => {
