@@ -94,7 +94,7 @@ export function MatchingConfirmationPage() {
         useSnackbarStore
           .getState()
           .showSnackbar(
-            error instanceof Error ? error.message : '매칭을 시작하지 못했어요',
+            error instanceof Error ? error.message : '매칭을 시작하지 못했어요. 다시 시도해주세요.',
             'critical',
           );
       },
