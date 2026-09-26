@@ -1,9 +1,10 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useRef } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 
 import { StartPin } from '@/entities/map-pin';
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { reverseGeocodeLocation } from '@/features/post-location';
 import {
   createCurrentLocation,
@@ -29,6 +30,29 @@ export function MatchingPage() {
   const departure = useMatchingStore((state) => state.departure);
   const destination = useMatchingStore((state) => state.destination);
   const setLocation = useMatchingStore((state) => state.setLocation);
+  const setOrigin = useMatchingRegistrationStore((state) => state.setOrigin);
+  const setDestination = useMatchingRegistrationStore((state) => state.setDestination);
+
+  useEffect(() => {
+    setOrigin(
+      departure
+        ? {
+            name: departure.placeName,
+            lat: departure.latitude ?? null,
+            lng: departure.longitude ?? null,
+          }
+        : null,
+    );
+    setDestination(
+      destination
+        ? {
+            name: destination.placeName,
+            lat: destination.latitude ?? null,
+            lng: destination.longitude ?? null,
+          }
+        : null,
+    );
+  }, [departure, destination, setDestination, setOrigin]);
 
   const mapCenter =
     departure?.latitude !== undefined && departure.longitude !== undefined

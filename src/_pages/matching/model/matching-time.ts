@@ -32,6 +32,18 @@ function toTwentyFourHour(value: TimePickerValue) {
   return value.hour === 12 ? 12 : value.hour + 12;
 }
 
+export function getMatchingDepartureAt(value: TimePickerValue, now = new Date()): string {
+  const departure = new Date(now);
+
+  departure.setHours(toTwentyFourHour(value), value.minute, 0, 0);
+
+  if (departure.getTime() < now.getTime()) {
+    departure.setDate(departure.getDate() + 1);
+  }
+
+  return departure.toISOString();
+}
+
 export function isMatchingTimeWithinThreeHours(value: TimePickerValue, now = new Date()): boolean {
   const selectedTime = new Date(now);
 
