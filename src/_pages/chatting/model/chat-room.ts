@@ -60,3 +60,10 @@ export const generalChatRoom: ChatRoom = {
     },
   ],
 };
+
+export function createChatRoom(id: string): ChatRoom {
+  return {
+    ...generalChatRoom,
+    id,
+  };
+}

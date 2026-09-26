@@ -2,7 +2,7 @@ import userEvent from '@testing-library/user-event';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ChattingPage, generalChatRoom } from '@/_pages/chatting';
+import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
 
 afterEach(() => {
   cleanup();
@@ -11,6 +11,14 @@ afterEach(() => {
 });
 
 describe('ChattingPage', () => {
+  it('채팅방 ID를 동적으로 반영한 채팅방을 생성한다', () => {
+    expect(createChatRoom('501')).toMatchObject({
+      id: '501',
+      title: generalChatRoom.title,
+      memberCount: generalChatRoom.memberCount,
+    });
+  });
+
   it('일반 채팅방 헤더와 초기 메시지를 렌더링한다', () => {
     render(<ChattingPage room={generalChatRoom} />);
 
