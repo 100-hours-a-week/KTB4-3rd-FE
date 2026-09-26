@@ -2,7 +2,13 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { ChatItem, ChatList, type ChatRoomListItem } from '@/entities/chat';
+import {
+  ChatItem,
+  ChatList,
+  ChatListTabs,
+  type ChatListTabValue,
+  type ChatRoomListItem,
+} from '@/entities/chat';
 
 const chatRoom: ChatRoomListItem = {
   id: 501,
@@ -64,5 +70,26 @@ describe('ChatList', () => {
 
     expect(onItemClick).toHaveBeenCalledOnce();
     expect(onItemClick).toHaveBeenCalledWith(secondChatRoom);
+  });
+});
+
+describe('ChatListTabs', () => {
+  it('커뮤니티 탭을 기본 선택 상태로 보여준다', () => {
+    render(<ChatListTabs />);
+
+    expect(screen.getByRole('tab', { name: '매칭' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: '커뮤니티' })).toHaveAttribute('aria-selected', 'true');
+  });
+
+  it('탭을 클릭하면 선택 상태와 변경 이벤트를 전달한다', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn<(value: ChatListTabValue) => void>();
+
+    render(<ChatListTabs onValueChange={onValueChange} />);
+    await user.click(screen.getByRole('tab', { name: '매칭' }));
+
+    expect(screen.getByRole('tab', { name: '매칭' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '커뮤니티' })).toHaveAttribute('aria-selected', 'false');
+    expect(onValueChange).toHaveBeenCalledWith('matching');
   });
 });
