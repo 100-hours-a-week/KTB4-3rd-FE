@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { DestinationPin, StartPin } from '@/entities/map-pin';
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import type { LocationSearchResult } from '@/features/location-search';
 import { reverseGeocodeLocation } from '@/features/post-location';
 import { SEOUL_STATION_COORDINATE, useMatchingStore } from '@/_pages/matching/model/matching-store';
@@ -31,6 +32,8 @@ export function MatchingLocationAdjustPage() {
   const pendingLocation = useMatchingStore((state) => state.pendingLocation);
   const setLocation = useMatchingStore((state) => state.setLocation);
   const setPendingLocation = useMatchingStore((state) => state.setPendingLocation);
+  const setOrigin = useMatchingRegistrationStore((state) => state.setOrigin);
+  const setDestination = useMatchingRegistrationStore((state) => state.setDestination);
   const [center, setCenter] = useState<MapCoordinate>(() => ({
     lat: pendingLocation?.latitude ?? SEOUL_STATION_COORDINATE.lat,
     lng: pendingLocation?.longitude ?? SEOUL_STATION_COORDINATE.lng,
@@ -95,6 +98,12 @@ export function MatchingLocationAdjustPage() {
       ...selectedLocation,
       latitude: center.lat,
       longitude: center.lng,
+    });
+    const setRegistrationLocation = field === 'departure' ? setOrigin : setDestination;
+    setRegistrationLocation({
+      name: selectedLocation.placeName,
+      lat: center.lat,
+      lng: center.lng,
     });
     setPendingLocation(null);
     router.push(field === 'destination' ? '/matching/time' : '/matching');

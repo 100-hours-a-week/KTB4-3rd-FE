@@ -8,6 +8,7 @@ import {
   useKakaoPlaceSearch,
   type LocationSearchResult,
 } from '@/features/location-search';
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { useMatchingStore } from '@/_pages/matching/model/matching-store';
 import {
   getMatchingLocationActionLabel,
@@ -36,6 +37,8 @@ export function MatchingLocationPage() {
   const destination = useMatchingStore((state) => state.destination);
   const setLocation = useMatchingStore((state) => state.setLocation);
   const setPendingLocation = useMatchingStore((state) => state.setPendingLocation);
+  const setOrigin = useMatchingRegistrationStore((state) => state.setOrigin);
+  const setDestination = useMatchingRegistrationStore((state) => state.setDestination);
   const [activeField, setActiveField] = useState<MatchingLocationField>(initialField);
   const [searchQuery, setSearchQuery] = useState(() =>
     initialField === 'departure' ? (departure?.placeName ?? '') : (destination?.placeName ?? ''),
@@ -83,6 +86,13 @@ export function MatchingLocationPage() {
 
   const handleDirectSelection = (result: LocationSearchResult) => {
     setLocation(activeField, result);
+
+    const setRegistrationLocation = activeField === 'departure' ? setOrigin : setDestination;
+    setRegistrationLocation({
+      name: result.placeName,
+      lat: result.latitude ?? null,
+      lng: result.longitude ?? null,
+    });
 
     if (activeField === 'departure' && destination === null) {
       setActiveField('destination');

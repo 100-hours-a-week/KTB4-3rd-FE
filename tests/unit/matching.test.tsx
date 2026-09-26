@@ -9,6 +9,7 @@ import {
   MatchingPage,
   MatchingTimePage,
 } from '@/_pages/matching';
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import {
   getMatchingTimePickerInitialValue,
   isMatchingTimeWithinThreeHours,
@@ -85,6 +86,7 @@ afterEach(() => {
   useKakaoPlaceSearch.mockReset();
   reverseGeocodeLocation.mockReset();
   useMatchingStore.getState().reset();
+  useMatchingRegistrationStore.getState().reset();
   searchParams.delete('field');
   searchParams.set('field', 'destination');
 });
@@ -114,6 +116,11 @@ describe('MatchingPage', () => {
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('현위치: 강남역');
+      expect(useMatchingRegistrationStore.getState()).toMatchObject({
+        origin_name: '강남역',
+        origin_lat: 37.5,
+        origin_lng: 127.0,
+      });
     });
   });
 });
@@ -148,6 +155,11 @@ describe('MatchingLocationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '도착 유스페이스1빌딩' }));
 
     expect(useMatchingStore.getState().destination).toEqual(searchResult);
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      dest_name: '유스페이스1빌딩',
+      dest_lat: 37.402,
+      dest_lng: 127.108,
+    });
     expect(navigation.push).toHaveBeenCalledWith('/matching/time');
   });
 
@@ -188,6 +200,11 @@ describe('MatchingLocationAdjustPage', () => {
       longitude: 127.108,
       placeName: '새로운 장소',
       roadAddress: '새로운 도로명주소',
+    });
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      dest_name: '새로운 장소',
+      dest_lat: 37.402,
+      dest_lng: 127.108,
     });
     expect(navigation.push).toHaveBeenCalledWith('/matching/time');
     expect(navigation.replace).not.toHaveBeenCalled();
@@ -266,6 +283,9 @@ describe('MatchingTimePage', () => {
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
     expect(navigation.push).toHaveBeenCalledWith('/matching/confirm');
+    expect(useMatchingRegistrationStore.getState().departure_at).toBe(
+      new Date(2026, 8, 26, 18, 0).toISOString(),
+    );
   });
 
   it('탑승 희망 시간 선택 화면을 표시한다', () => {
@@ -283,6 +303,11 @@ describe('MatchingTimePage', () => {
 
 describe('MatchingConfirmationPage', () => {
   it('선택 정보 확인 화면의 안내와 선택 정보를 표시한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+    store.setOrigin({ name: '판교역 2번 출구', lat: 37.3945, lng: 127.1112 });
+    store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDepartureAt(new Date(2026, 8, 26, 18, 40).toISOString());
+
     render(<MatchingConfirmationPage />);
 
     expect(screen.getByRole('heading', { name: '이 정보가 맞나요?' })).toBeInTheDocument();

@@ -1,20 +1,40 @@
+'use client';
+
+import { useMemo } from 'react';
+
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
 
-const confirmationRows = [
-  { label: '출발지', value: '판교역 2번 출구' },
-  { label: '도착지', value: '강남역' },
-  { label: '탑승 시간', value: '오후 6:40' },
-] as const;
+function formatDepartureAt(departureAt: string | null) {
+  if (!departureAt) {
+    return '-';
+  }
 
-function MatchingConfirmationSummaryCard() {
+  const departure = new Date(departureAt);
+
+  if (Number.isNaN(departure.getTime())) {
+    return '-';
+  }
+
+  return departure.toLocaleTimeString('ko-KR', {
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+}
+
+function MatchingConfirmationSummaryCard({
+  rows,
+}: {
+  rows: readonly { label: string; value: string }[];
+}) {
   return (
     <section
       aria-label="매칭 등록 정보"
       className="absolute top-[268px] left-5 flex h-[216px] w-[353px] flex-col gap-4 rounded-[16px] bg-[var(--color-bg-layer-default)] p-6"
     >
-      {confirmationRows.map(({ label, value }) => (
+      {rows.map(({ label, value }) => (
         <div className="flex h-12 w-full items-center overflow-hidden" key={label}>
           <Text
             className="flex h-12 w-[108px] shrink-0 items-center"
@@ -37,6 +57,18 @@ function MatchingConfirmationSummaryCard() {
 }
 
 export function MatchingConfirmationPage() {
+  const originName = useMatchingRegistrationStore((state) => state.origin_name);
+  const destinationName = useMatchingRegistrationStore((state) => state.dest_name);
+  const departureAt = useMatchingRegistrationStore((state) => state.departure_at);
+  const confirmationRows = useMemo(
+    () => [
+      { label: '출발지', value: originName ?? '-' },
+      { label: '도착지', value: destinationName ?? '-' },
+      { label: '탑승 시간', value: formatDepartureAt(departureAt) },
+    ],
+    [departureAt, destinationName, originName],
+  );
+
   return (
     <div
       aria-label="매칭 등록 정보 확인"
@@ -57,7 +89,7 @@ export function MatchingConfirmationPage() {
           </Text>
         </div>
 
-        <MatchingConfirmationSummaryCard />
+        <MatchingConfirmationSummaryCard rows={confirmationRows} />
       </main>
 
       <Button

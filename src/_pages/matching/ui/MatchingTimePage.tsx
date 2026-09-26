@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
@@ -10,6 +11,7 @@ import { TimePicker, type TimePickerValue } from '@/shared/ui/time-picker';
 import { Text } from '@/shared/ui/text';
 
 import {
+  getMatchingDepartureAt,
   getMatchingTimePickerInitialValue,
   isMatchingTimeWithinThreeHours,
 } from '@/_pages/matching/model/matching-time';
@@ -19,6 +21,12 @@ export function MatchingTimePage() {
   const [initialTime] = useState(getMatchingTimePickerInitialValue);
   const [selectedTime, setSelectedTime] = useState<TimePickerValue>(initialTime);
   const [isValidationDialogOpen, setIsValidationDialogOpen] = useState(false);
+  const setDepartureAt = useMatchingRegistrationStore((state) => state.setDepartureAt);
+
+  const updateSelectedTime = (value: TimePickerValue) => {
+    setSelectedTime(value);
+    setDepartureAt(getMatchingDepartureAt(value));
+  };
 
   const handleNext = useCallback(() => {
     if (!isMatchingTimeWithinThreeHours(selectedTime)) {
@@ -26,11 +34,13 @@ export function MatchingTimePage() {
       return;
     }
 
+    setDepartureAt(getMatchingDepartureAt(selectedTime));
     router.push('/matching/confirm');
-  }, [router, selectedTime]);
+  }, [router, selectedTime, setDepartureAt]);
 
   const handleReset = () => {
     setSelectedTime(initialTime);
+    setDepartureAt(getMatchingDepartureAt(initialTime));
   };
 
   return (
@@ -54,7 +64,7 @@ export function MatchingTimePage() {
           aria-label="탑승 희망 시간"
           className="mt-[96px]"
           value={selectedTime}
-          onValueChange={setSelectedTime}
+          onValueChange={updateSelectedTime}
         />
       </main>
 
