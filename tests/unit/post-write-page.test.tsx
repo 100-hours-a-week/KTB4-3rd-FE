@@ -6,6 +6,8 @@ import { useAuthStore } from '@/entities/auth';
 import { PostWritePage } from '@/_pages/post-write';
 import { usePostCreateStore } from '@/features/post-create';
 
+const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').replace(/\/$/, '');
+
 const navigation = vi.hoisted(() => ({
   back: vi.fn<() => void>(),
   push: vi.fn<(path: string) => void>(),
@@ -98,7 +100,7 @@ describe('PostWritePage', () => {
 
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenCalledWith(
-        'http://localhost:8080/community-posts',
+        `${apiBaseUrl}/community-posts`,
         expect.objectContaining({ method: 'POST' }),
       ),
     );
@@ -130,7 +132,7 @@ describe('PostWritePage', () => {
 
     await waitFor(() =>
       expect(fetchSpy).toHaveBeenCalledWith(
-        'http://localhost:8080/companion-posts',
+        `${apiBaseUrl}/companion-posts`,
         expect.objectContaining({ method: 'POST' }),
       ),
     );
