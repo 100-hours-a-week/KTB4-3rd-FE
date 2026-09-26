@@ -37,6 +37,7 @@ import { Logo } from '@/shared/ui/logo';
 import { Map, MyLocationButton, type MapMarker, type MapViewport } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 import { Text } from '@/shared/ui/text';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
 type PositionedPost = {
   position: MapCoordinate;
@@ -293,6 +294,7 @@ export function HomePage() {
       ) : null}
 
       <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
+      <SnackbarViewport className="fixed inset-x-0 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto" />
     </div>
   );
 }

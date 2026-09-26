@@ -33,10 +33,18 @@ export const authHandlers = [
     );
   }),
   http.post('*/auth/tokens', () =>
-    HttpResponse.json({
-      message: '토큰이 재발급되었습니다',
-      data: { access_token: MOCK_ACCESS_TOKEN },
-    }),
+    HttpResponse.json(
+      {
+        message: '토큰이 재발급되었습니다',
+        data: { access_token: MOCK_ACCESS_TOKEN },
+      },
+      {
+        headers: {
+          'Set-Cookie':
+            'refresh_token=mock-refresh-token; Max-Age=604800; HttpOnly; SameSite=Strict',
+        },
+      },
+    ),
   ),
   http.delete('*/auth/sessions', () => new HttpResponse(null, { status: 204 })),
 ];

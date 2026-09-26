@@ -21,6 +21,7 @@ async function readJson<T>(response: Response) {
 
 const validSignupPayload = {
   nickname: '제리',
+  gender: 'MALE',
   bank_name: 'KB국민은행',
   account_no: '11012345678',
   agreements: {
@@ -92,6 +93,15 @@ describe('MSW mock API', () => {
     });
   });
 
+  it('토큰 재발급 응답과 refresh token 쿠키를 반환한다', async () => {
+    const response = await fetch('http://localhost:8080/auth/tokens', { method: 'POST' });
+    const body = await readJson<MockApiResponse<{ access_token: string }>>(response);
+
+    expect(response.status).toBe(200);
+    expect(body.data.access_token).toBe('mock-access-token');
+    expect(response.headers.get('set-cookie')).toContain('refresh_token=mock-refresh-token');
+  });
+
   it('닉네임 중복확인 응답을 반환한다', async () => {
     const response = await fetch(
       'http://localhost:8080/users/nickname-availability?nickname=%EC%A0%9C%EB%A6%AC',
@@ -106,7 +116,7 @@ describe('MSW mock API', () => {
     const response = await fetch('http://localhost:8080/users', {
       method: 'POST',
       headers: {
-        Authorization: 'Bearer mock-signup-token',
+        Cookie: 'signup_token=mock-signup-token',
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(validSignupPayload),
@@ -118,7 +128,7 @@ describe('MSW mock API', () => {
 
     const reusedResponse = await fetch('http://localhost:8080/users', {
       method: 'POST',
-      headers: { Authorization: 'Bearer mock-signup-token' },
+      headers: { Cookie: 'signup_token=mock-signup-token' },
       body: JSON.stringify(validSignupPayload),
     });
     const reusedBody = await readJson<MockApiResponse<never>>(reusedResponse);

@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { BankCode } from './bank';
+import { GenderCode } from './gender';
 
 const requiredAgreement = z.boolean().refine((checked) => checked, {
   message: '필수 약관에 동의해주세요.',
@@ -24,6 +25,10 @@ export const signupSchema = z
       .string()
       .trim()
       .regex(/^[가-힣A-Za-z0-9]{2,12}$/, '한글, 영문, 숫자만 사용할 수 있어요.'),
+    gender: z
+      .enum(GenderCode)
+      .nullable()
+      .refine((value): boolean => value !== null, '성별을 선택해주세요.'),
     bank_name: z.enum(BankCode).nullable(),
     account_no: z
       .string()
@@ -61,6 +66,7 @@ export type SignupFormValues = z.infer<typeof signupSchema>;
 export const signupDefaultValues: SignupFormValues = {
   profile_image_key: null,
   nickname: '',
+  gender: null,
   bank_name: null,
   account_no: '',
   agreements: {

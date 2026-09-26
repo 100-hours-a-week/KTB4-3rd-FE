@@ -63,6 +63,7 @@ export function SignupPage() {
     const isProfileValid = await methods.trigger([
       'profile_image_key',
       'nickname',
+      'gender',
       'bank_name',
       'account_no',
     ]);
@@ -85,7 +86,9 @@ export function SignupPage() {
   }, [setError, signupMutation.error]);
 
   const handleSignup = (values: SignupFormValues) => {
-    signupMutation.mutate(values);
+    signupMutation.mutate(values, {
+      onSuccess: () => router.replace('/', { scroll: false }),
+    });
   };
 
   const submitError =
