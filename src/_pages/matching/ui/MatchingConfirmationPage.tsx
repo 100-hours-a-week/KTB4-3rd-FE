@@ -1,10 +1,16 @@
 'use client';
 
 import { useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 
-import { useMatchingRegistrationStore } from '@/features/matching-registration';
+import {
+  useMatchingRegistrationStore,
+  useTaxiPotMatchingMutation,
+} from '@/features/matching-registration';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 import { Text } from '@/shared/ui/text';
 
 function formatDepartureAt(departureAt: string | null) {
@@ -57,9 +63,12 @@ function MatchingConfirmationSummaryCard({
 }
 
 export function MatchingConfirmationPage() {
+  const router = useRouter();
   const originName = useMatchingRegistrationStore((state) => state.origin_name);
   const destinationName = useMatchingRegistrationStore((state) => state.dest_name);
   const departureAt = useMatchingRegistrationStore((state) => state.departure_at);
+  const getPayload = useMatchingRegistrationStore((state) => state.getPayload);
+  const taxiPotMatchingMutation = useTaxiPotMatchingMutation();
   const confirmationRows = useMemo(
     () => [
       { label: '출발지', value: originName ?? '-' },
@@ -68,6 +77,29 @@ export function MatchingConfirmationPage() {
     ],
     [departureAt, destinationName, originName],
   );
+
+  const handleMatchingStart = () => {
+    const payload = getPayload();
+
+    if (!payload) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar('출발지, 도착지, 탑승 시간을 모두 입력해주세요', 'critical');
+      return;
+    }
+
+    taxiPotMatchingMutation.mutate(payload, {
+      onSuccess: ({ data }) => router.push(`/chatroom/${data.chat_room_id}`),
+      onError: (error) => {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '매칭을 시작하지 못했어요',
+            'critical',
+          );
+      },
+    });
+  };
 
   return (
     <div
@@ -94,13 +126,16 @@ export function MatchingConfirmationPage() {
 
       <Button
         className="absolute bottom-10 left-5 !h-[52px] !min-h-[52px] !w-[calc(100%-40px)] !rounded-[8px] !px-4 !py-3"
+        loading={taxiPotMatchingMutation.isPending}
         size="large"
         type="button"
         variant="brand-solid"
         width="fill"
+        onClick={handleMatchingStart}
       >
         매칭 시작하기
       </Button>
+      <SnackbarViewport className="fixed inset-x-0 bottom-10 z-[2147483647] mx-auto max-w-[393px] px-5" />
     </div>
   );
 }
