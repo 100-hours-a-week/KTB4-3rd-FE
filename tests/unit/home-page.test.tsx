@@ -151,6 +151,34 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
   });
 
+  it('커뮤니티 게시글 상세에 댓글 목록을 표시하고 다음 페이지를 조회한다', async () => {
+    const user = userEvent.setup();
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 근처 카페 추천/ }));
+
+    expect(await screen.findByText('저도 궁금해요!')).toBeInTheDocument();
+    const loadMoreButton = screen.getByRole('button', { name: '댓글 더보기' });
+
+    await user.click(loadMoreButton);
+
+    await waitFor(() => expect(loadMoreButton).not.toBeInTheDocument());
+  });
+
+  it('커뮤니티 댓글 작성 API를 호출하고 성공 Snackbar를 표시한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 근처 카페 추천/ }));
+
+    const input = await screen.findByRole('textbox', { name: '댓글 입력' });
+    await user.type(input, '새로 남긴 댓글입니다');
+    await user.click(screen.getByRole('button', { name: '댓글 전송' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent('댓글이 등록되었어요');
+  });
+
   it('동행모집 상세에서 채팅 참여에 성공하면 응답의 채팅방으로 이동한다', async () => {
     const user = userEvent.setup();
     useAuthStore.getState().setAccessToken('mock-access-token');
