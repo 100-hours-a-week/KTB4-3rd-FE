@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   ChatWebSocketClient,
@@ -11,6 +11,7 @@ const clients: ChatWebSocketClient[] = [];
 
 afterEach(() => {
   clients.splice(0).forEach((client) => client.disconnect());
+  vi.unstubAllEnvs();
 });
 
 describe('ChatWebSocketClient', () => {
@@ -50,6 +51,9 @@ describe('ChatWebSocketClient', () => {
   });
 
   it('기본 API 주소에서 웹소켓 주소를 파생한다', () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'http://localhost:8080');
+    vi.stubEnv('NEXT_PUBLIC_WEBSOCKET_URL', '');
+
     expect(getChatWebSocketUrl()).toBe('ws://localhost:8080/ws');
   });
 });
