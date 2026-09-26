@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-import { MOCK_ACCESS_TOKEN, MOCK_SIGNUP_TOKEN, errorResponse } from './mock-utils';
+import { MOCK_ACCESS_TOKEN, MOCK_SIGNUP_TOKEN, errorResponse, getCookieValue } from './mock-utils';
 
 export const authHandlers = [
   http.post('*/auth/kakao', async ({ request }) => {
@@ -32,8 +32,12 @@ export const authHandlers = [
       { status: 201 },
     );
   }),
-  http.post('*/auth/tokens', () =>
-    HttpResponse.json(
+  http.post('*/auth/tokens', ({ request }) => {
+    if (!getCookieValue(request, 'refresh_token')) {
+      return errorResponse('인증이 필요합니다', 'UNAUTHORIZED', null, 401);
+    }
+
+    return HttpResponse.json(
       {
         message: '토큰이 재발급되었습니다',
         data: { access_token: MOCK_ACCESS_TOKEN },
@@ -44,7 +48,7 @@ export const authHandlers = [
             'refresh_token=mock-refresh-token; Max-Age=604800; HttpOnly; SameSite=Strict',
         },
       },
-    ),
-  ),
+    );
+  }),
   http.delete('*/auth/sessions', () => new HttpResponse(null, { status: 204 })),
 ];
