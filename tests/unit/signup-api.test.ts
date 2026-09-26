@@ -27,7 +27,7 @@ describe('signup API', () => {
     expect(toSignupPayload(formValues, 'tmp/profile/profile-image.jpg')).toEqual({
       nickname: '제리',
       gender: GenderCode.MALE,
-      bank_name: 'KB국민은행',
+      bank_name: BankCode.KB,
       profile_image_key: 'tmp/profile/profile-image.jpg',
       account_no: '11012345678',
       agreements: {

@@ -9,16 +9,7 @@ import {
   isValidNickname,
 } from './mock-utils';
 
-const MOCK_BANK_NAMES = new Set([
-  'KB국민은행',
-  '신한은행',
-  '우리은행',
-  '하나은행',
-  'NH농협은행',
-  'IBK기업은행',
-  '카카오뱅크',
-  '토스뱅크',
-]);
+const MOCK_BANK_CODES = new Set(['kb', 'shinhan', 'woori', 'hana', 'nh', 'ibk', 'kakao', 'toss']);
 const MOCK_GENDERS = new Set(['MALE', 'FEMALE']);
 
 const REQUIRED_AGREEMENT_FIELDS = ['service', 'location', 'gender'] as const;
@@ -113,7 +104,7 @@ export const signupHandlers = [
       return errorResponse('성별을 선택해주세요', 'VALIDATION_ERROR', 'gender', 422);
     }
 
-    if (body.bank_name !== undefined && !MOCK_BANK_NAMES.has(String(body.bank_name))) {
+    if (body.bank_name !== undefined && !MOCK_BANK_CODES.has(String(body.bank_name))) {
       return errorResponse('지원하지 않는 은행이에요', 'VALIDATION_ERROR', 'bank_name', 422);
     }
 

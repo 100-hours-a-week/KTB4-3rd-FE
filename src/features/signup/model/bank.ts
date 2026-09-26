@@ -1,12 +1,12 @@
 export enum BankCode {
-  KB = 'KB',
-  SHINHAN = 'SHINHAN',
-  WOORI = 'WOORI',
-  HANA = 'HANA',
-  NH = 'NH',
-  IBK = 'IBK',
-  KAKAO = 'KAKAO',
-  TOSS = 'TOSS',
+  KB = 'kb',
+  SHINHAN = 'shinhan',
+  WOORI = 'woori',
+  HANA = 'hana',
+  NH = 'nh',
+  IBK = 'ibk',
+  KAKAO = 'kakao',
+  TOSS = 'toss',
 }
 
 export const BANK_OPTIONS = [
