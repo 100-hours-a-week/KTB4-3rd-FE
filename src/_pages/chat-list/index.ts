@@ -10,5 +10,7 @@ export {
   ChatListPageContent,
   ChatListPageContentWithQuery,
   type ChatListPageContentProps,
+  type ChatListPagePaginationState,
+  type ChatListPagePaginationStates,
 } from './ui/chat-list-page-content';
 export { ChatListPageContentLoading, ChatListPageLoading } from './ui/chat-list-page-loading';
