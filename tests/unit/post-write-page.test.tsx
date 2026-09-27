@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '@/entities/auth';
 import { PostWritePage } from '@/_pages/post-write';
 import { usePostCreateStore } from '@/features/post-create';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').replace(/\/$/, '');
 
@@ -24,6 +25,7 @@ afterEach(() => {
   navigation.push.mockReset();
   useAuthStore.getState().clearTokens();
   usePostCreateStore.getState().resetDraft();
+  useSnackbarStore.getState().reset();
 });
 
 function renderPostWritePage(type: 'accompany' | 'community') {
@@ -104,6 +106,12 @@ describe('PostWritePage', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     );
+    expect(navigation.push).toHaveBeenCalledWith('/');
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '핀 등록이 완료됐어요',
+      open: true,
+      type: 'positive',
+    });
   });
 
   it('동행모집 등록하기 버튼을 누르면 동행모집 게시글 등록 API를 요청한다', async () => {
@@ -136,5 +144,11 @@ describe('PostWritePage', () => {
         expect.objectContaining({ method: 'POST' }),
       ),
     );
+    expect(navigation.push).toHaveBeenCalledWith('/');
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '핀 등록이 완료됐어요',
+      open: true,
+      type: 'positive',
+    });
   });
 });

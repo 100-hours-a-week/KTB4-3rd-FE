@@ -10,6 +10,7 @@ import {
   type PostCreateState,
   type PostCreateTime,
 } from '@/features/post-create';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
@@ -282,12 +283,20 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     }
   }, [draft, draftType]);
 
+  const handlePostCreateSuccess = () => {
+    useSnackbarStore.getState().showSnackbar('핀 등록이 완료됐어요', 'positive');
+    router.push('/');
+  };
+
   const handlePostCreate = () => {
     if (isCompanion) {
       const payload = draft.getCompanionPayload();
 
       if (payload) {
-        postCreateMutation.mutate({ payload, type: 'COMPANION' });
+        postCreateMutation.mutate(
+          { payload, type: 'COMPANION' },
+          { onSuccess: handlePostCreateSuccess },
+        );
       }
 
       return;
@@ -296,7 +305,10 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     const payload = draft.getCommunityPayload();
 
     if (payload) {
-      postCreateMutation.mutate({ payload, type: 'COMMUNITY' });
+      postCreateMutation.mutate(
+        { payload, type: 'COMMUNITY' },
+        { onSuccess: handlePostCreateSuccess },
+      );
     }
   };
 
