@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginRequiredProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
 import { useAuthStore } from '@/entities/auth';
+import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
@@ -135,6 +136,19 @@ function renderHomePage() {
 }
 
 describe('HomePage', () => {
+  it('로그인한 사용자의 프로필 이미지를 홈 Avatar에 표시한다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    renderHomePage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: '프로필' })).toHaveAttribute(
+        'src',
+        'https://cdn.moyeota.app/profile/15.jpg',
+      );
+    });
+  });
+
   it('지도, 글쓰기 버튼, 바텀시트, 하단 네비게이션을 조합한다', () => {
     renderHomePage();
 
@@ -304,6 +318,41 @@ describe('HomePage', () => {
     expect(await screen.findByText('택시 같이 타실 분 구해요')).toBeInTheDocument();
     expect(screen.getByText('판교역')).toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
+  });
+
+  it('동행모집 상세의 참여자 정보가 null이어도 핀 상세를 표시한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/companion-posts/10', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 10,
+            title: '택시 같이 타실 분 구해요',
+            content: '판교역에서 강남역까지 같이 이동해요.',
+            transport_type: 'TAXI',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            is_expired: false,
+            current_count: 1,
+            capacity: 3,
+            is_full: false,
+            author: { nickname: '우림' },
+            participants: null,
+            chat_room_id: null,
+            joined: false,
+          },
+        }),
+      ),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByTestId('map-marker-COMPANION-10'));
+
+    expect(await screen.findByText('택시 같이 타실 분 구해요')).toBeInTheDocument();
+    expect(screen.getByText('참여자')).toBeInTheDocument();
   });
 
   it('커뮤니티 게시글 상세에서 하단에 도달하면 다음 댓글 페이지를 조회한다', async () => {

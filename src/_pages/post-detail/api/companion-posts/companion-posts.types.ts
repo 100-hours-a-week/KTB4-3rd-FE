@@ -23,7 +23,7 @@ export type CompanionPostDetailData = {
   capacity: number;
   is_full: boolean;
   author: CompanionPostDetailAuthor;
-  participants: CompanionPostParticipant[];
+  participants: CompanionPostParticipant[] | null;
   chat_room_id: number | null;
   joined: boolean;
 };
