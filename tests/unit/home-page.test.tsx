@@ -125,8 +125,13 @@ describe('HomePage', () => {
     expect(screen.getByTestId('map')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument();
     expect(screen.getByRole('button', { hidden: true, name: '글쓰기' })).toBeInTheDocument();
+    expect(screen.getByTestId('home-map-controls')).toHaveClass(
+      'fixed',
+      'z-40',
+      'pointer-events-none',
+    );
     expect(screen.getByRole('button', { hidden: true, name: '현재 위치로 이동' })).toHaveClass(
-      'z-20',
+      'pointer-events-auto',
     );
     expect(screen.getByRole('heading', { name: '근처 핀 게시글' })).toBeInTheDocument();
     const bottomNav = screen.getByRole('navigation', { hidden: true, name: '주요 메뉴' });

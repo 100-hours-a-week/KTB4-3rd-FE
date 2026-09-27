@@ -370,18 +370,23 @@ export function HomePage() {
             showCurrentLocationButton={false}
             showZoomControls={false}
             viewportDebounceMs={300}
-          >
-            <PostCreateFab
-              className="absolute right-4 bottom-[190px] z-30"
-              leftSlot={<Icon name="plus" size={24} />}
-              onClick={handlePostCreate}
-            >
-              글쓰기
-            </PostCreateFab>
-
-            <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
-          </Map>
+          />
         </main>
+
+        <div
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto h-dvh w-full max-w-[393px]"
+          data-testid="home-map-controls"
+        >
+          <PostCreateFab
+            className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+190px)]"
+            leftSlot={<Icon name="plus" size={24} />}
+            onClick={handlePostCreate}
+          >
+            글쓰기
+          </PostCreateFab>
+
+          <MyLocationButton className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+134px)]" />
+        </div>
 
         <BottomSheet
           bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
