@@ -91,7 +91,7 @@ const MOCK_CHAT_ROOM_LISTS: Record<ChatRoomKind, ChatRoomListData> = {
         has_unread: true,
       },
     ],
-    next_cursor: null,
+    next_cursor: 'taxi-pot-next',
   },
   COMPANION: {
     items: [
@@ -106,10 +106,43 @@ const MOCK_CHAT_ROOM_LISTS: Record<ChatRoomKind, ChatRoomListData> = {
         has_unread: true,
       },
     ],
-    next_cursor: null,
+    next_cursor: 'companion-next',
   },
   CARPOOL: {
     items: [],
+    next_cursor: null,
+  },
+};
+
+const MOCK_CHAT_ROOM_LIST_NEXT_PAGES: Record<string, ChatRoomListData> = {
+  'taxi-pot-next': {
+    items: [
+      {
+        id: 601,
+        companion_id: 32,
+        kind: 'TAXI_POT',
+        title: '7시 선릉역',
+        host: { profile_image_url: null },
+        current_count: 2,
+        capacity: 4,
+        has_unread: false,
+      },
+    ],
+    next_cursor: null,
+  },
+  'companion-next': {
+    items: [
+      {
+        id: 502,
+        companion_id: 11,
+        kind: 'COMPANION',
+        title: '커뮤니티 채팅방 다음 페이지',
+        host: { profile_image_url: null },
+        current_count: 2,
+        capacity: 4,
+        has_unread: false,
+      },
+    ],
     next_cursor: null,
   },
 };
@@ -224,12 +257,22 @@ export const chatRoomHandlers = [
       return errorResponse('잘못된 커서입니다', 'INVALID_CURSOR', null, 400);
     }
 
-    const data = kind
-      ? MOCK_CHAT_ROOM_LISTS[kind as keyof typeof MOCK_CHAT_ROOM_LISTS]
-      : {
-          items: Object.values(MOCK_CHAT_ROOM_LISTS).flatMap((list) => list.items),
-          next_cursor: null,
-        };
+    let data: ChatRoomListData | undefined;
+
+    if (cursor) {
+      data = MOCK_CHAT_ROOM_LIST_NEXT_PAGES[cursor];
+    } else if (kind) {
+      data = MOCK_CHAT_ROOM_LISTS[kind as keyof typeof MOCK_CHAT_ROOM_LISTS];
+    } else {
+      data = {
+        items: Object.values(MOCK_CHAT_ROOM_LISTS).flatMap((list) => list.items),
+        next_cursor: null,
+      };
+    }
+
+    if (!data) {
+      return errorResponse('잘못된 커서입니다', 'INVALID_CURSOR', null, 400);
+    }
 
     return HttpResponse.json({
       message: '조회에 성공했습니다',
