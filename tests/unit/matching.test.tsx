@@ -110,6 +110,7 @@ describe('MatchingPage', () => {
 
     expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
     expect(screen.getByRole('button', { name: '도착지' })).toHaveTextContent('어디로 갈까요?');
+    expect(screen.getByTestId('matching-location-panel')).toHaveClass('fixed', 'bottom-0');
     expect(screen.getByTestId('map')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '도착지' }));

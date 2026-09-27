@@ -125,7 +125,10 @@ export function MatchingPage() {
         </Map>
       </main>
 
-      <div className="absolute inset-x-0 bottom-0 z-40 flex h-[205px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10">
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[205px] w-full max-w-[393px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10"
+        data-testid="matching-location-panel"
+      >
         <LocationInputButton
           aria-label="출발지"
           clearButton={false}
