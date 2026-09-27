@@ -60,6 +60,7 @@ export function ProfileImageField({
       inputSlot={
         <CenteredPhotoInput
           aria-label="프로필 이미지 선택"
+          accept="image/jpeg,image/png"
           defaultPreviewUrl={defaultPreviewUrl}
           disabled={disabled}
           id="profile_image_key"

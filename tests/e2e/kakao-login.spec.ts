@@ -94,6 +94,33 @@ test.describe('카카오 로그인 OAuth 콜백', () => {
         }),
       });
     });
+    await page.route('**/api/users/nickname-availability**', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        status: 200,
+        body: JSON.stringify({
+          message: '사용할 수 있는 닉네임이에요',
+          data: { available: true },
+        }),
+      });
+    });
+    await page.route('**/api/images/presigned-url', async (route) => {
+      await route.fulfill({
+        contentType: 'application/json',
+        status: 200,
+        body: JSON.stringify({
+          message: '이미지 업로드 URL이 발급되었습니다.',
+          data: {
+            upload_url: `${baseURL ?? 'http://127.0.0.1:3000'}/mock-profile-upload`,
+            image_key: 'tmp/profile/mock-profile-image.png',
+            expires_in: 300,
+          },
+        }),
+      });
+    });
+    await page.route('**/mock-profile-upload', async (route) => {
+      await route.fulfill({ status: 200 });
+    });
     await page.route('**/api/auth/tokens', async (route) => {
       await route.fulfill({
         contentType: 'application/json',

@@ -10,6 +10,7 @@ import {
   TermsStep,
   signupDefaultValues,
   signupSchema,
+  useNicknameAvailabilityMutation,
   useSignupMutation,
   type SignupFormValues,
 } from '@/features/signup';
@@ -22,6 +23,7 @@ import {
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Button } from '@/shared/ui/button';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 type SignupStep = 'profile' | 'terms';
 const STEP_QUERY_VALUES = {
@@ -46,6 +48,7 @@ export function SignupPage() {
     resolver: zodResolver(signupSchema),
   });
   const { setError } = methods;
+  const nicknameAvailabilityMutation = useNicknameAvailabilityMutation();
   const signupMutation = useSignupMutation();
 
   const getStepUrl = useCallback(
@@ -64,6 +67,8 @@ export function SignupPage() {
   }, [getStepUrl, router, step, stepQuery]);
 
   const handleNext = async () => {
+    methods.clearErrors('nickname');
+
     const isProfileValid = await methods.trigger([
       'profile_image_key',
       'nickname',
@@ -72,8 +77,36 @@ export function SignupPage() {
       'account_no',
     ]);
 
-    if (isProfileValid) {
+    if (!isProfileValid) {
+      return;
+    }
+
+    const nickname = methods.getValues('nickname').trim();
+    const delayNoticeTimer = setTimeout(() => {
+      useSnackbarStore
+        .getState()
+        .showSnackbar('닉네임 확인이 지연되고 있어요. 잠시만 기다려주세요.');
+    }, 5000);
+
+    try {
+      const { data } = await nicknameAvailabilityMutation.mutateAsync(nickname);
+
+      if (!data.available) {
+        setError('nickname', {
+          type: 'server',
+          message: '이미 사용 중인 닉네임이에요',
+        });
+        return;
+      }
+
       router.push(getStepUrl('terms'), { scroll: false });
+    } catch (error) {
+      setError('nickname', {
+        type: 'server',
+        message: error instanceof Error ? error.message : '닉네임 확인에 실패했어요.',
+      });
+    } finally {
+      clearTimeout(delayNoticeTimer);
     }
   };
 
@@ -132,6 +165,7 @@ export function SignupPage() {
               width="fill"
               size="large"
               className={bottomActionFixedClassName}
+              loading={nicknameAvailabilityMutation.isPending}
               onClick={handleNext}
             >
               다음

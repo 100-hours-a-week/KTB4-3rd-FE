@@ -9,6 +9,10 @@ import { useSignupMutation } from '@/features/signup';
 import { GenderCode } from '@/features/signup/model/gender';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
 import { server } from '@/shared/api/mocks/server';
+import {
+  MOCK_PROFILE_IMAGE_KEY,
+  MOCK_PROFILE_UPLOAD_URL,
+} from '@/shared/api/mocks/signup.handlers';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 const signupValues: SignupFormValues = {
@@ -57,8 +61,26 @@ describe('useSignupMutation', () => {
   it('가입에 성공하면 토큰을 재발급받아 access token을 저장하고 signup token을 폐기한다', async () => {
     useAuthStore.getState().setSignupToken('mock-signup-token');
     const refreshRequest = vi.fn<() => void>();
+    const requestOrder: string[] = [];
     server.use(
+      http.post('*/images/presigned-url', () => {
+        requestOrder.push('presigned-url');
+
+        return HttpResponse.json({
+          message: '이미지 업로드 URL이 발급되었습니다.',
+          data: {
+            upload_url: MOCK_PROFILE_UPLOAD_URL,
+            image_key: MOCK_PROFILE_IMAGE_KEY,
+            expires_in: 300,
+          },
+        });
+      }),
+      http.put(MOCK_PROFILE_UPLOAD_URL, () => {
+        requestOrder.push('image-upload');
+        return new HttpResponse(null, { status: 200 });
+      }),
       http.post('*/users', ({ request }) => {
+        requestOrder.push('signup');
         expect(request.headers.get('authorization')).toBeNull();
 
         return HttpResponse.json(
@@ -94,6 +116,7 @@ describe('useSignupMutation', () => {
       signupToken: null,
     });
     expect(refreshRequest).toHaveBeenCalledOnce();
+    expect(requestOrder).toEqual(['presigned-url', 'image-upload', 'signup']);
     expect(useSnackbarStore.getState()).toMatchObject({
       description: '가입이 완료되었어요',
       open: true,
@@ -104,6 +127,17 @@ describe('useSignupMutation', () => {
   it('가입에 실패하면 API 오류 상태를 노출하고 토큰을 유지한다', async () => {
     useAuthStore.getState().setSignupToken('mock-signup-token');
     server.use(
+      http.post('*/images/presigned-url', () =>
+        HttpResponse.json({
+          message: '이미지 업로드 URL이 발급되었습니다.',
+          data: {
+            upload_url: MOCK_PROFILE_UPLOAD_URL,
+            image_key: MOCK_PROFILE_IMAGE_KEY,
+            expires_in: 300,
+          },
+        }),
+      ),
+      http.put(MOCK_PROFILE_UPLOAD_URL, () => new HttpResponse(null, { status: 200 })),
       http.post('*/users', ({ request }) => {
         expect(request.headers.get('authorization')).toBeNull();
 

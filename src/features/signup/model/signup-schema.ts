@@ -2,6 +2,11 @@ import { z } from 'zod';
 
 import { BankCode } from './bank';
 import { GenderCode } from './gender';
+import {
+  isSupportedProfileImageContentType,
+  MAX_PROFILE_IMAGE_SIZE,
+  MIN_PROFILE_IMAGE_SIZE,
+} from './profile-image';
 
 const requiredAgreement = z.boolean().refine((checked) => checked, {
   message: '필수 약관에 동의해주세요.',
@@ -15,10 +20,13 @@ export const signupSchema = z
         '프로필 이미지를 확인해주세요.',
       )
       .refine((file): boolean => file !== null, '프로필 이미지를 선택해주세요.')
-      .refine((file) => file === null || file.type.startsWith('image/'), {
-        message: '이미지 파일만 선택할 수 있어요.',
+      .refine((file) => file === null || isSupportedProfileImageContentType(file.type), {
+        message: '프로필 이미지는 JPEG 또는 PNG 형식만 업로드할 수 있어요.',
       })
-      .refine((file) => file === null || file.size <= 5 * 1024 * 1024, {
+      .refine((file) => file === null || file.size >= MIN_PROFILE_IMAGE_SIZE, {
+        message: '프로필 이미지 파일을 확인해주세요.',
+      })
+      .refine((file) => file === null || file.size <= MAX_PROFILE_IMAGE_SIZE, {
         message: '프로필 이미지는 5MB 이하로 선택해주세요.',
       }),
     nickname: z

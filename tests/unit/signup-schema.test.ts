@@ -35,6 +35,21 @@ describe('signupSchema', () => {
     );
   });
 
+  it('JPEG와 PNG가 아닌 프로필 이미지는 검증에 실패한다', () => {
+    const result = signupSchema.safeParse({
+      ...baseValues,
+      profile_image_key: new File(['profile'], 'profile.gif', { type: 'image/gif' }),
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('지원하지 않는 이미지 형식이 통과했습니다.');
+    }
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({ path: ['profile_image_key'] }),
+    );
+  });
+
   it('은행과 계좌번호를 모두 입력하지 않으면 통과한다', () => {
     expect(signupSchema.safeParse(baseValues).success).toBe(true);
   });
