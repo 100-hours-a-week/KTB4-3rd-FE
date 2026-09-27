@@ -11,10 +11,15 @@ import type { ChatWebSocketMessage } from '@/entities/chat';
 import {
   createTaxiPotChatEntryMessages,
   TaxiPotAnnouncement,
+  TaxiPotRideActionNotice,
   taxiPotQueries,
   type TaxiPotChatEntryMessage,
   type TaxiPotDetailData,
+  type TaxiPotRideAction,
+  type TaxiPotStatus,
+  useTaxiPotChatFlow,
 } from '@/features/taxi-pot-chat';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
 import { useChatRoomQueries } from '@/_pages/chatting/api/chat-room';
 import {
@@ -68,10 +73,18 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     messages: [],
   });
   const { detailQuery, messagesQuery } = useChatRoomQueries(roomId);
-  const handleWebSocketMessage = useCallback(
-    (message: ChatWebSocketMessage) => {
-      const nextMessage = createChatRoomMessageFromApi(message);
+  const chatRoomDetail = detailQuery.data?.data;
+  const taxiPotId =
+    chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
+  const isTaxiPot = taxiPotId !== undefined;
+  const taxiPotQuery = useQuery({
+    ...taxiPotQueries.detail(taxiPotId ?? ''),
+    enabled: isTaxiPot,
+  });
+  const taxiPotDetail = taxiPotQuery.data?.data;
 
+  const appendLiveMessage = useCallback(
+    (nextMessage: ChatRoomMessage) => {
       setLiveMessagesState((currentState) => {
         const currentMessages = currentState.roomId === roomId ? currentState.messages : [];
 
@@ -86,14 +99,34 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     },
     [roomId],
   );
-  const chatRoomDetail = detailQuery.data?.data;
-  const taxiPotId =
-    chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
-  const taxiPotQuery = useQuery({
-    ...taxiPotQueries.detail(taxiPotId ?? ''),
-    enabled: taxiPotId !== undefined,
+
+  const handleTaxiPotStartConfirmed = useCallback(
+    (confirmedTaxiPotId: string) => {
+      appendLiveMessage({
+        id: `taxi-pot-ride-started-${confirmedTaxiPotId}`,
+        kind: 'notice',
+        content: '운행이 시작됐어요',
+        variant: 'informative',
+      });
+    },
+    [appendLiveMessage],
+  );
+  const taxiPotFlow = useTaxiPotChatFlow({
+    onStartConfirmed: handleTaxiPotStartConfirmed,
+    taxiPotDetail,
+    taxiPotId,
   });
-  const taxiPotDetail = taxiPotQuery.data?.data;
+  const handleWebSocketMessage = useCallback(
+    (message: ChatWebSocketMessage) => {
+      if (taxiPotFlow.handleWebSocketMessage(message)) {
+        return;
+      }
+
+      appendLiveMessage(createChatRoomMessageFromApi(message));
+    },
+    [appendLiveMessage, taxiPotFlow],
+  );
+
   const baseRoom =
     chatRoomDetail && messagesQuery.data
       ? createChatRoomFromApi(chatRoomDetail, messagesQuery.data.data.items)
@@ -117,11 +150,16 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         <ChattingPageContent
           connection={connection}
           detailQuery={detailQuery}
-          isTaxiPot={taxiPotId !== undefined}
+          isTaxiPot={isTaxiPot}
+          isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
+          onRideActionConfirm={taxiPotFlow.confirmRideAction}
+          rideAction={taxiPotFlow.rideAction}
+          rideActionLoading={taxiPotFlow.isPending}
           room={room}
           taxiPotDetail={taxiPotDetail}
           taxiPotQuery={taxiPotQuery}
+          taxiPotStatus={taxiPotFlow.status}
           liveMessages={liveMessages}
         />
       )}
@@ -133,21 +171,31 @@ type ChattingPageContentProps = {
   connection: ChatRoomWebSocketConnectionValue;
   detailQuery: ReturnType<typeof useChatRoomQueries>['detailQuery'];
   isTaxiPot: boolean;
+  isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
+  taxiPotStatus?: TaxiPotStatus;
+  rideAction?: TaxiPotRideAction;
+  rideActionLoading: boolean;
   liveMessages: readonly ChatRoomMessage[];
+  onRideActionConfirm: () => void;
 };
 
 function ChattingPageContent({
   connection,
   detailQuery,
   isTaxiPot,
+  isTaxiPotHost,
   messagesQuery,
-  taxiPotQuery,
+  onRideActionConfirm,
+  rideAction,
+  rideActionLoading,
   room,
   taxiPotDetail,
+  taxiPotQuery,
+  taxiPotStatus,
   liveMessages,
 }: ChattingPageContentProps) {
   if (detailQuery.isPending || messagesQuery.isPending || (isTaxiPot && taxiPotQuery.isPending)) {
@@ -172,15 +220,29 @@ function ChattingPageContent({
       departureTime={formatDepartureTime(taxiPotDetail.departure_at)}
     />
   ) : null;
+  const rideActionContent =
+    isTaxiPotHost && rideAction ? (
+      <TaxiPotRideActionNotice
+        action={rideAction}
+        loading={rideActionLoading}
+        onConfirm={onRideActionConfirm}
+      />
+    ) : null;
+  const showLeaveButton =
+    !isTaxiPot || taxiPotStatus === undefined || taxiPotStatus === 'RECRUITING';
 
   return (
-    <ChatRoomLayout room={room}>
-      <ChatRoomContent
-        connection={connection}
-        liveMessages={liveMessages}
-        room={room}
-        topContent={topContent}
-      />
-    </ChatRoomLayout>
+    <>
+      <ChatRoomLayout room={room} showLeaveButton={showLeaveButton}>
+        <ChatRoomContent
+          bottomContent={rideActionContent}
+          connection={connection}
+          liveMessages={liveMessages}
+          room={room}
+          topContent={topContent}
+        />
+      </ChatRoomLayout>
+      <SnackbarViewport className="fixed inset-x-0 bottom-[calc(78px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto max-w-[393px] px-5" />
+    </>
   );
 }

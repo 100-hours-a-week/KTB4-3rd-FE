@@ -1,5 +1,7 @@
 import type { TaxiPotDetailData } from '@/features/taxi-pot-chat/api/taxi-pot';
 
+export type TaxiPotRideAction = 'start';
+
 export type TaxiPotChatEntryMessage = {
   id: string;
   content: string;

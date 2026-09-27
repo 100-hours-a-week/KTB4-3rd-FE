@@ -8,15 +8,23 @@ type StompFrame = {
   body: string;
 };
 
-type MockChatMessage = {
+export type MockChatMessage = {
   id: number;
-  type: 'TEXT';
-  sender: {
+  type:
+    | 'TEXT'
+    | 'SYSTEM_JOIN'
+    | 'SYSTEM_LEAVE'
+    | 'SYSTEM_RIDE_START_REQUESTED'
+    | 'SYSTEM_RIDE_STARTED'
+    | 'SYSTEM_RIDE_ENDED';
+  sender?: {
     id: number;
     nickname: string;
     profile_image_url: string | null;
   };
-  content: string;
+  joiner?: { id: number; name: string };
+  leaver?: { id: number; name: string };
+  content?: string | null;
   created_at: string;
 };
 
@@ -29,6 +37,7 @@ type ChatRoomSubscription = {
 const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600']);
 const subscriptions = new Map<string, ChatRoomSubscription>();
 const processedMessages = new Map<string, MockChatMessage>();
+const pendingMessages = new Map<string, MockChatMessage[]>();
 let nextMessageId = 1454;
 
 function getHeader(headers: Record<string, string>, name: string) {
@@ -129,11 +138,15 @@ function removeClientSubscriptions(client: WebSocketHandlerConnection['client'])
   }
 }
 
-function broadcastMessage(roomId: string, message: MockChatMessage) {
+export function emitMockChatRoomMessage(roomId: string, message: MockChatMessage) {
+  let delivered = false;
+
   for (const subscription of subscriptions.values()) {
     if (subscription.roomId !== roomId) {
       continue;
     }
+
+    delivered = true;
 
     subscription.client.send(
       createFrame(
@@ -147,6 +160,10 @@ function broadcastMessage(roomId: string, message: MockChatMessage) {
         JSON.stringify(message),
       ),
     );
+  }
+
+  if (!delivered) {
+    pendingMessages.set(roomId, [...(pendingMessages.get(roomId) ?? []), message]);
   }
 }
 
@@ -177,7 +194,30 @@ function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: St
     return;
   }
 
-  subscriptions.set(`${client.id}:${subscriptionId}`, { client, roomId, subscriptionId });
+  const subscription = { client, roomId, subscriptionId };
+
+  subscriptions.set(`${client.id}:${subscriptionId}`, subscription);
+
+  const pendingRoomMessages = pendingMessages.get(roomId);
+
+  if (pendingRoomMessages) {
+    pendingMessages.delete(roomId);
+
+    for (const message of pendingRoomMessages) {
+      subscription.client.send(
+        createFrame(
+          'MESSAGE',
+          {
+            destination: `/sub/chat/${roomId}`,
+            subscription: subscription.subscriptionId,
+            'message-id': String(message.id),
+            'content-type': 'application/json',
+          },
+          JSON.stringify(message),
+        ),
+      );
+    }
+  }
 }
 
 function handleUnsubscribe(client: WebSocketHandlerConnection['client'], frame: StompFrame) {
@@ -224,7 +264,7 @@ function handleSend(frame: StompFrame) {
   };
 
   processedMessages.set(messageKey, message);
-  broadcastMessage(roomId, message);
+  emitMockChatRoomMessage(roomId, message);
 }
 
 const chatRoomWebSocket = ws.link('*/ws');

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
@@ -9,6 +9,7 @@ type ChatMessageListProps = {
   messages: readonly ChatRoomMessage[];
   lastReadMessageId: number | null;
   onReport: () => void;
+  bottomContent?: ReactNode;
 };
 
 export function ChatMessageList({
@@ -16,6 +17,7 @@ export function ChatMessageList({
   messages,
   lastReadMessageId,
   onReport,
+  bottomContent,
 }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
 
@@ -40,6 +42,7 @@ export function ChatMessageList({
       {messages.map((message, index) => (
         <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
       ))}
+      {bottomContent}
     </div>
   );
 }

@@ -13,9 +13,10 @@ import type { ChatRoom } from '@/_pages/chatting/model/chat-room';
 type ChatRoomLayoutProps = {
   children: ReactNode;
   room?: ChatRoom;
+  showLeaveButton?: boolean;
 };
 
-export function ChatRoomLayout({ children, room }: ChatRoomLayoutProps) {
+export function ChatRoomLayout({ children, room, showLeaveButton = true }: ChatRoomLayoutProps) {
   return (
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
@@ -36,13 +37,20 @@ export function ChatRoomLayout({ children, room }: ChatRoomLayoutProps) {
                   {room.memberCount}/{room.memberLimit}
                 </Text>
               ) : null}
-              <Link
-                aria-label="채팅방 나가기"
-                className="inline-flex size-11 items-center justify-center rounded-[var(--dimension-x2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
-                href="/"
-              >
-                <Icon aria-hidden="true" color="var(--color-fg-critical)" name="logOut" size={24} />
-              </Link>
+              {showLeaveButton ? (
+                <Link
+                  aria-label="채팅방 나가기"
+                  className="inline-flex size-11 items-center justify-center rounded-[var(--dimension-x2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
+                  href="/"
+                >
+                  <Icon
+                    aria-hidden="true"
+                    color="var(--color-fg-critical)"
+                    name="logOut"
+                    size={24}
+                  />
+                </Link>
+              ) : null}
             </div>
           }
           title={room?.title ?? '채팅방'}
