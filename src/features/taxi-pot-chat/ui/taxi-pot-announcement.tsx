@@ -19,7 +19,7 @@ const ANNOUNCEMENT_CONTENT = [
   '출발 이후부터 모든사람이 정산 완료할때까지 방을 나갈 수 없습니다.',
 ].join('\n');
 
-export type AnnouncementDropdownProps = {
+export type TaxiPotAnnouncementProps = {
   departureTime: string;
   title?: string;
   expanded?: boolean;
@@ -28,15 +28,15 @@ export type AnnouncementDropdownProps = {
   className?: string;
 };
 
-export function AnnouncementDropdown({
+export function TaxiPotAnnouncement({
   departureTime,
   title = DEFAULT_TITLE,
   expanded,
   defaultExpanded = false,
   onExpandedChange,
   className,
-}: AnnouncementDropdownProps) {
-  const contentId = `announcement-dropdown-content-${useId()}`;
+}: TaxiPotAnnouncementProps) {
+  const contentId = `taxi-pot-announcement-content-${useId()}`;
   const isControlled = expanded !== undefined;
   const [internalExpanded, setInternalExpanded] = useState(defaultExpanded);
   const isExpanded = isControlled ? expanded : internalExpanded;
@@ -55,7 +55,7 @@ export function AnnouncementDropdown({
     <section
       className={cn('relative h-[68px] w-full', className)}
       data-state={isExpanded ? 'expanded' : 'collapsed'}
-      data-testid="announcement-dropdown"
+      data-testid="taxi-pot-announcement"
     >
       <div
         className={cn(
@@ -63,7 +63,7 @@ export function AnnouncementDropdown({
           isExpanded ? 'h-[262px]' : 'h-[68px]',
         )}
         data-state={isExpanded ? 'expanded' : 'collapsed'}
-        data-testid="announcement-dropdown-panel"
+        data-testid="taxi-pot-announcement-panel"
       >
         <button
           aria-controls={contentId}
