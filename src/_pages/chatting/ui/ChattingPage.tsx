@@ -150,11 +150,7 @@ function ChattingPageContent({
   taxiPotDetail,
   liveMessages,
 }: ChattingPageContentProps) {
-  if (
-    detailQuery.isPending ||
-    messagesQuery.isPending ||
-    (isTaxiPot && taxiPotQuery.isPending)
-  ) {
+  if (detailQuery.isPending || messagesQuery.isPending || (isTaxiPot && taxiPotQuery.isPending)) {
     return (
       <ChatRoomLayout>
         <ChatRoomState label="채팅방을 불러오는 중">채팅방을 불러오는 중이에요.</ChatRoomState>

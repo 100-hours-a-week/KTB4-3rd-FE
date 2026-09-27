@@ -1,4 +1,4 @@
-import type { TaxiPotDetailData } from '../api/taxi-pot';
+import type { TaxiPotDetailData } from '@/features/taxi-pot-chat/api/taxi-pot';
 
 export type TaxiPotChatEntryMessage = {
   id: string;

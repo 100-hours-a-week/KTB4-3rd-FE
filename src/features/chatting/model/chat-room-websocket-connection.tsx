@@ -1,10 +1,7 @@
 import type { ReactNode } from 'react';
 
 import type { ChatWebSocketMessage } from '@/entities/chat';
-import {
-  useChatRoomWebSocket,
-  type UseChatRoomWebSocketOptions,
-} from './use-chat-room-websocket';
+import { useChatRoomWebSocket, type UseChatRoomWebSocketOptions } from './use-chat-room-websocket';
 
 export type ChatRoomWebSocketConnectionValue = ReturnType<typeof useChatRoomWebSocket>;
 
