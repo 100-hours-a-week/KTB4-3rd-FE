@@ -78,7 +78,7 @@ export function BottomModal({
           <button aria-label="닫기" className={actionClassName} onClick={handleClose} type="button">
             <Icon name="xmark" size={12} />
           </button>
-          <Link aria-label="크게보기" className={actionClassName} href={href}>
+          <Link aria-label="크게보기" className={actionClassName} href={href} prefetch={false}>
             <Icon name="arrowUpRight" size={12} />
           </Link>
         </header>
