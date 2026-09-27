@@ -4,6 +4,10 @@ import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import {
+  bottomActionFixedClassName,
+  bottomActionScrollPaddingClassName,
+} from '@/shared/ui/bottom-action-button';
 import { Button } from '@/shared/ui/button';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Text } from '@/shared/ui/text';
@@ -36,15 +40,20 @@ export function AuthCallbackPage() {
   }
 
   return (
-    <PageLayout>
+    <PageLayout contentClassName={bottomActionScrollPaddingClassName}>
       <VStack className="flex-1" align="center" justify="center">
         <Text as="h1" variant="t4Bold" color="fg.critical" align="center">
           {errorDescription ?? '카카오 로그인에 실패했습니다'}
         </Text>
-        <Button type="button" width="fill" onClick={() => router.replace('/login')}>
-          로그인으로 돌아가기
-        </Button>
       </VStack>
+      <Button
+        className={bottomActionFixedClassName}
+        type="button"
+        width="fill"
+        onClick={() => router.replace('/login')}
+      >
+        로그인으로 돌아가기
+      </Button>
     </PageLayout>
   );
 }

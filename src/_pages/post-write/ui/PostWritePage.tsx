@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { CompanionTransport } from '@/entities/post';
 import {
@@ -10,10 +10,12 @@ import {
   type PostCreateState,
   type PostCreateTime,
 } from '@/features/post-create';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
-  bottomActionPaddingImportantClassName,
+  bottomActionFixedClassName,
+  bottomActionScrollPaddingImportantClassName,
 } from '@/shared/ui/bottom-action-button';
 import { DateInputButton } from '@/shared/ui/date-input-button';
 import { Field } from '@/shared/ui/field';
@@ -269,6 +271,7 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
   const draft = usePostCreateStore();
   const router = useRouter();
   const postCreateMutation = usePostCreateMutation();
+  const hasCompletedPostCreate = useRef(false);
   const draftType = draftTypeByPostWriteType[type];
   const isCompanion = type === 'accompany';
 
@@ -277,17 +280,31 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
   };
 
   useEffect(() => {
+    if (hasCompletedPostCreate.current) {
+      return;
+    }
+
     if (draft.type !== draftType) {
       draft.setType(draftType);
     }
   }, [draft, draftType]);
+
+  const handlePostCreateSuccess = () => {
+    hasCompletedPostCreate.current = true;
+    draft.resetDraft();
+    useSnackbarStore.getState().showSnackbar('핀 등록이 완료됐어요', 'positive');
+    router.push('/');
+  };
 
   const handlePostCreate = () => {
     if (isCompanion) {
       const payload = draft.getCompanionPayload();
 
       if (payload) {
-        postCreateMutation.mutate({ payload, type: 'COMPANION' });
+        postCreateMutation.mutate(
+          { payload, type: 'COMPANION' },
+          { onSuccess: handlePostCreateSuccess },
+        );
       }
 
       return;
@@ -296,14 +313,27 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     const payload = draft.getCommunityPayload();
 
     if (payload) {
-      postCreateMutation.mutate({ payload, type: 'COMMUNITY' });
+      postCreateMutation.mutate(
+        { payload, type: 'COMMUNITY' },
+        { onSuccess: handlePostCreateSuccess },
+      );
     }
   };
 
   return (
     <PageLayout
       className={className}
-      contentClassName={bottomActionPaddingImportantClassName}
+      contentClassName={bottomActionScrollPaddingImportantClassName}
+      footer={
+        <BottomActionButton
+          className={`${bottomActionFixedClassName} !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]`}
+          loading={postCreateMutation.isPending}
+          type="button"
+          onClick={handlePostCreate}
+        >
+          등록하기
+        </BottomActionButton>
+      }
       header={
         <Header
           leftSlot={<BackButton href="/post/create/type" />}
@@ -314,28 +344,10 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
       {isCompanion ? (
         <div className="flex min-h-0 flex-1 flex-col pt-10">
           <CompanionPostWriteForm draft={draft} onOpenLocationSearch={openLocationSearch} />
-
-          <BottomActionButton
-            className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
-            loading={postCreateMutation.isPending}
-            type="button"
-            onClick={handlePostCreate}
-          >
-            등록하기
-          </BottomActionButton>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col pt-6">
           <CommunityPostWriteForm draft={draft} />
-
-          <BottomActionButton
-            className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
-            loading={postCreateMutation.isPending}
-            type="button"
-            onClick={handlePostCreate}
-          >
-            등록하기
-          </BottomActionButton>
         </div>
       )}
     </PageLayout>

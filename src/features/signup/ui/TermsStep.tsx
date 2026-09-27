@@ -3,8 +3,10 @@
 import { Controller, useFormContext, useWatch } from 'react-hook-form';
 
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
+import { bottomActionFixedClassName } from '@/shared/ui/bottom-action-button';
 import { Button } from '@/shared/ui/button';
 import { Checkbox } from '@/shared/ui/checkbox';
+import { cn } from '@/shared/lib/cn';
 import { Divider } from '@/shared/ui/divider';
 import { Text } from '@/shared/ui/text';
 import { VStack } from '@/shared/ui/stack';
@@ -142,7 +144,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
         type="submit"
         width="fill"
         size="large"
-        className="mt-auto"
+        className={cn(bottomActionFixedClassName, 'mt-auto')}
         loading={isSubmitting}
         disabled={Boolean(submitSuccess)}
       >

@@ -20,7 +20,7 @@ export function ChatListPage({ states = DEFAULT_CHAT_LIST_STATES }: ChatListPage
   return (
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
-      contentClassName="relative !px-5 !pt-8 !pb-[calc(72px+env(safe-area-inset-bottom,0px))]"
+      contentClassName="relative !overflow-hidden !px-5 !pt-8 !pb-[calc(72px+env(safe-area-inset-bottom,0px))]"
       header={<Header leftSlot={<BackButton href="/" />} title="채팅" />}
     >
       <Suspense fallback={<ChatListPageContentLoading />}>

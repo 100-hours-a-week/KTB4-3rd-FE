@@ -10,6 +10,7 @@ import {
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
+import { bottomActionSafeAreaOffsetClassName } from '@/shared/ui/bottom-action-button';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 import { Text } from '@/shared/ui/text';
 
@@ -107,7 +108,7 @@ export function MatchingConfirmationPage() {
       className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-default)]"
       data-node-id="990:27039"
     >
-      <header className="absolute top-0 left-0 h-14 w-full">
+      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton className="absolute top-1.5 left-1.5" href="/matching/time" />
       </header>
 
@@ -125,7 +126,7 @@ export function MatchingConfirmationPage() {
       </main>
 
       <Button
-        className="absolute bottom-10 left-5 !h-[52px] !min-h-[52px] !w-[calc(100%-40px)] !rounded-[8px] !px-4 !py-3"
+        className={`fixed left-1/2 z-30 !h-[52px] !min-h-[52px] !w-[calc(100%-40px)] !max-w-[353px] -translate-x-1/2 !rounded-[8px] !px-4 !py-3 ${bottomActionSafeAreaOffsetClassName}`}
         loading={taxiPotMatchingMutation.isPending}
         size="large"
         type="button"
@@ -135,7 +136,9 @@ export function MatchingConfirmationPage() {
       >
         매칭 시작하기
       </Button>
-      <SnackbarViewport className="fixed inset-x-0 bottom-10 z-[2147483647] mx-auto max-w-[393px] px-5" />
+      <SnackbarViewport
+        className={`fixed inset-x-0 z-[2147483647] mx-auto max-w-[393px] px-5 ${bottomActionSafeAreaOffsetClassName}`}
+      />
     </div>
   );
 }

@@ -110,6 +110,12 @@ describe('MatchingPage', () => {
 
     expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
     expect(screen.getByRole('button', { name: '도착지' })).toHaveTextContent('어디로 갈까요?');
+    expect(screen.getByTestId('matching-location-panel')).toHaveClass(
+      'fixed',
+      'bottom-0',
+      'h-[calc(205px+env(safe-area-inset-bottom,0px))]',
+      'pb-[env(safe-area-inset-bottom,0px)]',
+    );
     expect(screen.getByTestId('map')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '도착지' }));
@@ -165,6 +171,10 @@ describe('MatchingLocationPage', () => {
     render(<MatchingLocationPage />);
 
     expect(screen.getByRole('textbox', { name: '도착지' })).toHaveFocus();
+    expect(screen.getByRole('list', { name: '장소 검색 결과' })).toHaveClass(
+      'flex-1',
+      'overflow-y-auto',
+    );
     fireEvent.click(screen.getByRole('button', { name: '도착 유스페이스1빌딩' }));
 
     expect(useMatchingStore.getState().destination).toEqual(searchResult);
@@ -201,6 +211,11 @@ describe('MatchingLocationAdjustPage', () => {
     });
 
     render(<MatchingLocationAdjustPage />);
+
+    expect(screen.getByRole('region', { name: '선택한 도착지' })).toHaveClass(
+      'h-[calc(215px+env(safe-area-inset-bottom,0px))]',
+      'pb-[env(safe-area-inset-bottom,0px)]',
+    );
 
     fireEvent.click(screen.getByRole('button', { name: '조정 지도 위치 변경' }));
     expect(await screen.findByText('새로운 장소')).toBeInTheDocument();
@@ -311,6 +326,9 @@ describe('MatchingTimePage', () => {
     expect(screen.getByRole('group', { name: '탑승 희망 시간' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' }).parentElement).toHaveClass(
+      'bottom-[calc(var(--dimension-x10)+env(safe-area-inset-bottom,0px))]',
+    );
   });
 });
 
@@ -328,7 +346,9 @@ describe('MatchingConfirmationPage', () => {
     expect(screen.getByText('판교역 2번 출구')).toBeInTheDocument();
     expect(screen.getByText('강남역')).toBeInTheDocument();
     expect(screen.getByText('오후 6:40')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '매칭 시작하기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '매칭 시작하기' })).toHaveClass(
+      'bottom-[calc(var(--dimension-x10)+env(safe-area-inset-bottom,0px))]',
+    );
   });
 
   it('매칭 시작에 성공하면 응답의 채팅방으로 이동한다', async () => {

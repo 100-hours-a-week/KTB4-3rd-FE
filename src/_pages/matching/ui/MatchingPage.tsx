@@ -125,7 +125,10 @@ export function MatchingPage() {
         </Map>
       </main>
 
-      <div className="absolute inset-x-0 bottom-0 z-40 flex h-[205px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10">
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[calc(205px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10 pb-[env(safe-area-inset-bottom,0px)]"
+        data-testid="matching-location-panel"
+      >
         <LocationInputButton
           aria-label="출발지"
           clearButton={false}
@@ -144,7 +147,7 @@ export function MatchingPage() {
         />
       </div>
 
-      <header className="absolute top-0 left-0 z-50 h-14 w-full">
+      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton className="absolute top-1.5 left-1.5" href="/" />
       </header>
     </div>

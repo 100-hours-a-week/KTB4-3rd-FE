@@ -8,7 +8,8 @@ import { usePostCreateStore } from '@/features/post-create';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
-  bottomActionPaddingImportantClassName,
+  bottomActionFixedClassName,
+  bottomActionScrollPaddingImportantClassName,
 } from '@/shared/ui/bottom-action-button';
 import { Divider } from '@/shared/ui/divider';
 import { Dialog } from '@/shared/ui/dialog';
@@ -142,7 +143,16 @@ export function PostTypeSelectionPage({
   return (
     <PageLayout
       className={className}
-      contentClassName={bottomActionPaddingImportantClassName}
+      contentClassName={bottomActionScrollPaddingImportantClassName}
+      footer={
+        <BottomActionButton
+          className={bottomActionFixedClassName}
+          type="button"
+          onClick={handleNext}
+        >
+          다음
+        </BottomActionButton>
+      }
       header={<Header leftSlot={<BackButton href={backHref} />} />}
     >
       <div className="flex min-h-0 flex-1 flex-col pt-[43px]">
@@ -190,10 +200,6 @@ export function PostTypeSelectionPage({
             </Text>
           </div>
         </section>
-
-        <BottomActionButton className="mt-[67px]" type="button" onClick={handleNext}>
-          다음
-        </BottomActionButton>
       </div>
 
       <Dialog

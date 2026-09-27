@@ -143,7 +143,7 @@ export function MatchingLocationAdjustPage() {
 
       <section
         aria-label={`선택한 ${getMatchingLocationLabel(field)}`}
-        className="absolute inset-x-0 bottom-0 z-40 h-[215px] overflow-hidden rounded-t-[24px] bg-[var(--color-bg-layer-default)] px-5 pt-6"
+        className="fixed bottom-0 left-1/2 z-40 h-[calc(215px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] -translate-x-1/2 overflow-hidden rounded-t-[24px] bg-[var(--color-bg-layer-default)] px-5 pt-6 pb-[env(safe-area-inset-bottom,0px)]"
       >
         <div className="flex flex-col items-start gap-1.5">
           <Text as="h1" color="fg.neutral" variant="t5Bold">
@@ -154,7 +154,7 @@ export function MatchingLocationAdjustPage() {
           </Text>
         </div>
         <Button
-          className="absolute right-5 bottom-5 !h-[52px] !min-h-[52px] !w-[353px] !rounded-[8px] !bg-[var(--color-bg-brand-solid)] !px-4 !py-3 active:!bg-[var(--color-bg-brand-solid-pressed)]"
+          className="absolute right-5 bottom-[calc(20px+env(safe-area-inset-bottom,0px))] !h-[52px] !min-h-[52px] !w-[353px] !rounded-[8px] !bg-[var(--color-bg-brand-solid)] !px-4 !py-3 active:!bg-[var(--color-bg-brand-solid-pressed)]"
           size="large"
           type="button"
           variant="brand-solid"
@@ -165,7 +165,7 @@ export function MatchingLocationAdjustPage() {
         </Button>
       </section>
 
-      <header className="absolute top-0 left-0 z-50 h-14 w-full">
+      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton
           className="absolute top-1.5 left-1.5"
           href={`/matching/location?field=${field}`}

@@ -6,6 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
+import {
+  bottomActionSafeAreaOffsetClassName,
+  bottomActionScrollPaddingClassName,
+} from '@/shared/ui/bottom-action-button';
 import { Dialog } from '@/shared/ui/dialog';
 import { TimePicker, type TimePickerValue } from '@/shared/ui/time-picker';
 import { Text } from '@/shared/ui/text';
@@ -46,14 +50,18 @@ export function MatchingTimePage() {
   return (
     <div
       aria-label="탑승 희망 시간 선택"
-      className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-default)]"
+      className="relative mx-auto flex h-dvh min-h-0 w-full max-w-[393px] flex-col overflow-hidden bg-[var(--color-bg-layer-default)]"
       data-node-id="990:27007"
     >
-      <header className="h-14">
+      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton className="absolute top-1.5 left-1.5" href="/matching" />
       </header>
 
-      <main className="px-5 pt-[43px]">
+      <div aria-hidden="true" className="h-14 shrink-0" />
+
+      <main
+        className={`min-h-0 flex-1 overflow-y-auto px-5 pt-[43px] ${bottomActionScrollPaddingClassName}`}
+      >
         <Text as="h1" color="fg.neutral" variant="t8Bold">
           탑승 희망 시간을 입력해주세요
         </Text>
@@ -68,7 +76,9 @@ export function MatchingTimePage() {
         />
       </main>
 
-      <div className="absolute right-5 bottom-10 left-5 flex flex-col gap-3">
+      <div
+        className={`fixed left-1/2 z-30 flex w-[calc(100%-40px)] max-w-[353px] -translate-x-1/2 flex-col gap-3 bg-[var(--color-bg-layer-default)] ${bottomActionSafeAreaOffsetClassName}`}
+      >
         <Button
           className="!h-[52px] !min-h-[52px] !rounded-[8px] !px-4 !py-3"
           size="large"

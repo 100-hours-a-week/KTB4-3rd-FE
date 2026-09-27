@@ -65,4 +65,30 @@ describe('AuthBootstrapProvider', () => {
     });
     expect(useAuthStore.getState().accessToken).toBeNull();
   });
+
+  it('토큰 재발급에 실패해도 저장된 access token은 유지한다', async () => {
+    useAuthStore.getState().setAccessToken('persisted-access-token');
+    server.use(
+      http.post('*/auth/tokens', () =>
+        HttpResponse.json(
+          {
+            message: '인증이 필요합니다',
+            error: { code: 'UNAUTHORIZED', field: null },
+          },
+          { status: 401 },
+        ),
+      ),
+    );
+
+    render(
+      <AuthBootstrapProvider>
+        <AuthStateProbe />
+      </AuthBootstrapProvider>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByText('persisted-access-token')).toBeInTheDocument();
+    });
+    expect(useAuthStore.getState().accessToken).toBe('persisted-access-token');
+  });
 });

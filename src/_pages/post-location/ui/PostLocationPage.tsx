@@ -118,7 +118,7 @@ export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) 
       </main>
 
       <LocationSelectionFooter
-        className="absolute right-0 bottom-0 left-0 z-20"
+        className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[393px]"
         placeName={locationDetails ? (locationDetails.placeName ?? '건물명 정보 없음') : ''}
         roadAddress={locationDetails ? (locationDetails.roadAddress ?? '도로명주소 정보 없음') : ''}
         onRegister={handleRegister}

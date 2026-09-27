@@ -30,7 +30,10 @@ export function Header({ title, leftSlot, rightSlot, className }: HeaderProps) {
 
   return (
     <header
-      className={cn('sticky top-0 z-10 w-full bg-[var(--color-bg-layer-default)]', className)}
+      className={cn(
+        'fixed top-0 left-1/2 z-10 w-full max-w-[393px] -translate-x-1/2 bg-[var(--color-bg-layer-default)]',
+        className,
+      )}
     >
       <div className="grid h-[var(--dimension-x14)] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center px-[var(--dimension-x1_5)]">
         <div className="flex min-h-[44px] min-w-[44px] items-center justify-start">{leftSlot}</div>

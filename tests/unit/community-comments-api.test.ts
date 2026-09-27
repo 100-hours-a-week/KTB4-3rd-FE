@@ -16,7 +16,7 @@ describe('community comments API', () => {
         items: expect.arrayContaining([
           {
             id: 2,
-            author: { nickname: '우림' },
+            nickname: '우림',
             content: '저도 궁금해요!',
             created_at: '2026-09-03T11:00:00.000Z',
           },
@@ -50,7 +50,7 @@ describe('community comments API', () => {
       message: '댓글이 등록되었습니다',
       data: {
         id: 2,
-        author: { nickname: '우림' },
+        nickname: '우림',
         content: '저도 궁금해요!',
         created_at: '2026-09-03T11:00:00.000Z',
         comment_count: 4,

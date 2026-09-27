@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import {
@@ -48,7 +48,13 @@ import { Avatar } from '@/shared/ui/avatar';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
-import { Map, MyLocationButton, type MapMarker, type MapViewport } from '@/shared/ui/map';
+import {
+  Map,
+  MyLocationButton,
+  type MapMarker,
+  type MapRef,
+  type MapViewport,
+} from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 import { ResultSection } from '@/shared/ui/result-section';
 import { Snackbar } from '@/shared/ui/snackbar';
@@ -64,6 +70,7 @@ const POST_LOCATION_ROUTE = '/post/create/location';
 const POST_ERROR_TITLE = '게시글을 불러올 수 없어요';
 const POST_ERROR_DESCRIPTION =
   '게시글을 불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.';
+const UNKNOWN_COMMENT_AUTHOR = '알 수 없는 사용자';
 
 const postErrorIcon = (
   <Icon
@@ -143,7 +150,7 @@ function toPostComments(comments: readonly CommunityPostComment[]): PostComment[
   return comments.map((comment) => ({
     id: comment.id,
     author: {
-      nickname: comment.author.nickname,
+      nickname: comment.nickname ?? UNKNOWN_COMMENT_AUTHOR,
       profile_image_url: null,
     },
     content: comment.content,
@@ -159,6 +166,7 @@ export function HomePage() {
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const selectedCompanionId = selectedPost?.post.type === 'COMPANION' ? selectedPost.post.id : null;
   const selectedCommunityId = selectedPost?.post.type === 'COMMUNITY' ? selectedPost.post.id : null;
@@ -175,7 +183,7 @@ export function HomePage() {
     isFetchingNextPage: isFetchingNextComments,
     isPending: isCommentsPending,
   } = communityCommentsQuery;
-  const mapPinsQuery = useMapPinsQuery(mapViewport, userLocation !== null);
+  const mapPinsQuery = useMapPinsQuery(mapViewport);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
   const nearbyPosts = useMemo(
@@ -269,6 +277,10 @@ export function HomePage() {
     setMapViewport(null);
   }, []);
 
+  const handleCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
   const handlePostCreate = useCallback(() => {
     requireAuth(() => router.push(POST_LOCATION_ROUTE));
   }, [requireAuth, router]);
@@ -342,7 +354,7 @@ export function HomePage() {
     <>
       <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
         <Header
-          className="!absolute inset-x-0 top-0 z-30 bg-transparent"
+          className="z-30 bg-transparent"
           leftSlot={
             <span className="pt-2 pl-1.5">
               <Logo alt="모여타" size={27} variant="text" />
@@ -367,21 +379,30 @@ export function HomePage() {
             onUserLocationChange={handleUserLocationChange}
             onViewportChange={handleMapViewportChange}
             locateOnMount
+            ref={mapRef}
             showCurrentLocationButton={false}
             showZoomControls={false}
             viewportDebounceMs={300}
-          >
-            <PostCreateFab
-              className="absolute right-4 bottom-[190px] z-30"
-              leftSlot={<Icon name="plus" size={24} />}
-              onClick={handlePostCreate}
-            >
-              글쓰기
-            </PostCreateFab>
-
-            <MyLocationButton className="absolute right-4 bottom-[134px] z-20" />
-          </Map>
+          />
         </main>
+
+        <div
+          className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto h-dvh w-full max-w-[393px]"
+          data-testid="home-map-controls"
+        >
+          <PostCreateFab
+            className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+190px)]"
+            leftSlot={<Icon name="plus" size={24} />}
+            onClick={handlePostCreate}
+          >
+            글쓰기
+          </PostCreateFab>
+
+          <MyLocationButton
+            className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+134px)]"
+            onClick={handleCurrentLocation}
+          />
+        </div>
 
         <BottomSheet
           bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
