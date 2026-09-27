@@ -39,3 +39,12 @@ export async function updateTaxiPotStatus(
     body: JSON.stringify({ status }),
   });
 }
+
+export async function leaveTaxiPot(companionId: number): Promise<void> {
+  const accessToken = await getAccessToken();
+
+  await apiFetch<void>(`/taxi-pots/${companionId}/participants/me`, {
+    method: 'DELETE',
+    token: accessToken,
+  });
+}
