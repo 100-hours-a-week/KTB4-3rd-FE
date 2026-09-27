@@ -13,11 +13,11 @@ function toMapPinsQuery(viewport: MapViewport) {
   };
 }
 
-export function useMapPinsQuery(viewport: MapViewport | null, isLocationReady: boolean) {
+export function useMapPinsQuery(viewport: MapViewport | null) {
   const query = viewport ? toMapPinsQuery(viewport) : null;
 
   return useQuery({
     ...mapPinsQueries.list(query),
-    enabled: isLocationReady && query !== null,
+    enabled: query !== null,
   });
 }

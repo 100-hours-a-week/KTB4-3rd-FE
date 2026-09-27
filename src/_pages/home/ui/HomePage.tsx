@@ -175,7 +175,7 @@ export function HomePage() {
     isFetchingNextPage: isFetchingNextComments,
     isPending: isCommentsPending,
   } = communityCommentsQuery;
-  const mapPinsQuery = useMapPinsQuery(mapViewport, userLocation !== null);
+  const mapPinsQuery = useMapPinsQuery(mapViewport);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
   const nearbyPosts = useMemo(
