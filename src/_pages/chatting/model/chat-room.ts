@@ -1,4 +1,4 @@
-import type { BubbleVariant } from '@/features/chatting';
+import type { BubbleVariant, ChatNoticeVariant } from '@/features/chatting';
 
 import type { ChatRoomDetailData, ChatRoomMessageData } from '@/_pages/chatting/api/chat-room';
 
@@ -15,6 +15,7 @@ export type ChatRoomMessage =
       id: string;
       kind: 'notice';
       content: string;
+      variant?: ChatNoticeVariant;
     };
 
 export type ChatRoom = {
@@ -84,6 +85,14 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
     return '운행이 시작됐나요?';
   }
 
+  if (message.type === 'SYSTEM_RIDE_STARTED') {
+    return '운행이 시작됐어요';
+  }
+
+  if (message.type === 'SYSTEM_RIDE_END_REQUESTED') {
+    return '운행이 종료됐나요?';
+  }
+
   if (message.type === 'SYSTEM_RIDE_ENDED') {
     return '운행이 종료됐어요';
   }
@@ -109,6 +118,10 @@ export function createChatRoomMessageFromApi(message: ChatRoomMessageData): Chat
     id: String(message.id),
     kind: 'notice',
     content: getSystemMessageContent(message),
+    variant:
+      message.type === 'SYSTEM_RIDE_STARTED' || message.type === 'SYSTEM_RIDE_ENDED'
+        ? 'informative'
+        : 'system',
   };
 }
 

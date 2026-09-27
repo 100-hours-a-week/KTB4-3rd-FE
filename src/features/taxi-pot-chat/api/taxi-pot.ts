@@ -3,6 +3,7 @@ import { apiFetch } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/api/types';
 
 export type TaxiPotStatus = 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+export type TaxiPotTransitionStatus = Exclude<TaxiPotStatus, 'RECRUITING'>;
 
 export type TaxiPotDetailData = {
   id: number;
@@ -23,5 +24,18 @@ export async function getTaxiPotDetail(taxiPotId: string): Promise<TaxiPotDetail
 
   return apiFetch<TaxiPotDetailResponse>(`/taxi-pots/${taxiPotId}`, {
     token: accessToken,
+  });
+}
+
+export async function updateTaxiPotStatus(
+  taxiPotId: string,
+  status: TaxiPotTransitionStatus,
+): Promise<TaxiPotDetailResponse> {
+  const accessToken = await getAccessToken();
+
+  return apiFetch<TaxiPotDetailResponse>(`/taxi-pots/${taxiPotId}`, {
+    method: 'PATCH',
+    token: accessToken,
+    body: JSON.stringify({ status }),
   });
 }

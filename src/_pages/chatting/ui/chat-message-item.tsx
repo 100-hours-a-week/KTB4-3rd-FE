@@ -26,7 +26,11 @@ function getMessageClassName(message: ChatRoomMessage, index: number) {
 export function ChatMessageItem({ message, index, onReport }: ChatMessageItemProps) {
   if (message.kind === 'notice') {
     return (
-      <ChatNotice className={getMessageClassName(message, index)} data-message-id={message.id}>
+      <ChatNotice
+        className={getMessageClassName(message, index)}
+        data-message-id={message.id}
+        variant={message.variant}
+      >
         {message.content}
       </ChatNotice>
     );

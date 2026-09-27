@@ -6,12 +6,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
 import { useAuthStore } from '@/entities/auth';
+import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.handlers';
 import { server } from '@/shared/api/mocks/server';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 afterEach(() => {
   cleanup();
   document.querySelectorAll('[data-base-ui-portal]').forEach((portal) => portal.remove());
   useAuthStore.getState().clearTokens();
+  useSnackbarStore.getState().reset();
   vi.useRealTimers();
 });
 
@@ -31,6 +34,17 @@ function renderChattingPage(roomId = '501') {
       <ChattingPage roomId={roomId} />
     </QueryClientProvider>,
   );
+}
+
+async function emitTaxiPotMessage(
+  type: 'SYSTEM_RIDE_START_REQUESTED' | 'SYSTEM_RIDE_STARTED' | 'SYSTEM_RIDE_END_REQUESTED',
+) {
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  emitMockChatRoomMessage('599', {
+    id: Date.now(),
+    type,
+    created_at: new Date().toISOString(),
+  });
 }
 
 describe('ChattingPage', () => {
@@ -183,6 +197,170 @@ describe('ChattingPage', () => {
 
     expect(await screen.findByText('새로운 메시지')).toBeInTheDocument();
     expect(input).toHaveValue('');
+  });
+
+  it('방장이 운행 시작을 확인하면 PATCH 성공 후 시작 알림으로 바꾸고 나가기 버튼을 숨긴다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'RECRUITING',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.patch('*/taxi-pots/30', async ({ request }) => {
+        expect(await request.json()).toEqual({ status: 'IN_PROGRESS' });
+
+        return HttpResponse.json({
+          message: '운행 상태가 변경됐어요',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'IN_PROGRESS',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 4,
+            capacity: 4,
+            host_id: 7,
+          },
+        });
+      }),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_START_REQUESTED');
+
+    expect(await screen.findByText('운행이 시작됐나요?')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(await screen.findByText('운행이 시작됐어요')).toBeInTheDocument();
+    expect(screen.queryByText('운행이 시작됐나요?')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+  });
+
+  it('운행 상태 변경 PATCH가 실패하면 액션을 유지하고 오류 Snackbar를 표시한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'RECRUITING',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.patch('*/taxi-pots/30', () =>
+        HttpResponse.json(
+          {
+            message: '서버 오류가 발생했습니다',
+            error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+          },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_START_REQUESTED');
+
+    expect(await screen.findByText('운행이 시작됐나요?')).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(
+      (await screen.findAllByRole('status')).find((element) =>
+        element.textContent?.includes('요청 중 오류가 발생했어요'),
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByText('운행이 시작됐나요?')).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: '채팅방 나가기' })).toBeInTheDocument();
+  });
+
+  it('비방장이 운행 시작 웹소켓 메시지를 받으면 시작 알림으로 바꾸고 나가기 버튼을 숨긴다', async () => {
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_STARTED');
+
+    expect(await screen.findByText('운행이 시작됐어요')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+  });
+
+  it('방장이 운행 종료를 확인하면 평가 모달을 열고 백드롭으로 닫히지 않는다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'IN_PROGRESS',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.patch('*/taxi-pots/30', async ({ request }) => {
+        expect(await request.json()).toEqual({ status: 'COMPLETED' });
+
+        return HttpResponse.json({
+          message: '운행 상태가 변경됐어요',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'COMPLETED',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 4,
+            capacity: 4,
+            host_id: 7,
+          },
+        });
+      }),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_END_REQUESTED');
+
+    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
+      '운행이 종료됐나요?',
+    );
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' });
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
+
+    expect(dialog).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
   it('타인의 메시지를 1초 이상 누르면 신고 메뉴를 연다', async () => {
