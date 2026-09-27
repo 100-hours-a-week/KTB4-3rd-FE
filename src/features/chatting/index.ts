@@ -25,3 +25,8 @@ export {
   useChatRoomWebSocket,
   type UseChatRoomWebSocketOptions,
 } from './model/use-chat-room-websocket';
+export {
+  ChatRoomWebSocketConnection,
+  type ChatRoomWebSocketConnectionProps,
+  type ChatRoomWebSocketConnectionValue,
+} from './model/chat-room-websocket-connection';

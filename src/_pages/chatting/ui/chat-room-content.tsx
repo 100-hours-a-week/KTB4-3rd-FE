@@ -1,38 +1,37 @@
-import { useCallback, useState, type ReactNode } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 
-import { ChatComposer, ChatReportDialog, useChatRoomWebSocket } from '@/features/chatting';
-import type { ChatWebSocketMessage } from '@/entities/chat';
+import {
+  ChatComposer,
+  ChatReportDialog,
+  type ChatRoomWebSocketConnectionValue,
+} from '@/features/chatting';
 
-import { createChatRoomMessageFromApi, type ChatRoom } from '@/_pages/chatting/model/chat-room';
+import type { ChatRoom, ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageList } from './chat-message-list';
 
 type ChatRoomContentProps = {
   room: ChatRoom;
+  liveMessages: readonly ChatRoomMessage[];
+  connection: ChatRoomWebSocketConnectionValue;
   topContent?: ReactNode;
 };
 
-export function ChatRoomContent({ room, topContent }: ChatRoomContentProps) {
-  const [messages, setMessages] = useState(() => [...room.messages]);
+export function ChatRoomContent({
+  room,
+  liveMessages,
+  connection,
+  topContent,
+}: ChatRoomContentProps) {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
-  const handleMessage = useCallback((message: ChatWebSocketMessage) => {
-    const nextMessage = createChatRoomMessageFromApi(message);
+  const messages = useMemo(() => {
+    const roomMessageIds = new Set(room.messages.map((message) => message.id));
 
-    setMessages((currentMessages) => {
-      if (currentMessages.some((currentMessage) => currentMessage.id === nextMessage.id)) {
-        return currentMessages;
-      }
-
-      return [...currentMessages, nextMessage];
-    });
-  }, []);
-  const { sendMessage, status } = useChatRoomWebSocket({
-    onMessage: handleMessage,
-    roomId: room.id,
-  });
+    return [...room.messages, ...liveMessages.filter((message) => !roomMessageIds.has(message.id))];
+  }, [liveMessages, room.messages]);
 
   const handleSubmit = (content: string) => {
-    sendMessage(content);
+    connection.sendMessage(content);
   };
 
   return (
@@ -47,7 +46,7 @@ export function ChatRoomContent({ room, topContent }: ChatRoomContentProps) {
         />
         <ChatComposer
           className="!fixed bottom-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)]"
-          disabled={status !== 'open'}
+          disabled={connection.status !== 'open'}
           onSubmit={handleSubmit}
         />
       </section>

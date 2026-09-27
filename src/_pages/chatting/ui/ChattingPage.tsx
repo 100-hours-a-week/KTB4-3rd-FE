@@ -1,17 +1,25 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 
+import {
+  ChatRoomWebSocketConnection,
+  type ChatRoomWebSocketConnectionValue,
+} from '@/features/chatting';
+import type { ChatWebSocketMessage } from '@/entities/chat';
 import {
   createTaxiPotChatEntryMessages,
   TaxiPotAnnouncement,
   taxiPotQueries,
   type TaxiPotChatEntryMessage,
+  type TaxiPotDetailData,
 } from '@/features/taxi-pot-chat';
 
 import { useChatRoomQueries } from '@/_pages/chatting/api/chat-room';
 import {
   createChatRoomFromApi,
+  createChatRoomMessageFromApi,
   type ChatRoom,
   type ChatRoomMessage,
 } from '@/_pages/chatting/model/chat-room';
@@ -22,6 +30,11 @@ import { ChatRoomState } from './chat-room-state';
 
 export type ChattingPageProps = {
   roomId: string;
+};
+
+type LiveMessagesState = {
+  roomId: string;
+  messages: ChatRoomMessage[];
 };
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
@@ -50,7 +63,29 @@ function formatDepartureTime(departureAt: string) {
 }
 
 export function ChattingPage({ roomId }: ChattingPageProps) {
+  const [liveMessagesState, setLiveMessagesState] = useState<LiveMessagesState>({
+    roomId,
+    messages: [],
+  });
   const { detailQuery, messagesQuery } = useChatRoomQueries(roomId);
+  const handleWebSocketMessage = useCallback(
+    (message: ChatWebSocketMessage) => {
+      const nextMessage = createChatRoomMessageFromApi(message);
+
+      setLiveMessagesState((currentState) => {
+        const currentMessages = currentState.roomId === roomId ? currentState.messages : [];
+
+        if (currentMessages.some((currentMessage) => currentMessage.id === nextMessage.id)) {
+          return currentState.roomId === roomId
+            ? currentState
+            : { roomId, messages: currentMessages };
+        }
+
+        return { roomId, messages: [...currentMessages, nextMessage] };
+      });
+    },
+    [roomId],
+  );
   const chatRoomDetail = detailQuery.data?.data;
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
@@ -74,11 +109,51 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         messages: [...taxiPotEntryMessages, ...baseRoom.messages],
       }
     : undefined;
+  const liveMessages = liveMessagesState.roomId === roomId ? liveMessagesState.messages : [];
 
+  return (
+    <ChatRoomWebSocketConnection roomId={roomId} onMessage={handleWebSocketMessage}>
+      {(connection) => (
+        <ChattingPageContent
+          connection={connection}
+          detailQuery={detailQuery}
+          isTaxiPot={taxiPotId !== undefined}
+          messagesQuery={messagesQuery}
+          room={room}
+          taxiPotDetail={taxiPotDetail}
+          taxiPotQuery={taxiPotQuery}
+          liveMessages={liveMessages}
+        />
+      )}
+    </ChatRoomWebSocketConnection>
+  );
+}
+
+type ChattingPageContentProps = {
+  connection: ChatRoomWebSocketConnectionValue;
+  detailQuery: ReturnType<typeof useChatRoomQueries>['detailQuery'];
+  isTaxiPot: boolean;
+  messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
+  taxiPotQuery: { isError: boolean; isPending: boolean };
+  room?: ChatRoom;
+  taxiPotDetail?: TaxiPotDetailData;
+  liveMessages: readonly ChatRoomMessage[];
+};
+
+function ChattingPageContent({
+  connection,
+  detailQuery,
+  isTaxiPot,
+  messagesQuery,
+  taxiPotQuery,
+  room,
+  taxiPotDetail,
+  liveMessages,
+}: ChattingPageContentProps) {
   if (
     detailQuery.isPending ||
     messagesQuery.isPending ||
-    (taxiPotId !== undefined && taxiPotQuery.isPending)
+    (isTaxiPot && taxiPotQuery.isPending)
   ) {
     return (
       <ChatRoomLayout>
@@ -104,7 +179,12 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
   return (
     <ChatRoomLayout room={room}>
-      <ChatRoomContent room={room} topContent={topContent} />
+      <ChatRoomContent
+        connection={connection}
+        liveMessages={liveMessages}
+        room={room}
+        topContent={topContent}
+      />
     </ChatRoomLayout>
   );
 }
