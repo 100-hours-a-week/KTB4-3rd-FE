@@ -131,7 +131,7 @@ export function LocationSearchScreen({
     <div
       aria-label="장소 검색"
       className={cn(
-        'mx-auto flex min-h-dvh w-full max-w-[393px] flex-col bg-[var(--color-bg-layer-default)]',
+        'mx-auto flex h-dvh min-h-0 w-full max-w-[393px] flex-col overflow-hidden bg-[var(--color-bg-layer-default)]',
         className,
       )}
     >
@@ -148,7 +148,7 @@ export function LocationSearchScreen({
 
       <div aria-hidden="true" className="h-[var(--dimension-x14)] shrink-0" />
 
-      <main className="flex min-h-0 flex-1 flex-col">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <div className="flex flex-col gap-2 px-5 pt-3">
           {(['departure', 'destination'] as const).map((field) => (
             <Input
@@ -170,7 +170,11 @@ export function LocationSearchScreen({
         </div>
 
         {shouldShowResults ? (
-          <div aria-label="장소 검색 결과" className="mt-3 flex flex-col" role="list">
+          <div
+            aria-label="장소 검색 결과"
+            className="mt-3 flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain"
+            role="list"
+          >
             {results === undefined &&
             kakaoSearch.status === 'loading' &&
             !kakaoSearch.results.length ? (

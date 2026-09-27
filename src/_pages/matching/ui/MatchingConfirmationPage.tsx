@@ -125,7 +125,7 @@ export function MatchingConfirmationPage() {
       </main>
 
       <Button
-        className="absolute bottom-10 left-5 !h-[52px] !min-h-[52px] !w-[calc(100%-40px)] !rounded-[8px] !px-4 !py-3"
+        className="fixed bottom-10 left-1/2 z-30 !h-[52px] !min-h-[52px] !w-[calc(100%-40px)] !max-w-[353px] -translate-x-1/2 !rounded-[8px] !px-4 !py-3"
         loading={taxiPotMatchingMutation.isPending}
         size="large"
         type="button"

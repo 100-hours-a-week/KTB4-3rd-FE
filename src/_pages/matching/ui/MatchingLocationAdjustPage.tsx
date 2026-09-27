@@ -143,7 +143,7 @@ export function MatchingLocationAdjustPage() {
 
       <section
         aria-label={`선택한 ${getMatchingLocationLabel(field)}`}
-        className="absolute inset-x-0 bottom-0 z-40 h-[215px] overflow-hidden rounded-t-[24px] bg-[var(--color-bg-layer-default)] px-5 pt-6"
+        className="fixed bottom-0 left-1/2 z-40 h-[215px] w-full max-w-[393px] -translate-x-1/2 overflow-hidden rounded-t-[24px] bg-[var(--color-bg-layer-default)] px-5 pt-6"
       >
         <div className="flex flex-col items-start gap-1.5">
           <Text as="h1" color="fg.neutral" variant="t5Bold">

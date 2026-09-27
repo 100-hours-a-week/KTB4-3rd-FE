@@ -4,8 +4,13 @@ import { Button } from '@/shared/ui/button';
 import Image from 'next/image';
 
 import { useKakaoLogin } from '@/features/login/model/use-kakao-login';
+import { cn } from '@/shared/lib/cn';
 
-export function KakaoLoginButton() {
+export type KakaoLoginButtonProps = {
+  className?: string;
+};
+
+export function KakaoLoginButton({ className }: KakaoLoginButtonProps) {
   const handleKakaoLogin = useKakaoLogin();
 
   return (
@@ -23,7 +28,7 @@ export function KakaoLoginButton() {
           height={18}
         />
       }
-      className="!bg-[#FEE500] !text-[#000000]"
+      className={cn('!bg-[#FEE500] !text-[#000000]', className)}
     >
       카카오 로그인
     </Button>

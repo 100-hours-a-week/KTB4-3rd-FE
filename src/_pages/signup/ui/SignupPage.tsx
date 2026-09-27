@@ -15,6 +15,10 @@ import {
 } from '@/features/signup';
 import { ApiError } from '@/shared/api/client';
 import { BackButton } from '@/shared/ui/back-button';
+import {
+  bottomActionFixedClassName,
+  bottomActionScrollPaddingImportantClassName,
+} from '@/shared/ui/bottom-action-button';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Button } from '@/shared/ui/button';
@@ -105,9 +109,10 @@ export function SignupPage() {
           />
         }
         className="gap-15"
+        contentClassName={bottomActionScrollPaddingImportantClassName}
       >
         <form
-          className="flex min-h-0 flex-1 flex-col"
+          className="flex min-h-0 flex-1 flex-col overflow-y-auto"
           onSubmit={methods.handleSubmit(handleSignup)}
         >
           {step === 'profile' ? (
@@ -126,7 +131,7 @@ export function SignupPage() {
               variant="neutral-solid"
               width="fill"
               size="large"
-              className="mt-auto"
+              className={bottomActionFixedClassName}
               onClick={handleNext}
             >
               다음

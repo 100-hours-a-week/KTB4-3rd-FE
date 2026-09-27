@@ -14,7 +14,8 @@ import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
 import {
   BottomActionButton,
-  bottomActionPaddingImportantClassName,
+  bottomActionFixedClassName,
+  bottomActionScrollPaddingImportantClassName,
 } from '@/shared/ui/bottom-action-button';
 import { DateInputButton } from '@/shared/ui/date-input-button';
 import { Field } from '@/shared/ui/field';
@@ -315,7 +316,17 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
   return (
     <PageLayout
       className={className}
-      contentClassName={bottomActionPaddingImportantClassName}
+      contentClassName={bottomActionScrollPaddingImportantClassName}
+      footer={
+        <BottomActionButton
+          className={`${bottomActionFixedClassName} !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]`}
+          loading={postCreateMutation.isPending}
+          type="button"
+          onClick={handlePostCreate}
+        >
+          등록하기
+        </BottomActionButton>
+      }
       header={
         <Header
           leftSlot={<BackButton href="/post/create/type" />}
@@ -326,28 +337,10 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
       {isCompanion ? (
         <div className="flex min-h-0 flex-1 flex-col pt-10">
           <CompanionPostWriteForm draft={draft} onOpenLocationSearch={openLocationSearch} />
-
-          <BottomActionButton
-            className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
-            loading={postCreateMutation.isPending}
-            type="button"
-            onClick={handlePostCreate}
-          >
-            등록하기
-          </BottomActionButton>
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col pt-6">
           <CommunityPostWriteForm draft={draft} />
-
-          <BottomActionButton
-            className="mt-auto !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]"
-            loading={postCreateMutation.isPending}
-            type="button"
-            onClick={handlePostCreate}
-          >
-            등록하기
-          </BottomActionButton>
         </div>
       )}
     </PageLayout>
