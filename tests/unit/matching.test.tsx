@@ -166,6 +166,10 @@ describe('MatchingLocationPage', () => {
     render(<MatchingLocationPage />);
 
     expect(screen.getByRole('textbox', { name: '도착지' })).toHaveFocus();
+    expect(screen.getByRole('list', { name: '장소 검색 결과' })).toHaveClass(
+      'flex-1',
+      'overflow-y-auto',
+    );
     fireEvent.click(screen.getByRole('button', { name: '도착 유스페이스1빌딩' }));
 
     expect(useMatchingStore.getState().destination).toEqual(searchResult);
