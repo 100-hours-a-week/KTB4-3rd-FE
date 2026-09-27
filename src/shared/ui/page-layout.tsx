@@ -17,7 +17,7 @@ export function PageLayout({ children, header, className, contentClassName }: Pa
         className,
       )}
     >
-      {header}
+      {header ? <div className="h-[var(--dimension-x14)] shrink-0">{header}</div> : null}
       <main
         className={cn(
           'flex min-h-0 flex-1 flex-col px-5 pb-[calc(var(--spacing-y-screen-bottom)+env(safe-area-inset-bottom))]',

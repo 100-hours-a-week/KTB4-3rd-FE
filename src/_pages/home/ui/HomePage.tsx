@@ -353,7 +353,7 @@ export function HomePage() {
     <>
       <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
         <Header
-          className="!absolute inset-x-0 top-0 z-30 bg-transparent"
+          className="z-30 bg-transparent"
           leftSlot={
             <span className="pt-2 pl-1.5">
               <Logo alt="모여타" size={27} variant="text" />

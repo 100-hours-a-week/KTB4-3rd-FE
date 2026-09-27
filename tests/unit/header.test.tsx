@@ -10,7 +10,7 @@ describe('Header', () => {
   it('페이지 제목을 h1로 렌더링한다', () => {
     render(<Header title="글 작성" />);
 
-    expect(screen.getByRole('banner')).toHaveClass('sticky');
+    expect(screen.getByRole('banner')).toHaveClass('fixed', 'top-0');
     expect(screen.getByRole('heading', { level: 1, name: '글 작성' })).toBeInTheDocument();
   });
 

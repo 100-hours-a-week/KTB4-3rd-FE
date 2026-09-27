@@ -19,10 +19,10 @@ export function ChatRoomLayout({ children, room }: ChatRoomLayoutProps) {
   return (
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
-      contentClassName="min-h-0 flex-1 gap-0 !px-0 !pt-[56px] !pb-[78px]"
+      contentClassName="min-h-0 flex-1 gap-0 !px-0 !pt-0 !pb-[78px]"
       header={
         <Header
-          className="!fixed top-0 left-1/2 z-20 w-full max-w-[393px] -translate-x-1/2"
+          className="z-20"
           leftSlot={<BackButton href="/" />}
           rightSlot={
             <div

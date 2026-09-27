@@ -135,7 +135,7 @@ export function LocationSearchScreen({
         className,
       )}
     >
-      <header className="flex h-[var(--dimension-x14)] shrink-0 items-center px-[var(--dimension-x1_5)]">
+      <header className="fixed top-0 left-1/2 z-50 flex h-[var(--dimension-x14)] w-full max-w-[393px] -translate-x-1/2 items-center bg-[var(--color-bg-layer-default)] px-[var(--dimension-x1_5)]">
         <button
           aria-label="장소 검색 닫기"
           className="inline-flex size-11 items-center justify-center rounded-[var(--dimension-x2)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
@@ -145,6 +145,8 @@ export function LocationSearchScreen({
           <Icon aria-hidden="true" name="chevronLeft" size={24} />
         </button>
       </header>
+
+      <div aria-hidden="true" className="h-[var(--dimension-x14)] shrink-0" />
 
       <main className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-2 px-5 pt-3">

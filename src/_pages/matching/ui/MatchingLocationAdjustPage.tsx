@@ -165,7 +165,7 @@ export function MatchingLocationAdjustPage() {
         </Button>
       </section>
 
-      <header className="absolute top-0 left-0 z-50 h-14 w-full">
+      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton
           className="absolute top-1.5 left-1.5"
           href={`/matching/location?field=${field}`}

@@ -113,9 +113,11 @@ export function MatchingLocationPage() {
       aria-label="장소 검색"
       className="mx-auto flex min-h-dvh w-full max-w-[393px] flex-col bg-[var(--color-bg-layer-default)]"
     >
-      <header className="relative h-14 shrink-0">
+      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton className="absolute top-1.5 left-1.5" href="/matching" />
       </header>
+
+      <div aria-hidden="true" className="h-14 shrink-0" />
 
       <main className="flex min-h-0 flex-1 flex-col">
         <div className="flex flex-col gap-2 px-5 pt-3">
