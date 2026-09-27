@@ -1,6 +1,6 @@
 import type { ApiResponse } from '@/shared/api/types';
 
-export type ChatRoomKind = 'TAXI_POT';
+export type ChatRoomKind = 'TAXI_POT' | 'COMPANION' | 'CARPOOL';
 
 export type ChatRoomHost = {
   profile_image_url: string | null;
