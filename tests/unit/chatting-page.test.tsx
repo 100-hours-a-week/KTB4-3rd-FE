@@ -19,7 +19,7 @@ beforeEach(() => {
   useAuthStore.getState().setAccessToken('mock-access-token');
 });
 
-function renderChattingPage() {
+function renderChattingPage(roomId = '501') {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -28,7 +28,7 @@ function renderChattingPage() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <ChattingPage roomId="501" />
+      <ChattingPage roomId={roomId} />
     </QueryClientProvider>,
   );
 }
@@ -55,6 +55,47 @@ describe('ChattingPage', () => {
     expect(screen.getByLabelText('채팅 메시지')).toHaveClass('overflow-y-auto');
   });
 
+  it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {
+    renderChattingPage('599');
+
+    expect(await screen.findByRole('heading', { name: '5시 판교역' })).toBeInTheDocument();
+    expect(await screen.findByTestId('taxi-pot-announcement')).toBeInTheDocument();
+  });
+
+  it('방장이면 택시팟 입장 안내 메시지를 순서대로 렌더링한다', async () => {
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'RECRUITING',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+    );
+
+    renderChattingPage('599');
+
+    expect(await screen.findByText('이번 매칭의 방장이 됐어요!')).toBeInTheDocument();
+    expect(screen.getByText(/방장 결제 후 정산/)).toBeInTheDocument();
+    expect(screen.getByRole('status')).toHaveTextContent('같이 갈 사람을 찾는 중이에요');
+  });
+
+  it('방장이 아닌 택시팟의 입장 시스템 메시지를 렌더링한다', async () => {
+    renderChattingPage('600');
+
+    expect(await screen.findByRole('heading', { name: '9시 서울역' })).toBeInTheDocument();
+    expect(screen.getByText('타요 님이 입장하셨어요')).toBeInTheDocument();
+  });
+
   it('채팅방 상세와 메시지 목록 API를 병렬로 요청한다', async () => {
     const startedRequests: string[] = [];
     let resolveDetail: (() => void) | undefined;
@@ -72,7 +113,7 @@ describe('ChattingPage', () => {
           data: {
             id: 501,
             companion_id: 10,
-            kind: 'TAXI_POT',
+            kind: 'GENERAL',
             title: '8시 판교역',
             host_id: 7,
             origin_name: '판교역',

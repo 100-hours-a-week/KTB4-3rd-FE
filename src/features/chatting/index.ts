@@ -1,4 +1,3 @@
-export { AnnouncementDropdown, type AnnouncementDropdownProps } from './ui/announcement-dropdown';
 export { Bubble, type BubbleProps, type BubbleVariant } from './ui/bubble';
 export {
   ChatActionNotice,
@@ -26,3 +25,8 @@ export {
   useChatRoomWebSocket,
   type UseChatRoomWebSocketOptions,
 } from './model/use-chat-room-websocket';
+export {
+  ChatRoomWebSocketConnection,
+  type ChatRoomWebSocketConnectionProps,
+  type ChatRoomWebSocketConnectionValue,
+} from './model/chat-room-websocket-connection';

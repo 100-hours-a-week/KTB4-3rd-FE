@@ -39,8 +39,10 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
         getMessageClassName(message, index),
         '!py-[14px]',
         message.layout === 'tall' && '!h-[82px] !w-[248px] !max-w-none !p-4',
+        message.layout === 'large' && '!h-[112px] !w-[301px] !max-w-none !p-4',
       )}
       data-message-id={message.id}
+      loading={message.loading}
       role={message.variant === 'other' ? 'button' : undefined}
       tabIndex={message.variant === 'other' ? 0 : undefined}
       variant={message.variant}
