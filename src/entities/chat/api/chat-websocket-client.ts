@@ -110,8 +110,10 @@ function getDefaultWebSocketUrl() {
 
   if (/^https?:\/\//.test(apiBaseUrl)) {
     const url = new URL(apiBaseUrl);
+    const apiPath = url.pathname.replace(/\/$/, '');
+
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.pathname = '/ws';
+    url.pathname = apiPath && apiPath !== '/' ? `${apiPath}/ws` : '/ws';
     url.search = '';
     url.hash = '';
 
@@ -120,8 +122,9 @@ function getDefaultWebSocketUrl() {
 
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const websocketPath = apiBaseUrl === '/' ? '/ws' : `${apiBaseUrl}/ws`;
 
-    return `${protocol}//${window.location.host}/ws`;
+    return `${protocol}//${window.location.host}${websocketPath}`;
   }
 
   return 'ws://localhost:8080/ws';
