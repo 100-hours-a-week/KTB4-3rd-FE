@@ -12,11 +12,20 @@ import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: navigation.push }),
+}));
+
 afterEach(() => {
   cleanup();
   document.querySelectorAll('[data-base-ui-portal]').forEach((portal) => portal.remove());
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
+  navigation.push.mockReset();
   vi.useRealTimers();
 });
 
@@ -102,6 +111,27 @@ describe('ChattingPage', () => {
 
     expect(await screen.findByRole('heading', { name: '5시 판교역' })).toBeInTheDocument();
     expect(await screen.findByTestId('taxi-pot-announcement')).toBeInTheDocument();
+  });
+
+  it('나가기 버튼을 누르면 확인 후 DELETE 요청을 보내고 홈으로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+
+    await user.click(screen.getByRole('button', { name: '채팅방 나가기' }));
+
+    expect(screen.getByRole('dialog', { name: '채팅방을 나갈까요?' })).toBeInTheDocument();
+    expect(screen.getByText('한번 나가면 다시 들어올 수 없어요')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog', { name: '채팅방을 나갈까요?' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '채팅방 나가기' }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    expect(screen.getByRole('status')).toHaveTextContent('채팅방을 나갔어요');
   });
 
   it('방장이면 택시팟 입장 안내 메시지를 순서대로 렌더링한다', async () => {
@@ -272,7 +302,7 @@ describe('ChattingPage', () => {
 
     expect(await screen.findByText('운행이 시작됐어요')).toBeInTheDocument();
     expect(screen.queryByText('운행이 시작됐나요?')).not.toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
   it('운행 상태 변경 PATCH가 실패하면 액션을 유지하고 오류 Snackbar를 표시한다', async () => {
@@ -319,7 +349,7 @@ describe('ChattingPage', () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText('운행이 시작됐나요?')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: '채팅방 나가기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '채팅방 나가기' })).toBeInTheDocument();
   });
 
   it('비방장이 운행 시작 웹소켓 메시지를 받으면 시작 알림으로 바꾸고 나가기 버튼을 숨긴다', async () => {
@@ -328,7 +358,7 @@ describe('ChattingPage', () => {
     await emitTaxiPotMessage('SYSTEM_RIDE_STARTED');
 
     expect(await screen.findByText('운행이 시작됐어요')).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
   it('방장이 운행 종료를 확인하면 평가 모달을 열고 백드롭으로 닫히지 않는다', async () => {
@@ -384,7 +414,67 @@ describe('ChattingPage', () => {
     fireEvent.click(screen.getByTestId('dialog-backdrop'));
 
     expect(dialog).toBeInTheDocument();
-    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+  });
+
+  it('평가 모달 확인 버튼을 누르면 동승자 평가를 제출한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'IN_PROGRESS',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.patch('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '운행 상태가 변경됐어요',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'COMPLETED',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 4,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.post('*/companions/30/ratings', async ({ request }) => {
+        expect(await request.json()).toEqual({
+          ratings: [{ target_user_id: 9, score: 3 }],
+        });
+
+        return HttpResponse.json({ message: '평가가 제출되었습니다', data: null }, { status: 201 });
+      }),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_END_REQUESTED');
+
+    await user.click(await screen.findByRole('button', { name: '확인' }));
+    await user.click(screen.getByRole('radio', { name: '루디 3점' }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '만족도를 입력해주세요.' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it('타인의 메시지를 1초 이상 누르면 신고 메뉴를 연다', async () => {
@@ -423,4 +513,40 @@ describe('ChattingPage', () => {
       expect(screen.getByRole('dialog', { name: '신고 사유를 선택해주세요' })).toBeInTheDocument();
     },
   );
+
+  it('신고하기 버튼을 누르면 신고 API 요청을 보낸다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.post('*/reports', async ({ request }) => {
+        expect(await request.json()).toEqual({
+          reason: 'ABUSE',
+          reason_text: null,
+          reported_message_id: 1441,
+          reported_user_id: 7,
+        });
+
+        return HttpResponse.json(
+          {
+            message: '신고가 접수되었습니다',
+            data: { id: 4, created_at: '2026-09-06T09:00:00' },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderChattingPage();
+    await screen.findByText('3분 뒤 도착합니다');
+
+    await user.click(screen.getAllByLabelText('메시지 메뉴 열기')[0]);
+    await user.click(screen.getByRole('menuitem', { name: '채팅 신고하기' }));
+    await user.click(screen.getByRole('button', { name: '신고하기' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '신고 사유를 선택해주세요' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
 });

@@ -35,6 +35,7 @@ export {
   type ChatSatisfactionDialogSubmitPayload,
   type ChatSatisfactionParticipant,
 } from './ui/chat-satisfaction-dialog';
+export { ChatLeaveDialog, type ChatLeaveDialogProps } from './ui/chat-leave-dialog';
 export { ChatNotice, type ChatNoticeProps, type ChatNoticeVariant } from './ui/chat-notice';
 export { ChatComposer, type ChatComposerProps } from './ui/chat-composer';
 export {

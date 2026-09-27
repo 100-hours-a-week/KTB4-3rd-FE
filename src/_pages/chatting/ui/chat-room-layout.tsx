@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react';
-import Link from 'next/link';
 
 import { cn } from '@/shared/lib/cn';
 import { BackButton } from '@/shared/ui/back-button';
@@ -12,11 +11,17 @@ import type { ChatRoom } from '@/_pages/chatting/model/chat-room';
 
 type ChatRoomLayoutProps = {
   children: ReactNode;
+  onLeave?: () => void;
   room?: ChatRoom;
   showLeaveButton?: boolean;
 };
 
-export function ChatRoomLayout({ children, room, showLeaveButton = true }: ChatRoomLayoutProps) {
+export function ChatRoomLayout({
+  children,
+  onLeave,
+  room,
+  showLeaveButton = true,
+}: ChatRoomLayoutProps) {
   return (
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
@@ -37,11 +42,12 @@ export function ChatRoomLayout({ children, room, showLeaveButton = true }: ChatR
                   {room.memberCount}/{room.memberLimit}
                 </Text>
               ) : null}
-              {showLeaveButton ? (
-                <Link
+              {showLeaveButton && onLeave ? (
+                <button
                   aria-label="채팅방 나가기"
                   className="inline-flex size-11 items-center justify-center rounded-[var(--dimension-x2)] focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)]"
-                  href="/"
+                  onClick={onLeave}
+                  type="button"
                 >
                   <Icon
                     aria-hidden="true"
@@ -49,7 +55,7 @@ export function ChatRoomLayout({ children, room, showLeaveButton = true }: ChatR
                     name="logOut"
                     size={24}
                   />
-                </Link>
+                </button>
               ) : null}
             </div>
           }
