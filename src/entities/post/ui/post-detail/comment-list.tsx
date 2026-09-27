@@ -21,9 +21,14 @@ export function CommentList({ className, comments }: CommentListProps) {
               size={36}
               src={comment.author.profile_image_url}
             />
-            <Text color="fg.neutral" variant="t3Regular">
-              {comment.content}
-            </Text>
+            <div className="flex min-w-0 flex-col gap-1">
+              <Text color="fg.neutral" variant="t4Bold">
+                {comment.author.nickname}
+              </Text>
+              <Text color="fg.neutral" variant="t3Regular">
+                {comment.content}
+              </Text>
+            </div>
           </div>
           {index < comments.length - 1 ? <Divider color="neutral-subtle" inset /> : null}
         </li>
