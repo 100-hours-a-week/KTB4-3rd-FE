@@ -9,6 +9,15 @@ import { ChatListPage } from '@/_pages/chat-list';
 import { useAuthStore } from '@/entities/auth';
 import { server } from '@/shared/api/mocks/server';
 
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/chat',
+  useRouter: () => navigation,
+}));
+
 class MockIntersectionObserver {
   private static observers = new Set<MockIntersectionObserver>();
 
@@ -51,6 +60,7 @@ function createWrapper() {
 afterEach(() => {
   cleanup();
   MockIntersectionObserver.reset();
+  navigation.push.mockReset();
   useAuthStore.getState().clearTokens();
   vi.unstubAllGlobals();
 });
@@ -101,6 +111,16 @@ describe('ChatListPage API 연결', () => {
     await waitFor(() => {
       expect(requestedKinds).toEqual(expect.arrayContaining(['COMPANION', 'TAXI_POT']));
     });
+  });
+
+  it('채팅방 아이템을 클릭하면 해당 채팅방으로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    render(<ChatListPage />, { wrapper: createWrapper() });
+
+    await user.click(await screen.findByRole('button', { name: /8시 판교역/ }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/chatroom/501');
   });
 
   it('조회 실패 시 기존 오류 상태와 재시도 동작을 사용한다', async () => {
