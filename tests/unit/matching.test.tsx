@@ -135,6 +135,19 @@ describe('MatchingPage', () => {
         screen.queryByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
       ).not.toBeInTheDocument();
     });
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
+  it('계좌 등록 Dialog의 닫기 버튼을 누르면 홈으로 이동한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' });
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/');
   });
 
   it('출발지와 도착지 LocationInputButton을 표시하고 검색 화면으로 이동한다', () => {

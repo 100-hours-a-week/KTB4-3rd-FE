@@ -160,6 +160,7 @@ export function MatchingPage() {
 
       <BankAccountDialog
         open={shouldShowBankAccountDialog}
+        onDismiss={() => router.push('/')}
         onOpenChange={(open) => {
           if (!open) {
             setIsBankAccountDialogDismissed(true);
