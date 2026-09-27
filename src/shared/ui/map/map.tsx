@@ -18,6 +18,7 @@ import {
 import { useLocationStore } from '@/shared/model/stores/location-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import { cn } from '@/shared/lib/cn';
+import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 
 import { loadKakaoMaps } from './model/map-loader';
@@ -197,6 +198,7 @@ function MapComponent(
   const [status, setStatus] = useState<MapStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [userLocationPoint, setUserLocationPoint] = useState<KakaoPoint | null>(null);
+  const [isLocationPermissionDialogOpen, setIsLocationPermissionDialogOpen] = useState(false);
 
   const currentLocation = useLocationStore((state) => state.coordinate);
   const isLocating = useLocationStore((state) => state.isLoading);
@@ -514,6 +516,7 @@ function MapComponent(
       setLoading(false);
       setPermissionStatus(error.code === 'permission-denied' ? 'denied' : 'unavailable');
       setLocationError(error.message);
+      setIsLocationPermissionDialogOpen(error.code === 'permission-denied');
       onUserLocationErrorRef.current?.(error);
     },
     [setLoading, setLocationError, setPermissionStatus],
@@ -560,6 +563,7 @@ function MapComponent(
           setPermissionStatus('granted');
           setLoading(false);
           setLocationError(null);
+          setIsLocationPermissionDialogOpen(false);
           onUserLocationChangeRef.current?.(coordinate);
           centerMapOnLocation(coordinate);
         },
@@ -694,6 +698,13 @@ function MapComponent(
           <Icon color="var(--color-fg-brand)" name="crosshair" size={22} />
         </MapControlButton>
       ) : null}
+
+      <Dialog
+        description="브라우저 위치 권한이 필요한 기능이에요."
+        onOpenChange={setIsLocationPermissionDialogOpen}
+        open={isLocationPermissionDialogOpen}
+        title="위치 권한을 활성화해주세요"
+      />
     </div>
   );
 }
