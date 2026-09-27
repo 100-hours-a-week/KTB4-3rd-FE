@@ -56,4 +56,11 @@ describe('ChatWebSocketClient', () => {
 
     expect(getChatWebSocketUrl()).toBe('ws://localhost:8080/ws');
   });
+
+  it('API base path를 포함한 웹소켓 주소를 파생한다', () => {
+    vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'https://dev.moyeota.com/api');
+    vi.stubEnv('NEXT_PUBLIC_WEBSOCKET_URL', '');
+
+    expect(getChatWebSocketUrl()).toBe('wss://dev.moyeota.com/api/ws');
+  });
 });
