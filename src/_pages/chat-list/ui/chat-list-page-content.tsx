@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   ChatList,
@@ -26,8 +27,10 @@ export type ChatListPageContentProps = {
   className?: string;
   defaultTab?: ChatListTabValue;
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onLoadMore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
   onTabChange?: (tab: ChatListTabValue) => void;
+  pagination?: ChatListPagePaginationStates;
   states?: ChatListPageStates;
 };
 
@@ -36,12 +39,27 @@ function toChatListPageState(query: ReturnType<typeof useChatRoomListQuery>): Ch
     return { status: 'error' };
   }
 
-  return { status: 'success', data: query.data.data };
+  const lastPage = query.data.pages[query.data.pages.length - 1];
+
+  return {
+    status: 'success',
+    data: {
+      items: query.data.pages.flatMap((page) => page.data.items),
+      next_cursor: lastPage?.data.next_cursor ?? null,
+    },
+  };
 }
 
 export function ChatListPageContentWithQuery() {
+  const router = useRouter();
   const matchingQuery = useChatRoomListQuery('matching');
   const communityQuery = useChatRoomListQuery('community');
+  const handleChatRoomClick = useCallback(
+    (chatRoom: ChatRoomListItem) => {
+      router.push(`/chatroom/${chatRoom.id}`);
+    },
+    [router],
+  );
 
   if (matchingQuery.isPending || communityQuery.isPending) {
     return <ChatListPageContentLoading />;
@@ -56,13 +74,38 @@ export function ChatListPageContentWithQuery() {
 
   return (
     <ChatListPageContent
+      onChatRoomClick={handleChatRoomClick}
       onRetry={(tab) => {
         void queries[tab].refetch();
+      }}
+      onLoadMore={(tab) => {
+        const query = queries[tab];
+
+        if (query.hasNextPage && !query.isFetchingNextPage) {
+          void query.fetchNextPage();
+        }
+      }}
+      pagination={{
+        matching: {
+          hasNextPage: matchingQuery.hasNextPage,
+          isFetchingNextPage: matchingQuery.isFetchingNextPage,
+        },
+        community: {
+          hasNextPage: communityQuery.hasNextPage,
+          isFetchingNextPage: communityQuery.isFetchingNextPage,
+        },
       }}
       states={states}
     />
   );
 }
+
+export type ChatListPagePaginationState = {
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
+};
+
+export type ChatListPagePaginationStates = Record<ChatListTabValue, ChatListPagePaginationState>;
 
 function ChatListResultState({
   onRetry,
@@ -109,12 +152,16 @@ function ChatListResultState({
 
 function ChatListPageStateView({
   onChatRoomClick,
+  onLoadMore,
   onRetry,
+  pagination,
   state,
   tab,
 }: {
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onLoadMore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
+  pagination?: ChatListPagePaginationStates;
   state: ChatListPageState;
   tab: ChatListTabValue;
 }) {
@@ -124,23 +171,61 @@ function ChatListPageStateView({
 
   return (
     <ChatListScrollableState
+      hasNextPage={pagination?.[tab].hasNextPage}
       items={state.data.items}
+      isFetchingNextPage={pagination?.[tab].isFetchingNextPage}
       onChatRoomClick={onChatRoomClick}
+      onLoadMore={onLoadMore ? () => onLoadMore(tab) : undefined}
       scrollKey={`${tab}:${state.data.items.length}`}
     />
   );
 }
 
 function ChatListScrollableState({
+  hasNextPage = false,
   items,
+  isFetchingNextPage = false,
   onChatRoomClick,
+  onLoadMore,
   scrollKey,
 }: {
+  hasNextPage?: boolean;
   items: readonly ChatRoomListItem[];
+  isFetchingNextPage?: boolean;
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onLoadMore?: () => void;
   scrollKey: string;
 }) {
   const { scrollRef, showBottom, showTop } = useScrollFog(scrollKey);
+  const loadMoreRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const target = loadMoreRef.current;
+    const scrollElement = scrollRef.current;
+
+    if (
+      !target ||
+      !scrollElement ||
+      !hasNextPage ||
+      !onLoadMore ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !isFetchingNextPage) {
+          onLoadMore();
+        }
+      },
+      { root: scrollElement, rootMargin: '0px 0px 160px 0px' },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [hasNextPage, isFetchingNextPage, onLoadMore, scrollRef]);
 
   return (
     <div
@@ -152,6 +237,17 @@ function ChatListScrollableState({
         ref={scrollRef}
       >
         <ChatList className="!mx-0 !w-full" fullWidth items={items} onItemClick={onChatRoomClick} />
+        {hasNextPage && onLoadMore ? (
+          <div
+            aria-busy={isFetchingNextPage}
+            aria-live="polite"
+            className="flex min-h-8 items-center justify-center py-2"
+            data-testid="chat-list-load-more"
+            ref={loadMoreRef}
+          >
+            {isFetchingNextPage ? '채팅방을 불러오는 중이에요.' : null}
+          </div>
+        ) : null}
       </div>
       <ScrollFog showBottom={showBottom} showTop={showTop} />
     </div>
@@ -162,8 +258,10 @@ export function ChatListPageContent({
   className,
   defaultTab = 'community',
   onChatRoomClick,
+  onLoadMore,
   onRetry,
   onTabChange,
+  pagination,
   states = DEFAULT_CHAT_LIST_STATES,
 }: ChatListPageContentProps) {
   const [selectedTab, setSelectedTab] = useState<ChatListTabValue>(defaultTab);
@@ -179,7 +277,9 @@ export function ChatListPageContent({
       <ChatListTabs onValueChange={handleTabChange} value={selectedTab} />
       <ChatListPageStateView
         onChatRoomClick={onChatRoomClick}
+        onLoadMore={onLoadMore}
         onRetry={onRetry}
+        pagination={pagination}
         state={selectedState}
         tab={selectedTab}
       />

@@ -9,6 +9,42 @@ import { ChatListPage } from '@/_pages/chat-list';
 import { useAuthStore } from '@/entities/auth';
 import { server } from '@/shared/api/mocks/server';
 
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+}));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => '/chat',
+  useRouter: () => navigation,
+}));
+
+class MockIntersectionObserver {
+  private static observers = new Set<MockIntersectionObserver>();
+
+  static reset() {
+    MockIntersectionObserver.observers.clear();
+  }
+
+  static trigger() {
+    for (const observer of MockIntersectionObserver.observers) {
+      observer.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        observer as unknown as IntersectionObserver,
+      );
+    }
+  }
+
+  constructor(private readonly callback: IntersectionObserverCallback) {
+    MockIntersectionObserver.observers.add(this);
+  }
+
+  observe() {}
+
+  disconnect() {
+    MockIntersectionObserver.observers.delete(this);
+  }
+}
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: {
@@ -23,12 +59,16 @@ function createWrapper() {
 
 afterEach(() => {
   cleanup();
+  MockIntersectionObserver.reset();
+  navigation.push.mockReset();
   useAuthStore.getState().clearTokens();
+  vi.unstubAllGlobals();
 });
 
 describe('ChatListPage API 연결', () => {
   beforeEach(() => {
     useAuthStore.getState().setAccessToken('mock-access-token');
+    vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
   });
 
   it('커뮤니티와 매칭 탭의 kind에 맞는 목록을 렌더링한다', async () => {
@@ -73,6 +113,16 @@ describe('ChatListPage API 연결', () => {
     });
   });
 
+  it('채팅방 아이템을 클릭하면 해당 채팅방으로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    render(<ChatListPage />, { wrapper: createWrapper() });
+
+    await user.click(await screen.findByRole('button', { name: /8시 판교역/ }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/chatroom/501');
+  });
+
   it('조회 실패 시 기존 오류 상태와 재시도 동작을 사용한다', async () => {
     const user = userEvent.setup();
     const requestCount = vi.fn<() => void>();
@@ -108,5 +158,72 @@ describe('ChatListPage API 연결', () => {
     await waitFor(() => {
       expect(requestCount.mock.calls.length).toBeGreaterThan(countBeforeRetry);
     });
+  });
+
+  it('스크롤 하단에 도달하면 next_cursor로 다음 페이지를 이어서 렌더링한다', async () => {
+    const requestedCursors: string[] = [];
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/chat-rooms', ({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+        const kind = searchParams.get('kind');
+        const cursor = searchParams.get('cursor');
+
+        if (kind === 'TAXI_POT') {
+          requestedCursors.push(cursor ?? 'initial');
+
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: {
+              items: [
+                {
+                  id: cursor ? 601 : 599,
+                  companion_id: cursor ? 32 : 30,
+                  kind: 'TAXI_POT',
+                  title: cursor ? '다음 매칭 채팅방' : '첫 매칭 채팅방',
+                  host: { profile_image_url: null },
+                  current_count: 2,
+                  capacity: 4,
+                  has_unread: false,
+                },
+              ],
+              next_cursor: cursor ? null : 'matching-next',
+            },
+          });
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                id: 501,
+                companion_id: 10,
+                kind: 'COMPANION',
+                title: '첫 커뮤니티 채팅방',
+                host: { profile_image_url: null },
+                current_count: 2,
+                capacity: 4,
+                has_unread: false,
+              },
+            ],
+            next_cursor: null,
+          },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByRole('button', { name: /첫 커뮤니티 채팅방/ })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    expect(await screen.findByRole('button', { name: /첫 매칭 채팅방/ })).toBeInTheDocument();
+
+    MockIntersectionObserver.trigger();
+
+    expect(await screen.findByRole('button', { name: /다음 매칭 채팅방/ })).toBeInTheDocument();
+    expect(requestedCursors).toEqual(['initial', 'matching-next']);
   });
 });

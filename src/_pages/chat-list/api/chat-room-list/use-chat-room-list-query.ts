@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import type { ChatListTabValue } from '@/entities/chat';
 
@@ -10,8 +10,8 @@ const CHAT_ROOM_KIND_BY_TAB: Record<ChatListTabValue, NonNullable<ChatRoomListQu
   community: 'COMPANION',
 };
 
-export function useChatRoomListQuery(tab: ChatListTabValue, cursor?: string) {
+export function useChatRoomListQuery(tab: ChatListTabValue) {
   const kind = CHAT_ROOM_KIND_BY_TAB[tab];
 
-  return useQuery(chatRoomListQueries.list({ kind, cursor }));
+  return useInfiniteQuery(chatRoomListQueries.list({ kind }));
 }
