@@ -138,7 +138,7 @@ describe('택시팟 채팅 흐름 mock API', () => {
 
     expect(response.status).toBe(400);
     expect(body).toEqual({
-      message: '유효하지 않은 상태 변경입니다',
+      message: '유효하지 않은 상태입니다',
       error: {
         code: 'VALIDATION_ERROR',
         field: 'status',
@@ -172,6 +172,34 @@ describe('택시팟 채팅 흐름 mock API', () => {
     });
   });
 
+  it('참여자가 2명 미만이면 운행을 시작할 수 없다', async () => {
+    const response = await updateTaxiPotStatus(
+      MOCK_TAXI_POT_CHAT_SCENARIOS.NOT_ENOUGH_PARTICIPANTS_COMPANION_ID,
+      'IN_PROGRESS',
+    );
+    const body = await readJson<MockApiResponse<never>>(response);
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({
+      message: '2명 이상 모여야 출발할 수 있어요',
+      error: { code: 'NOT_ENOUGH_PARTICIPANTS', field: null },
+    });
+  });
+
+  it('출발 시각 전에는 운행을 시작할 수 없다', async () => {
+    const response = await updateTaxiPotStatus(
+      MOCK_TAXI_POT_CHAT_SCENARIOS.DEPARTURE_NOT_REACHED_COMPANION_ID,
+      'IN_PROGRESS',
+    );
+    const body = await readJson<MockApiResponse<never>>(response);
+
+    expect(response.status).toBe(409);
+    expect(body).toEqual({
+      message: '출발 시각 이후에 시작할 수 있어요',
+      error: { code: 'DEPARTURE_NOT_REACHED', field: null },
+    });
+  });
+
   it('운행 전에는 택시팟에서 나가고 이후 조회가 404가 된다', async () => {
     const response = await leaveTaxiPot(MOCK_TAXI_POT_CHAT_SCENARIOS.DEFAULT_COMPANION_ID);
 
@@ -201,18 +229,14 @@ describe('택시팟 채팅 흐름 mock API', () => {
     });
   });
 
-  it('운행 종료 후 정산 전에는 택시팟에서 나갈 수 없다', async () => {
+  it('운행 종료 후에는 정산 제한 없이 택시팟에서 나갈 수 있다', async () => {
     await updateTaxiPotStatus(MOCK_TAXI_POT_CHAT_SCENARIOS.DEFAULT_COMPANION_ID, 'IN_PROGRESS');
     await updateTaxiPotStatus(MOCK_TAXI_POT_CHAT_SCENARIOS.DEFAULT_COMPANION_ID, 'COMPLETED');
 
     const response = await leaveTaxiPot(MOCK_TAXI_POT_CHAT_SCENARIOS.DEFAULT_COMPANION_ID);
-    const body = await readJson<MockApiResponse<never>>(response);
 
-    expect(response.status).toBe(409);
-    expect(body).toEqual({
-      message: '정산 전에는 나갈 수 없습니다',
-      error: { code: 'SETTLEMENT_IN_PROGRESS', field: null },
-    });
+    expect(response.status).toBe(204);
+    expect(await response.text()).toBe('');
   });
 
   it.each([

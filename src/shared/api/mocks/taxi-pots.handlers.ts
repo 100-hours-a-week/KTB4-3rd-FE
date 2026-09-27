@@ -9,6 +9,8 @@ const COORDINATE_PRECISION = 6;
 export const MOCK_TAXI_POT_CHAT_SCENARIOS = {
   DEFAULT_COMPANION_ID: 30,
   MEMBER_COMPANION_ID: 31,
+  NOT_ENOUGH_PARTICIPANTS_COMPANION_ID: 32,
+  DEPARTURE_NOT_REACHED_COMPANION_ID: 33,
   NOT_FOUND_COMPANION_ID: 404,
   INTERNAL_SERVER_ERROR_COMPANION_ID: 999,
 } as const;
@@ -73,6 +75,38 @@ function createMockTaxiPots() {
         host_id: 8,
         is_participating: true,
         is_host: false,
+      },
+    ],
+    [
+      MOCK_TAXI_POT_CHAT_SCENARIOS.NOT_ENOUGH_PARTICIPANTS_COMPANION_ID,
+      {
+        id: 32,
+        chat_room_id: 601,
+        status: 'RECRUITING',
+        origin_name: '판교역',
+        dest_name: '강남역',
+        departure_at: '2026-09-05T08:30:00.000Z',
+        current_count: 1,
+        capacity: 4,
+        host_id: 7,
+        is_participating: true,
+        is_host: true,
+      },
+    ],
+    [
+      MOCK_TAXI_POT_CHAT_SCENARIOS.DEPARTURE_NOT_REACHED_COMPANION_ID,
+      {
+        id: 33,
+        chat_room_id: 602,
+        status: 'RECRUITING',
+        origin_name: '판교역',
+        dest_name: '강남역',
+        departure_at: '2099-09-05T08:30:00.000Z',
+        current_count: 2,
+        capacity: 4,
+        host_id: 7,
+        is_participating: true,
+        is_host: true,
       },
     ],
   ]);
@@ -218,7 +252,7 @@ function toTaxiPotResponse(taxiPot: MockTaxiPot) {
 function invalidStatusResponse() {
   return HttpResponse.json(
     {
-      message: '유효하지 않은 상태 변경입니다',
+      message: '유효하지 않은 상태입니다',
       error: {
         code: 'VALIDATION_ERROR',
         field: 'status',
@@ -227,6 +261,14 @@ function invalidStatusResponse() {
     },
     { status: 400 },
   );
+}
+
+function notEnoughParticipantsResponse() {
+  return errorResponse('2명 이상 모여야 출발할 수 있어요', 'NOT_ENOUGH_PARTICIPANTS', null, 409);
+}
+
+function departureNotReachedResponse() {
+  return errorResponse('출발 시각 이후에 시작할 수 있어요', 'DEPARTURE_NOT_REACHED', null, 409);
 }
 
 function invalidStateTransitionResponse() {
@@ -389,6 +431,16 @@ export const taxiPotsHandlers = [
       return invalidStateTransitionResponse();
     }
 
+    if (taxiPot.status === 'RECRUITING' && nextStatus === 'IN_PROGRESS') {
+      if (taxiPot.current_count < 2) {
+        return notEnoughParticipantsResponse();
+      }
+
+      if (new Date(taxiPot.departure_at).getTime() > Date.now()) {
+        return departureNotReachedResponse();
+      }
+    }
+
     taxiPot.status = nextStatus;
     taxiPot.current_count = taxiPot.capacity;
 
@@ -416,10 +468,6 @@ export const taxiPotsHandlers = [
 
     if (taxiPot.status === 'IN_PROGRESS') {
       return errorResponse('운행 중에는 나갈 수 없습니다', 'RIDE_IN_PROGRESS', null, 409);
-    }
-
-    if (taxiPot.status === 'COMPLETED') {
-      return errorResponse('정산 전에는 나갈 수 없습니다', 'SETTLEMENT_IN_PROGRESS', null, 409);
     }
 
     taxiPot.is_participating = false;
