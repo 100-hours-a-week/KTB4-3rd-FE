@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import {
   ChatList,
@@ -50,8 +51,15 @@ function toChatListPageState(query: ReturnType<typeof useChatRoomListQuery>): Ch
 }
 
 export function ChatListPageContentWithQuery() {
+  const router = useRouter();
   const matchingQuery = useChatRoomListQuery('matching');
   const communityQuery = useChatRoomListQuery('community');
+  const handleChatRoomClick = useCallback(
+    (chatRoom: ChatRoomListItem) => {
+      router.push(`/chatroom/${chatRoom.id}`);
+    },
+    [router],
+  );
 
   if (matchingQuery.isPending || communityQuery.isPending) {
     return <ChatListPageContentLoading />;
@@ -66,6 +74,7 @@ export function ChatListPageContentWithQuery() {
 
   return (
     <ChatListPageContent
+      onChatRoomClick={handleChatRoomClick}
       onRetry={(tab) => {
         void queries[tab].refetch();
       }}
