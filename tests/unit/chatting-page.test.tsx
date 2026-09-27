@@ -53,6 +53,10 @@ describe('ChattingPage', () => {
     expect(screen.getByText('운행이 시작됐나요?')).toBeInTheDocument();
     expect(screen.getByText('운행이 종료됐어요')).toBeInTheDocument();
     expect(screen.getByLabelText('채팅 메시지')).toHaveClass('overflow-y-auto');
+    expect(screen.getByRole('textbox', { name: '메시지 입력' }).closest('form')).toHaveClass(
+      '!h-[calc(78px+env(safe-area-inset-bottom,0px))]',
+      '!pb-[env(safe-area-inset-bottom,0px)]',
+    );
   });
 
   it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {

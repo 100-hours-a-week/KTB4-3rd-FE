@@ -126,7 +126,7 @@ export function MatchingPage() {
       </main>
 
       <div
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[205px] w-full max-w-[393px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10"
+        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[calc(205px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10 pb-[env(safe-area-inset-bottom,0px)]"
         data-testid="matching-location-panel"
       >
         <LocationInputButton

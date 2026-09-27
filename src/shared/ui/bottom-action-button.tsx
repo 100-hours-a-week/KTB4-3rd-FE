@@ -11,6 +11,8 @@ export const bottomActionScrollPaddingImportantClassName =
   '!pb-[calc(var(--dimension-x13)+var(--spacing-y-screen-bottom)+env(safe-area-inset-bottom,0px))]';
 export const bottomActionFixedClassName =
   'fixed bottom-[calc(var(--spacing-y-screen-bottom)+env(safe-area-inset-bottom,0px))] left-1/2 z-30 w-[calc(100%-40px)] max-w-[353px] -translate-x-1/2';
+export const bottomActionSafeAreaOffsetClassName =
+  'bottom-[calc(var(--dimension-x10)+env(safe-area-inset-bottom,0px))]';
 
 const bottomActionButtonClassName =
   'h-[52px] min-h-[52px] !rounded-[8px] !bg-[#414650] !px-4 !py-3';

@@ -19,7 +19,7 @@ export function ChatRoomLayout({ children, room }: ChatRoomLayoutProps) {
   return (
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
-      contentClassName="!overflow-hidden min-h-0 flex-1 gap-0 !px-0 !pt-0 !pb-[78px]"
+      contentClassName="!overflow-hidden min-h-0 flex-1 gap-0 !px-0 !pt-0 !pb-[calc(78px+env(safe-area-inset-bottom,0px))]"
       header={
         <Header
           className="z-20"

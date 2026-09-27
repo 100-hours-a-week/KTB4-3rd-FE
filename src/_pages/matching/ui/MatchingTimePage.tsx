@@ -6,7 +6,10 @@ import { useRouter } from 'next/navigation';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
-import { bottomActionScrollPaddingClassName } from '@/shared/ui/bottom-action-button';
+import {
+  bottomActionSafeAreaOffsetClassName,
+  bottomActionScrollPaddingClassName,
+} from '@/shared/ui/bottom-action-button';
 import { Dialog } from '@/shared/ui/dialog';
 import { TimePicker, type TimePickerValue } from '@/shared/ui/time-picker';
 import { Text } from '@/shared/ui/text';
@@ -73,7 +76,9 @@ export function MatchingTimePage() {
         />
       </main>
 
-      <div className="fixed bottom-10 left-1/2 z-30 flex w-[calc(100%-40px)] max-w-[353px] -translate-x-1/2 flex-col gap-3 bg-[var(--color-bg-layer-default)]">
+      <div
+        className={`fixed left-1/2 z-30 flex w-[calc(100%-40px)] max-w-[353px] -translate-x-1/2 flex-col gap-3 bg-[var(--color-bg-layer-default)] ${bottomActionSafeAreaOffsetClassName}`}
+      >
         <Button
           className="!h-[52px] !min-h-[52px] !rounded-[8px] !px-4 !py-3"
           size="large"
