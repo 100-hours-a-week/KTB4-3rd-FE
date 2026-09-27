@@ -113,7 +113,7 @@ describe('ChattingPage', () => {
           data: {
             id: 501,
             companion_id: 10,
-            kind: 'TAXI_POT',
+            kind: 'GENERAL',
             title: '8시 판교역',
             host_id: 7,
             origin_name: '판교역',
