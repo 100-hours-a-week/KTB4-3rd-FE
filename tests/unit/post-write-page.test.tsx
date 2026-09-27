@@ -112,6 +112,20 @@ describe('PostWritePage', () => {
       open: true,
       type: 'positive',
     });
+    expect(usePostCreateStore.getState()).toMatchObject({
+      type: null,
+      postLocation: null,
+      postLocationName: null,
+      companion: {
+        origin: null,
+        destination: null,
+        departureDate: null,
+        departureTime: null,
+        recruitCount: null,
+        content: '',
+      },
+      community: { title: '', content: '' },
+    });
   });
 
   it('동행모집 등록하기 버튼을 누르면 동행모집 게시글 등록 API를 요청한다', async () => {
@@ -149,6 +163,20 @@ describe('PostWritePage', () => {
       description: '핀 등록이 완료됐어요',
       open: true,
       type: 'positive',
+    });
+    expect(usePostCreateStore.getState()).toMatchObject({
+      type: null,
+      postLocation: null,
+      postLocationName: null,
+      companion: {
+        origin: null,
+        destination: null,
+        departureDate: null,
+        departureTime: null,
+        recruitCount: null,
+        content: '',
+      },
+      community: { title: '', content: '' },
     });
   });
 });

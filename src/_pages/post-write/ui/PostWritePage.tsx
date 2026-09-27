@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 
 import type { CompanionTransport } from '@/entities/post';
 import {
@@ -271,6 +271,7 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
   const draft = usePostCreateStore();
   const router = useRouter();
   const postCreateMutation = usePostCreateMutation();
+  const hasCompletedPostCreate = useRef(false);
   const draftType = draftTypeByPostWriteType[type];
   const isCompanion = type === 'accompany';
 
@@ -279,12 +280,18 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
   };
 
   useEffect(() => {
+    if (hasCompletedPostCreate.current) {
+      return;
+    }
+
     if (draft.type !== draftType) {
       draft.setType(draftType);
     }
   }, [draft, draftType]);
 
   const handlePostCreateSuccess = () => {
+    hasCompletedPostCreate.current = true;
+    draft.resetDraft();
     useSnackbarStore.getState().showSnackbar('핀 등록이 완료됐어요', 'positive');
     router.push('/');
   };
