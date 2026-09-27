@@ -74,6 +74,7 @@ describe('CommunityPostDetail', () => {
     expect(screen.getByText('커뮤니티')).toBeInTheDocument();
     expect(screen.getByText('애롱롱')).toBeInTheDocument();
     expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('유저1')).toBeInTheDocument();
     expect(screen.getByText('와 레전드사건 ㅋㅋ')).toBeInTheDocument();
 
     const metadata = screen.getByText('애롱롱').parentElement;
