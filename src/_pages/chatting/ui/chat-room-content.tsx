@@ -1,4 +1,4 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useState, type ReactNode } from 'react';
 
 import { ChatComposer, ChatReportDialog, useChatRoomWebSocket } from '@/features/chatting';
 import type { ChatWebSocketMessage } from '@/entities/chat';
@@ -9,9 +9,10 @@ import { ChatMessageList } from './chat-message-list';
 
 type ChatRoomContentProps = {
   room: ChatRoom;
+  topContent?: ReactNode;
 };
 
-export function ChatRoomContent({ room }: ChatRoomContentProps) {
+export function ChatRoomContent({ room, topContent }: ChatRoomContentProps) {
   const [messages, setMessages] = useState(() => [...room.messages]);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const handleMessage = useCallback((message: ChatWebSocketMessage) => {
@@ -36,7 +37,8 @@ export function ChatRoomContent({ room }: ChatRoomContentProps) {
 
   return (
     <>
-      <section className="flex min-h-0 flex-1 flex-col">
+      <section className="relative flex min-h-0 flex-1 flex-col">
+        {topContent}
         <ChatMessageList
           lastReadMessageId={room.lastReadMessageId}
           messages={messages}

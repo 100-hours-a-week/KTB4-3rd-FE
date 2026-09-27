@@ -19,7 +19,7 @@ beforeEach(() => {
   useAuthStore.getState().setAccessToken('mock-access-token');
 });
 
-function renderChattingPage() {
+function renderChattingPage(roomId = '501') {
   const queryClient = new QueryClient({
     defaultOptions: {
       queries: { retry: false },
@@ -28,7 +28,7 @@ function renderChattingPage() {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <ChattingPage roomId="501" />
+      <ChattingPage roomId={roomId} />
     </QueryClientProvider>,
   );
 }
@@ -53,6 +53,13 @@ describe('ChattingPage', () => {
     expect(screen.getByText('운행이 시작됐나요?')).toBeInTheDocument();
     expect(screen.getByText('운행이 종료됐어요')).toBeInTheDocument();
     expect(screen.getByLabelText('채팅 메시지')).toHaveClass('overflow-y-auto');
+  });
+
+  it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {
+    renderChattingPage('599');
+
+    expect(await screen.findByRole('heading', { name: '5시 판교역' })).toBeInTheDocument();
+    expect(await screen.findByTestId('taxi-pot-announcement')).toBeInTheDocument();
   });
 
   it('채팅방 상세와 메시지 목록 API를 병렬로 요청한다', async () => {

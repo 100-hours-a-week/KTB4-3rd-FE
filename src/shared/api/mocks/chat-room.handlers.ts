@@ -21,7 +21,7 @@ const MOCK_CHAT_ROOMS = {
   501: {
     id: 501,
     companion_id: 10,
-    kind: 'TAXI_POT',
+    kind: 'GENERAL',
     title: '8시 판교역',
     host_id: 7,
     origin_name: '판교역',
@@ -32,6 +32,36 @@ const MOCK_CHAT_ROOMS = {
     companion_status: 'IN_PROGRESS',
     closed_at: null,
     last_read_message_id: 1440,
+  },
+  599: {
+    id: 599,
+    companion_id: 30,
+    kind: 'TAXI_POT',
+    title: '5시 판교역',
+    host_id: 7,
+    origin_name: '판교역',
+    dest_name: '강남역',
+    departure_at: '2026-09-05T08:30:00.000Z',
+    current_count: 2,
+    capacity: 4,
+    companion_status: 'RECRUITING',
+    closed_at: null,
+    last_read_message_id: null,
+  },
+  600: {
+    id: 600,
+    companion_id: 31,
+    kind: 'TAXI_POT',
+    title: '9시 서울역',
+    host_id: 8,
+    origin_name: '서울역',
+    dest_name: '강남역',
+    departure_at: '2026-09-05T09:00:00.000Z',
+    current_count: 3,
+    capacity: 4,
+    companion_status: 'RECRUITING',
+    closed_at: null,
+    last_read_message_id: null,
   },
 } as const;
 
@@ -88,6 +118,14 @@ const MOCK_CHAT_MESSAGES = {
       },
     ],
     next_cursor: 'v1.eyJsYXN0X2lkIjoxNDM5fQ',
+  },
+  599: {
+    items: [],
+    next_cursor: null,
+  },
+  600: {
+    items: [],
+    next_cursor: null,
   },
 } as const;
 
