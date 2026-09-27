@@ -9,7 +9,7 @@ const MAX_RATING = 5;
 const RATING_STARS_SRC = '/icons/rating-stars.svg';
 
 export type ChatSatisfactionParticipant = {
-  id: string;
+  id: number | string;
   name: string;
 };
 
@@ -17,7 +17,9 @@ export type ChatSatisfactionDialogSubmitPayload = {
   ratings: Record<string, number>;
 };
 
-export type ChatSatisfactionDialogSubmitButtonProps = Omit<DialogButtonProps, 'onClick'>;
+export type ChatSatisfactionDialogSubmitButtonProps = Omit<DialogButtonProps, 'onClick'> & {
+  onClick?: DialogButtonProps['onClick'];
+};
 
 export type ChatSatisfactionDialogProps = Omit<
   DialogProps,
@@ -142,6 +144,7 @@ export function ChatSatisfactionDialog({
   ...props
 }: ChatSatisfactionDialogProps) {
   const [ratings, setRatings] = useState(() => createInitialRatings(participants));
+  const { onClick: submitButtonOnClick, ...restSubmitButtonProps } = submitButtonProps ?? {};
 
   return (
     <Dialog
@@ -155,12 +158,15 @@ export function ChatSatisfactionDialog({
         className,
       )}
       primaryButtonProps={{
-        ...submitButtonProps,
+        ...restSubmitButtonProps,
         className: cn(
           '!rounded-[8px] !bg-[var(--color-bg-neutral-inverted)] !text-[var(--color-fg-neutral-inverted)] active:!bg-[var(--color-bg-neutral-inverted-pressed)]',
           submitButtonProps?.className,
         ),
-        onClick: () => onSubmit?.({ ratings }),
+        onClick: (event) => {
+          onSubmit?.({ ratings });
+          submitButtonOnClick?.(event);
+        },
       }}
       primaryLabel="확인"
       showCloseButton={false}

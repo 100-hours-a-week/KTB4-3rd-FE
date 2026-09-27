@@ -1,19 +1,17 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 
-import {
-  ChatComposer,
-  ChatReportDialog,
-  type ChatRoomWebSocketConnectionValue,
-} from '@/features/chatting';
+import { ChatComposer, type ChatRoomWebSocketConnectionValue } from '@/features/chatting';
 
 import type { ChatRoom, ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageList } from './chat-message-list';
+import type { ChatReportTarget } from './chat-message-menu';
 
 type ChatRoomContentProps = {
   room: ChatRoom;
   liveMessages: readonly ChatRoomMessage[];
   connection: ChatRoomWebSocketConnectionValue;
+  onReport?: (target: ChatReportTarget) => void;
   topContent?: ReactNode;
   bottomContent?: ReactNode;
 };
@@ -21,11 +19,11 @@ type ChatRoomContentProps = {
 export function ChatRoomContent({
   room,
   liveMessages,
+  onReport = () => {},
   connection,
   topContent,
   bottomContent,
 }: ChatRoomContentProps) {
-  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const messages = useMemo(() => {
     const roomMessageIds = new Set(room.messages.map((message) => message.id));
 
@@ -43,7 +41,7 @@ export function ChatRoomContent({
         <ChatMessageList
           lastReadMessageId={room.lastReadMessageId}
           messages={messages}
-          onReport={() => setIsReportDialogOpen(true)}
+          onReport={onReport}
           roomId={room.id}
           bottomContent={bottomContent}
         />
@@ -53,7 +51,6 @@ export function ChatRoomContent({
           submitDisabled={connection.status !== 'open'}
         />
       </section>
-      <ChatReportDialog onOpenChange={setIsReportDialogOpen} open={isReportDialogOpen} />
     </>
   );
 }

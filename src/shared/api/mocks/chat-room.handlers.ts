@@ -19,6 +19,7 @@ const MOCK_CHAT_ROOMS = {
     companion_status: 'IN_PROGRESS',
     closed_at: null,
     last_read_message_id: 1010,
+    participants: [{ id: 15, nickname: '타요' }],
   },
   501: {
     id: 501,
@@ -34,6 +35,10 @@ const MOCK_CHAT_ROOMS = {
     companion_status: 'IN_PROGRESS',
     closed_at: null,
     last_read_message_id: 1440,
+    participants: [
+      { id: 9, nickname: '루디' },
+      { id: 15, nickname: '타요' },
+    ],
   },
   599: {
     id: 599,
@@ -49,6 +54,7 @@ const MOCK_CHAT_ROOMS = {
     companion_status: 'RECRUITING',
     closed_at: null,
     last_read_message_id: null,
+    participants: [{ id: 9, nickname: '루디' }],
   },
   600: {
     id: 600,
@@ -64,6 +70,10 @@ const MOCK_CHAT_ROOMS = {
     companion_status: 'RECRUITING',
     closed_at: null,
     last_read_message_id: null,
+    participants: [
+      { id: 9, nickname: '루디' },
+      { id: 15, nickname: '타요' },
+    ],
   },
 } as const;
 

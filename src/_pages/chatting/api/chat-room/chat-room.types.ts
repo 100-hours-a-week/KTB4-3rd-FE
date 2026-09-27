@@ -14,6 +14,12 @@ export type ChatRoomDetailData = {
   companion_status: string;
   closed_at: string | null;
   last_read_message_id: number | null;
+  participants?: readonly ChatRoomParticipantData[];
+};
+
+export type ChatRoomParticipantData = {
+  id: number;
+  nickname: string;
 };
 
 export type ChatRoomDetailResponse = ApiResponse<ChatRoomDetailData>;

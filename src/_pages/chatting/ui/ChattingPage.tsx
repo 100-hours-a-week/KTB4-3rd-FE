@@ -1,12 +1,20 @@
 'use client';
 
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useRouter } from 'next/navigation';
 
 import {
+  ChatLeaveDialog,
+  ChatReportDialog,
   ChatRoomWebSocketConnection,
   ChatSatisfactionDialog,
+  type ChatReportDialogSubmitPayload,
+  type ChatSatisfactionDialogSubmitPayload,
+  type ChatSatisfactionParticipant,
   type ChatRoomWebSocketConnectionValue,
+  useChatRatingMutation,
+  useChatReportMutation,
 } from '@/features/chatting';
 import type { ChatWebSocketMessage } from '@/entities/chat';
 import {
@@ -18,11 +26,18 @@ import {
   type TaxiPotDetailData,
   type TaxiPotRideAction,
   type TaxiPotStatus,
+  useLeaveTaxiPotMutation,
   useTaxiPotChatFlow,
 } from '@/features/taxi-pot-chat';
+import { useCurrentUserQuery } from '@/features/user-profile';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
-import { useChatRoomQueries } from '@/_pages/chatting/api/chat-room';
+import {
+  useChatRoomQueries,
+  type ChatRoomDetailData,
+  type ChatRoomMessageData,
+} from '@/_pages/chatting/api/chat-room';
 import {
   createChatRoomFromApi,
   createChatRoomMessageFromApi,
@@ -33,6 +48,7 @@ import {
 import { ChatRoomContent } from './chat-room-content';
 import { ChatRoomLayout } from './chat-room-layout';
 import { ChatRoomState } from './chat-room-state';
+import type { ChatReportTarget } from './chat-message-menu';
 
 export type ChattingPageProps = {
   roomId: string;
@@ -68,12 +84,63 @@ function formatDepartureTime(departureAt: string) {
   });
 }
 
+function createEvaluationParticipants(
+  detail: ChatRoomDetailData | undefined,
+  messages: readonly ChatRoomMessageData[] | undefined,
+  currentUserId: number | undefined,
+): readonly ChatSatisfactionParticipant[] | undefined {
+  if (!detail) {
+    return undefined;
+  }
+
+  const participantMap = new Map<number, string>();
+
+  if (detail.participants) {
+    for (const participant of detail.participants) {
+      participantMap.set(participant.id, participant.nickname);
+    }
+  } else {
+    for (const message of messages ?? []) {
+      if (message.sender) {
+        participantMap.set(message.sender.id, message.sender.nickname);
+      }
+
+      if (message.joiner) {
+        participantMap.set(message.joiner.id, message.joiner.name);
+      }
+
+      if (message.leaver) {
+        participantMap.set(message.leaver.id, message.leaver.name);
+      }
+    }
+  }
+
+  return [...participantMap.entries()]
+    .filter(([participantId]) => participantId !== currentUserId)
+    .map(([id, name]) => ({ id, name }));
+}
+
+const reportReasonMap = {
+  abuse: 'ABUSE',
+  noShow: 'NO_SHOW',
+  other: 'ETC',
+  unpaid: 'UNSETTLED',
+} as const;
+
 export function ChattingPage({ roomId }: ChattingPageProps) {
+  const router = useRouter();
   const [liveMessagesState, setLiveMessagesState] = useState<LiveMessagesState>({
     roomId,
     messages: [],
   });
   const { detailQuery, messagesQuery } = useChatRoomQueries(roomId);
+  const currentUserQuery = useCurrentUserQuery();
+  const ratingMutation = useChatRatingMutation();
+  const reportMutation = useChatReportMutation();
+  const leaveMutation = useLeaveTaxiPotMutation();
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
   const chatRoomDetail = detailQuery.data?.data;
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
@@ -83,6 +150,15 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     enabled: isTaxiPot,
   });
   const taxiPotDetail = taxiPotQuery.data?.data;
+  const evaluationParticipants = useMemo(
+    () =>
+      createEvaluationParticipants(
+        chatRoomDetail,
+        messagesQuery.data?.data.items,
+        currentUserQuery.data?.data.id,
+      ),
+    [chatRoomDetail, currentUserQuery.data?.data.id, messagesQuery.data?.data.items],
+  );
 
   const appendLiveMessage = useCallback(
     (nextMessage: ChatRoomMessage) => {
@@ -117,6 +193,117 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     taxiPotDetail,
     taxiPotId,
   });
+
+  const handleReportRequest = useCallback(
+    (target: ChatReportTarget) => {
+      setReportTarget(target);
+      setIsReportDialogOpen(true);
+
+      if (taxiPotFlow.isEvaluationOpen) {
+        taxiPotFlow.onEvaluationOpenChange(false);
+      }
+    },
+    [taxiPotFlow],
+  );
+
+  const handleEvaluationReport = useCallback(
+    (participant: ChatSatisfactionParticipant) => {
+      const reportedUserId = Number(participant.id);
+
+      if (!Number.isSafeInteger(reportedUserId)) {
+        useSnackbarStore.getState().showSnackbar('신고 대상 정보를 불러오지 못했어요', 'critical');
+        return;
+      }
+
+      handleReportRequest({ reportedMessageId: null, reportedUserId });
+    },
+    [handleReportRequest],
+  );
+
+  const handleEvaluationSubmit = useCallback(
+    ({ ratings }: ChatSatisfactionDialogSubmitPayload) => {
+      if (!taxiPotId) {
+        return;
+      }
+
+      const apiRatings = Object.entries(ratings).map(([targetUserId, score]) => ({
+        score,
+        target_user_id: Number(targetUserId),
+      }));
+
+      if (
+        apiRatings.some(({ target_user_id: targetUserId }) => !Number.isSafeInteger(targetUserId))
+      ) {
+        useSnackbarStore.getState().showSnackbar('평가 대상 정보를 불러오지 못했어요', 'critical');
+        return;
+      }
+
+      ratingMutation.mutate(
+        {
+          companionId: Number(taxiPotId),
+          payload: { ratings: apiRatings },
+        },
+        {
+          onError: (error) => {
+            useSnackbarStore
+              .getState()
+              .showSnackbar(error.message || '평가를 제출하지 못했어요', 'critical');
+          },
+          onSuccess: () => taxiPotFlow.onEvaluationOpenChange(false),
+        },
+      );
+    },
+    [ratingMutation, taxiPotFlow, taxiPotId],
+  );
+
+  const handleReportSubmit = useCallback(
+    ({ description, reason }: ChatReportDialogSubmitPayload) => {
+      if (!reportTarget) {
+        return;
+      }
+
+      reportMutation.mutate(
+        {
+          reason: reportReasonMap[reason],
+          reason_text: reason === 'other' ? description.trim() : null,
+          reported_message_id: reportTarget.reportedMessageId,
+          reported_user_id: reportTarget.reportedUserId,
+        },
+        {
+          onError: (error) => {
+            useSnackbarStore
+              .getState()
+              .showSnackbar(error.message || '신고를 접수하지 못했어요', 'critical');
+          },
+          onSuccess: () => {
+            setIsReportDialogOpen(false);
+            setReportTarget(null);
+          },
+        },
+      );
+    },
+    [reportMutation, reportTarget],
+  );
+
+  const handleLeave = useCallback(() => setIsLeaveDialogOpen(true), []);
+  const handleLeaveConfirm = useCallback(() => {
+    if (!taxiPotId) {
+      return;
+    }
+
+    leaveMutation.mutate(Number(taxiPotId), {
+      onError: (error) => {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(error.message || '채팅방을 나가지 못했어요', 'critical');
+      },
+      onSuccess: () => {
+        setIsLeaveDialogOpen(false);
+        useSnackbarStore.getState().showSnackbar('채팅방을 나갔어요', 'positive');
+        router.push('/');
+      },
+    });
+  }, [leaveMutation, router, taxiPotId]);
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
       if (taxiPotFlow.handleWebSocketMessage(message)) {
@@ -151,14 +338,33 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         <ChattingPageContent
           connection={connection}
           detailQuery={detailQuery}
+          evaluationParticipants={evaluationParticipants}
           isEvaluationOpen={taxiPotFlow.isEvaluationOpen}
+          isLeaveDialogOpen={isLeaveDialogOpen}
+          isReportDialogOpen={isReportDialogOpen}
           isTaxiPot={isTaxiPot}
           isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
+          onEvaluationReport={handleEvaluationReport}
+          onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
+          onLeave={handleLeave}
+          onLeaveConfirm={handleLeaveConfirm}
+          onLeaveDialogChange={setIsLeaveDialogOpen}
+          onReport={handleReportRequest}
+          onReportDialogChange={(open) => {
+            setIsReportDialogOpen(open);
+            if (!open) {
+              setReportTarget(null);
+            }
+          }}
+          onReportSubmit={handleReportSubmit}
           onRideActionConfirm={taxiPotFlow.confirmRideAction}
           rideAction={taxiPotFlow.rideAction}
           rideActionLoading={taxiPotFlow.isPending}
+          reportLoading={reportMutation.isPending}
+          leaveLoading={leaveMutation.isPending}
+          ratingLoading={ratingMutation.isPending}
           room={room}
           taxiPotDetail={taxiPotDetail}
           taxiPotQuery={taxiPotQuery}
@@ -173,7 +379,10 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 type ChattingPageContentProps = {
   connection: ChatRoomWebSocketConnectionValue;
   detailQuery: ReturnType<typeof useChatRoomQueries>['detailQuery'];
+  evaluationParticipants?: readonly ChatSatisfactionParticipant[];
   isEvaluationOpen: boolean;
+  isLeaveDialogOpen: boolean;
+  isReportDialogOpen: boolean;
   isTaxiPot: boolean;
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
@@ -184,21 +393,46 @@ type ChattingPageContentProps = {
   rideAction?: TaxiPotRideAction;
   rideActionLoading: boolean;
   liveMessages: readonly ChatRoomMessage[];
+  leaveLoading: boolean;
+  onEvaluationReport: (participant: ChatSatisfactionParticipant) => void;
+  onEvaluationSubmit: (payload: ChatSatisfactionDialogSubmitPayload) => void;
   onEvaluationOpenChange: (open: boolean) => void;
+  onLeave: () => void;
+  onLeaveConfirm: () => void;
+  onLeaveDialogChange: (open: boolean) => void;
+  onReport: (target: ChatReportTarget) => void;
+  onReportDialogChange: (open: boolean) => void;
+  onReportSubmit: (payload: ChatReportDialogSubmitPayload) => void;
   onRideActionConfirm: () => void;
+  ratingLoading: boolean;
+  reportLoading: boolean;
 };
 
 function ChattingPageContent({
   connection,
   detailQuery,
+  evaluationParticipants,
   isEvaluationOpen,
+  isLeaveDialogOpen,
+  isReportDialogOpen,
   isTaxiPot,
   isTaxiPotHost,
   messagesQuery,
+  onEvaluationReport,
+  onEvaluationSubmit,
   onEvaluationOpenChange,
+  onLeave,
+  onLeaveConfirm,
+  onLeaveDialogChange,
+  onReport,
+  onReportDialogChange,
+  onReportSubmit,
   onRideActionConfirm,
   rideAction,
   rideActionLoading,
+  ratingLoading,
+  reportLoading,
+  leaveLoading,
   room,
   taxiPotDetail,
   taxiPotQuery,
@@ -236,24 +470,53 @@ function ChattingPageContent({
       />
     ) : null;
   const showLeaveButton =
-    !isTaxiPot || taxiPotStatus === undefined || taxiPotStatus === 'RECRUITING';
+    isTaxiPot && (taxiPotStatus === undefined || taxiPotStatus === 'RECRUITING');
 
   return (
     <>
-      <ChatRoomLayout room={room} showLeaveButton={showLeaveButton}>
+      <ChatRoomLayout onLeave={onLeave} room={room} showLeaveButton={showLeaveButton}>
         <ChatRoomContent
           bottomContent={rideActionContent}
           connection={connection}
           liveMessages={liveMessages}
+          onReport={onReport}
           room={room}
           topContent={topContent}
         />
       </ChatRoomLayout>
       <SnackbarViewport className="fixed inset-x-0 bottom-[calc(78px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto max-w-[393px] px-5" />
+      <ChatLeaveDialog
+        confirmButtonProps={{
+          disabled: leaveLoading,
+          loading: leaveLoading,
+          onClick: (event) => event.preventDefault(),
+        }}
+        onConfirm={onLeaveConfirm}
+        onOpenChange={onLeaveDialogChange}
+        open={isLeaveDialogOpen}
+      />
+      <ChatReportDialog
+        onOpenChange={onReportDialogChange}
+        open={isReportDialogOpen}
+        onSubmit={onReportSubmit}
+        submitButtonProps={{
+          disabled: reportLoading,
+          loading: reportLoading,
+          onClick: (event) => event.preventDefault(),
+        }}
+      />
       <ChatSatisfactionDialog
         disablePointerDismissal
+        onReport={onEvaluationReport}
         onOpenChange={onEvaluationOpenChange}
         open={isEvaluationOpen}
+        onSubmit={onEvaluationSubmit}
+        participants={evaluationParticipants}
+        submitButtonProps={{
+          disabled: ratingLoading,
+          loading: ratingLoading,
+          onClick: (event) => event.preventDefault(),
+        }}
       />
     </>
   );

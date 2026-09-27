@@ -1,6 +1,7 @@
 export { chatRoomQueries } from './chat-room.queries';
 export type {
   ChatRoomDetailData,
+  ChatRoomParticipantData,
   ChatRoomDetailResponse,
   ChatRoomMessageData,
   ChatRoomMessageJoiner,

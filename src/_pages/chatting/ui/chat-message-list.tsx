@@ -3,12 +3,13 @@ import { useEffect, useRef, type ReactNode } from 'react';
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageItem } from './chat-message-item';
+import type { ChatReportTarget } from './chat-message-menu';
 
 type ChatMessageListProps = {
   roomId: string;
   messages: readonly ChatRoomMessage[];
   lastReadMessageId: number | null;
-  onReport: () => void;
+  onReport: (target: ChatReportTarget) => void;
   bottomContent?: ReactNode;
 };
 

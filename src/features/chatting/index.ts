@@ -1,5 +1,18 @@
 export { Bubble, type BubbleProps, type BubbleVariant } from './ui/bubble';
 export {
+  submitChatRatings,
+  type ChatRating,
+  type SubmitChatRatingsPayload,
+  type SubmitChatRatingsResponse,
+} from './api/chat-rating';
+export {
+  submitChatReport,
+  type ChatReportData,
+  type ChatReportReason as ApiChatReportReason,
+  type SubmitChatReportPayload,
+  type SubmitChatReportResponse,
+} from './api/chat-report';
+export {
   ChatActionNotice,
   type ChatActionNoticeProps,
   type ChatActionNoticeActionProps,
@@ -12,6 +25,9 @@ export {
   type ChatReportDialogSubmitPayload,
   type ChatReportReason,
 } from './ui/chat-report-dialog';
+export { useChatRatingMutation } from './model/use-chat-rating-mutation';
+export { type SubmitChatRatingsVariables } from './model/use-chat-rating-mutation';
+export { useChatReportMutation } from './model/use-chat-report-mutation';
 export {
   ChatSatisfactionDialog,
   type ChatSatisfactionDialogProps,
@@ -19,6 +35,7 @@ export {
   type ChatSatisfactionDialogSubmitPayload,
   type ChatSatisfactionParticipant,
 } from './ui/chat-satisfaction-dialog';
+export { ChatLeaveDialog, type ChatLeaveDialogProps } from './ui/chat-leave-dialog';
 export { ChatNotice, type ChatNoticeProps, type ChatNoticeVariant } from './ui/chat-notice';
 export { ChatComposer, type ChatComposerProps } from './ui/chat-composer';
 export {
