@@ -14,6 +14,7 @@ import { useSaveBankAccountMutation } from '@/features/user-profile/model/use-sa
 
 type BankAccountDialogProps = {
   open: boolean;
+  onDismiss?: () => void;
   onOpenChange: (open: boolean) => void;
 };
 
@@ -22,7 +23,7 @@ const bankOptions = BANK_ACCOUNT_BANK_NAMES.map((bankName) => ({
   value: bankName,
 }));
 
-export function BankAccountDialog({ open, onOpenChange }: BankAccountDialogProps) {
+export function BankAccountDialog({ open, onDismiss, onOpenChange }: BankAccountDialogProps) {
   const [bankName, setBankName] = useState<BankAccountBankName | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -40,9 +41,13 @@ export function BankAccountDialog({ open, onOpenChange }: BankAccountDialogProps
     saveBankAccountMutation.reset();
   };
 
-  const handleOpenChange = (nextOpen: boolean) => {
+  const handleOpenChange = (nextOpen: boolean, notifyDismiss = true) => {
     if (!nextOpen) {
       resetForm();
+
+      if (notifyDismiss) {
+        onDismiss?.();
+      }
     }
 
     onOpenChange(nextOpen);
@@ -64,7 +69,7 @@ export function BankAccountDialog({ open, onOpenChange }: BankAccountDialogProps
     saveBankAccountMutation.mutate(
       { bank_name: bankName, account_no: accountNumber },
       {
-        onSuccess: () => handleOpenChange(false),
+        onSuccess: () => handleOpenChange(false, false),
         onError: (error) => {
           setErrorMessage(error.message || '계좌 정보를 저장하지 못했어요. 다시 시도해주세요.');
         },
