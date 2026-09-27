@@ -1,11 +1,12 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { StartPin } from '@/entities/map-pin';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { reverseGeocodeLocation } from '@/features/post-location';
+import { BankAccountDialog, useCurrentUserQuery } from '@/features/user-profile';
 import {
   createCurrentLocation,
   CURRENT_LOCATION_ID,
@@ -27,11 +28,17 @@ export function MatchingPage() {
   const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const geocodingRequestIdRef = useRef(0);
+  const [isBankAccountDialogDismissed, setIsBankAccountDialogDismissed] = useState(false);
+  const currentUserQuery = useCurrentUserQuery();
   const departure = useMatchingStore((state) => state.departure);
   const destination = useMatchingStore((state) => state.destination);
   const setLocation = useMatchingStore((state) => state.setLocation);
   const setOrigin = useMatchingRegistrationStore((state) => state.setOrigin);
   const setDestination = useMatchingRegistrationStore((state) => state.setDestination);
+
+  const currentUser = currentUserQuery.data?.data;
+  const shouldShowBankAccountDialog =
+    currentUser?.has_bank_account === false && !isBankAccountDialogDismissed;
 
   useEffect(() => {
     setOrigin(
@@ -150,6 +157,15 @@ export function MatchingPage() {
       <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton className="absolute top-1.5 left-1.5" href="/" />
       </header>
+
+      <BankAccountDialog
+        open={shouldShowBankAccountDialog}
+        onOpenChange={(open) => {
+          if (!open) {
+            setIsBankAccountDialogDismissed(true);
+          }
+        }}
+      />
     </div>
   );
 }

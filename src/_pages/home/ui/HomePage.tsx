@@ -27,6 +27,7 @@ import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
 import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
+import { useCurrentUserQuery } from '@/features/user-profile';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import {
@@ -167,6 +168,7 @@ export function HomePage() {
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const mapRef = useRef<MapRef>(null);
+  const currentUserQuery = useCurrentUserQuery();
 
   const selectedCompanionId = selectedPost?.post.type === 'COMPANION' ? selectedPost.post.id : null;
   const selectedCommunityId = selectedPost?.post.type === 'COMMUNITY' ? selectedPost.post.id : null;
@@ -362,7 +364,12 @@ export function HomePage() {
           }
           rightSlot={
             <span className="pt-3 pr-1.5">
-              <Avatar alt="프로필" className="size-[42px]" size="md" />
+              <Avatar
+                alt="프로필"
+                className="size-[42px]"
+                size="md"
+                src={currentUserQuery.data?.data.profile_image_url}
+              />
             </span>
           }
         />

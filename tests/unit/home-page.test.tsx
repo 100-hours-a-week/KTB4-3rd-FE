@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LoginRequiredProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
 import { useAuthStore } from '@/entities/auth';
+import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
@@ -135,6 +136,19 @@ function renderHomePage() {
 }
 
 describe('HomePage', () => {
+  it('로그인한 사용자의 프로필 이미지를 홈 Avatar에 표시한다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    renderHomePage();
+
+    await waitFor(() => {
+      expect(screen.getByRole('img', { name: '프로필' })).toHaveAttribute(
+        'src',
+        'https://cdn.moyeota.app/profile/15.jpg',
+      );
+    });
+  });
+
   it('지도, 글쓰기 버튼, 바텀시트, 하단 네비게이션을 조합한다', () => {
     renderHomePage();
 

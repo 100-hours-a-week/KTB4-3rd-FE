@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
@@ -12,6 +13,7 @@ import {
 } from '@/_pages/matching';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { useAuthStore } from '@/entities/auth';
+import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 import {
   getMatchingTimePickerInitialValue,
   isMatchingTimeWithinThreeHours,
@@ -105,8 +107,38 @@ afterEach(() => {
 });
 
 describe('MatchingPage', () => {
+  it('계좌가 등록되지 않은 사용자가 진입하면 계좌 등록 Dialog를 표시한다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    expect(
+      await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('매칭을 시작하려면 정산 계좌 등록이 필요해요.')).toBeInTheDocument();
+  });
+
+  it('계좌 정보를 등록하면 계좌 등록 Dialog를 닫는다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' });
+    await user.click(screen.getByRole('combobox', { name: '은행명' }));
+    await user.click(await screen.findByRole('option', { name: 'KB국민은행' }));
+    await user.type(screen.getByRole('textbox', { name: '계좌번호' }), '11012345678');
+    await user.click(screen.getByRole('button', { name: '등록하기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
+      ).not.toBeInTheDocument();
+    });
+  });
+
   it('출발지와 도착지 LocationInputButton을 표시하고 검색 화면으로 이동한다', () => {
-    render(<MatchingPage />);
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
     expect(screen.getByRole('button', { name: '도착지' })).toHaveTextContent('어디로 갈까요?');
@@ -129,7 +161,7 @@ describe('MatchingPage', () => {
       roadAddress: '서울특별시 강남구 강남대로 396',
     });
 
-    render(<MatchingPage />);
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
 
     fireEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
 
