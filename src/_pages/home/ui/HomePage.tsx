@@ -123,7 +123,7 @@ function toCompanionPostDetail(
     author: { ...post.author, nickname: data.author.nickname },
     departure_location: data.origin_name,
     destination: data.dest_name,
-    participants: data.participants.map((participant, index) => ({
+    participants: (data.participants ?? []).map((participant, index) => ({
       ...participant,
       id: index + 1,
     })),

@@ -320,6 +320,41 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
   });
 
+  it('동행모집 상세의 참여자 정보가 null이어도 핀 상세를 표시한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/companion-posts/10', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 10,
+            title: '택시 같이 타실 분 구해요',
+            content: '판교역에서 강남역까지 같이 이동해요.',
+            transport_type: 'TAXI',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            is_expired: false,
+            current_count: 1,
+            capacity: 3,
+            is_full: false,
+            author: { nickname: '우림' },
+            participants: null,
+            chat_room_id: null,
+            joined: false,
+          },
+        }),
+      ),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByTestId('map-marker-COMPANION-10'));
+
+    expect(await screen.findByText('택시 같이 타실 분 구해요')).toBeInTheDocument();
+    expect(screen.getByText('참여자')).toBeInTheDocument();
+  });
+
   it('커뮤니티 게시글 상세에서 하단에 도달하면 다음 댓글 페이지를 조회한다', async () => {
     const user = userEvent.setup();
 
