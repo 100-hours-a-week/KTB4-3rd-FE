@@ -5,6 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 
 import {
   ChatRoomWebSocketConnection,
+  ChatSatisfactionDialog,
   type ChatRoomWebSocketConnectionValue,
 } from '@/features/chatting';
 import type { ChatWebSocketMessage } from '@/entities/chat';
@@ -150,9 +151,11 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         <ChattingPageContent
           connection={connection}
           detailQuery={detailQuery}
+          isEvaluationOpen={taxiPotFlow.isEvaluationOpen}
           isTaxiPot={isTaxiPot}
           isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
+          onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
           onRideActionConfirm={taxiPotFlow.confirmRideAction}
           rideAction={taxiPotFlow.rideAction}
           rideActionLoading={taxiPotFlow.isPending}
@@ -170,6 +173,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 type ChattingPageContentProps = {
   connection: ChatRoomWebSocketConnectionValue;
   detailQuery: ReturnType<typeof useChatRoomQueries>['detailQuery'];
+  isEvaluationOpen: boolean;
   isTaxiPot: boolean;
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
@@ -180,15 +184,18 @@ type ChattingPageContentProps = {
   rideAction?: TaxiPotRideAction;
   rideActionLoading: boolean;
   liveMessages: readonly ChatRoomMessage[];
+  onEvaluationOpenChange: (open: boolean) => void;
   onRideActionConfirm: () => void;
 };
 
 function ChattingPageContent({
   connection,
   detailQuery,
+  isEvaluationOpen,
   isTaxiPot,
   isTaxiPotHost,
   messagesQuery,
+  onEvaluationOpenChange,
   onRideActionConfirm,
   rideAction,
   rideActionLoading,
@@ -243,6 +250,11 @@ function ChattingPageContent({
         />
       </ChatRoomLayout>
       <SnackbarViewport className="fixed inset-x-0 bottom-[calc(78px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto max-w-[393px] px-5" />
+      <ChatSatisfactionDialog
+        disablePointerDismissal
+        onOpenChange={onEvaluationOpenChange}
+        open={isEvaluationOpen}
+      />
     </>
   );
 }

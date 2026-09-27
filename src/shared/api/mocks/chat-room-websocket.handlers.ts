@@ -16,6 +16,7 @@ export type MockChatMessage = {
     | 'SYSTEM_LEAVE'
     | 'SYSTEM_RIDE_START_REQUESTED'
     | 'SYSTEM_RIDE_STARTED'
+    | 'SYSTEM_RIDE_END_REQUESTED'
     | 'SYSTEM_RIDE_ENDED';
   sender?: {
     id: number;

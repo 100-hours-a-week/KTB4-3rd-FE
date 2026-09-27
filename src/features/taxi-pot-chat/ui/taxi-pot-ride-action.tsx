@@ -24,7 +24,15 @@ export function TaxiPotRideActionNotice({
       data-testid="taxi-pot-ride-action"
     >
       <Text as="p" className="m-0 break-words" color="fg.neutral" variant="t5Bold">
-        운행이 시작됐나요?
+        {action === 'start' ? (
+          '운행이 시작됐나요?'
+        ) : (
+          <>
+            운행이 종료됐나요?
+            <br />
+            정산 완료 후 확인을 눌러주세요
+          </>
+        )}
       </Text>
       <div className="-mx-1 w-[calc(100%+8px)]">
         <Button

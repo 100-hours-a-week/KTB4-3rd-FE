@@ -89,6 +89,10 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
     return '운행이 시작됐어요';
   }
 
+  if (message.type === 'SYSTEM_RIDE_END_REQUESTED') {
+    return '운행이 종료됐나요?';
+  }
+
   if (message.type === 'SYSTEM_RIDE_ENDED') {
     return '운행이 종료됐어요';
   }
@@ -114,7 +118,10 @@ export function createChatRoomMessageFromApi(message: ChatRoomMessageData): Chat
     id: String(message.id),
     kind: 'notice',
     content: getSystemMessageContent(message),
-    variant: message.type === 'SYSTEM_RIDE_STARTED' ? 'informative' : 'system',
+    variant:
+      message.type === 'SYSTEM_RIDE_STARTED' || message.type === 'SYSTEM_RIDE_ENDED'
+        ? 'informative'
+        : 'system',
   };
 }
 

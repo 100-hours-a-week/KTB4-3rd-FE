@@ -34,6 +34,7 @@ export function useTaxiPotChatFlow({
 }: TaxiPotChatFlowOptions) {
   const [rideActionState, setRideActionState] = useState<TaxiPotRideActionState>();
   const [statusState, setStatusState] = useState<TaxiPotStatusState>();
+  const [evaluationTaxiPotId, setEvaluationTaxiPotId] = useState<string>();
   const statusMutation = useTaxiPotStatusMutation(taxiPotId ?? '');
   const isTaxiPot = taxiPotId !== undefined;
   const isHost =
@@ -60,9 +61,19 @@ export function useTaxiPotChatFlow({
         return true;
       }
 
+      if (message.type === 'SYSTEM_RIDE_END_REQUESTED') {
+        setRideActionState({ taxiPotId, action: 'end' });
+        return true;
+      }
+
       if (message.type === 'SYSTEM_RIDE_STARTED') {
         setRideActionState(undefined);
         setStatusState({ taxiPotId, status: 'IN_PROGRESS', isHost });
+      }
+
+      if (message.type === 'SYSTEM_RIDE_ENDED') {
+        setRideActionState(undefined);
+        setStatusState({ taxiPotId, status: 'COMPLETED', isHost });
       }
 
       return false;
@@ -75,7 +86,8 @@ export function useTaxiPotChatFlow({
       return;
     }
 
-    const nextStatus: Exclude<TaxiPotStatus, 'RECRUITING'> = 'IN_PROGRESS';
+    const nextStatus: Exclude<TaxiPotStatus, 'RECRUITING'> =
+      rideAction === 'start' ? 'IN_PROGRESS' : 'COMPLETED';
 
     try {
       const response = await statusMutation.mutateAsync(nextStatus);
@@ -83,7 +95,11 @@ export function useTaxiPotChatFlow({
       setStatusState({ taxiPotId, status: response.data.status, isHost: true });
       setRideActionState(undefined);
 
-      onStartConfirmed?.(taxiPotId);
+      if (nextStatus === 'IN_PROGRESS') {
+        onStartConfirmed?.(taxiPotId);
+      } else {
+        setEvaluationTaxiPotId(taxiPotId);
+      }
     } catch {
       useSnackbarStore.getState().showSnackbar('요청 중 오류가 발생했어요', 'critical');
     }
@@ -92,8 +108,10 @@ export function useTaxiPotChatFlow({
   return {
     confirmRideAction,
     handleWebSocketMessage,
+    isEvaluationOpen: taxiPotId !== undefined && evaluationTaxiPotId === taxiPotId,
     isHost,
     isPending: statusMutation.isPending,
+    onEvaluationOpenChange: (open: boolean) => setEvaluationTaxiPotId(open ? taxiPotId : undefined),
     rideAction,
     status,
   };

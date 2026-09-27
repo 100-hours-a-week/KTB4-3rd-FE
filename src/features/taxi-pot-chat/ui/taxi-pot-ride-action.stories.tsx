@@ -27,6 +27,13 @@ export const Start: Story = {
   },
 };
 
+export const End: Story = {
+  args: {
+    action: 'end',
+    onConfirm: () => undefined,
+  },
+};
+
 export const Loading: Story = {
   args: {
     action: 'start',

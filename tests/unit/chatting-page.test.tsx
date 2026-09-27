@@ -36,7 +36,9 @@ function renderChattingPage(roomId = '501') {
   );
 }
 
-async function emitTaxiPotMessage(type: 'SYSTEM_RIDE_START_REQUESTED' | 'SYSTEM_RIDE_STARTED') {
+async function emitTaxiPotMessage(
+  type: 'SYSTEM_RIDE_START_REQUESTED' | 'SYSTEM_RIDE_STARTED' | 'SYSTEM_RIDE_END_REQUESTED',
+) {
   await new Promise((resolve) => setTimeout(resolve, 30));
   emitMockChatRoomMessage('599', {
     id: Date.now(),
@@ -302,6 +304,62 @@ describe('ChattingPage', () => {
     await emitTaxiPotMessage('SYSTEM_RIDE_STARTED');
 
     expect(await screen.findByText('운행이 시작됐어요')).toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+  });
+
+  it('방장이 운행 종료를 확인하면 평가 모달을 열고 백드롭으로 닫히지 않는다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'IN_PROGRESS',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.patch('*/taxi-pots/30', async ({ request }) => {
+        expect(await request.json()).toEqual({ status: 'COMPLETED' });
+
+        return HttpResponse.json({
+          message: '운행 상태가 변경됐어요',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'COMPLETED',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 4,
+            capacity: 4,
+            host_id: 7,
+          },
+        });
+      }),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_END_REQUESTED');
+
+    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
+      '운행이 종료됐나요?',
+    );
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    const dialog = await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' });
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
+
+    expect(dialog).toBeInTheDocument();
     expect(screen.queryByRole('link', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
