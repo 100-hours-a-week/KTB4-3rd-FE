@@ -50,3 +50,10 @@ export const Disabled: Story = {
     disabled: true,
   },
 };
+
+export const SubmitDisabled: Story = {
+  args: {
+    defaultValue: '연결 후 전송되는 메시지',
+    submitDisabled: true,
+  },
+};

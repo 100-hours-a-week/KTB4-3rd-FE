@@ -35,6 +35,23 @@ describe('ChatComposer', () => {
     expect(sendButton).toBeDisabled();
   });
 
+  it('전송 준비 전에도 메시지를 입력할 수 있고 전송 버튼만 비활성화한다', () => {
+    const onSubmit = vi.fn<(message: string) => void>();
+    render(<ChatComposer onSubmit={onSubmit} submitDisabled />);
+
+    const input = screen.getByRole('textbox', { name: '메시지 입력' });
+    const sendButton = screen.getByRole('button', { name: '메시지 전송' });
+
+    expect(input).toBeEnabled();
+    expect(sendButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: '연결을 기다리는 메시지' } });
+
+    expect(input).toHaveValue('연결을 기다리는 메시지');
+    expect(sendButton).toBeDisabled();
+    expect(onSubmit).not.toHaveBeenCalled();
+  });
+
   it('controlled value와 변경 콜백을 지원한다', () => {
     const onValueChange = vi.fn<(value: string) => void>();
     const onSubmit = vi.fn<(message: string) => void>();

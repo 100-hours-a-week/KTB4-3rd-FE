@@ -5,8 +5,10 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
+import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { useAuthStore } from '@/entities/auth';
 import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.handlers';
+import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
@@ -71,6 +73,28 @@ describe('ChattingPage', () => {
       '!h-[calc(78px+env(safe-area-inset-bottom,0px))]',
       '!pb-[env(safe-area-inset-bottom,0px)]',
     );
+  });
+
+  it('웹소켓 연결 중에도 채팅 입력은 가능하고 전송만 비활성화한다', () => {
+    const sendMessage = vi.fn<(content: string) => boolean>(() => false);
+    const connection = {
+      error: null,
+      sendMessage,
+      status: 'connecting',
+    } satisfies ChatRoomWebSocketConnectionValue;
+
+    render(<ChatRoomContent connection={connection} liveMessages={[]} room={generalChatRoom} />);
+
+    const input = screen.getByRole('textbox', { name: '메시지 입력' });
+    const sendButton = screen.getByRole('button', { name: '메시지 전송' });
+
+    expect(input).toBeEnabled();
+    expect(sendButton).toBeDisabled();
+
+    fireEvent.change(input, { target: { value: '입장 직후 입력한 메시지' } });
+
+    expect(input).toHaveValue('입장 직후 입력한 메시지');
+    expect(sendMessage).not.toHaveBeenCalled();
   });
 
   it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {

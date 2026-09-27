@@ -15,6 +15,7 @@ export type ChatComposerProps = {
   onSubmit?: (message: string) => void;
   onValueChange?: (value: string) => void;
   placeholder?: string;
+  submitDisabled?: boolean;
   value?: string;
 };
 
@@ -25,12 +26,13 @@ export function ChatComposer({
   onSubmit,
   onValueChange,
   placeholder = DEFAULT_PLACEHOLDER,
+  submitDisabled = false,
   value,
 }: ChatComposerProps) {
   const isControlled = value !== undefined;
   const [internalValue, setInternalValue] = useState(defaultValue);
   const currentValue = isControlled ? value : internalValue;
-  const canSubmit = currentValue.trim().length > 0 && !disabled;
+  const canSubmit = currentValue.trim().length > 0 && !disabled && !submitDisabled;
 
   const handleValueChange = (nextValue: string) => {
     if (!isControlled) {
@@ -44,7 +46,7 @@ export function ChatComposer({
     event.preventDefault();
 
     const message = currentValue.trim();
-    if (!message || disabled) {
+    if (!message || disabled || submitDisabled) {
       return;
     }
 
