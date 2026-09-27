@@ -5,18 +5,15 @@ import { BottomNav } from '@/shared/ui/BottomNav';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
 
-import {
-  DEFAULT_CHAT_LIST_STATES,
-  type ChatListPageStates,
-} from '@/_pages/chat-list/model/chat-list-state';
-import { ChatListPageContent } from './chat-list-page-content';
+import { type ChatListPageStates } from '@/_pages/chat-list/model/chat-list-state';
+import { ChatListPageContent, ChatListPageContentWithQuery } from './chat-list-page-content';
 import { ChatListPageContentLoading } from './chat-list-page-loading';
 
 export type ChatListPageProps = {
   states?: ChatListPageStates;
 };
 
-export function ChatListPage({ states = DEFAULT_CHAT_LIST_STATES }: ChatListPageProps) {
+export function ChatListPage({ states }: ChatListPageProps) {
   return (
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
@@ -24,7 +21,7 @@ export function ChatListPage({ states = DEFAULT_CHAT_LIST_STATES }: ChatListPage
       header={<Header leftSlot={<BackButton href="/" />} title="채팅" />}
     >
       <Suspense fallback={<ChatListPageContentLoading />}>
-        <ChatListPageContent states={states} />
+        {states ? <ChatListPageContent states={states} /> : <ChatListPageContentWithQuery />}
       </Suspense>
       <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
     </PageLayout>

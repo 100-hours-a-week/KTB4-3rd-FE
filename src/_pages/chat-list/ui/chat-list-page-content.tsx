@@ -18,6 +18,8 @@ import {
   type ChatListPageState,
   type ChatListPageStates,
 } from '@/_pages/chat-list/model/chat-list-state';
+import { useChatRoomListQuery } from '@/_pages/chat-list/api/chat-room-list';
+import { ChatListPageContentLoading } from './chat-list-page-loading';
 import { useScrollFog } from './use-scroll-fog';
 
 export type ChatListPageContentProps = {
@@ -28,6 +30,39 @@ export type ChatListPageContentProps = {
   onTabChange?: (tab: ChatListTabValue) => void;
   states?: ChatListPageStates;
 };
+
+function toChatListPageState(query: ReturnType<typeof useChatRoomListQuery>): ChatListPageState {
+  if (query.isError || !query.data) {
+    return { status: 'error' };
+  }
+
+  return { status: 'success', data: query.data.data };
+}
+
+export function ChatListPageContentWithQuery() {
+  const matchingQuery = useChatRoomListQuery('matching');
+  const communityQuery = useChatRoomListQuery('community');
+
+  if (matchingQuery.isPending || communityQuery.isPending) {
+    return <ChatListPageContentLoading />;
+  }
+
+  const states: ChatListPageStates = {
+    matching: toChatListPageState(matchingQuery),
+    community: toChatListPageState(communityQuery),
+  };
+
+  const queries = { matching: matchingQuery, community: communityQuery };
+
+  return (
+    <ChatListPageContent
+      onRetry={(tab) => {
+        void queries[tab].refetch();
+      }}
+      states={states}
+    />
+  );
+}
 
 function ChatListResultState({
   onRetry,

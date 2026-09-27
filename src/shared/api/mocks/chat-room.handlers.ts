@@ -1,5 +1,7 @@
 import { http, HttpResponse } from 'msw';
 
+import type { ChatRoomListData, ChatRoomKind } from '@/entities/chat';
+
 import { errorResponse, getBearerToken, MOCK_ACCESS_TOKEN } from './mock-utils';
 
 const MOCK_CHAT_ROOMS = {
@@ -64,6 +66,53 @@ const MOCK_CHAT_ROOMS = {
     last_read_message_id: null,
   },
 } as const;
+
+const MOCK_CHAT_ROOM_LISTS: Record<ChatRoomKind, ChatRoomListData> = {
+  TAXI_POT: {
+    items: [
+      {
+        id: 599,
+        companion_id: 30,
+        kind: 'TAXI_POT',
+        title: '5시 판교역',
+        host: { profile_image_url: null },
+        current_count: 2,
+        capacity: 4,
+        has_unread: false,
+      },
+      {
+        id: 600,
+        companion_id: 31,
+        kind: 'TAXI_POT',
+        title: '9시 서울역',
+        host: { profile_image_url: null },
+        current_count: 3,
+        capacity: 4,
+        has_unread: true,
+      },
+    ],
+    next_cursor: null,
+  },
+  COMPANION: {
+    items: [
+      {
+        id: 501,
+        companion_id: 10,
+        kind: 'COMPANION',
+        title: '8시 판교역',
+        host: { profile_image_url: null },
+        current_count: 3,
+        capacity: 4,
+        has_unread: true,
+      },
+    ],
+    next_cursor: null,
+  },
+  CARPOOL: {
+    items: [],
+    next_cursor: null,
+  },
+};
 
 const MOCK_CHAT_MESSAGES = {
   101: {
@@ -158,6 +207,35 @@ function getMessages(roomId: string) {
 }
 
 export const chatRoomHandlers = [
+  http.get('*/chat-rooms', ({ request }) => {
+    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
+      return unauthorizedResponse();
+    }
+
+    const searchParams = new URL(request.url).searchParams;
+    const kind = searchParams.get('kind');
+    const cursor = searchParams.get('cursor');
+
+    if (kind && !(kind in MOCK_CHAT_ROOM_LISTS)) {
+      return errorResponse('조회 조건을 확인해주세요', 'VALIDATION_ERROR', 'kind', 400);
+    }
+
+    if (cursor === 'invalid') {
+      return errorResponse('잘못된 커서입니다', 'INVALID_CURSOR', null, 400);
+    }
+
+    const data = kind
+      ? MOCK_CHAT_ROOM_LISTS[kind as keyof typeof MOCK_CHAT_ROOM_LISTS]
+      : {
+          items: Object.values(MOCK_CHAT_ROOM_LISTS).flatMap((list) => list.items),
+          next_cursor: null,
+        };
+
+    return HttpResponse.json({
+      message: '조회에 성공했습니다',
+      data,
+    });
+  }),
   http.get('*/chat-rooms/:roomId/messages', ({ request, params }) => {
     if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
       return unauthorizedResponse();
