@@ -238,7 +238,7 @@ describe('Map', () => {
 
     await waitFor(() => expect(getCurrentPosition).toHaveBeenCalledOnce());
     expect(await screen.findByRole('img', { name: '현재 위치' })).toBeInTheDocument();
-    expect(fakeMap.panTo).toHaveBeenCalledOnce();
+    expect(fakeMap.setCenter).toHaveBeenCalledOnce();
   });
 
   it('reprojects MyLocation while the map is dragged or zoomed', async () => {
@@ -309,6 +309,36 @@ describe('Map', () => {
     expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument();
   });
 
+  it('centers on the last known location before requesting a fresh position', async () => {
+    const knownLocation = { lat: 37.51, lng: 127.02 };
+    const getCurrentPosition = vi.fn<
+      (success: PositionCallback, error?: PositionErrorCallback) => void
+    >((_success, error) =>
+      error?.({
+        code: 2,
+        message: 'position unavailable',
+        PERMISSION_DENIED: 1,
+        POSITION_UNAVAILABLE: 2,
+        TIMEOUT: 3,
+      } as GeolocationPositionError),
+    );
+
+    useLocationStore.getState().setCoordinate(knownLocation);
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<Map apiKey="test-key" />);
+
+    fireEvent.click(await screen.findByRole('button', { name: '현재 위치로 이동' }));
+
+    expect(fakeMap.setCenter).toHaveBeenCalledOnce();
+    const centeredPosition = fakeMap.setCenter.mock.calls[0]?.[0];
+    expect(centeredPosition?.getLat()).toBe(knownLocation.lat);
+    expect(centeredPosition?.getLng()).toBe(knownLocation.lng);
+  });
+
   it('exposes a current location request for a custom location button', async () => {
     const mapRef = createRef<MapRef>();
     const getCurrentPosition = vi.fn<(success: PositionCallback) => void>();
@@ -370,7 +400,7 @@ describe('Map', () => {
 
     expect(fakeMap.setLevel).toHaveBeenCalledWith(4, { animate: true });
     expect(onUserLocationChange).toHaveBeenCalledWith({ lat: 37.51, lng: 127.02 });
-    expect(fakeMap.panTo).toHaveBeenCalledOnce();
+    expect(fakeMap.setCenter).toHaveBeenCalledOnce();
   });
 
   it('moves a clicked marker to the requested focus offset and zooms into a clicked cluster', async () => {

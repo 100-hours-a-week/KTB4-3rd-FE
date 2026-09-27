@@ -204,6 +204,7 @@ function MapComponent(
   const setPermissionStatus = useLocationStore((state) => state.setPermissionStatus);
   const setLoading = useLocationStore((state) => state.setLoading);
   const setLocationError = useLocationStore((state) => state.setError);
+  const currentLocationRef = useRef<MapCoordinate | null>(currentLocation);
 
   const markerLocation = userLocation ?? currentLocation;
   const initialCenterRef = useRef(center ?? markerLocation ?? defaultCenter);
@@ -469,12 +470,13 @@ function MapComponent(
   }, [clusterMarkers, clusterMinLevel, markerList, status]);
 
   useEffect(() => {
+    currentLocationRef.current = currentLocation;
     markerLocationRef.current = markerLocation;
 
     if (status === 'ready') {
       updateUserLocationPoint();
     }
-  }, [markerLocation, status, updateUserLocationPoint]);
+  }, [currentLocation, markerLocation, status, updateUserLocationPoint]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -517,8 +519,25 @@ function MapComponent(
     [setLoading, setLocationError, setPermissionStatus],
   );
 
+  const centerMapOnLocation = useCallback((coordinate: MapCoordinate) => {
+    const map = mapRef.current;
+    const kakao = kakaoRef.current;
+
+    if (map && kakao) {
+      map.setCenter(new kakao.maps.LatLng(coordinate.lat, coordinate.lng));
+    } else {
+      pendingLocationRef.current = coordinate;
+    }
+  }, []);
+
   const handleCurrentLocation = useCallback(
     (maximumAge = 30_000) => {
+      const knownLocation = currentLocationRef.current;
+
+      if (knownLocation && maximumAge > 0) {
+        centerMapOnLocation(knownLocation);
+      }
+
       if (!navigator.geolocation) {
         reportLocationError({
           code: 'unsupported',
@@ -542,15 +561,7 @@ function MapComponent(
           setLoading(false);
           setLocationError(null);
           onUserLocationChangeRef.current?.(coordinate);
-
-          const map = mapRef.current;
-          const kakao = kakaoRef.current;
-
-          if (map && kakao) {
-            map.panTo(new kakao.maps.LatLng(coordinate.lat, coordinate.lng));
-          } else {
-            pendingLocationRef.current = coordinate;
-          }
+          centerMapOnLocation(coordinate);
         },
         (positionError) => reportLocationError(getMapLocationError(positionError)),
         {
@@ -560,7 +571,14 @@ function MapComponent(
         },
       );
     },
-    [reportLocationError, setCoordinate, setLoading, setLocationError, setPermissionStatus],
+    [
+      centerMapOnLocation,
+      reportLocationError,
+      setCoordinate,
+      setLoading,
+      setLocationError,
+      setPermissionStatus,
+    ],
   );
 
   const requestLocationPermission = useCallback(() => {
