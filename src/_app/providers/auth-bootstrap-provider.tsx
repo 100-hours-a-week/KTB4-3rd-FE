@@ -20,7 +20,9 @@ export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) 
           useAuthStore.getState().setAccessToken(data.access_token);
         })
         .catch(() => {
-          useAuthStore.getState().clearTokens();
+          if (useAuthStore.getState().accessToken === null) {
+            useAuthStore.getState().clearTokens();
+          }
         }));
 
     void bootstrapPromise.finally(() => {
