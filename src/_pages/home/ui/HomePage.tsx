@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
 import { createPortal } from 'react-dom';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import {
@@ -48,7 +48,13 @@ import { Avatar } from '@/shared/ui/avatar';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
-import { Map, MyLocationButton, type MapMarker, type MapViewport } from '@/shared/ui/map';
+import {
+  Map,
+  MyLocationButton,
+  type MapMarker,
+  type MapRef,
+  type MapViewport,
+} from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 import { ResultSection } from '@/shared/ui/result-section';
 import { Snackbar } from '@/shared/ui/snackbar';
@@ -159,6 +165,7 @@ export function HomePage() {
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
+  const mapRef = useRef<MapRef>(null);
 
   const selectedCompanionId = selectedPost?.post.type === 'COMPANION' ? selectedPost.post.id : null;
   const selectedCommunityId = selectedPost?.post.type === 'COMMUNITY' ? selectedPost.post.id : null;
@@ -269,6 +276,10 @@ export function HomePage() {
     setMapViewport(null);
   }, []);
 
+  const handleCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
   const handlePostCreate = useCallback(() => {
     requireAuth(() => router.push(POST_LOCATION_ROUTE));
   }, [requireAuth, router]);
@@ -367,6 +378,7 @@ export function HomePage() {
             onUserLocationChange={handleUserLocationChange}
             onViewportChange={handleMapViewportChange}
             locateOnMount
+            ref={mapRef}
             showCurrentLocationButton={false}
             showZoomControls={false}
             viewportDebounceMs={300}
@@ -385,7 +397,10 @@ export function HomePage() {
             글쓰기
           </PostCreateFab>
 
-          <MyLocationButton className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+134px)]" />
+          <MyLocationButton
+            className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+134px)]"
+            onClick={handleCurrentLocation}
+          />
         </div>
 
         <BottomSheet

@@ -2,7 +2,13 @@ import { http, HttpResponse } from 'msw';
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useEffect, type ReactNode } from 'react';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  type ButtonHTMLAttributes,
+  type ReactNode,
+} from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { LoginRequiredProvider } from '@/_app/providers';
@@ -17,6 +23,10 @@ const navigation = vi.hoisted(() => ({
   push: vi.fn<(path: string) => void>(),
 }));
 
+const mapControls = vi.hoisted(() => ({
+  requestCurrentLocation: vi.fn<() => void>(),
+}));
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: navigation.push }),
@@ -28,6 +38,10 @@ type MockMapProps = {
   onMarkerClick?: (marker: MapMarker) => void;
   onUserLocationChange?: (coordinate: MapCoordinate) => void;
   onViewportChange?: (viewport: MapViewport) => void;
+};
+
+type MockMapRef = {
+  requestCurrentLocation: () => void;
 };
 
 class MockIntersectionObserver {
@@ -49,40 +63,41 @@ class MockIntersectionObserver {
 }
 
 vi.mock('@/shared/ui/map', () => ({
-  Map: ({
-    children,
-    markers = [],
-    onMarkerClick,
-    onUserLocationChange,
-    onViewportChange,
-  }: MockMapProps) => {
-    useEffect(() => {
-      onUserLocationChange?.({ lat: 37.3945, lng: 127.1112 });
-      onViewportChange?.({
-        northEast: { lat: 37.6, lng: 127.2 },
-        northWest: { lat: 37.6, lng: 127 },
-        southEast: { lat: 37.3, lng: 127.2 },
-        southWest: { lat: 37.3, lng: 127 },
-      });
-    }, [onUserLocationChange, onViewportChange]);
+  Map: forwardRef<MockMapRef, MockMapProps>(
+    ({ children, markers = [], onMarkerClick, onUserLocationChange, onViewportChange }, ref) => {
+      useImperativeHandle(ref, () => mapControls, []);
 
-    return (
-      <div data-testid="map">
-        {markers.map((marker) => (
-          <button
-            aria-label={marker.title}
-            data-testid={`map-marker-${marker.id}`}
-            key={marker.id}
-            onClick={() => onMarkerClick?.(marker)}
-            type="button"
-          />
-        ))}
-        {children}
-      </div>
-    );
-  },
-  MyLocationButton: ({ className }: { className?: string }) => (
-    <button aria-label="현재 위치로 이동" className={className} type="button" />
+      useEffect(() => {
+        onUserLocationChange?.({ lat: 37.3945, lng: 127.1112 });
+        onViewportChange?.({
+          northEast: { lat: 37.6, lng: 127.2 },
+          northWest: { lat: 37.6, lng: 127 },
+          southEast: { lat: 37.3, lng: 127.2 },
+          southWest: { lat: 37.3, lng: 127 },
+        });
+      }, [onUserLocationChange, onViewportChange]);
+
+      return (
+        <div data-testid="map">
+          {markers.map((marker) => (
+            <button
+              aria-label={marker.title}
+              data-testid={`map-marker-${marker.id}`}
+              key={marker.id}
+              onClick={() => onMarkerClick?.(marker)}
+              type="button"
+            />
+          ))}
+          {children}
+        </div>
+      );
+    },
+  ),
+  MyLocationButton: ({
+    className,
+    onClick,
+  }: Pick<ButtonHTMLAttributes<HTMLButtonElement>, 'className' | 'onClick'>) => (
+    <button aria-label="현재 위치로 이동" className={className} onClick={onClick} type="button" />
   ),
 }));
 
@@ -90,6 +105,7 @@ afterEach(() => {
   cleanup();
   MockIntersectionObserver.callbacks = [];
   navigation.push.mockReset();
+  mapControls.requestCurrentLocation.mockReset();
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
   vi.unstubAllGlobals();
@@ -149,6 +165,16 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { hidden: true, name: '글쓰기' }));
 
     expect(navigation.push).toHaveBeenCalledWith('/post/create/location');
+  });
+
+  it('현재 위치 버튼을 누르면 지도에 현재 위치 조회를 요청한다', async () => {
+    const user = userEvent.setup();
+
+    renderHomePage();
+
+    await user.click(screen.getByRole('button', { hidden: true, name: '현재 위치로 이동' }));
+
+    expect(mapControls.requestCurrentLocation).toHaveBeenCalledOnce();
   });
 
   it('지도 핀 API 응답을 지도 마커로 렌더링한다', async () => {
