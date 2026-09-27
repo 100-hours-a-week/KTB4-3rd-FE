@@ -124,7 +124,14 @@ const MOCK_CHAT_MESSAGES = {
     next_cursor: null,
   },
   600: {
-    items: [],
+    items: [
+      {
+        id: 1600,
+        type: 'SYSTEM_JOIN',
+        joiner: { id: 15, name: '타요' },
+        created_at: '2026-09-05T08:00:00.000Z',
+      },
+    ],
     next_cursor: null,
   },
 } as const;

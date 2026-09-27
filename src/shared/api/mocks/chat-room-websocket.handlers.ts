@@ -26,7 +26,7 @@ type ChatRoomSubscription = {
   roomId: string;
 };
 
-const MOCK_CHAT_ROOM_IDS = new Set(['101', '501']);
+const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600']);
 const subscriptions = new Map<string, ChatRoomSubscription>();
 const processedMessages = new Map<string, MockChatMessage>();
 let nextMessageId = 1454;

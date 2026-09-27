@@ -7,8 +7,9 @@ export type ChatRoomMessage =
       id: string;
       kind: 'bubble';
       content: string;
-      variant: Exclude<BubbleVariant, 'system'>;
-      layout?: 'default' | 'tall';
+      variant: BubbleVariant;
+      layout?: 'default' | 'tall' | 'large';
+      loading?: boolean;
     }
   | {
       id: string;

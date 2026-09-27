@@ -2,10 +2,19 @@
 
 import { useQuery } from '@tanstack/react-query';
 
-import { TaxiPotAnnouncement, taxiPotQueries } from '@/features/taxi-pot-chat';
+import {
+  createTaxiPotChatEntryMessages,
+  TaxiPotAnnouncement,
+  taxiPotQueries,
+  type TaxiPotChatEntryMessage,
+} from '@/features/taxi-pot-chat';
 
 import { useChatRoomQueries } from '@/_pages/chatting/api/chat-room';
-import { createChatRoomFromApi } from '@/_pages/chatting/model/chat-room';
+import {
+  createChatRoomFromApi,
+  type ChatRoom,
+  type ChatRoomMessage,
+} from '@/_pages/chatting/model/chat-room';
 
 import { ChatRoomContent } from './chat-room-content';
 import { ChatRoomLayout } from './chat-room-layout';
@@ -14,6 +23,17 @@ import { ChatRoomState } from './chat-room-state';
 export type ChattingPageProps = {
   roomId: string;
 };
+
+function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
+  return {
+    id: message.id,
+    kind: 'bubble',
+    content: message.content,
+    variant: message.variant,
+    layout: message.layout === 'guide' ? 'large' : 'default',
+    loading: message.loading,
+  };
+}
 
 function formatDepartureTime(departureAt: string) {
   const departure = new Date(departureAt);
@@ -39,10 +59,21 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     enabled: taxiPotId !== undefined,
   });
   const taxiPotDetail = taxiPotQuery.data?.data;
-  const room =
+  const baseRoom =
     chatRoomDetail && messagesQuery.data
       ? createChatRoomFromApi(chatRoomDetail, messagesQuery.data.data.items)
       : undefined;
+  const taxiPotEntryMessages = taxiPotDetail
+    ? createTaxiPotChatEntryMessages(taxiPotDetail).map(toChatRoomMessage)
+    : [];
+  const room: ChatRoom | undefined = baseRoom
+    ? {
+        ...baseRoom,
+        memberCount: taxiPotDetail?.current_count ?? baseRoom.memberCount,
+        memberLimit: taxiPotDetail?.capacity ?? baseRoom.memberLimit,
+        messages: [...taxiPotEntryMessages, ...baseRoom.messages],
+      }
+    : undefined;
 
   if (
     detailQuery.isPending ||
