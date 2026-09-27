@@ -25,7 +25,6 @@ export type {
 } from './model/post';
 export type {
   CommunityPostComment,
-  CommunityPostCommentAuthor,
   CommunityPostCommentsData,
   CommunityPostCommentsResponse,
   CreateCommunityPostCommentPayload,

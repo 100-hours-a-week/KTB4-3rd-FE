@@ -23,7 +23,7 @@ describe('커뮤니티 댓글 MSW mock API', () => {
     const response = await fetch('http://localhost:8080/community-posts/88/comments');
     const body = await readJson<
       ApiResponse<{
-        items: { id: number; author: { nickname: string }; content: string; created_at: string }[];
+        items: { id: number; nickname: string; content: string; created_at: string }[];
         next_cursor: string | null;
       }>
     >(response);
@@ -33,7 +33,7 @@ describe('커뮤니티 댓글 MSW mock API', () => {
     expect(body.data.items).toHaveLength(10);
     expect(body.data.items[0]).toEqual({
       id: 2,
-      author: { nickname: '우림' },
+      nickname: '우림',
       content: '저도 궁금해요!',
       created_at: '2026-09-03T11:00:00.000Z',
     });
@@ -88,7 +88,7 @@ describe('커뮤니티 댓글 MSW mock API', () => {
     const body = await readJson<
       ApiResponse<{
         id: number;
-        author: { nickname: string };
+        nickname: string;
         content: string;
         created_at: string;
         comment_count: number;
@@ -101,7 +101,7 @@ describe('커뮤니티 댓글 MSW mock API', () => {
       message: '댓글이 등록되었습니다',
       data: {
         id: 2,
-        author: { nickname: '우림' },
+        nickname: '우림',
         content: '저도 궁금해요!',
         created_at: '2026-09-03T11:00:00.000Z',
         comment_count: 4,

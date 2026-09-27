@@ -324,6 +324,33 @@ describe('HomePage', () => {
     );
   });
 
+  it('댓글 작성자 정보가 없어도 게시글 상세를 표시한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/community-posts/88/comments', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                id: 99,
+                content: '작성자 정보가 없는 댓글입니다.',
+                created_at: '2026-09-03T11:00:00.000Z',
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      ),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 근처 카페 추천/ }));
+
+    expect(await screen.findByText('작성자 정보가 없는 댓글입니다.')).toBeInTheDocument();
+  });
+
   it('커뮤니티 댓글 작성 API를 호출하고 성공 Snackbar를 표시한다', async () => {
     const user = userEvent.setup();
     useAuthStore.getState().setAccessToken('mock-access-token');

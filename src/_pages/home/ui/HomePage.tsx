@@ -70,6 +70,7 @@ const POST_LOCATION_ROUTE = '/post/create/location';
 const POST_ERROR_TITLE = '게시글을 불러올 수 없어요';
 const POST_ERROR_DESCRIPTION =
   '게시글을 불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.';
+const UNKNOWN_COMMENT_AUTHOR = '알 수 없는 사용자';
 
 const postErrorIcon = (
   <Icon
@@ -149,7 +150,7 @@ function toPostComments(comments: readonly CommunityPostComment[]): PostComment[
   return comments.map((comment) => ({
     id: comment.id,
     author: {
-      nickname: comment.author.nickname,
+      nickname: comment.nickname ?? UNKNOWN_COMMENT_AUTHOR,
       profile_image_url: null,
     },
     content: comment.content,
