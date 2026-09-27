@@ -2,7 +2,7 @@
 
 import { useMutation } from '@tanstack/react-query';
 
-import { checkNicknameAvailability } from '../api/nickname';
+import { checkNicknameAvailability } from '@/features/signup/api/nickname';
 
 export function useNicknameAvailabilityMutation() {
   return useMutation({
