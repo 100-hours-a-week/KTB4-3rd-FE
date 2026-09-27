@@ -19,7 +19,9 @@ export type ChatReportDialogSubmitPayload = {
   reason: ChatReportReason;
 };
 
-export type ChatReportDialogSubmitButtonProps = Omit<DialogButtonProps, 'onClick'>;
+export type ChatReportDialogSubmitButtonProps = Omit<DialogButtonProps, 'onClick'> & {
+  onClick?: DialogButtonProps['onClick'];
+};
 
 export type ChatReportDialogProps = Omit<
   DialogProps,
@@ -51,6 +53,8 @@ export function ChatReportDialog({
 }: ChatReportDialogProps) {
   const [reason, setReason] = useState<ChatReportReason>(initialReason);
   const [description, setDescription] = useState(defaultDescription);
+  const { onClick: submitButtonOnClick, ...restSubmitButtonProps } = submitButtonProps ?? {};
+  const isOtherReasonWithoutDescription = reason === 'other' && description.trim() === '';
 
   return (
     <Dialog
@@ -64,12 +68,20 @@ export function ChatReportDialog({
         className,
       )}
       primaryButtonProps={{
-        ...submitButtonProps,
+        ...restSubmitButtonProps,
         className: cn(
           '!rounded-[8px] !bg-[var(--color-bg-critical-solid)] !text-[var(--color-fg-neutral-inverted)] active:!bg-[var(--color-bg-critical-solid-pressed)]',
           submitButtonProps?.className,
         ),
-        onClick: () => onSubmit?.({ description, reason }),
+        disabled: submitButtonProps?.disabled || isOtherReasonWithoutDescription,
+        onClick: (event) => {
+          if (isOtherReasonWithoutDescription) {
+            return;
+          }
+
+          onSubmit?.({ description, reason });
+          submitButtonOnClick?.(event);
+        },
       }}
       primaryLabel="신고하기"
       showCloseButton={false}

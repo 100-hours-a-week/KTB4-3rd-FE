@@ -1,6 +1,7 @@
 export { chatRoomQueries, useChatRoomQueries } from './api/chat-room';
 export type {
   ChatRoomDetailData,
+  ChatRoomParticipantData,
   ChatRoomDetailResponse,
   ChatRoomMessageData,
   ChatRoomMessageJoiner,

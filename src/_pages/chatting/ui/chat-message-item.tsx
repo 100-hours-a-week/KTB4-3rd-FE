@@ -3,14 +3,14 @@ import { cn } from '@/shared/lib/cn';
 
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
-import { ChatMessageMenu } from './chat-message-menu';
+import { ChatMessageMenu, type ChatReportTarget } from './chat-message-menu';
 
 const initialMessageSpacing = ['', 'mt-[41px]', 'mt-[47px]', 'mt-[27px]', 'mt-[41px]'];
 
 type ChatMessageItemProps = {
   message: ChatRoomMessage;
   index: number;
-  onReport: () => void;
+  onReport: (target: ChatReportTarget) => void;
 };
 
 function getMessageClassName(message: ChatRoomMessage, index: number) {
@@ -55,9 +55,23 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
     </Bubble>
   );
 
-  if (message.variant !== 'other') {
+  const numericMessageId = Number(message.id);
+
+  if (
+    message.variant !== 'other' ||
+    message.senderId === undefined ||
+    !Number.isSafeInteger(numericMessageId)
+  ) {
     return bubble;
   }
 
-  return <ChatMessageMenu onReport={onReport}>{bubble}</ChatMessageMenu>;
+  return (
+    <ChatMessageMenu
+      messageId={numericMessageId}
+      onReport={onReport}
+      reportedUserId={message.senderId}
+    >
+      {bubble}
+    </ChatMessageMenu>
+  );
 }
