@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { Avatar } from '@/shared/ui/avatar';
@@ -11,7 +11,7 @@ describe('Avatar', () => {
 
     expect(screen.getByRole('img', { name: '사용자 프로필' })).toHaveAttribute(
       'src',
-      '/avatars/avatar-default.svg',
+      expect.stringContaining('/avatars/avatar-default.svg'),
     );
     expect(screen.getByRole('img')).toHaveClass('size-full', 'object-cover');
   });
@@ -21,8 +21,17 @@ describe('Avatar', () => {
 
     expect(screen.getByRole('img', { name: '홍길동 프로필' })).toHaveAttribute(
       'src',
-      '/images/hong-gildong.png',
+      expect.stringContaining('/images/hong-gildong.png'),
     );
+  });
+
+  it('이미지 로드에 실패하면 기본 아바타로 전환한다', () => {
+    render(<Avatar alt="홍길동 프로필" src="https://dev.moyeota.com/profile/missing.png" />);
+
+    const image = screen.getByRole('img', { name: '홍길동 프로필' });
+    fireEvent.error(image);
+
+    expect(image).toHaveAttribute('src', expect.stringContaining('/avatars/avatar-default.svg'));
   });
 
   it.each([
