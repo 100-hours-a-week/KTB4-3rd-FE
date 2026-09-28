@@ -439,8 +439,8 @@ describe('MatchingConfirmationPage', () => {
   it('매칭 시작에 성공하면 응답의 채팅방으로 이동한다', async () => {
     useAuthStore.getState().setAccessToken('mock-access-token');
     const store = useMatchingRegistrationStore.getState();
-    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
-    store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setOrigin({ name: '판교역', lat: 37.3945678, lng: 127.11123456 });
+    store.setDestination({ name: '강남역', lat: 37.4979004, lng: 127.02760049 });
     store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
 
     render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
