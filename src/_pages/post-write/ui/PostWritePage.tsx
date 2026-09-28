@@ -25,6 +25,7 @@ import { InputField } from '@/shared/ui/input-field';
 import { LocationInputButton } from '@/shared/ui/location-input-button';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Select, type SelectOption } from '@/shared/ui/select';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 import { TimeInputButton } from '@/shared/ui/time-input-button';
 import { Textarea } from '@/shared/ui/textarea';
 import { Tooltip } from '@/shared/ui/tooltip';
@@ -305,6 +306,13 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
           { payload, type: 'COMPANION' },
           { onSuccess: handlePostCreateSuccess },
         );
+      } else {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
+            'critical',
+          );
       }
 
       return;
@@ -325,14 +333,17 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
       className={className}
       contentClassName={bottomActionScrollPaddingImportantClassName}
       footer={
-        <BottomActionButton
-          className={`${bottomActionFixedClassName} !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]`}
-          loading={postCreateMutation.isPending}
-          type="button"
-          onClick={handlePostCreate}
-        >
-          등록하기
-        </BottomActionButton>
+        <>
+          <BottomActionButton
+            className={`${bottomActionFixedClassName} !bg-[var(--color-bg-brand-solid)] active:!bg-[var(--color-bg-brand-solid-pressed)]`}
+            loading={postCreateMutation.isPending}
+            type="button"
+            onClick={handlePostCreate}
+          >
+            등록하기
+          </BottomActionButton>
+          <SnackbarViewport className="fixed inset-x-0 bottom-[calc(var(--dimension-x13)+var(--spacing-y-screen-bottom)+env(safe-area-inset-bottom,0px)+16px)] mx-auto max-w-[393px] px-5" />
+        </>
       }
       header={
         <Header

@@ -179,4 +179,21 @@ describe('PostWritePage', () => {
       community: { title: '', content: '' },
     });
   });
+
+  it('동행모집 필수 항목이 누락되면 API 요청 없이 스낵바를 표시한다', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
+    );
+  });
 });
