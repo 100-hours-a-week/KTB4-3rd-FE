@@ -1,13 +1,6 @@
-export enum BankCode {
-  KB = 'kb',
-  SHINHAN = 'shinhan',
-  WOORI = 'woori',
-  HANA = 'hana',
-  NH = 'nh',
-  IBK = 'ibk',
-  KAKAO = 'kakao',
-  TOSS = 'toss',
-}
+import { BankCode } from '@/entities/user';
+
+export { BankCode } from '@/entities/user';
 
 export const BANK_OPTIONS = [
   { value: BankCode.KB, label: '국민은행' },
