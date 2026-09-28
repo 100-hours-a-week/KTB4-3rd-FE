@@ -370,11 +370,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     () => getLastPersistedMessageId([...(room?.messages ?? []), ...liveMessages]),
     [liveMessages, room?.messages],
   );
-  const handleLeaveConfirm = useCallback(async () => {
-    if (companionId === undefined) {
-      return;
-    }
-
+  const handleBack = useCallback(async () => {
     if (lastMessageId) {
       try {
         await readMarkerMutation.mutateAsync({
@@ -382,8 +378,15 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           roomId,
         });
       } catch {
-        // 읽음 처리는 나가기보다 부수적인 작업이므로 실패해도 나가기는 계속 진행한다.
+        // 읽음 처리가 실패해도 채팅방에서 나가는 동작은 계속 진행한다.
       }
+    }
+
+    router.push('/');
+  }, [lastMessageId, readMarkerMutation, roomId, router]);
+  const handleLeaveConfirm = useCallback(async () => {
+    if (companionId === undefined) {
+      return;
     }
 
     try {
@@ -404,21 +407,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           'critical',
         );
     }
-  }, [
-    companionId,
-    isTaxiPot,
-    lastMessageId,
-    leaveCompanionMutation,
-    leaveTaxiPotMutation,
-    readMarkerMutation,
-    roomId,
-    router,
-    taxiPotId,
-  ]);
-  const leaveLoading =
-    readMarkerMutation.isPending ||
-    leaveCompanionMutation.isPending ||
-    leaveTaxiPotMutation.isPending;
+  }, [companionId, isTaxiPot, leaveCompanionMutation, leaveTaxiPotMutation, router, taxiPotId]);
+  const leaveLoading = leaveCompanionMutation.isPending || leaveTaxiPotMutation.isPending;
 
   return (
     <ChatRoomWebSocketConnection roomId={roomId} onMessage={handleWebSocketMessage}>
@@ -433,6 +423,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           isTaxiPot={isTaxiPot}
           isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
+          onBack={handleBack}
           onEvaluationReport={handleEvaluationReport}
           onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
@@ -474,6 +465,7 @@ type ChattingPageContentProps = {
   isTaxiPot: boolean;
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
+  onBack: () => void;
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
@@ -506,6 +498,7 @@ function ChattingPageContent({
   isTaxiPot,
   isTaxiPotHost,
   messagesQuery,
+  onBack,
   onEvaluationReport,
   onEvaluationSubmit,
   onEvaluationOpenChange,
@@ -562,7 +555,12 @@ function ChattingPageContent({
 
   return (
     <>
-      <ChatRoomLayout onLeave={onLeave} room={room} showLeaveButton={showLeaveButton}>
+      <ChatRoomLayout
+        onBack={onBack}
+        onLeave={onLeave}
+        room={room}
+        showLeaveButton={showLeaveButton}
+      >
         <ChatRoomContent
           bottomContent={rideActionContent}
           connection={connection}

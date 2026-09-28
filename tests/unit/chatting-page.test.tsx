@@ -193,20 +193,11 @@ describe('ChattingPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent('채팅방을 나갔어요');
   });
 
-  it('일반 동행모집에서 나갈 때 마지막 메시지를 읽음 처리한 뒤 DELETE 요청을 보낸다', async () => {
+  it('일반 동행모집에서 나갈 때 DELETE 요청만 보낸다', async () => {
     const user = userEvent.setup();
     const requests: string[] = [];
 
     server.use(
-      http.put('*/chat-rooms/501/read-marker', async ({ request }) => {
-        requests.push('read-marker');
-        expect(await request.json()).toEqual({ last_read_message_id: '1453' });
-
-        return HttpResponse.json({
-          message: '읽음 처리되었습니다',
-          data: { last_read_message_id: 1453, has_unread: false },
-        });
-      }),
       http.delete('*/companion-posts/10/participants/me', () => {
         requests.push('leave');
         return new HttpResponse(null, { status: 204 });
@@ -220,7 +211,37 @@ describe('ChattingPage', () => {
     await user.click(screen.getByRole('button', { name: '확인' }));
 
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
-    expect(requests).toEqual(['read-marker', 'leave']);
+    expect(requests).toEqual(['leave']);
+  });
+
+  it('뒤로가기 버튼을 누르면 마지막 메시지를 읽음 처리한 뒤 채팅방을 나간다', async () => {
+    const user = userEvent.setup();
+    const requests: string[] = [];
+
+    navigation.push.mockImplementation((path) => {
+      requests.push('navigate');
+      expect(path).toBe('/');
+    });
+
+    server.use(
+      http.put('*/chat-rooms/501/read-marker', async ({ request }) => {
+        requests.push('read-marker');
+        expect(await request.json()).toEqual({ last_read_message_id: '1453' });
+
+        return HttpResponse.json({
+          message: '읽음 처리되었습니다',
+          data: { last_read_message_id: 1453, has_unread: false },
+        });
+      }),
+    );
+
+    renderChattingPage('501');
+    await screen.findByRole('heading', { name: '8시 판교역' });
+
+    await user.click(screen.getByRole('link', { name: '뒤로가기' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    expect(requests).toEqual(['read-marker', 'navigate']);
   });
 
   it('방장이면 택시팟 입장 안내 메시지를 순서대로 렌더링한다', async () => {
