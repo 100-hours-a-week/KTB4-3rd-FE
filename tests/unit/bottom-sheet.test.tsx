@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
@@ -149,6 +149,40 @@ describe('BottomSheet', () => {
 
     expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveStyle({
       bottom: '72px',
+    });
+  });
+
+  it('hides the scrollbar and renders scroll fog when enabled', async () => {
+    const { rerender } = render(
+      <BottomSheet defaultOpen scrollContentKey={0} showScrollFog title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    const content = screen.getAllByTestId('bottom-sheet-content').at(-1) as HTMLElement;
+
+    expect(content).toHaveClass(
+      '[scrollbar-width:none]',
+      '[-ms-overflow-style:none]',
+      '[&::-webkit-scrollbar]:hidden',
+    );
+
+    const scrollTop = 0;
+    Object.defineProperties(content, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, get: () => scrollTop },
+    });
+    fireEvent.scroll(content);
+
+    rerender(
+      <BottomSheet defaultOpen scrollContentKey={1} showScrollFog title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-fog-bottom')).toBeInTheDocument();
     });
   });
 
