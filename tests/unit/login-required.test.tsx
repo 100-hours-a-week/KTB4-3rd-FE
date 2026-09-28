@@ -6,10 +6,12 @@ import { useAuthStore } from '@/entities/auth';
 import { useRequireAuth } from '@/features/login-required';
 
 const navigation = vi.hoisted(() => ({
+  pathname: '/',
   push: vi.fn<(path: string) => void>(),
 }));
 
 vi.mock('next/navigation', () => ({
+  usePathname: () => navigation.pathname,
   useRouter: () => ({ push: navigation.push }),
 }));
 
@@ -33,6 +35,7 @@ function renderProtectedAction(onAuthenticated = vi.fn<() => void>()) {
 
 afterEach(() => {
   cleanup();
+  navigation.pathname = '/';
   navigation.push.mockReset();
   useAuthStore.getState().clearTokens();
 });
@@ -70,4 +73,67 @@ describe('useRequireAuth', () => {
 
     expect(navigation.push).toHaveBeenCalledWith('/login');
   });
+
+  it.each(['취소', '닫기'])('홈이 아닌 페이지에서 %s를 누르면 홈으로 이동한다', (label) => {
+    navigation.pathname = '/matching';
+
+    render(
+      <LoginRequiredProvider>
+        <div>보호된 페이지</div>
+      </LoginRequiredProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: label }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/');
+  });
+
+  it('홈이 아닌 페이지에서도 로그인하러가기를 누르면 홈이 아닌 로그인 화면으로 이동한다', () => {
+    navigation.pathname = '/matching';
+
+    render(
+      <LoginRequiredProvider>
+        <div>보호된 페이지</div>
+      </LoginRequiredProvider>,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '로그인하러가기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/login');
+    expect(navigation.push).not.toHaveBeenCalledWith('/');
+  });
+
+  it.each([
+    '/matching',
+    '/matching/time',
+    '/chat',
+    '/chatting',
+    '/chatroom/101',
+    '/post/create/type',
+  ])('비로그인 사용자가 보호된 경로(%s)에 접근하면 로그인 유도 Dialog를 보여준다', (pathname) => {
+    navigation.pathname = pathname;
+
+    render(
+      <LoginRequiredProvider>
+        <div>보호된 페이지</div>
+      </LoginRequiredProvider>,
+    );
+
+    expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
+  });
+
+  it.each(['/', '/chatty', '/post/123'])(
+    '공개 경로(%s)에서는 Dialog를 보여주지 않는다',
+    (pathname) => {
+      navigation.pathname = pathname;
+
+      render(
+        <LoginRequiredProvider>
+          <div>공개 페이지</div>
+        </LoginRequiredProvider>,
+      );
+
+      expect(screen.queryByRole('dialog', { name: '로그인이 필요해요' })).not.toBeInTheDocument();
+    },
+  );
 });
