@@ -73,14 +73,16 @@ vi.mock('@/features/post-location', () => ({ reverseGeocodeLocation }));
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
     children,
+    locateOnMount,
     onCenterChange,
     onUserLocationChange,
   }: {
     children?: ReactNode;
+    locateOnMount?: boolean;
     onCenterChange?: (coordinate: MapCoordinate) => void;
     onUserLocationChange?: (coordinate: MapCoordinate) => void;
   }) => (
-    <div data-testid="map" role="application">
+    <div data-locate-on-mount={locateOnMount} data-testid="map" role="application">
       <button type="button" onClick={() => onCenterChange?.({ lat: 37.402, lng: 127.108 })}>
         조정 지도 위치 변경
       </button>
@@ -118,6 +120,18 @@ describe('MatchingPage', () => {
       await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
     ).toBeInTheDocument();
     expect(screen.getByText('매칭을 시작하려면 정산 계좌 등록이 필요해요.')).toBeInTheDocument();
+  });
+
+  it('계좌 등록 Dialog가 열려 있으면 위치 권한 요청을 시작하지 않는다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    expect(
+      await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('map')).toHaveAttribute('data-locate-on-mount', 'false');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
   });
 
   it('계좌 정보를 등록하면 계좌 등록 Dialog를 닫는다', async () => {
