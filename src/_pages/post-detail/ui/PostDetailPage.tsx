@@ -5,6 +5,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 
 import {
+  PostDetailSkeleton,
   type CommunityPost,
   type CommunityPostComment,
   type CommunityPostDetail,
@@ -34,7 +35,6 @@ import { BackButton } from '@/shared/ui/back-button';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { ResultSection } from '@/shared/ui/result-section';
-import { Text } from '@/shared/ui/text';
 
 type PostRouteType = 'companion' | 'community';
 
@@ -260,11 +260,7 @@ export function PostDetailPage() {
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] bg-[var(--color-bg-layer-default)]">
       <Header leftSlot={<BackButton href="/" />} />
       <main className="min-h-dvh pt-[56px]">
-        {isLoading ? (
-          <Text className="block px-6 pt-8" color="fg.neutralSubtle" variant="t4Regular">
-            게시글을 불러오는 중이에요.
-          </Text>
-        ) : null}
+        {isLoading ? <PostDetailSkeleton layout="page" /> : null}
         {isError ? (
           <ResultSection
             buttons="primary"
@@ -313,9 +309,7 @@ export function PostDetailPageLoading() {
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] bg-[var(--color-bg-layer-default)]">
       <Header leftSlot={<BackButton href="/" />} />
       <main className="min-h-dvh pt-[56px]">
-        <Text className="block px-6 pt-8" color="fg.neutralSubtle" variant="t4Regular">
-          게시글을 불러오는 중이에요.
-        </Text>
+        <PostDetailSkeleton layout="page" />
       </main>
     </div>
   );

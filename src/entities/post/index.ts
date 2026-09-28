@@ -10,6 +10,10 @@ export {
 export { ParticipantList, type ParticipantListProps } from './ui/post-detail/participant-list';
 export { PostDetailInfo, type PostDetailInfoProps } from './ui/post-detail/post-detail-info';
 export {
+  PostDetailSkeleton,
+  type PostDetailSkeletonProps,
+} from './ui/post-detail/post-detail-skeleton';
+export {
   PostDetailInfoRow,
   type PostDetailInfoRowProps,
 } from './ui/post-detail/post-detail-info-row';

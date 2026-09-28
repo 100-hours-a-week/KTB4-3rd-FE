@@ -5,6 +5,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
 
 import {
   defaultLocationSearchResults,
+  LocationSearchResultsSkeleton,
   useKakaoPlaceSearch,
   type LocationSearchResult,
 } from '@/features/location-search';
@@ -162,11 +163,7 @@ export function MatchingLocationPage() {
             {kakaoSearch.status === 'loading' &&
             searchQuery.trim() &&
             !kakaoSearch.results.length ? (
-              <p aria-live="polite" className="px-5 py-4" role="status">
-                <Text color="fg.neutralMuted" variant="t1Regular">
-                  장소를 검색 중이에요.
-                </Text>
-              </p>
+              <LocationSearchResultsSkeleton />
             ) : null}
             {kakaoSearch.status === 'empty' ? (
               <p aria-live="polite" className="px-5 py-4" role="status">
