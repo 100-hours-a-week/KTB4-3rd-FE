@@ -47,6 +47,22 @@ function renderChattingPage(roomId = '501') {
   );
 }
 
+function mockCurrentUserId(id: number) {
+  server.use(
+    http.get('*/users/me', () =>
+      HttpResponse.json({
+        message: '내 정보 조회에 성공했습니다',
+        data: {
+          id,
+          nickname: '테스트 유저',
+          profile_image_url: null,
+          has_bank_account: false,
+        },
+      }),
+    ),
+  );
+}
+
 async function emitTaxiPotMessage(
   type: 'SYSTEM_RIDE_START_REQUESTED' | 'SYSTEM_RIDE_STARTED' | 'SYSTEM_RIDE_END_REQUESTED',
 ) {
@@ -73,6 +89,10 @@ describe('ChattingPage', () => {
     expect(await screen.findByRole('heading', { name: '8시 판교역' })).toBeInTheDocument();
     expect(screen.getByText('3/4')).toBeInTheDocument();
     expect(screen.getByText('3분 뒤 도착합니다')).toBeInTheDocument();
+    expect(screen.getByText('3분 뒤 도착합니다').closest('[data-variant]')).toHaveAttribute(
+      'data-variant',
+      'me',
+    );
     expect(screen.getByText('루디 님이 입장하셨어요')).toBeInTheDocument();
     expect(screen.getByText('민준 님이 퇴장하셨어요')).toBeInTheDocument();
     expect(screen.getByText('운행이 시작됐나요?')).toBeInTheDocument();
@@ -250,6 +270,10 @@ describe('ChattingPage', () => {
     await user.click(screen.getByRole('button', { name: '메시지 전송' }));
 
     expect(await screen.findByText('새로운 메시지')).toBeInTheDocument();
+    expect(screen.getByText('새로운 메시지').closest('[data-variant]')).toHaveAttribute(
+      'data-variant',
+      'me',
+    );
     expect(input).toHaveValue('');
   });
 
@@ -548,8 +572,10 @@ describe('ChattingPage', () => {
   });
 
   it('타인의 메시지를 1초 이상 누르면 신고 메뉴를 연다', async () => {
+    mockCurrentUserId(1);
     renderChattingPage();
     await screen.findByText('3분 뒤 도착합니다');
+    expect(screen.getByText('우림')).toBeInTheDocument();
     vi.useFakeTimers();
 
     const trigger = screen.getAllByLabelText('메시지 메뉴 열기')[0];
@@ -574,6 +600,7 @@ describe('ChattingPage', () => {
     '신고 메뉴의 %s를 누르면 신고 모달을 연다',
     async (item) => {
       const user = userEvent.setup();
+      mockCurrentUserId(1);
       renderChattingPage();
       await screen.findByText('3분 뒤 도착합니다');
 
@@ -586,6 +613,7 @@ describe('ChattingPage', () => {
 
   it('신고하기 버튼을 누르면 신고 API 요청을 보낸다', async () => {
     const user = userEvent.setup();
+    mockCurrentUserId(1);
 
     server.use(
       http.post('*/reports', async ({ request }) => {
@@ -622,6 +650,7 @@ describe('ChattingPage', () => {
 
   it('유저 신고하기를 누르면 참여 중인 동행 ID를 신고 API에 보낸다', async () => {
     const user = userEvent.setup();
+    mockCurrentUserId(1);
 
     server.use(
       http.post('*/reports', async ({ request }) => {

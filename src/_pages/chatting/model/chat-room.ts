@@ -9,6 +9,7 @@ export type ChatRoomMessage =
       content: string;
       variant: BubbleVariant;
       senderId?: number;
+      senderNickname?: string;
       layout?: 'default' | 'tall' | 'large';
       loading?: boolean;
     }
@@ -105,14 +106,18 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
   return message.content ?? '채팅방 시스템 알림';
 }
 
-export function createChatRoomMessageFromApi(message: ChatRoomMessageData): ChatRoomMessage {
+export function createChatRoomMessageFromApi(
+  message: ChatRoomMessageData,
+  currentUserId?: number,
+): ChatRoomMessage {
   if (message.type === 'TEXT') {
     return {
       id: String(message.id),
       kind: 'bubble',
       content: message.content ?? '',
       senderId: message.sender?.id,
-      variant: 'other',
+      senderNickname: message.sender?.nickname,
+      variant: currentUserId !== undefined && message.sender?.id === currentUserId ? 'me' : 'other',
     };
   }
 
@@ -130,6 +135,7 @@ export function createChatRoomMessageFromApi(message: ChatRoomMessageData): Chat
 export function createChatRoomFromApi(
   detail: ChatRoomDetailData,
   messages: readonly ChatRoomMessageData[],
+  currentUserId?: number,
 ): ChatRoom {
   return {
     id: String(detail.id),
@@ -137,6 +143,8 @@ export function createChatRoomFromApi(
     title: detail.title,
     memberCount: detail.current_count,
     memberLimit: detail.capacity,
-    messages: [...messages].reverse().map(createChatRoomMessageFromApi),
+    messages: [...messages]
+      .reverse()
+      .map((message) => createChatRoomMessageFromApi(message, currentUserId)),
   };
 }

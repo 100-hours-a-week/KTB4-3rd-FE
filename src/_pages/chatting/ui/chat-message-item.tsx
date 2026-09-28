@@ -1,5 +1,6 @@
 import { Bubble, ChatNotice } from '@/features/chatting';
 import { cn } from '@/shared/lib/cn';
+import { Text } from '@/shared/ui/text';
 
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
@@ -36,11 +37,13 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
     );
   }
 
+  const messageClassName = getMessageClassName(message, index);
+  const hasSenderNickname = message.variant === 'other' && Boolean(message.senderNickname);
   const bubble = (
     <Bubble
       aria-label={message.variant === 'other' ? '메시지 메뉴 열기' : undefined}
       className={cn(
-        getMessageClassName(message, index),
+        !hasSenderNickname && messageClassName,
         '!py-[14px]',
         message.layout === 'tall' && '!h-[82px] !w-[248px] !max-w-none !p-4',
         message.layout === 'large' && '!h-[112px] !w-[301px] !max-w-none !p-4',
@@ -57,21 +60,31 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
 
   const numericMessageId = Number(message.id);
 
-  if (
-    message.variant !== 'other' ||
-    message.senderId === undefined ||
-    !Number.isSafeInteger(numericMessageId)
-  ) {
-    return bubble;
+  const bubbleWithMenu =
+    message.variant === 'other' &&
+    message.senderId !== undefined &&
+    Number.isSafeInteger(numericMessageId) ? (
+      <ChatMessageMenu
+        messageId={numericMessageId}
+        onReport={onReport}
+        reportedUserId={message.senderId}
+      >
+        {bubble}
+      </ChatMessageMenu>
+    ) : (
+      bubble
+    );
+
+  if (!hasSenderNickname) {
+    return bubbleWithMenu;
   }
 
   return (
-    <ChatMessageMenu
-      messageId={numericMessageId}
-      onReport={onReport}
-      reportedUserId={message.senderId}
-    >
-      {bubble}
-    </ChatMessageMenu>
+    <div className={cn(messageClassName, 'flex self-start flex-col items-start')}>
+      <Text as="span" className="mb-1 ml-1" color="fg.neutralMuted" variant="t5Regular">
+        {message.senderNickname}
+      </Text>
+      {bubbleWithMenu}
+    </div>
   );
 }
