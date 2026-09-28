@@ -4,6 +4,7 @@ import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 
 import {
+  type MatchingRegistrationValidationField,
   useMatchingRegistrationStore,
   useTaxiPotMatchingMutation,
 } from '@/features/matching-registration';
@@ -30,6 +31,12 @@ function formatDepartureAt(departureAt: string | null) {
     minute: '2-digit',
   });
 }
+
+const VALIDATION_FIELD_LABELS: Record<MatchingRegistrationValidationField, string> = {
+  origin: '출발지',
+  destination: '도착지',
+  departureAt: '탑승 시간',
+};
 
 function MatchingConfirmationSummaryCard({
   rows,
@@ -68,6 +75,7 @@ export function MatchingConfirmationPage() {
   const originName = useMatchingRegistrationStore((state) => state.origin_name);
   const destinationName = useMatchingRegistrationStore((state) => state.dest_name);
   const departureAt = useMatchingRegistrationStore((state) => state.departure_at);
+  const getValidationFields = useMatchingRegistrationStore((state) => state.getValidationFields);
   const getPayload = useMatchingRegistrationStore((state) => state.getPayload);
   const taxiPotMatchingMutation = useTaxiPotMatchingMutation();
   const confirmationRows = useMemo(
@@ -80,6 +88,17 @@ export function MatchingConfirmationPage() {
   );
 
   const handleMatchingStart = () => {
+    const validationFields = getValidationFields();
+
+    if (validationFields.length > 0) {
+      const fieldLabels = validationFields.map((field) => VALIDATION_FIELD_LABELS[field]);
+
+      useSnackbarStore
+        .getState()
+        .showSnackbar(`${fieldLabels.join(', ')} 정보를 입력해주세요`, 'critical');
+      return;
+    }
+
     const payload = getPayload();
 
     if (!payload) {

@@ -306,7 +306,10 @@ describe('Map', () => {
         message: '위치 권한이 없어 현재 위치를 가져올 수 없습니다.',
       }),
     );
-    expect(screen.getByRole('dialog', { name: '위치 권한을 활성화해주세요' })).toBeInTheDocument();
+    expect(screen.getByRole('dialog', { name: '위치 권한을 활성화해주세요' })).toHaveClass(
+      '!w-[calc(100%-40px)]',
+      '!max-w-[353px]',
+    );
     expect(screen.getByText('브라우저 위치 권한이 필요한 기능이에요.')).toBeInTheDocument();
     expect(screen.queryByRole('img', { name: '현재 위치' })).not.toBeInTheDocument();
   });

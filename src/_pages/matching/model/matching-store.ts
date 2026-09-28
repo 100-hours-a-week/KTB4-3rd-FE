@@ -32,7 +32,7 @@ export function createCurrentLocation(
     id: CURRENT_LOCATION_ID,
     latitude: coordinate.lat,
     longitude: coordinate.lng,
-    placeName: details.placeName || details.roadAddress || '현재 위치',
+    placeName: details.placeName || details.roadAddress || '',
     distance: '',
     roadAddress: details.roadAddress || '',
   };

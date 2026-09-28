@@ -16,6 +16,8 @@ export type MatchingRegistrationPayload = {
   departure_at: string;
 };
 
+export type MatchingRegistrationValidationField = 'origin' | 'destination' | 'departureAt';
+
 type MatchingRegistrationDraft = {
   origin_name: string | null;
   origin_lat: number | null;
@@ -30,6 +32,7 @@ export type MatchingRegistrationState = MatchingRegistrationDraft & {
   setOrigin: (location: MatchingRegistrationLocation | null) => void;
   setDestination: (location: MatchingRegistrationLocation | null) => void;
   setDepartureAt: (departureAt: string | null) => void;
+  getValidationFields: () => MatchingRegistrationValidationField[];
   getPayload: () => MatchingRegistrationPayload | null;
   reset: () => void;
 };
@@ -57,16 +60,48 @@ function toLocationFields(
   } as const;
 }
 
-function getPayload(state: MatchingRegistrationDraft): MatchingRegistrationPayload | null {
+function getValidationFields(
+  state: MatchingRegistrationDraft,
+): MatchingRegistrationValidationField[] {
+  const fields: MatchingRegistrationValidationField[] = [];
+
   if (
-    state.origin_name === null ||
-    state.origin_lat === null ||
-    state.origin_lng === null ||
-    state.dest_name === null ||
-    state.dest_lat === null ||
-    state.dest_lng === null ||
-    state.departure_at === null
+    !state.origin_name?.trim() ||
+    !Number.isFinite(state.origin_lat) ||
+    !Number.isFinite(state.origin_lng)
   ) {
+    fields.push('origin');
+  }
+
+  if (
+    !state.dest_name?.trim() ||
+    !Number.isFinite(state.dest_lat) ||
+    !Number.isFinite(state.dest_lng)
+  ) {
+    fields.push('destination');
+  }
+
+  if (!state.departure_at?.trim() || Number.isNaN(new Date(state.departure_at).getTime())) {
+    fields.push('departureAt');
+  }
+
+  return fields;
+}
+
+function isCompleteDraft(state: MatchingRegistrationDraft): state is MatchingRegistrationDraft & {
+  origin_name: string;
+  origin_lat: number;
+  origin_lng: number;
+  dest_name: string;
+  dest_lat: number;
+  dest_lng: number;
+  departure_at: string;
+} {
+  return getValidationFields(state).length === 0;
+}
+
+function getPayload(state: MatchingRegistrationDraft): MatchingRegistrationPayload | null {
+  if (!isCompleteDraft(state)) {
     return null;
   }
 
@@ -86,6 +121,7 @@ export const useMatchingRegistrationStore = create<MatchingRegistrationState>()(
   setOrigin: (location) => set(toLocationFields('origin', location)),
   setDestination: (location) => set(toLocationFields('dest', location)),
   setDepartureAt: (departureAt) => set({ departure_at: departureAt }),
+  getValidationFields: () => getValidationFields(get()),
   getPayload: () => getPayload(get()),
   reset: () => set(createInitialState()),
 }));

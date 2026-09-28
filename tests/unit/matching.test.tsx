@@ -19,6 +19,7 @@ import {
   isMatchingTimeWithinThreeHours,
 } from '@/_pages/matching/model/matching-time';
 import { useMatchingStore } from '@/_pages/matching/model/matching-store';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type * as LocationSearchModule from '@/features/location-search';
 import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
 import type { ReverseGeocodedLocation } from '@/features/post-location';
@@ -102,6 +103,7 @@ afterEach(() => {
   useAuthStore.getState().clearTokens();
   useMatchingStore.getState().reset();
   useMatchingRegistrationStore.getState().reset();
+  useSnackbarStore.getState().reset();
   searchParams.delete('field');
   searchParams.set('field', 'destination');
 });
@@ -187,6 +189,30 @@ describe('MatchingPage', () => {
       });
     });
   });
+
+  it('역지오코딩 결과가 없으면 현위치 fallback을 표시하지 않는다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('출발지');
+      expect(screen.getByRole('button', { name: '출발지' })).not.toHaveTextContent(
+        '현위치: 현재 위치',
+      );
+      expect(useMatchingStore.getState().departure).toMatchObject({
+        id: 'current-location',
+        placeName: '',
+      });
+      expect(useMatchingRegistrationStore.getState()).toMatchObject({
+        origin_name: '',
+        origin_lat: 37.5,
+        origin_lng: 127.0,
+      });
+    });
+  });
 });
 
 describe('MatchingLocationPage', () => {
@@ -204,6 +230,20 @@ describe('MatchingLocationPage', () => {
     const departureInput = screen.getByRole('textbox', { name: '출발지' });
     expect(departureInput).toHaveValue('유스페이스1');
     expect(departureInput).toHaveFocus();
+  });
+
+  it('현위치 장소명이 없으면 출발지 검색 입력을 비운다', () => {
+    searchParams.set('field', 'departure');
+    useMatchingStore.getState().setLocation('departure', {
+      ...searchResult,
+      id: 'current-location',
+      placeName: '',
+    });
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    expect(screen.getByRole('textbox', { name: '출발지' })).toHaveValue('');
   });
 
   it('검색 결과의 도착 버튼을 누르면 위치를 바로 지정한다', () => {
@@ -408,5 +448,25 @@ describe('MatchingConfirmationPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
 
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/599'));
+  });
+
+  it('등록 필드가 누락되면 API 요청 없이 누락된 영역을 안내한다', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const store = useMatchingRegistrationStore.getState();
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+
+    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '도착지 정보를 입력해주세요',
+      open: true,
+      type: 'critical',
+    });
+
+    fetchSpy.mockRestore();
   });
 });
