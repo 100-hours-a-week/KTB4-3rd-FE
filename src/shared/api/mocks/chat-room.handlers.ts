@@ -228,6 +228,21 @@ const MOCK_CHAT_MESSAGES = {
   },
 } as const;
 
+const MOCK_CHAT_MESSAGE_NEXT_PAGES = {
+  'v1.eyJsYXN0X2lkIjoxNDM5fQ': {
+    items: [
+      {
+        id: 1438,
+        type: 'TEXT',
+        sender: { id: 15, nickname: '타요', profile_image_url: null },
+        content: '조금 늦을 것 같아요.',
+        created_at: '2026-09-05T07:30:00.000Z',
+      },
+    ],
+    next_cursor: null,
+  },
+} as const;
+
 function unauthorizedResponse() {
   return HttpResponse.json(
     {
@@ -373,9 +388,17 @@ export const chatRoomHandlers = [
       return errorResponse('존재하지 않는 채팅방입니다', 'CHATROOM_NOT_FOUND', null, 404);
     }
 
+    const data = cursor
+      ? MOCK_CHAT_MESSAGE_NEXT_PAGES[cursor as keyof typeof MOCK_CHAT_MESSAGE_NEXT_PAGES]
+      : messages;
+
+    if (!data) {
+      return errorResponse('잘못된 커서입니다', 'INVALID_CURSOR', null, 400);
+    }
+
     return HttpResponse.json({
       message: '조회에 성공했습니다',
-      data: messages,
+      data,
     });
   }),
   http.get('*/chat-rooms/:roomId', ({ request, params }) => {

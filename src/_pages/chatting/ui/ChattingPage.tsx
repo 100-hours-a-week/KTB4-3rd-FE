@@ -175,14 +175,18 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     enabled: isTaxiPot,
   });
   const taxiPotDetail = taxiPotQuery.data?.data;
+  const chatRoomMessages = useMemo(
+    () => messagesQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
+    [messagesQuery.data?.pages],
+  );
   const evaluationParticipants = useMemo(
     () =>
       createEvaluationParticipants(
         chatRoomDetail,
-        messagesQuery.data?.data.items,
+        chatRoomMessages,
         currentUserQuery.data?.data.id,
       ),
-    [chatRoomDetail, currentUserQuery.data?.data.id, messagesQuery.data?.data.items],
+    [chatRoomDetail, chatRoomMessages, currentUserQuery.data?.data.id],
   );
 
   const appendLiveMessage = useCallback(
@@ -337,7 +341,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
   const baseRoom =
     chatRoomDetail && messagesQuery.data
-      ? createChatRoomFromApi(chatRoomDetail, messagesQuery.data.data.items, currentUserId)
+      ? createChatRoomFromApi(chatRoomDetail, chatRoomMessages, currentUserId)
       : undefined;
   const taxiPotEntryMessages = taxiPotDetail
     ? createTaxiPotChatEntryMessages(taxiPotDetail).map(toChatRoomMessage)
