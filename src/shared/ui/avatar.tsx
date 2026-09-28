@@ -1,5 +1,7 @@
+'use client';
+
 import Image from 'next/image';
-import type { CSSProperties } from 'react';
+import { useState, type CSSProperties } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -29,9 +31,11 @@ const sizePixels: Record<AvatarSizePreset, number> = {
 const DEFAULT_AVATAR_SRC = '/avatars/avatar-default.svg';
 
 export function Avatar({ src, alt = '프로필 이미지', size = 'md', className, style }: AvatarProps) {
-  const hasImage = Boolean(src);
+  const [failedSrc, setFailedSrc] = useState<string | null>(null);
+  const hasImage = Boolean(src && failedSrc !== src);
   const isCustomSize = typeof size === 'number';
   const pixelSize = isCustomSize ? size : sizePixels[size];
+  const imageSrc = src && failedSrc !== src ? src : DEFAULT_AVATAR_SRC;
 
   return (
     <span
@@ -48,8 +52,9 @@ export function Avatar({ src, alt = '프로필 이미지', size = 'md', classNam
         className="size-full object-cover"
         fill
         sizes={`${pixelSize}px`}
-        src={src || DEFAULT_AVATAR_SRC}
+        src={imageSrc}
         unoptimized
+        onError={() => setFailedSrc(src ?? null)}
       />
     </span>
   );

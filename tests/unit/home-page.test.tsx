@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -147,6 +147,17 @@ describe('HomePage', () => {
         'https://cdn.moyeota.app/profile/15.jpg',
       );
     });
+  });
+
+  it('홈 헤더 프로필 이미지 로드에 실패하면 기본 Avatar를 표시한다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    renderHomePage();
+
+    const avatar = await screen.findByRole('img', { name: '프로필' });
+    fireEvent.error(avatar);
+
+    expect(avatar).toHaveAttribute('src', expect.stringContaining('/avatars/avatar-default.svg'));
   });
 
   it('비로그인 사용자는 로그인하기 버튼을 표시하고 로그인 페이지로 이동한다', async () => {
