@@ -17,7 +17,7 @@ export function ProfileStep() {
   const { control } = useFormContext<SignupFormValues>();
 
   return (
-    <VStack gap="dimension-x6">
+    <VStack data-clarity-mask="true" gap="dimension-x6">
       <Controller
         control={control}
         name="profile_image_key"

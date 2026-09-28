@@ -53,6 +53,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
       <button
         aria-label="프로필 메뉴 열기"
         className="inline-flex size-[42px] items-center justify-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
+        data-clarity-mask="true"
         type="button"
       >
         <Avatar alt="프로필" size="md" src={user?.profile_image_url} />

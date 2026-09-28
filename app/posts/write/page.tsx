@@ -1,6 +1,11 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 
 import { PostWritePage, type PostWriteType } from '@/_pages/post-write';
+
+export const metadata: Metadata = {
+  title: '게시글 작성',
+};
 
 type PostWriteRouteProps = {
   searchParams: Promise<{

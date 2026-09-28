@@ -21,6 +21,7 @@ export function CommentList({ className, comments, layout = 'modal' }: CommentLi
         isPageLayout && 'mx-[27px] w-[calc(100%-54px)]',
         className,
       )}
+      data-clarity-mask="true"
     >
       {comments.map((comment, index) => (
         <li key={comment.id}>

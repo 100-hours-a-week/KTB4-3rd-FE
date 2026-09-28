@@ -125,6 +125,7 @@ export function ChatMessageList({
     <div
       aria-label="채팅 메시지"
       className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
+      data-clarity-mask="true"
       onScroll={handleScroll}
       ref={messagesRef}
     >

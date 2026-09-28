@@ -19,6 +19,7 @@ export function ChatList({ className, fullWidth = false, items, onItemClick }: C
         fullWidth && '-mx-5 !w-[calc(100%+2.5rem)]',
         className,
       )}
+      data-clarity-mask="true"
     >
       {items.map((chatRoom) => (
         <ChatItem

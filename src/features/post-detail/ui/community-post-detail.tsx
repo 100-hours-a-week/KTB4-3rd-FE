@@ -90,7 +90,7 @@ export function CommunityPostDetail({
 
       {isPageLayout ? (
         <>
-          <div className="mx-auto mt-[14px] flex w-[312px] justify-end">
+          <div className="mx-auto mt-[14px] flex w-[312px] justify-end" data-clarity-mask="true">
             <Text color="fg.neutral" variant="t6Bold">
               {post.author.nickname}
             </Text>
@@ -100,7 +100,7 @@ export function CommunityPostDetail({
           </div>
         </>
       ) : (
-        <div className="flex items-center justify-between px-6 pb-5">
+        <div className="flex items-center justify-between px-6 pb-5" data-clarity-mask="true">
           <CommentSummary count={post.comment_count} />
           <Text color="fg.neutral" variant="t4Bold">
             {post.author.nickname}

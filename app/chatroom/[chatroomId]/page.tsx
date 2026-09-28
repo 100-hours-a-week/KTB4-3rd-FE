@@ -1,4 +1,10 @@
+import type { Metadata } from 'next';
+
 import { ChattingPage } from '@/_pages/chatting';
+
+export const metadata: Metadata = {
+  title: '채팅',
+};
 
 type ChatRoomRouteProps = {
   params: Promise<{

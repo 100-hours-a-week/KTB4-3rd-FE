@@ -1,22 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
 
-import { useRouter } from 'next/navigation';
+import { PostTypeSelectionRoute } from '@/_pages/post-type-selection';
 
-import { PostTypeSelectionPage } from '@/_pages/post-type-selection';
-import type { PostType } from '@/entities/post';
-
-const postWriteTypeByPostType: Record<PostType, 'accompany' | 'community'> = {
-  COMPANION: 'accompany',
-  COMMUNITY: 'community',
+export const metadata: Metadata = {
+  title: '게시글 유형 선택',
 };
 
 export default function PostTypeSelection() {
-  const router = useRouter();
-
-  return (
-    <PostTypeSelectionPage
-      backHref="/post/create/location"
-      onNext={(type) => router.push(`/posts/write?type=${postWriteTypeByPostType[type]}`)}
-    />
-  );
+  return <PostTypeSelectionRoute />;
 }

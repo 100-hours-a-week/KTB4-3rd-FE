@@ -27,6 +27,7 @@ export function ParticipantList({
         isPageLayout ? 'ml-7 w-[325px] gap-[5px] pt-[26px]' : 'gap-3 px-6',
         className,
       )}
+      data-clarity-mask="true"
     >
       <Text
         className={isPageLayout ? '!leading-[18px]' : undefined}
