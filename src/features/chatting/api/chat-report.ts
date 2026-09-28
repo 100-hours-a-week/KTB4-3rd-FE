@@ -4,12 +4,23 @@ import type { ApiResponse } from '@/shared/api/types';
 
 export type ChatReportReason = 'ABUSE' | 'UNSETTLED' | 'NO_SHOW' | 'ETC';
 
-export type SubmitChatReportPayload = {
+type BaseChatReportPayload = {
   reported_user_id: number;
-  reported_message_id: number | null;
   reason: ChatReportReason;
   reason_text: string | null;
 };
+
+export type ChatMessageReportPayload = BaseChatReportPayload & {
+  companion_id?: never;
+  reported_message_id: number;
+};
+
+export type ChatUserReportPayload = BaseChatReportPayload & {
+  companion_id: number;
+  reported_message_id?: never;
+};
+
+export type SubmitChatReportPayload = ChatMessageReportPayload | ChatUserReportPayload;
 
 export type ChatReportData = {
   id: number;

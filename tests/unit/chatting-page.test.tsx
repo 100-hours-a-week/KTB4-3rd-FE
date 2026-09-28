@@ -477,6 +477,76 @@ describe('ChattingPage', () => {
     );
   });
 
+  it('평가 모달에서 유저를 신고하면 참여 중인 동행 ID를 신고 API에 보낸다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'IN_PROGRESS',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.patch('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '운행 상태가 변경됐어요',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'COMPLETED',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 4,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.post('*/reports', async ({ request }) => {
+        expect(await request.json()).toEqual({
+          companion_id: 30,
+          reason: 'NO_SHOW',
+          reason_text: null,
+          reported_user_id: 9,
+        });
+
+        return HttpResponse.json(
+          {
+            message: '신고가 접수되었습니다',
+            data: { id: 4, created_at: '2026-09-06T09:00:00' },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_END_REQUESTED');
+
+    await user.click(await screen.findByRole('button', { name: '확인' }));
+    await user.click(screen.getByRole('button', { name: '루디 신고하기' }));
+    await user.click(screen.getByRole('radio', { name: '노쇼' }));
+    await user.click(screen.getByRole('button', { name: '신고하기' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '신고 사유를 선택해주세요' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
   it('타인의 메시지를 1초 이상 누르면 신고 메뉴를 연다', async () => {
     renderChattingPage();
     await screen.findByText('3분 뒤 도착합니다');
@@ -541,6 +611,43 @@ describe('ChattingPage', () => {
 
     await user.click(screen.getAllByLabelText('메시지 메뉴 열기')[0]);
     await user.click(screen.getByRole('menuitem', { name: '채팅 신고하기' }));
+    await user.click(screen.getByRole('button', { name: '신고하기' }));
+
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '신고 사유를 선택해주세요' }),
+      ).not.toBeInTheDocument(),
+    );
+  });
+
+  it('유저 신고하기를 누르면 참여 중인 동행 ID를 신고 API에 보낸다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.post('*/reports', async ({ request }) => {
+        expect(await request.json()).toEqual({
+          companion_id: 10,
+          reason: 'NO_SHOW',
+          reason_text: null,
+          reported_user_id: 7,
+        });
+
+        return HttpResponse.json(
+          {
+            message: '신고가 접수되었습니다',
+            data: { id: 4, created_at: '2026-09-06T09:00:00' },
+          },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderChattingPage();
+    await screen.findByText('3분 뒤 도착합니다');
+
+    await user.click(screen.getAllByLabelText('메시지 메뉴 열기')[0]);
+    await user.click(screen.getByRole('menuitem', { name: '유저 신고하기' }));
+    await user.click(screen.getByRole('radio', { name: '노쇼' }));
     await user.click(screen.getByRole('button', { name: '신고하기' }));
 
     await waitFor(() =>

@@ -10,10 +10,16 @@ type ChatMessageMenuProps = {
   reportedUserId: number;
 };
 
-export type ChatReportTarget = {
-  reportedMessageId: number | null;
-  reportedUserId: number;
-};
+export type ChatReportTarget =
+  | {
+      type: 'message';
+      reportedMessageId: number;
+      reportedUserId: number;
+    }
+  | {
+      type: 'user';
+      reportedUserId: number;
+    };
 
 export function ChatMessageMenu({
   children,
@@ -26,13 +32,13 @@ export function ChatMessageMenu({
       id: 'report-chat',
       icon: <Icon aria-hidden="true" name="messageSquareWarning" size={24} />,
       content: '채팅 신고하기',
-      onClick: () => onReport({ reportedMessageId: messageId, reportedUserId }),
+      onClick: () => onReport({ type: 'message', reportedMessageId: messageId, reportedUserId }),
     },
     {
       id: 'report-user',
       icon: <Icon aria-hidden="true" name="userRoundX" size={24} />,
       content: '유저 신고하기',
-      onClick: () => onReport({ reportedMessageId: null, reportedUserId }),
+      onClick: () => onReport({ type: 'user', reportedUserId }),
     },
   ];
 

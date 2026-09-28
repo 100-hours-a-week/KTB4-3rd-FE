@@ -7,8 +7,10 @@ export {
 } from './api/chat-rating';
 export {
   submitChatReport,
+  type ChatMessageReportPayload,
   type ChatReportData,
   type ChatReportReason as ApiChatReportReason,
+  type ChatUserReportPayload,
   type SubmitChatReportPayload,
   type SubmitChatReportResponse,
 } from './api/chat-report';
