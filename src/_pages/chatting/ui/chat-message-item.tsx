@@ -39,9 +39,13 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
 
   const messageClassName = getMessageClassName(message, index);
   const hasSenderNickname = message.variant === 'other' && Boolean(message.senderNickname);
+  const numericMessageId = Number(message.id);
+  const canReportMessage = message.variant === 'other' && message.senderId !== undefined;
+  const canOpenMessageMenu =
+    Number.isSafeInteger(numericMessageId) && (message.variant === 'me' || canReportMessage);
   const bubble = (
     <Bubble
-      aria-label={message.variant === 'other' ? '메시지 메뉴 열기' : undefined}
+      aria-label={canOpenMessageMenu ? '메시지 메뉴 열기' : undefined}
       className={cn(
         !hasSenderNickname && messageClassName,
         '!py-[14px]',
@@ -50,30 +54,26 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
       )}
       data-message-id={message.id}
       loading={message.loading}
-      role={message.variant === 'other' ? 'button' : undefined}
-      tabIndex={message.variant === 'other' ? 0 : undefined}
+      role={canOpenMessageMenu ? 'button' : undefined}
+      tabIndex={canOpenMessageMenu ? 0 : undefined}
       variant={message.variant}
     >
       {message.content}
     </Bubble>
   );
 
-  const numericMessageId = Number(message.id);
-
-  const bubbleWithMenu =
-    message.variant === 'other' &&
-    message.senderId !== undefined &&
-    Number.isSafeInteger(numericMessageId) ? (
-      <ChatMessageMenu
-        messageId={numericMessageId}
-        onReport={onReport}
-        reportedUserId={message.senderId}
-      >
-        {bubble}
-      </ChatMessageMenu>
-    ) : (
-      bubble
-    );
+  const bubbleWithMenu = canOpenMessageMenu ? (
+    <ChatMessageMenu
+      messageContent={message.content}
+      messageId={numericMessageId}
+      onReport={canReportMessage ? onReport : undefined}
+      reportedUserId={canReportMessage ? message.senderId : undefined}
+    >
+      {bubble}
+    </ChatMessageMenu>
+  ) : (
+    bubble
+  );
 
   if (!hasSenderNickname) {
     return bubbleWithMenu;

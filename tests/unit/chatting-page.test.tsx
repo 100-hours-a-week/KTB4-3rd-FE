@@ -717,6 +717,31 @@ describe('ChattingPage', () => {
     },
   );
 
+  it('메시지 텍스트를 누르면 복사 메뉴를 열고 content를 클립보드에 복사한다', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+    mockCurrentUserId(7);
+    renderChattingPage();
+
+    await screen.findByText('3분 뒤 도착합니다');
+    await waitFor(() =>
+      expect(screen.getByText('3분 뒤 도착합니다').closest('[data-variant]')).toHaveAttribute(
+        'data-variant',
+        'me',
+      ),
+    );
+
+    await user.click(screen.getByLabelText('메시지 메뉴 열기'));
+    await user.click(screen.getByRole('menuitem', { name: '복사하기' }));
+
+    expect(writeText).toHaveBeenCalledWith('3분 뒤 도착합니다');
+  });
+
   it('신고하기 버튼을 누르면 신고 API 요청을 보낸다', async () => {
     const user = userEvent.setup();
     mockCurrentUserId(1);

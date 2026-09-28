@@ -1,6 +1,7 @@
 import {
   CalendarDays,
   Clock3,
+  Copy,
   Crosshair,
   Info,
   LogOut,
@@ -62,6 +63,7 @@ const iconRegistry = {
   },
   calendarDays: { type: 'lucide', component: CalendarDays },
   clock3: { type: 'lucide', component: Clock3 },
+  copy: { type: 'lucide', component: Copy },
   info: { type: 'lucide', component: Info },
   messageSquare: { type: 'lucide', component: MessageSquare },
   crosshair: { type: 'lucide', component: Crosshair },
