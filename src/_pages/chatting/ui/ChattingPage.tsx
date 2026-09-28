@@ -144,6 +144,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
   const chatRoomDetail = detailQuery.data?.data;
   const companionId = chatRoomDetail?.companion_id;
+  const currentUserId = currentUserQuery.data?.data.id;
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
@@ -325,14 +326,14 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         return;
       }
 
-      appendLiveMessage(createChatRoomMessageFromApi(message));
+      appendLiveMessage(createChatRoomMessageFromApi(message, currentUserId));
     },
-    [appendLiveMessage, taxiPotFlow],
+    [appendLiveMessage, currentUserId, taxiPotFlow],
   );
 
   const baseRoom =
     chatRoomDetail && messagesQuery.data
-      ? createChatRoomFromApi(chatRoomDetail, messagesQuery.data.data.items)
+      ? createChatRoomFromApi(chatRoomDetail, messagesQuery.data.data.items, currentUserId)
       : undefined;
   const taxiPotEntryMessages = taxiPotDetail
     ? createTaxiPotChatEntryMessages(taxiPotDetail).map(toChatRoomMessage)
@@ -345,7 +346,22 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         messages: [...taxiPotEntryMessages, ...baseRoom.messages],
       }
     : undefined;
-  const liveMessages = liveMessagesState.roomId === roomId ? liveMessagesState.messages : [];
+  const liveMessages = useMemo(() => {
+    if (liveMessagesState.roomId !== roomId) {
+      return [];
+    }
+
+    return liveMessagesState.messages.map((message) => {
+      if (message.kind !== 'bubble' || message.senderId === undefined) {
+        return message;
+      }
+
+      return {
+        ...message,
+        variant: message.senderId === currentUserId ? ('me' as const) : ('other' as const),
+      };
+    });
+  }, [currentUserId, liveMessagesState, roomId]);
 
   return (
     <ChatRoomWebSocketConnection roomId={roomId} onMessage={handleWebSocketMessage}>
