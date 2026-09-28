@@ -196,4 +196,51 @@ describe('PostWritePage', () => {
       '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
     );
   });
+
+  it('백엔드 등록 오류 메시지를 스낵바로 표시한다', async () => {
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    usePostCreateStore.getState().setCompanionLocation('origin', {
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    usePostCreateStore.getState().setCompanionLocation('destination', {
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+    });
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-09-05');
+    usePostCreateStore.getState().setCompanionField('departureTime', {
+      period: '오전',
+      hour: 8,
+      minute: 30,
+    });
+    usePostCreateStore.getState().setCompanionField('recruitCount', 3);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: '출발 시간은 현재 시간 이후로 설정해주세요',
+          error: { code: 'INVALID_DEPARTURE_TIME', field: 'departure_at' },
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 422 },
+      ),
+    );
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '출발 시간은 현재 시간 이후로 설정해주세요',
+    );
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `${apiBaseUrl}/companion-posts`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '출발 시간은 현재 시간 이후로 설정해주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(navigation.push).not.toHaveBeenCalledWith('/');
+  });
 });

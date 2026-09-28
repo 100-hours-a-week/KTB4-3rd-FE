@@ -297,6 +297,12 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     router.push('/');
   };
 
+  const handlePostCreateError = (error: Error) => {
+    useSnackbarStore
+      .getState()
+      .showSnackbar(error.message || '게시글을 등록하지 못했어요. 다시 시도해주세요.', 'critical');
+  };
+
   const handlePostCreate = () => {
     if (isCompanion) {
       const payload = draft.getCompanionPayload();
@@ -304,7 +310,7 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
       if (payload) {
         postCreateMutation.mutate(
           { payload, type: 'COMPANION' },
-          { onSuccess: handlePostCreateSuccess },
+          { onError: handlePostCreateError, onSuccess: handlePostCreateSuccess },
         );
       } else {
         useSnackbarStore
@@ -323,7 +329,7 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
     if (payload) {
       postCreateMutation.mutate(
         { payload, type: 'COMMUNITY' },
-        { onSuccess: handlePostCreateSuccess },
+        { onError: handlePostCreateError, onSuccess: handlePostCreateSuccess },
       );
     }
   };
