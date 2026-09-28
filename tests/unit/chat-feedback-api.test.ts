@@ -8,6 +8,7 @@ import {
   type SubmitChatRatingsPayload,
 } from '@/features/chatting';
 import { useAuthStore } from '@/entities/auth';
+import { MOCK_CHAT_REPORT_SCENARIOS } from '@/shared/api/mocks/chat-feedback.handlers';
 
 const ratingsPayload: SubmitChatRatingsPayload = {
   ratings: [
@@ -63,6 +64,87 @@ describe('chat feedback API', () => {
     expect(response).toEqual({
       message: '신고가 접수되었습니다',
       data: { id: 4, created_at: '2026-09-06T09:00:00' },
+    });
+  });
+
+  it.each([
+    [
+      '메시지',
+      {
+        ...messageReportPayload,
+        reported_message_id: MOCK_CHAT_REPORT_SCENARIOS.INVALID_MESSAGE_ID,
+      },
+    ],
+    [
+      '유저',
+      { ...userReportPayload, companion_id: MOCK_CHAT_REPORT_SCENARIOS.INVALID_COMPANION_ID },
+    ],
+  ])('%s 신고 대상이 유효하지 않으면 거부한다', async (_label, payload) => {
+    await expect(submitChatReport(payload)).rejects.toMatchObject({
+      status: 400,
+      code: 'REPORT_TARGET_INVALID',
+      field: null,
+    });
+  });
+
+  it('신고 대상 유저가 존재하지 않으면 거부한다', async () => {
+    await expect(
+      submitChatReport({
+        ...messageReportPayload,
+        reported_user_id: MOCK_CHAT_REPORT_SCENARIOS.REPORTED_USER_NOT_FOUND_ID,
+      }),
+    ).rejects.toMatchObject({
+      status: 400,
+      code: 'REPORTED_USER_NOT_FOUND',
+      field: 'reported_user_id',
+    });
+  });
+
+  it.each([
+    [
+      '메시지',
+      {
+        ...messageReportPayload,
+        reported_message_id: MOCK_CHAT_REPORT_SCENARIOS.DUPLICATE_MESSAGE_ID,
+      },
+      'reported_message_id',
+      '이미 신고한 메시지입니다',
+    ],
+    [
+      '유저',
+      { ...userReportPayload, companion_id: MOCK_CHAT_REPORT_SCENARIOS.DUPLICATE_COMPANION_ID },
+      'reported_user_id',
+      '이미 신고한 유저입니다',
+    ],
+  ])('%s 중복 신고이면 409를 반환한다', async (_label, payload, field, message) => {
+    await expect(submitChatReport(payload)).rejects.toMatchObject({
+      status: 409,
+      code: 'DUPLICATE_REPORT',
+      field,
+      message,
+    });
+  });
+
+  it.each([
+    [
+      '메시지',
+      {
+        ...messageReportPayload,
+        reported_message_id: MOCK_CHAT_REPORT_SCENARIOS.INTERNAL_SERVER_ERROR_MESSAGE_ID,
+      },
+    ],
+    [
+      '유저',
+      {
+        ...userReportPayload,
+        companion_id: MOCK_CHAT_REPORT_SCENARIOS.INTERNAL_SERVER_ERROR_COMPANION_ID,
+      },
+    ],
+  ])('%s 신고 처리 중 서버 오류가 발생하면 500을 반환한다', async (_label, payload) => {
+    await expect(submitChatReport(payload)).rejects.toMatchObject({
+      status: 500,
+      code: 'INTERNAL_SERVER_ERROR',
+      field: null,
     });
   });
 
