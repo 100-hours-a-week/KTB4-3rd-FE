@@ -126,6 +126,45 @@ describe('ChattingPage', () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
+  it('새로운 메시지가 추가되면 메시지 목록을 하단으로 스크롤한다', () => {
+    const connection = {
+      error: null,
+      sendMessage: vi.fn<(content: string) => boolean>(() => true),
+      status: 'open',
+    } satisfies ChatRoomWebSocketConnectionValue;
+    const { rerender } = render(
+      <ChatRoomContent connection={connection} liveMessages={[]} room={generalChatRoom} />,
+    );
+    const messageList = screen.getByLabelText('채팅 메시지');
+    const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
+
+    Object.defineProperty(messageList, 'scrollHeight', {
+      configurable: true,
+      value: 640,
+    });
+    Object.defineProperty(messageList, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    });
+
+    rerender(
+      <ChatRoomContent
+        connection={connection}
+        liveMessages={[
+          {
+            id: 'live-message',
+            kind: 'bubble',
+            content: '새로운 메시지',
+            variant: 'other',
+          },
+        ]}
+        room={generalChatRoom}
+      />,
+    );
+
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 640 });
+  });
+
   it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {
     renderChattingPage('599');
 
@@ -152,6 +191,36 @@ describe('ChattingPage', () => {
 
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
     expect(screen.getByRole('status')).toHaveTextContent('채팅방을 나갔어요');
+  });
+
+  it('일반 동행모집에서 나갈 때 마지막 메시지를 읽음 처리한 뒤 DELETE 요청을 보낸다', async () => {
+    const user = userEvent.setup();
+    const requests: string[] = [];
+
+    server.use(
+      http.put('*/chat-rooms/501/read-marker', async ({ request }) => {
+        requests.push('read-marker');
+        expect(await request.json()).toEqual({ last_read_message_id: '1453' });
+
+        return HttpResponse.json({
+          message: '읽음 처리되었습니다',
+          data: { last_read_message_id: 1453, has_unread: false },
+        });
+      }),
+      http.delete('*/companion-posts/10/participants/me', () => {
+        requests.push('leave');
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderChattingPage('501');
+    await screen.findByRole('heading', { name: '8시 판교역' });
+
+    await user.click(screen.getByRole('button', { name: '채팅방 나가기' }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    expect(requests).toEqual(['read-marker', 'leave']);
   });
 
   it('방장이면 택시팟 입장 안내 메시지를 순서대로 렌더링한다', async () => {

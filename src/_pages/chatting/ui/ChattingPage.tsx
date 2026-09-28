@@ -18,6 +18,7 @@ import {
   useChatReportMutation,
 } from '@/features/chatting';
 import type { ChatWebSocketMessage } from '@/entities/chat';
+import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
   createTaxiPotChatEntryMessages,
   TaxiPotAnnouncement,
@@ -36,6 +37,7 @@ import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
 import {
   useChatRoomQueries,
+  useChatRoomReadMarkerMutation,
   type ChatRoomDetailData,
   type ChatRoomMessageData,
 } from '@/_pages/chatting/api/chat-room';
@@ -128,6 +130,24 @@ const reportReasonMap = {
   unpaid: 'UNSETTLED',
 } as const;
 
+function getLastPersistedMessageId(messages: readonly ChatRoomMessage[]) {
+  let latestMessage: { id: string; numericId: number } | undefined;
+
+  for (const message of messages) {
+    const numericId = Number(message.id);
+
+    if (!Number.isSafeInteger(numericId)) {
+      continue;
+    }
+
+    if (!latestMessage || numericId > latestMessage.numericId) {
+      latestMessage = { id: message.id, numericId };
+    }
+  }
+
+  return latestMessage?.id;
+}
+
 export function ChattingPage({ roomId }: ChattingPageProps) {
   const router = useRouter();
   const [liveMessagesState, setLiveMessagesState] = useState<LiveMessagesState>({
@@ -138,7 +158,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const currentUserQuery = useCurrentUserQuery();
   const ratingMutation = useChatRatingMutation();
   const reportMutation = useChatReportMutation();
-  const leaveMutation = useLeaveTaxiPotMutation();
+  const leaveCompanionMutation = useLeaveCompanionMutation();
+  const leaveTaxiPotMutation = useLeaveTaxiPotMutation();
+  const readMarkerMutation = useChatRoomReadMarkerMutation();
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
@@ -302,24 +324,6 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   );
 
   const handleLeave = useCallback(() => setIsLeaveDialogOpen(true), []);
-  const handleLeaveConfirm = useCallback(() => {
-    if (!taxiPotId) {
-      return;
-    }
-
-    leaveMutation.mutate(Number(taxiPotId), {
-      onError: (error) => {
-        useSnackbarStore
-          .getState()
-          .showSnackbar(error.message || '채팅방을 나가지 못했어요', 'critical');
-      },
-      onSuccess: () => {
-        setIsLeaveDialogOpen(false);
-        useSnackbarStore.getState().showSnackbar('채팅방을 나갔어요', 'positive');
-        router.push('/');
-      },
-    });
-  }, [leaveMutation, router, taxiPotId]);
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
       if (taxiPotFlow.handleWebSocketMessage(message)) {
@@ -362,6 +366,59 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
       };
     });
   }, [currentUserId, liveMessagesState, roomId]);
+  const lastMessageId = useMemo(
+    () => getLastPersistedMessageId([...(room?.messages ?? []), ...liveMessages]),
+    [liveMessages, room?.messages],
+  );
+  const handleLeaveConfirm = useCallback(async () => {
+    if (companionId === undefined) {
+      return;
+    }
+
+    if (lastMessageId) {
+      try {
+        await readMarkerMutation.mutateAsync({
+          lastReadMessageId: lastMessageId,
+          roomId,
+        });
+      } catch {
+        // 읽음 처리는 나가기보다 부수적인 작업이므로 실패해도 나가기는 계속 진행한다.
+      }
+    }
+
+    try {
+      if (isTaxiPot) {
+        await leaveTaxiPotMutation.mutateAsync(Number(taxiPotId));
+      } else {
+        await leaveCompanionMutation.mutateAsync(companionId);
+      }
+
+      setIsLeaveDialogOpen(false);
+      useSnackbarStore.getState().showSnackbar('채팅방을 나갔어요', 'positive');
+      router.push('/');
+    } catch (error) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar(
+          error instanceof Error ? error.message : '채팅방을 나가지 못했어요',
+          'critical',
+        );
+    }
+  }, [
+    companionId,
+    isTaxiPot,
+    lastMessageId,
+    leaveCompanionMutation,
+    leaveTaxiPotMutation,
+    readMarkerMutation,
+    roomId,
+    router,
+    taxiPotId,
+  ]);
+  const leaveLoading =
+    readMarkerMutation.isPending ||
+    leaveCompanionMutation.isPending ||
+    leaveTaxiPotMutation.isPending;
 
   return (
     <ChatRoomWebSocketConnection roomId={roomId} onMessage={handleWebSocketMessage}>
@@ -394,7 +451,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           rideAction={taxiPotFlow.rideAction}
           rideActionLoading={taxiPotFlow.isPending}
           reportLoading={reportMutation.isPending}
-          leaveLoading={leaveMutation.isPending}
+          leaveLoading={leaveLoading}
           ratingLoading={ratingMutation.isPending}
           room={room}
           taxiPotDetail={taxiPotDetail}
@@ -501,7 +558,7 @@ function ChattingPageContent({
       />
     ) : null;
   const showLeaveButton =
-    isTaxiPot && (taxiPotStatus === undefined || taxiPotStatus === 'RECRUITING');
+    !isTaxiPot || taxiPotStatus === undefined || taxiPotStatus === 'RECRUITING';
 
   return (
     <>

@@ -21,6 +21,12 @@ export function ChatMessageList({
   bottomContent,
 }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
+  const latestMessageId = messages[messages.length - 1]?.id;
+  const previousMessagesRef = useRef({
+    count: messages.length,
+    lastMessageId: latestMessageId,
+    roomId,
+  });
 
   useEffect(() => {
     if (lastReadMessageId === null) {
@@ -33,6 +39,31 @@ export function ChatMessageList({
 
     lastReadMessage?.scrollIntoView?.({ block: 'center' });
   }, [roomId, lastReadMessageId]);
+
+  useEffect(() => {
+    const previousMessages = previousMessagesRef.current;
+    const isRoomChanged = previousMessages.roomId !== roomId;
+    const hasNewMessage =
+      messages.length > previousMessages.count ||
+      latestMessageId !== previousMessages.lastMessageId;
+
+    previousMessagesRef.current = {
+      count: messages.length,
+      lastMessageId: latestMessageId,
+      roomId,
+    };
+
+    if (isRoomChanged || !hasNewMessage) {
+      return;
+    }
+
+    const messageList = messagesRef.current;
+
+    messageList?.scrollTo?.({
+      behavior: 'smooth',
+      top: messageList.scrollHeight,
+    });
+  }, [latestMessageId, messages.length, roomId]);
 
   return (
     <div

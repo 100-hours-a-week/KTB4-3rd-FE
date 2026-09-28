@@ -1,7 +1,11 @@
 import { getAccessToken } from '@/entities/auth';
 import { apiFetch } from '@/shared/api/client';
 
-import type { ChatRoomDetailResponse, ChatRoomMessagesResponse } from './chat-room.types';
+import type {
+  ChatRoomDetailResponse,
+  ChatRoomMessagesResponse,
+  ChatRoomReadMarkerResponse,
+} from './chat-room.types';
 
 export async function getChatRoomDetail(roomId: string): Promise<ChatRoomDetailResponse> {
   const accessToken = await getAccessToken();
@@ -20,5 +24,18 @@ export async function getChatRoomMessages(
 
   return apiFetch<ChatRoomMessagesResponse>(`/chat-rooms/${roomId}/messages${searchParams}`, {
     token: accessToken,
+  });
+}
+
+export async function markChatRoomAsRead(
+  roomId: string,
+  lastReadMessageId: string,
+): Promise<ChatRoomReadMarkerResponse> {
+  const accessToken = await getAccessToken();
+
+  return apiFetch<ChatRoomReadMarkerResponse>(`/chat-rooms/${roomId}/read-marker`, {
+    method: 'PUT',
+    token: accessToken,
+    body: JSON.stringify({ last_read_message_id: lastReadMessageId }),
   });
 }

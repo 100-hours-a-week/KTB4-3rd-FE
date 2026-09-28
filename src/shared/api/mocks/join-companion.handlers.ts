@@ -46,4 +46,30 @@ export const joinCompanionHandlers = [
       },
     );
   }),
+  http.delete('*/companion-posts/:companionId/participants/me', ({ request, params }) => {
+    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
+      return HttpResponse.json(
+        {
+          message: '로그인이 필요합니다',
+          error: { code: 'UNAUTHORIZED', field: null },
+        },
+        {
+          status: 401,
+          headers: { 'WWW-Authenticate': 'Bearer' },
+        },
+      );
+    }
+
+    const companionId = Number(params.companionId);
+
+    if (companionId === 999) {
+      return errorResponse('서버 오류가 발생했습니다', 'INTERNAL_SERVER_ERROR', null, 500);
+    }
+
+    if (![1, 10].includes(companionId)) {
+      return errorResponse('참여 중인 동행 모집이 아닙니다', 'COMPANION_POST_NOT_FOUND', null, 404);
+    }
+
+    return new HttpResponse(null, { status: 204 });
+  }),
 ];
