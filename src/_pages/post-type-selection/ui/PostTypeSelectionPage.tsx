@@ -6,11 +6,7 @@ import { MapPin } from '@/entities/map-pin';
 import type { PostType } from '@/entities/post';
 import { usePostCreateStore } from '@/features/post-create';
 import { BackButton } from '@/shared/ui/back-button';
-import {
-  BottomActionButton,
-  bottomActionFixedClassName,
-  bottomActionScrollPaddingImportantClassName,
-} from '@/shared/ui/bottom-action-button';
+import { BottomActionButton, bottomActionFixedClassName } from '@/shared/ui/bottom-action-button';
 import { Divider } from '@/shared/ui/divider';
 import { Dialog } from '@/shared/ui/dialog';
 import { Header } from '@/shared/ui/header';
@@ -37,6 +33,9 @@ const postTypeOptions = [
   description: string;
   pinVariant: 'accompany' | 'community';
 }[];
+
+const postTypeSelectionContentClassName =
+  '!pb-[calc(var(--dimension-x13)+var(--spacing-y-screen-bottom)+var(--dimension-x3)+env(safe-area-inset-bottom,0px))]';
 
 export type PostTypeSelectionPageProps = {
   backHref?: string;
@@ -143,7 +142,7 @@ export function PostTypeSelectionPage({
   return (
     <PageLayout
       className={className}
-      contentClassName={bottomActionScrollPaddingImportantClassName}
+      contentClassName={postTypeSelectionContentClassName}
       footer={
         <BottomActionButton
           className={bottomActionFixedClassName}

@@ -29,6 +29,9 @@ describe('PostTypeSelectionPage', () => {
 
     expect(locationSection).toHaveClass('mt-[clamp(40px,calc(100dvh-652px),152px)]');
     expect(locationSection.parentElement).toHaveClass('shrink-0');
+    expect(screen.getByRole('main')).toHaveClass(
+      '!pb-[calc(var(--dimension-x13)+var(--spacing-y-screen-bottom)+var(--dimension-x3)+env(safe-area-inset-bottom,0px))]',
+    );
     expect(screen.getByText('선택 위치')).toBeInTheDocument();
     expect(screen.getByText('강남역')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
