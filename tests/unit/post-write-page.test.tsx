@@ -86,6 +86,12 @@ describe('PostWritePage', () => {
     expect(screen.getByLabelText('글자 수', { selector: 'span' })).toHaveTextContent('0 / 200');
     expect(screen.queryByText('도움말 텍스트 입력')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '등록하기' })).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveClass(
+      '!pb-[calc(var(--dimension-x13)+var(--spacing-y-screen-bottom)+var(--dimension-x3)+env(safe-area-inset-bottom,0px))]',
+    );
+    expect(screen.getByRole('region', { name: '동행모집 게시글 작성' }).parentElement).toHaveClass(
+      'shrink-0',
+    );
     fireEvent.click(screen.getByRole('button', { name: '출발 날짜' }));
     expect(screen.getAllByRole('dialog').at(-1)).toHaveClass('max-w-[393px]');
   });
@@ -226,13 +232,64 @@ describe('PostWritePage', () => {
 
     expect(fetchSpy).not.toHaveBeenCalled();
     expect(useSnackbarStore.getState()).toMatchObject({
-      description: '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
+      description: '모든 항목을 채워주세요',
       open: true,
       type: 'critical',
     });
-    expect(screen.getByRole('status')).toHaveTextContent(
-      '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
-    );
+    expect(screen.getByRole('status')).toHaveTextContent('모든 항목을 채워주세요');
+  });
+
+  it('동행모집 필수 항목이 하나만 누락되면 해당 필드 작성을 안내한다', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    usePostCreateStore.getState().setCompanionLocation('origin', {
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    usePostCreateStore.getState().setCompanionLocation('destination', {
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+    });
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-09-05');
+    usePostCreateStore.getState().setCompanionField('recruitCount', 3);
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '출발 시간을 작성해주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('출발 시간을 작성해주세요');
+  });
+
+  it('동행모집 필수 항목이 두 개 이상 누락되면 전체 작성을 안내한다', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    usePostCreateStore.getState().setCompanionLocation('origin', {
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    usePostCreateStore.getState().setCompanionLocation('destination', {
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+    });
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-09-05');
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '모든 항목을 채워주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('모든 항목을 채워주세요');
   });
 
   it('백엔드 등록 오류 메시지를 스낵바로 표시한다', async () => {

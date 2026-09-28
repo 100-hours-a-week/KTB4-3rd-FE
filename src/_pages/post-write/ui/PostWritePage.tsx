@@ -5,18 +5,16 @@ import { useEffect, useRef } from 'react';
 
 import type { CompanionTransport } from '@/entities/post';
 import {
+  getCompanionMissingFields,
   usePostCreateMutation,
   usePostCreateStore,
+  type CompanionPostCreateRequiredField,
   type PostCreateState,
   type PostCreateTime,
 } from '@/features/post-create';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
-import {
-  BottomActionButton,
-  bottomActionFixedClassName,
-  bottomActionScrollPaddingImportantClassName,
-} from '@/shared/ui/bottom-action-button';
+import { BottomActionButton, bottomActionFixedClassName } from '@/shared/ui/bottom-action-button';
 import { DateInputButton } from '@/shared/ui/date-input-button';
 import { Field } from '@/shared/ui/field';
 import { Header } from '@/shared/ui/header';
@@ -67,9 +65,20 @@ const postWriteBottomSheetProps = {
   className: 'mx-auto w-full max-w-[393px]',
 };
 
+const postWriteContentClassName =
+  '!pb-[calc(var(--dimension-x13)+var(--spacing-y-screen-bottom)+var(--dimension-x3)+env(safe-area-inset-bottom,0px))]';
+
 const draftTypeByPostWriteType: Record<PostWriteType, 'COMPANION' | 'COMMUNITY'> = {
   accompany: 'COMPANION',
   community: 'COMMUNITY',
+};
+
+const companionMissingFieldMessages: Record<CompanionPostCreateRequiredField, string> = {
+  origin: '출발지를 작성해주세요',
+  destination: '목적지를 작성해주세요',
+  departureDate: '출발 날짜를 작성해주세요',
+  departureTime: '출발 시간을 작성해주세요',
+  recruitCount: '모집 인원을 작성해주세요',
 };
 
 function toDateInputValue(value: string | null) {
@@ -305,6 +314,18 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
 
   const handlePostCreate = () => {
     if (isCompanion) {
+      const missingFields = getCompanionMissingFields(draft.companion);
+
+      if (missingFields.length > 0) {
+        const description =
+          missingFields.length === 1
+            ? companionMissingFieldMessages[missingFields[0]]
+            : '모든 항목을 채워주세요';
+
+        useSnackbarStore.getState().showSnackbar(description, 'critical');
+        return;
+      }
+
       const payload = draft.getCompanionPayload();
 
       if (payload) {
@@ -312,13 +333,6 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
           { payload, type: 'COMPANION' },
           { onError: handlePostCreateError, onSuccess: handlePostCreateSuccess },
         );
-      } else {
-        useSnackbarStore
-          .getState()
-          .showSnackbar(
-            '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
-            'critical',
-          );
       }
 
       return;
@@ -337,7 +351,7 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
   return (
     <PageLayout
       className={className}
-      contentClassName={bottomActionScrollPaddingImportantClassName}
+      contentClassName={postWriteContentClassName}
       footer={
         <>
           <BottomActionButton
@@ -359,11 +373,11 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
       }
     >
       {isCompanion ? (
-        <div className="flex min-h-0 flex-1 flex-col pt-10">
+        <div className="flex shrink-0 flex-col pt-10">
           <CompanionPostWriteForm draft={draft} onOpenLocationSearch={openLocationSearch} />
         </div>
       ) : (
-        <div className="flex min-h-0 flex-1 flex-col pt-6">
+        <div className="flex shrink-0 flex-col pt-6">
           <CommunityPostWriteForm draft={draft} />
         </div>
       )}

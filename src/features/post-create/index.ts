@@ -6,9 +6,11 @@ export {
 } from './api';
 export { PostCreateFab, type PostCreateFabProps } from './ui/post-create-fab';
 export {
+  getCompanionMissingFields,
   usePostCreateStore,
   type CompanionPostCreateDraft,
   type CompanionPostCreatePayload,
+  type CompanionPostCreateRequiredField,
   type CommunityPostCreateDraft,
   type CommunityPostCreatePayload,
   type PostCreateLocation,
