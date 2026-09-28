@@ -13,6 +13,10 @@ export {
   type LocationSearchScreenProps,
 } from './ui/location-search-screen';
 export {
+  LocationSearchResultsSkeleton,
+  type LocationSearchResultsSkeletonProps,
+} from './ui/location-search-results-skeleton';
+export {
   useKakaoPlaceSearch,
   type KakaoPlaceSearchStatus,
   type UseKakaoPlaceSearchOptions,
