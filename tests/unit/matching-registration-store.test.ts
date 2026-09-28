@@ -25,6 +25,21 @@ describe('useMatchingRegistrationStore', () => {
     });
   });
 
+  it('매칭 등록 payload의 좌표를 소수점 6자리까지 반올림한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '판교역', lat: 37.3945678, lng: 127.11123456 });
+    store.setDestination({ name: '강남역', lat: 37.4979004, lng: 127.02760049 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(store.getPayload()).toMatchObject({
+      origin_lat: 37.394568,
+      origin_lng: 127.111235,
+      dest_lat: 37.4979,
+      dest_lng: 127.0276,
+    });
+  });
+
   it('필수 값이 모두 채워지기 전에는 payload를 반환하지 않는다', () => {
     useMatchingRegistrationStore.getState().setOrigin({
       name: '판교역',

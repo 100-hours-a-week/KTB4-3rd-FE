@@ -18,6 +18,8 @@ export type MatchingRegistrationPayload = {
 
 export type MatchingRegistrationValidationField = 'origin' | 'destination' | 'departureAt';
 
+const COORDINATE_PRECISION = 6;
+
 type MatchingRegistrationDraft = {
   origin_name: string | null;
   origin_lat: number | null;
@@ -107,11 +109,11 @@ function getPayload(state: MatchingRegistrationDraft): MatchingRegistrationPaylo
 
   return {
     origin_name: state.origin_name,
-    origin_lat: state.origin_lat,
-    origin_lng: state.origin_lng,
+    origin_lat: Number(state.origin_lat.toFixed(COORDINATE_PRECISION)),
+    origin_lng: Number(state.origin_lng.toFixed(COORDINATE_PRECISION)),
     dest_name: state.dest_name,
-    dest_lat: state.dest_lat,
-    dest_lng: state.dest_lng,
+    dest_lat: Number(state.dest_lat.toFixed(COORDINATE_PRECISION)),
+    dest_lng: Number(state.dest_lng.toFixed(COORDINATE_PRECISION)),
     departure_at: state.departure_at,
   };
 }
