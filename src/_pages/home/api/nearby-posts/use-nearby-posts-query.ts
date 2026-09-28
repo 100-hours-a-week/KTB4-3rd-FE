@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery } from '@tanstack/react-query';
 
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapViewport } from '@/shared/ui/map';
@@ -26,7 +26,7 @@ export function useNearbyPostsQuery(location: MapCoordinate | null, viewport: Ma
     ? toNearbyPostsQuery(location ?? SEOUL_STATION_COORDINATE, viewport)
     : null;
 
-  return useQuery({
+  return useInfiniteQuery({
     ...nearbyPostsQueries.list(query),
     enabled: viewport !== null,
   });

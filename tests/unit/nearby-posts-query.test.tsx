@@ -63,4 +63,37 @@ describe('useNearbyPostsQuery', () => {
       lng: String(SEOUL_STATION_COORDINATE.lng),
     });
   });
+
+  it('next_cursor를 이용해 다음 주변 게시글 페이지를 조회한다', async () => {
+    const requestedCursors: (string | null)[] = [];
+
+    server.use(
+      http.get('*/nearby-posts', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        requestedCursors.push(cursor);
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [],
+            next_cursor: cursor === null ? 'next-page' : null,
+          },
+        });
+      }),
+    );
+
+    const { result } = renderHook(() => useNearbyPostsQuery(null, viewport), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages).toHaveLength(1);
+    expect(result.current.hasNextPage).toBe(true);
+
+    await result.current.fetchNextPage();
+
+    await waitFor(() => expect(result.current.data?.pages).toHaveLength(2));
+    expect(result.current.hasNextPage).toBe(false);
+    expect(requestedCursors).toEqual([null, 'next-page']);
+  });
 });
