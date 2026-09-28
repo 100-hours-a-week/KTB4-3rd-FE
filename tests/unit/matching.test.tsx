@@ -264,6 +264,17 @@ describe('MatchingLocationPage', () => {
     expect(screen.getByRole('textbox', { name: '출발지' })).toHaveValue('');
   });
 
+  it('출발지 검색어가 없으면 mock 검색 결과를 표시하지 않는다', () => {
+    searchParams.set('field', 'departure');
+    useMatchingStore.getState().setLocation('departure', null);
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    expect(screen.queryByRole('list', { name: '장소 검색 결과' })).not.toBeInTheDocument();
+    expect(screen.queryByText('유스페이스1빌딩')).not.toBeInTheDocument();
+  });
+
   it('검색 결과의 도착 버튼을 누르면 위치를 바로 지정한다', () => {
     useKakaoPlaceSearch.mockReturnValue({
       error: null,

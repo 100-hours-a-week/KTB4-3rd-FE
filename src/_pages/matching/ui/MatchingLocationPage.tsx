@@ -1,10 +1,9 @@
 'use client';
 
 import { useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState, type ComponentRef } from 'react';
+import { useEffect, useRef, useState, type ComponentRef } from 'react';
 
 import {
-  defaultLocationSearchResults,
   LocationSearchResultsSkeleton,
   useKakaoPlaceSearch,
   type LocationSearchResult,
@@ -68,13 +67,7 @@ export function MatchingLocationPage() {
     input?.focus();
   }, [activeField]);
 
-  const searchResults = useMemo(
-    () =>
-      searchQuery.trim() || kakaoSearch.status !== 'idle'
-        ? kakaoSearch.results
-        : defaultLocationSearchResults,
-    [kakaoSearch.results, kakaoSearch.status, searchQuery],
-  );
+  const searchResults = kakaoSearch.results;
   const shouldShowResults = searchResults.length > 0 || kakaoSearch.status !== 'idle';
   const showResultLabel = departure === null && destination === null;
 
