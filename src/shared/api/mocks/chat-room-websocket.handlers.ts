@@ -268,7 +268,7 @@ function handleSend(frame: StompFrame) {
   emitMockChatRoomMessage(roomId, message);
 }
 
-const chatRoomWebSocket = ws.link('*/ws');
+const chatRoomWebSocket = ws.link('*/wss');
 
 const chatRoomWebSocketHandler = chatRoomWebSocket.addEventListener('connection', ({ client }) => {
   let isConnected = false;

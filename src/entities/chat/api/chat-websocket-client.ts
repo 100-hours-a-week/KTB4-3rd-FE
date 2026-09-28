@@ -113,7 +113,7 @@ function getDefaultWebSocketUrl() {
     const apiPath = url.pathname.replace(/\/$/, '');
 
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
-    url.pathname = apiPath && apiPath !== '/' ? `${apiPath}/ws` : '/ws';
+    url.pathname = apiPath && apiPath !== '/' ? `${apiPath}/wss` : '/wss';
     url.search = '';
     url.hash = '';
 
@@ -122,12 +122,12 @@ function getDefaultWebSocketUrl() {
 
   if (typeof window !== 'undefined') {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const websocketPath = apiBaseUrl === '/' ? '/ws' : `${apiBaseUrl}/ws`;
+    const websocketPath = apiBaseUrl === '/' ? '/wss' : `${apiBaseUrl}/wss`;
 
     return `${protocol}//${window.location.host}${websocketPath}`;
   }
 
-  return 'ws://localhost:8080/ws';
+  return 'ws://localhost:8080/wss';
 }
 
 async function readWebSocketData(data: unknown) {
