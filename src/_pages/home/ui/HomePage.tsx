@@ -61,6 +61,7 @@ import type { MapCoordinate } from '@/shared/types/common';
 import { ResultSection } from '@/shared/ui/result-section';
 import { Snackbar } from '@/shared/ui/snackbar';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
+import { Text } from '@/shared/ui/text';
 
 import { HomeNearbyPostsSkeleton } from './home-page-loading';
 
@@ -170,6 +171,7 @@ export function HomePage() {
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
   const mapRef = useRef<MapRef>(null);
+  const loadMorePostsRef = useRef<HTMLDivElement>(null);
   const currentUserQuery = useCurrentUserQuery();
 
   const selectedCompanionId = selectedPost?.post.type === 'COMPANION' ? selectedPost.post.id : null;
@@ -189,9 +191,15 @@ export function HomePage() {
   } = communityCommentsQuery;
   const mapPinsQuery = useMapPinsQuery(mapViewport);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
+  const {
+    fetchNextPage: fetchNextNearbyPosts,
+    hasNextPage: hasNextNearbyPosts,
+    isError: isNearbyPostsError,
+    isFetchingNextPage: isFetchingNextNearbyPosts,
+  } = nearbyPostsQuery;
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
   const nearbyPosts = useMemo(
-    () => nearbyPostsQuery.data?.data.items ?? [],
+    () => nearbyPostsQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
     [nearbyPostsQuery.data],
   );
   const communityComments = useMemo(
@@ -324,6 +332,40 @@ export function HomePage() {
     void fetchNextComments();
   }, [fetchNextComments, hasNextComments, isCommentsError, isFetchingNextComments]);
 
+  const handleLoadMorePosts = useCallback(() => {
+    if (!hasNextNearbyPosts || isNearbyPostsError || isFetchingNextNearbyPosts) {
+      return;
+    }
+
+    void fetchNextNearbyPosts();
+  }, [fetchNextNearbyPosts, hasNextNearbyPosts, isFetchingNextNearbyPosts, isNearbyPostsError]);
+
+  useEffect(() => {
+    const target = loadMorePostsRef.current;
+
+    if (
+      !target ||
+      !hasNextNearbyPosts ||
+      isNearbyPostsError ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !isFetchingNextNearbyPosts) {
+          handleLoadMorePosts();
+        }
+      },
+      { rootMargin: '0px 0px 160px 0px' },
+    );
+
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [handleLoadMorePosts, hasNextNearbyPosts, isFetchingNextNearbyPosts, isNearbyPostsError]);
+
   const handleCommentSubmit = useCallback(
     (content: string) => {
       if (selectedCommunityId === null) {
@@ -415,12 +457,14 @@ export function HomePage() {
           modal={false}
           open={selectedPost === null}
           showBackdrop={false}
+          showScrollFog
+          scrollContentKey={nearbyPosts.length}
           snapPoints={['110px', 0.5, 0.7]}
           title="근처 핀 게시글"
           description="가까운 순"
         >
           {nearbyPostsQuery.isPending ? <HomeNearbyPostsSkeleton /> : null}
-          {nearbyPostsQuery.isError ? (
+          {isNearbyPostsError && nearbyPosts.length === 0 ? (
             <ResultSection
               buttons="primary"
               description={POST_ERROR_DESCRIPTION}
@@ -431,7 +475,7 @@ export function HomePage() {
               title={POST_ERROR_TITLE}
             />
           ) : null}
-          {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length === 0 ? (
+          {!nearbyPostsQuery.isPending && !isNearbyPostsError && nearbyPosts.length === 0 ? (
             <ResultSection
               buttons="primary"
               description="가장 먼저 글을 등록하고 동행자를 찾아보세요"
@@ -442,8 +486,27 @@ export function HomePage() {
               title="등록된 게시글이 없어요"
             />
           ) : null}
-          {!nearbyPostsQuery.isPending && !nearbyPostsQuery.isError && nearbyPosts.length > 0 ? (
-            <PostList items={nearbyPosts} onItemClick={handlePostClick} />
+          {!nearbyPostsQuery.isPending && nearbyPosts.length > 0 ? (
+            <PostList
+              className="pb-[calc(72px+env(safe-area-inset-bottom,0px))]"
+              items={nearbyPosts}
+              onItemClick={handlePostClick}
+            />
+          ) : null}
+          {hasNextNearbyPosts && nearbyPosts.length > 0 ? (
+            <div
+              aria-busy={isFetchingNextNearbyPosts}
+              aria-live="polite"
+              className="flex min-h-8 items-center justify-center py-2"
+              data-testid="home-post-list-load-more"
+              ref={loadMorePostsRef}
+            >
+              {isFetchingNextNearbyPosts ? (
+                <Text color="fg.neutralSubtle" variant="t4Regular">
+                  게시글을 불러오는 중이에요.
+                </Text>
+              ) : null}
+            </div>
           ) : null}
         </BottomSheet>
 

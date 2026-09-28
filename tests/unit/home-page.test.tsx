@@ -237,6 +237,67 @@ describe('HomePage', () => {
     expect(await screen.findByRole('button', { name: /판교역 → 강남역/ })).toBeInTheDocument();
     expect(screen.getByText('판교역 근처 카페 추천')).toBeInTheDocument();
     expect(screen.getByText(/택시 · 320m/)).toBeInTheDocument();
+    expect(screen.getAllByRole('list').at(-1)).toHaveClass(
+      'pb-[calc(72px+env(safe-area-inset-bottom,0px))]',
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-content').at(-1)).toHaveClass(
+      '[scrollbar-width:none]',
+      '[-ms-overflow-style:none]',
+      '[&::-webkit-scrollbar]:hidden',
+    );
+  });
+
+  it('게시글 리스트 하단에 도달하면 다음 페이지 게시글을 조회한다', async () => {
+    const requestedCursors: (string | null)[] = [];
+
+    server.use(
+      http.get('*/nearby-posts', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        requestedCursors.push(cursor);
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items:
+              cursor === null
+                ? [
+                    {
+                      type: 'COMMUNITY',
+                      id: 88,
+                      title: '첫 페이지 게시글',
+                      author: { nickname: '루디', profile_image_url: null },
+                      distance_m: 540,
+                      comment_count: 3,
+                      created_at: '2026-09-03T10:00:00.000Z',
+                    },
+                  ]
+                : [
+                    {
+                      type: 'COMMUNITY',
+                      id: 89,
+                      title: '다음 페이지 게시글',
+                      author: { nickname: '하루', profile_image_url: null },
+                      distance_m: 620,
+                      comment_count: 1,
+                      created_at: '2026-09-03T11:00:00.000Z',
+                    },
+                  ],
+            next_cursor: cursor === null ? 'next-page' : null,
+          },
+        });
+      }),
+    );
+
+    renderHomePage();
+
+    expect(await screen.findByRole('button', { name: /첫 페이지 게시글/ })).toBeInTheDocument();
+    expect(screen.getByTestId('home-post-list-load-more')).toBeInTheDocument();
+
+    MockIntersectionObserver.trigger();
+
+    expect(await screen.findByRole('button', { name: /다음 페이지 게시글/ })).toBeInTheDocument();
+    expect(requestedCursors).toEqual([null, 'next-page']);
   });
 
   it('주변 게시글 조회 오류를 ResultSection으로 표시하고 다시 조회한다', async () => {

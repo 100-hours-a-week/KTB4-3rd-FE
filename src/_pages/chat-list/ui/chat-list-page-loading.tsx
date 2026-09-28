@@ -5,10 +5,8 @@ import { BackButton } from '@/shared/ui/back-button';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
-import { ScrollFog } from '@/shared/ui/scroll-fog';
+import { ScrollFog, useScrollFog } from '@/shared/ui/scroll-fog';
 import { Skeleton } from '@/shared/ui/skeleton';
-
-import { useScrollFog } from './use-scroll-fog';
 
 const SKELETON_ROWS = Array.from({ length: 6 }, (_, index) => index);
 

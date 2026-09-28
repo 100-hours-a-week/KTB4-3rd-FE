@@ -97,6 +97,7 @@ export const LongContent: Story = {
     defaultOpen: true,
     title: '긴 콘텐츠',
     description: '시트 내부에서만 스크롤됩니다.',
+    showScrollFog: true,
     children: <PostList count={20} />,
   },
 };
