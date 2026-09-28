@@ -149,6 +149,30 @@ describe('HomePage', () => {
     });
   });
 
+  it('비로그인 사용자는 로그인하기 버튼을 표시하고 로그인 페이지로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    renderHomePage();
+
+    await user.click(screen.getByRole('button', { name: '로그인하기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/login');
+  });
+
+  it('로그인한 사용자가 아바타를 클릭하면 사용자 메뉴를 연다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    renderHomePage();
+
+    await user.click(await screen.findByRole('button', { name: '프로필 메뉴 열기' }));
+
+    expect(screen.getByRole('menu')).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '정보수정하기' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '로그아웃' })).toBeInTheDocument();
+    expect(screen.getByRole('menuitem', { name: '회원 탈퇴' })).toBeInTheDocument();
+  });
+
   it('지도, 글쓰기 버튼, 바텀시트, 하단 네비게이션을 조합한다', () => {
     renderHomePage();
 

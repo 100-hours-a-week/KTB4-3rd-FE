@@ -23,6 +23,7 @@ import {
   CommunityPostDetail as CommunityPostDetailView,
   type CommunityPostCommentFeedback,
 } from '@/features/post-detail';
+import { HeaderUser } from '@/features/header-user';
 import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
@@ -45,7 +46,6 @@ import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { BottomModal } from '@/shared/ui/bottom-modal';
 import { BottomNav } from '@/shared/ui/BottomNav';
-import { Avatar } from '@/shared/ui/avatar';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Logo } from '@/shared/ui/logo';
@@ -364,12 +364,7 @@ export function HomePage() {
           }
           rightSlot={
             <span className="pt-3 pr-1.5">
-              <Avatar
-                alt="프로필"
-                className="size-[42px]"
-                size="md"
-                src={currentUserQuery.data?.data.profile_image_url}
-              />
+              <HeaderUser user={currentUserQuery.data?.data} />
             </span>
           }
         />
