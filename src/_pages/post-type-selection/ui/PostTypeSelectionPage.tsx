@@ -155,7 +155,7 @@ export function PostTypeSelectionPage({
       }
       header={<Header leftSlot={<BackButton href={backHref} />} />}
     >
-      <div className="flex min-h-0 flex-1 flex-col pt-[43px]">
+      <div className="flex shrink-0 flex-col pt-[43px]">
         <section aria-labelledby="post-type-selection-title">
           <Text
             as="h1"
@@ -188,7 +188,7 @@ export function PostTypeSelectionPage({
 
         <section
           aria-label="선택한 위치"
-          className="mt-auto h-12 w-full rounded-[var(--dimension-x3)]"
+          className="mt-[clamp(40px,calc(100dvh-652px),152px)] h-12 w-full rounded-[var(--dimension-x3)]"
         >
           <Divider className="w-full" color="var(--color-stroke-neutral-weak)" />
           <div className="flex h-full items-start justify-between pt-5">

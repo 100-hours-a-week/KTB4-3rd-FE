@@ -25,6 +25,10 @@ describe('PostTypeSelectionPage', () => {
     );
     expect(screen.getByRole('button', { name: /동행 모집/ })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /커뮤니티 글/ })).toBeInTheDocument();
+    const locationSection = screen.getByRole('region', { name: '선택한 위치' });
+
+    expect(locationSection).toHaveClass('mt-[clamp(40px,calc(100dvh-652px),152px)]');
+    expect(locationSection.parentElement).toHaveClass('shrink-0');
     expect(screen.getByText('선택 위치')).toBeInTheDocument();
     expect(screen.getByText('강남역')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
