@@ -249,6 +249,20 @@ function getMessages(roomId: string) {
   return MOCK_CHAT_MESSAGES[Number(roomId) as keyof typeof MOCK_CHAT_MESSAGES];
 }
 
+function invalidReadMarkerResponse() {
+  return HttpResponse.json(
+    {
+      message: '읽음 위치가 올바르지 않습니다',
+      error: {
+        code: 'VALIDATION_ERROR',
+        field: 'last_read_message_id',
+        details: [{ field: 'last_read_message_id', reason: 'REQUIRED' }],
+      },
+    },
+    { status: 400 },
+  );
+}
+
 export const chatRoomHandlers = [
   http.get('*/chat-rooms', ({ request }) => {
     if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
@@ -287,6 +301,54 @@ export const chatRoomHandlers = [
     return HttpResponse.json({
       message: '조회에 성공했습니다',
       data,
+    });
+  }),
+  http.put('*/chat-rooms/:roomId/read-marker', async ({ request, params }) => {
+    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
+      return unauthorizedResponse();
+    }
+
+    const roomId = String(params.roomId);
+    const room = getRoom(roomId);
+    const messages = getMessages(roomId);
+
+    if (!room || !messages) {
+      return errorResponse('존재하지 않는 채팅방입니다', 'CHATROOM_NOT_FOUND', null, 404);
+    }
+
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return invalidReadMarkerResponse();
+    }
+
+    if (
+      typeof body !== 'object' ||
+      body === null ||
+      !('last_read_message_id' in body) ||
+      typeof body.last_read_message_id !== 'string' ||
+      body.last_read_message_id.trim() === ''
+    ) {
+      return invalidReadMarkerResponse();
+    }
+
+    const lastReadMessageId = Number(body.last_read_message_id);
+
+    if (
+      !Number.isSafeInteger(lastReadMessageId) ||
+      !messages.items.some((message) => message.id === lastReadMessageId)
+    ) {
+      return errorResponse('존재하지 않는 채팅방입니다', 'CHATROOM_NOT_FOUND', null, 404);
+    }
+
+    return HttpResponse.json({
+      message: '읽음 처리되었습니다',
+      data: {
+        last_read_message_id: lastReadMessageId,
+        has_unread: false,
+      },
     });
   }),
   http.get('*/chat-rooms/:roomId/messages', ({ request, params }) => {

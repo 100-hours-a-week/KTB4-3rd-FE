@@ -9,6 +9,12 @@ export type {
   ChatRoomMessageSender,
   ChatRoomMessagesData,
   ChatRoomMessagesResponse,
+  ChatRoomReadMarkerData,
+  ChatRoomReadMarkerResponse,
 } from './chat-room.types';
-export { getChatRoomDetail, getChatRoomMessages } from './get-chat-room';
+export { getChatRoomDetail, getChatRoomMessages, markChatRoomAsRead } from './get-chat-room';
+export {
+  useChatRoomReadMarkerMutation,
+  type MarkChatRoomAsReadVariables,
+} from './use-chat-room-read-marker-mutation';
 export { useChatRoomQueries } from './use-chat-room-queries';

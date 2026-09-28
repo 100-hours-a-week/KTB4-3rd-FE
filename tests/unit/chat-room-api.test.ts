@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 
-import { getChatRoomDetail, getChatRoomMessages } from '@/_pages/chatting/api/chat-room';
+import {
+  getChatRoomDetail,
+  getChatRoomMessages,
+  markChatRoomAsRead,
+} from '@/_pages/chatting/api/chat-room';
 import { useAuthStore } from '@/entities/auth';
 
 beforeEach(() => {
@@ -58,6 +62,20 @@ describe('chat room API', () => {
     await expect(getChatRoomMessages('501', 'invalid')).rejects.toMatchObject({
       status: 400,
       code: 'INVALID_CURSOR',
+    });
+  });
+
+  it('채팅방의 마지막 메시지를 읽음 처리한다', async () => {
+    await expect(markChatRoomAsRead('501', '1452')).resolves.toMatchObject({
+      message: '읽음 처리되었습니다',
+      data: { last_read_message_id: 1452, has_unread: false },
+    });
+  });
+
+  it('채팅방에 속하지 않은 메시지의 읽음 처리를 거부한다', async () => {
+    await expect(markChatRoomAsRead('501', '9999')).rejects.toMatchObject({
+      status: 404,
+      code: 'CHATROOM_NOT_FOUND',
     });
   });
 });

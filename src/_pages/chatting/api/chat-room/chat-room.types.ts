@@ -63,3 +63,10 @@ export type ChatRoomMessagesData = {
 };
 
 export type ChatRoomMessagesResponse = ApiResponse<ChatRoomMessagesData>;
+
+export type ChatRoomReadMarkerData = {
+  last_read_message_id: number | string;
+  has_unread: boolean;
+};
+
+export type ChatRoomReadMarkerResponse = ApiResponse<ChatRoomReadMarkerData>;
