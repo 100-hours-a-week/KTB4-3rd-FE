@@ -5,8 +5,8 @@ import { CompanionPostDetail, type CompanionPostDetailProps } from '@/_pages/pos
 const companionPost: CompanionPostDetailProps['post'] = {
   type: 'COMPANION',
   id: 10,
-  title: '택시 같이 타실 분 구해요!',
-  description: '판교역 → 유스페이스까지 차 같이 타실 분을 찾아요.',
+  title: '판교역 → 유스페이스까지 차 같이 타실 분을 찾아요.',
+  description: '택시 같이 타실 분 구해요!',
   author: { nickname: '우림', profile_image_url: null },
   transport_type: 'TAXI',
   distance_m: 320,
@@ -42,6 +42,13 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
+    post: companionPost,
+  },
+};
+
+export const Page: Story = {
+  args: {
+    layout: 'page',
     post: companionPost,
   },
 };

@@ -452,7 +452,7 @@ export function HomePage() {
         {selectedPost && !selectedDetailIsNotFound ? (
           <BottomModal
             bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px) + 8px)"
-            href={`/posts/${selectedPost.post.id}`}
+            href={`/posts/${selectedPost.post.id}?type=${selectedPost.post.type === 'COMPANION' ? 'companion' : 'community'}`}
             open
             onOpenChange={handleDetailModalChange}
           >
