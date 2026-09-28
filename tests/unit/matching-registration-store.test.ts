@@ -35,6 +35,26 @@ describe('useMatchingRegistrationStore', () => {
     expect(useMatchingRegistrationStore.getState().getPayload()).toBeNull();
   });
 
+  it('등록 요청 전 검증에서 누락된 등록 영역을 반환한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(store.getValidationFields()).toEqual(['destination']);
+  });
+
+  it('출발지 역지오코딩 장소명과 좌표가 있으면 등록 요청 검증을 통과한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDestination({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(store.getValidationFields()).toEqual([]);
+    expect(store.getPayload()).not.toBeNull();
+  });
+
   it('reset으로 등록 데이터를 초기화한다', () => {
     const store = useMatchingRegistrationStore.getState();
 

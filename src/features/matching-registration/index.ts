@@ -9,4 +9,5 @@ export {
   type MatchingRegistrationLocation,
   type MatchingRegistrationPayload,
   type MatchingRegistrationState,
+  type MatchingRegistrationValidationField,
 } from './model/matching-registration-store';

@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { StartPin } from '@/entities/map-pin';
+import type { LocationSearchResult } from '@/features/location-search';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { reverseGeocodeLocation } from '@/features/post-location';
 import { BankAccountDialog, useCurrentUserQuery } from '@/features/user-profile';
@@ -22,6 +23,26 @@ const MATCHING_LOCATION_ROUTE = '/matching/location';
 
 function getLocationRoute(field: 'departure' | 'destination') {
   return `${MATCHING_LOCATION_ROUTE}?field=${field}`;
+}
+
+function toRegistrationLocation(location: LocationSearchResult) {
+  return {
+    name: location.placeName,
+    lat: location.latitude ?? null,
+    lng: location.longitude ?? null,
+  };
+}
+
+function getDepartureValue(departure: LocationSearchResult | null) {
+  if (!departure) {
+    return null;
+  }
+
+  if (departure.id === CURRENT_LOCATION_ID) {
+    return departure.placeName ? `현위치: ${departure.placeName}` : null;
+  }
+
+  return departure.placeName || null;
 }
 
 export function MatchingPage() {
@@ -69,11 +90,13 @@ export function MatchingPage() {
   const handleUserLocationChange = useCallback(
     (coordinate: { lat: number; lng: number }) => {
       const requestId = ++geocodingRequestIdRef.current;
+      const provisionalLocation = createCurrentLocation(coordinate, {
+        placeName: null,
+        roadAddress: null,
+      });
 
-      setLocation(
-        'departure',
-        createCurrentLocation(coordinate, { placeName: '현재 위치', roadAddress: '' }),
-      );
+      setLocation('departure', provisionalLocation);
+      setOrigin(toRegistrationLocation(provisionalLocation));
 
       reverseGeocodeLocation(coordinate)
         .then((details) => {
@@ -81,13 +104,16 @@ export function MatchingPage() {
             return;
           }
 
-          setLocation('departure', createCurrentLocation(coordinate, details));
+          const resolvedLocation = createCurrentLocation(coordinate, details);
+
+          setLocation('departure', resolvedLocation);
+          setOrigin(toRegistrationLocation(resolvedLocation));
         })
         .catch(() => {
           // 주소 조회에 실패해도 현재 좌표를 출발지로 유지합니다.
         });
     },
-    [setLocation],
+    [setLocation, setOrigin],
   );
 
   const handleUserLocationError = useCallback(() => {
@@ -98,10 +124,7 @@ export function MatchingPage() {
     }
   }, [setLocation]);
 
-  const departureValue =
-    departure?.id === CURRENT_LOCATION_ID
-      ? `현위치: ${departure.placeName}`
-      : (departure?.placeName ?? null);
+  const departureValue = getDepartureValue(departure);
 
   return (
     <div

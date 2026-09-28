@@ -700,6 +700,7 @@ function MapComponent(
       ) : null}
 
       <Dialog
+        className="!w-[calc(100%-40px)] !max-w-[353px]"
         description="브라우저 위치 권한이 필요한 기능이에요."
         onOpenChange={setIsLocationPermissionDialogOpen}
         open={isLocationPermissionDialogOpen}
