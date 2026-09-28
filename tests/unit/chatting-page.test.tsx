@@ -575,6 +575,7 @@ describe('ChattingPage', () => {
     mockCurrentUserId(1);
     renderChattingPage();
     await screen.findByText('3분 뒤 도착합니다');
+    expect(screen.getByText('우림')).toBeInTheDocument();
     vi.useFakeTimers();
 
     const trigger = screen.getAllByLabelText('메시지 메뉴 열기')[0];
@@ -649,6 +650,7 @@ describe('ChattingPage', () => {
 
   it('유저 신고하기를 누르면 참여 중인 동행 ID를 신고 API에 보낸다', async () => {
     const user = userEvent.setup();
+    mockCurrentUserId(1);
 
     server.use(
       http.post('*/reports', async ({ request }) => {

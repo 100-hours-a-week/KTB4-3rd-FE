@@ -9,6 +9,7 @@ export type ChatRoomMessage =
       content: string;
       variant: BubbleVariant;
       senderId?: number;
+      senderNickname?: string;
       layout?: 'default' | 'tall' | 'large';
       loading?: boolean;
     }
@@ -115,6 +116,7 @@ export function createChatRoomMessageFromApi(
       kind: 'bubble',
       content: message.content ?? '',
       senderId: message.sender?.id,
+      senderNickname: message.sender?.nickname,
       variant: currentUserId !== undefined && message.sender?.id === currentUserId ? 'me' : 'other',
     };
   }
