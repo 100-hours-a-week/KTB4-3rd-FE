@@ -40,6 +40,23 @@ function renderPostWritePage(type: 'accompany' | 'community') {
   );
 }
 
+function getWheel(column: HTMLElement) {
+  const wheel = column.querySelector('[data-rwp]');
+
+  if (!(wheel instanceof HTMLElement)) {
+    throw new Error('DatePicker 휠을 찾을 수 없습니다.');
+  }
+
+  return wheel;
+}
+
+function useImmediateAnimationFrame() {
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    callback(performance.now() + 1000);
+    return 0;
+  });
+}
+
 describe('PostWritePage', () => {
   it('accompany 타입이면 동행모집 작성 UI를 보여준다', () => {
     renderPostWritePage('accompany');
@@ -86,6 +103,27 @@ describe('PostWritePage', () => {
     expect(screen.queryByText('도움말 텍스트 입력')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '등록하기' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '출발지' })).not.toBeInTheDocument();
+  });
+
+  it('동행모집 날짜의 년월 변경을 작성 화면과 클라이언트 상태에 반영한다', async () => {
+    useImmediateAnimationFrame();
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-02-09');
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '출발 날짜' }));
+    fireEvent.click(screen.getByRole('button', { name: '2026년 2월' }));
+
+    const monthColumn = screen.getByRole('listbox', { name: '월' });
+    fireEvent.keyDown(getWheel(monthColumn), { key: 'ArrowDown' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '2026년 3월' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(usePostCreateStore.getState().companion.departureDate).toBe('2026-03-09');
+    expect(screen.getByRole('button', { name: '출발 날짜' })).toHaveTextContent('2026/03/09');
   });
 
   it('커뮤니티 등록하기 버튼을 누르면 커뮤니티 게시글 등록 API를 요청한다', async () => {

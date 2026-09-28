@@ -292,6 +292,27 @@ function getSelectableMonth(
   return Math.min(maximumMonth, Math.max(minimumMonth, month));
 }
 
+function getSelectableDate(
+  year: number,
+  month: number,
+  day: number,
+  minimumDate?: CalendarDate,
+  maximumDate?: CalendarDate,
+) {
+  const selectableMonth = getSelectableMonth(year, month, minimumDate, maximumDate);
+  const nextDate = new CalendarDate(year, selectableMonth, 1).set({ day });
+
+  if (minimumDate && nextDate.compare(minimumDate) < 0) {
+    return minimumDate;
+  }
+
+  if (maximumDate && nextDate.compare(maximumDate) > 0) {
+    return maximumDate;
+  }
+
+  return nextDate;
+}
+
 function DatePickerContent({
   value,
   defaultValue,
@@ -329,7 +350,7 @@ function DatePickerContent({
   };
 
   const calendarOptions = {
-    defaultFocusedValue: normalizedToday,
+    defaultFocusedValue: currentValue ?? normalizedToday,
     selectionMode: 'single' as const,
     value: currentValue,
     onChange: handleValueChange,
@@ -358,13 +379,17 @@ function DatePickerContent({
   const months = getMonthOptions(selectedYear, minimumDate, maximumDate);
 
   const updateVisibleMonth = (year: number, month: number) => {
-    const nextFocusedDate = new CalendarDate(
+    const selectedDate = currentValue ?? state.focusedDate;
+    const nextFocusedDate = getSelectableDate(
       year,
-      getSelectableMonth(year, month, minimumDate, maximumDate),
-      1,
+      month,
+      selectedDate.day,
+      minimumDate,
+      maximumDate,
     );
 
     state.setFocusedDate(nextFocusedDate);
+    handleValueChange(nextFocusedDate);
   };
 
   return (
