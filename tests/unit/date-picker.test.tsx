@@ -120,6 +120,23 @@ describe('DatePicker', () => {
     });
   });
 
+  it('년월 휠에서 변경한 날짜를 선택값 콜백으로 전달한다', async () => {
+    useImmediateAnimationFrame();
+    const handleValueChange = vi.fn<(value: Date) => void>();
+
+    render(<DatePicker onValueChange={handleValueChange} today={today} value={selectedDate} />);
+
+    fireEvent.click(screen.getByRole('button', { name: '2026년 2월' }));
+    const monthColumn = screen.getByRole('listbox', { name: '월' });
+    const monthWheel = getWheel(monthColumn);
+
+    fireEvent.keyDown(monthWheel, { key: 'ArrowDown' });
+
+    await waitFor(() => {
+      expect(handleValueChange).toHaveBeenLastCalledWith(new Date(2026, 2, 9));
+    });
+  });
+
   it('마우스 드래그로 년도를 여러 칸 이동한다', async () => {
     useImmediateAnimationFrame();
     render(<DatePicker today={today} value={selectedDate} />);

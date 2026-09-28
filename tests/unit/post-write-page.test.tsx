@@ -40,6 +40,23 @@ function renderPostWritePage(type: 'accompany' | 'community') {
   );
 }
 
+function getWheel(column: HTMLElement) {
+  const wheel = column.querySelector('[data-rwp]');
+
+  if (!(wheel instanceof HTMLElement)) {
+    throw new Error('DatePicker 휠을 찾을 수 없습니다.');
+  }
+
+  return wheel;
+}
+
+function useImmediateAnimationFrame() {
+  vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+    callback(performance.now() + 1000);
+    return 0;
+  });
+}
+
 describe('PostWritePage', () => {
   it('accompany 타입이면 동행모집 작성 UI를 보여준다', () => {
     renderPostWritePage('accompany');
@@ -86,6 +103,27 @@ describe('PostWritePage', () => {
     expect(screen.queryByText('도움말 텍스트 입력')).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '등록하기' })).toBeInTheDocument();
     expect(screen.queryByRole('textbox', { name: '출발지' })).not.toBeInTheDocument();
+  });
+
+  it('동행모집 날짜의 년월 변경을 작성 화면과 클라이언트 상태에 반영한다', async () => {
+    useImmediateAnimationFrame();
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-02-09');
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '출발 날짜' }));
+    fireEvent.click(screen.getByRole('button', { name: '2026년 2월' }));
+
+    const monthColumn = screen.getByRole('listbox', { name: '월' });
+    fireEvent.keyDown(getWheel(monthColumn), { key: 'ArrowDown' });
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '2026년 3월' })).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(usePostCreateStore.getState().companion.departureDate).toBe('2026-03-09');
+    expect(screen.getByRole('button', { name: '출발 날짜' })).toHaveTextContent('2026/03/09');
   });
 
   it('커뮤니티 등록하기 버튼을 누르면 커뮤니티 게시글 등록 API를 요청한다', async () => {
@@ -178,5 +216,69 @@ describe('PostWritePage', () => {
       },
       community: { title: '', content: '' },
     });
+  });
+
+  it('동행모집 필수 항목이 누락되면 API 요청 없이 스낵바를 표시한다', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '출발지, 목적지, 출발 날짜, 출발 시간, 모집 인원을 모두 입력해주세요',
+    );
+  });
+
+  it('백엔드 등록 오류 메시지를 스낵바로 표시한다', async () => {
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    usePostCreateStore.getState().setCompanionLocation('origin', {
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+    usePostCreateStore.getState().setCompanionLocation('destination', {
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+    });
+    usePostCreateStore.getState().setCompanionField('departureDate', '2026-09-05');
+    usePostCreateStore.getState().setCompanionField('departureTime', {
+      period: '오전',
+      hour: 8,
+      minute: 30,
+    });
+    usePostCreateStore.getState().setCompanionField('recruitCount', 3);
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(
+        JSON.stringify({
+          message: '출발 시간은 현재 시간 이후로 설정해주세요',
+          error: { code: 'INVALID_DEPARTURE_TIME', field: 'departure_at' },
+        }),
+        { headers: { 'Content-Type': 'application/json' }, status: 422 },
+      ),
+    );
+
+    renderPostWritePage('accompany');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(await screen.findByRole('status')).toHaveTextContent(
+      '출발 시간은 현재 시간 이후로 설정해주세요',
+    );
+    expect(fetchSpy).toHaveBeenCalledWith(
+      `${apiBaseUrl}/companion-posts`,
+      expect.objectContaining({ method: 'POST' }),
+    );
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '출발 시간은 현재 시간 이후로 설정해주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(navigation.push).not.toHaveBeenCalledWith('/');
   });
 });
