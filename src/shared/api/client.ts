@@ -24,7 +24,17 @@ export class ApiError extends Error {
 
 export type ApiFetchOptions = RequestInit & {
   token?: string;
+  skipAuthRefresh?: boolean;
 };
+
+export type AuthRefreshHandler = () => Promise<string>;
+
+let authRefreshHandler: AuthRefreshHandler | null = null;
+let authRefreshRequest: Promise<string> | null = null;
+
+export function registerAuthRefreshHandler(handler: AuthRefreshHandler) {
+  authRefreshHandler = handler;
+}
 
 async function readResponseBody(response: Response): Promise<unknown> {
   if (response.status === 204) {
@@ -35,7 +45,41 @@ async function readResponseBody(response: Response): Promise<unknown> {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
-  const { token, ...init } = options;
+  const { token, skipAuthRefresh, ...init } = options;
+  const response = await fetchApi(path, init, token);
+
+  if (response.response.ok) {
+    return response.body as T;
+  }
+
+  const refreshHandler = authRefreshHandler;
+
+  if (response.response.status !== 401 || skipAuthRefresh || !refreshHandler) {
+    throwApiError(response.response, response.body);
+  }
+
+  let refreshedAccessToken: string;
+
+  try {
+    refreshedAccessToken = await getRefreshedAccessToken(refreshHandler);
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) {
+      throwApiError(response.response, response.body);
+    }
+
+    throw error;
+  }
+
+  const retriedResponse = await fetchApi(path, init, refreshedAccessToken);
+
+  if (!retriedResponse.response.ok) {
+    throwApiError(retriedResponse.response, retriedResponse.body);
+  }
+
+  return retriedResponse.body as T;
+}
+
+async function fetchApi(path: string, init: RequestInit, token?: string) {
   const headers = new Headers(init.headers);
   const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
 
@@ -54,9 +98,19 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
   });
   const body = await readResponseBody(response);
 
-  if (!response.ok) {
-    throw new ApiError(response.status, body as ApiErrorBody | undefined);
+  return { response, body };
+}
+
+function throwApiError(response: Response, body: unknown): never {
+  throw new ApiError(response.status, body as ApiErrorBody | undefined);
+}
+
+function getRefreshedAccessToken(handler: AuthRefreshHandler): Promise<string> {
+  if (!authRefreshRequest) {
+    authRefreshRequest = handler().finally(() => {
+      authRefreshRequest = null;
+    });
   }
 
-  return body as T;
+  return authRefreshRequest;
 }
