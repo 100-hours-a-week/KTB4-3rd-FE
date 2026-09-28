@@ -105,6 +105,7 @@ export function ChatReportDialog({
               autoSize
               className="mt-2 w-full [&>div]:!h-[82px] [&>div]:!rounded-[10px] [&>div]:!px-[14px] [&>div]:!py-[12px]"
               disabled={reason !== 'other'}
+              maxLength={500}
               onValueChange={setDescription}
               placeholder="Placeholder"
               value={description}

@@ -19,6 +19,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+const reportReasons = ['ABUSE', 'UNSETTLED', 'NO_SHOW', 'ETC'] as const;
+
 export const chatFeedbackHandlers = [
   http.post('*/companions/:companionId/ratings', async ({ request, params }) => {
     if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
@@ -83,17 +85,47 @@ export const chatFeedbackHandlers = [
       body = null;
     }
 
-    if (!isObject(body) || (body.reason === 'ETC' && !String(body.reason_text ?? '').trim())) {
+    if (!isObject(body)) {
+      return errorResponse('요청 값 검증에 실패했습니다.', 'VALIDATION_ERROR', null, 400);
+    }
+
+    if (!reportReasons.includes(body.reason as (typeof reportReasons)[number])) {
+      return errorResponse('요청 값 검증에 실패했습니다.', 'VALIDATION_ERROR', 'reason', 400);
+    }
+
+    if (body.reason === 'ETC' && !String(body.reason_text ?? '').trim()) {
       return errorResponse('기타 사유를 입력해주세요', 'VALIDATION_ERROR', 'reason_text', 400);
     }
 
-    if (typeof body.reported_user_id !== 'number') {
+    if (typeof body.reason_text === 'string' && body.reason_text.length > 500) {
+      return errorResponse('요청 값 검증에 실패했습니다.', 'VALIDATION_ERROR', 'reason_text', 400);
+    }
+
+    if (
+      body.reason_text !== undefined &&
+      body.reason_text !== null &&
+      typeof body.reason_text !== 'string'
+    ) {
+      return errorResponse('요청 값 검증에 실패했습니다.', 'VALIDATION_ERROR', 'reason_text', 400);
+    }
+
+    if (typeof body.reported_user_id !== 'number' || !Number.isSafeInteger(body.reported_user_id)) {
       return errorResponse(
         '존재하지 않는 사용자입니다',
         'REPORTED_USER_NOT_FOUND',
         'reported_user_id',
         400,
       );
+    }
+
+    const hasMessageTarget =
+      typeof body.reported_message_id === 'number' &&
+      Number.isSafeInteger(body.reported_message_id);
+    const hasCompanionTarget =
+      typeof body.companion_id === 'number' && Number.isSafeInteger(body.companion_id);
+
+    if (hasMessageTarget === hasCompanionTarget) {
+      return errorResponse('신고 대상을 찾을 수 없습니다', 'REPORT_TARGET_INVALID', null, 400);
     }
 
     return HttpResponse.json(

@@ -10,6 +10,7 @@ import {
   ChatRoomWebSocketConnection,
   ChatSatisfactionDialog,
   type ChatReportDialogSubmitPayload,
+  type SubmitChatReportPayload,
   type ChatSatisfactionDialogSubmitPayload,
   type ChatSatisfactionParticipant,
   type ChatRoomWebSocketConnectionValue,
@@ -142,6 +143,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
   const chatRoomDetail = detailQuery.data?.data;
+  const companionId = chatRoomDetail?.companion_id;
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
@@ -215,7 +217,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         return;
       }
 
-      handleReportRequest({ reportedMessageId: null, reportedUserId });
+      handleReportRequest({ type: 'user', reportedUserId });
     },
     [handleReportRequest],
   );
@@ -262,27 +264,40 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         return;
       }
 
-      reportMutation.mutate(
-        {
+      let payload: SubmitChatReportPayload;
+
+      if (reportTarget.type === 'message') {
+        payload = {
           reason: reportReasonMap[reason],
           reason_text: reason === 'other' ? description.trim() : null,
           reported_message_id: reportTarget.reportedMessageId,
           reported_user_id: reportTarget.reportedUserId,
+        };
+      } else if (companionId !== undefined && Number.isSafeInteger(companionId)) {
+        payload = {
+          companion_id: companionId,
+          reason: reportReasonMap[reason],
+          reason_text: reason === 'other' ? description.trim() : null,
+          reported_user_id: reportTarget.reportedUserId,
+        };
+      } else {
+        useSnackbarStore.getState().showSnackbar('신고 대상 정보를 불러오지 못했어요', 'critical');
+        return;
+      }
+
+      reportMutation.mutate(payload, {
+        onError: (error) => {
+          useSnackbarStore
+            .getState()
+            .showSnackbar(error.message || '신고를 접수하지 못했어요', 'critical');
         },
-        {
-          onError: (error) => {
-            useSnackbarStore
-              .getState()
-              .showSnackbar(error.message || '신고를 접수하지 못했어요', 'critical');
-          },
-          onSuccess: () => {
-            setIsReportDialogOpen(false);
-            setReportTarget(null);
-          },
+        onSuccess: () => {
+          setIsReportDialogOpen(false);
+          setReportTarget(null);
         },
-      );
+      });
     },
-    [reportMutation, reportTarget],
+    [companionId, reportMutation, reportTarget],
   );
 
   const handleLeave = useCallback(() => setIsLeaveDialogOpen(true), []);

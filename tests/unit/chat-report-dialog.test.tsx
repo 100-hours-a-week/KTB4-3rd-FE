@@ -15,6 +15,7 @@ describe('ChatReportDialog', () => {
     expect(screen.getByRole('radio', { name: '노쇼' })).toBeInTheDocument();
     expect(screen.getByRole('radio', { name: '기타' })).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '신고 내용' })).toBeDisabled();
+    expect(screen.getByRole('textbox', { name: '신고 내용' })).toHaveAttribute('maxlength', '500');
     expect(screen.getByRole('button', { name: '신고하기' })).toBeInTheDocument();
   });
 
