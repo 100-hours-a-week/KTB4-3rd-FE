@@ -159,7 +159,7 @@ describe('HomePage', () => {
     expect(navigation.push).toHaveBeenCalledWith('/login');
   });
 
-  it('로그인한 사용자가 아바타를 클릭하면 사용자 메뉴를 연다', async () => {
+  it('로그인한 사용자가 아바타를 클릭해도 사용자 메뉴를 열지 않는다', async () => {
     const user = userEvent.setup();
     useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
@@ -167,10 +167,8 @@ describe('HomePage', () => {
 
     await user.click(await screen.findByRole('button', { name: '프로필 메뉴 열기' }));
 
-    expect(screen.getByRole('menu')).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: '정보수정하기' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: '로그아웃' })).toBeInTheDocument();
-    expect(screen.getByRole('menuitem', { name: '회원 탈퇴' })).toBeInTheDocument();
+    expect(screen.queryByRole('menu')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '프로필' })).toBeInTheDocument();
   });
 
   it('지도, 글쓰기 버튼, 바텀시트, 하단 네비게이션을 조합한다', () => {

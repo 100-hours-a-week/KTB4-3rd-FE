@@ -49,7 +49,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
   }
 
   return (
-    <Menu aria-label="사용자 메뉴" items={userMenuItems}>
+    <Menu aria-label="사용자 메뉴" disabled items={userMenuItems}>
       <button
         aria-label="프로필 메뉴 열기"
         className="inline-flex size-[42px] items-center justify-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
