@@ -30,6 +30,14 @@ function getSearchResultLabel(result: LocationSearchResult) {
   return `${result.placeName}${result.distance ? `, ${result.distance}` : ''}, ${result.roadAddress}`;
 }
 
+function toRegistrationLocation(location: LocationSearchResult) {
+  return {
+    name: location.placeName,
+    lat: location.latitude ?? null,
+    lng: location.longitude ?? null,
+  };
+}
+
 export function MatchingLocationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -47,6 +55,11 @@ export function MatchingLocationPage() {
   const departureInputRef = useRef<ComponentRef<typeof Input>>(null);
   const destinationInputRef = useRef<ComponentRef<typeof Input>>(null);
   const kakaoSearch = useKakaoPlaceSearch(searchQuery);
+
+  useEffect(() => {
+    setOrigin(departure ? toRegistrationLocation(departure) : null);
+    setDestination(destination ? toRegistrationLocation(destination) : null);
+  }, [departure, destination, setDestination, setOrigin]);
 
   useEffect(() => {
     const input =

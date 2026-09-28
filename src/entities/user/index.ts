@@ -5,8 +5,8 @@ export {
   type SaveBankAccountResponse,
 } from './api/user';
 export {
-  BANK_ACCOUNT_BANK_NAMES,
-  type BankAccountBankName,
+  BANK_ACCOUNT_OPTIONS,
+  BankCode,
   type BankAccountData,
   type SaveBankAccountPayload,
   type User,

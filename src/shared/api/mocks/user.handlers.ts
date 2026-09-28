@@ -2,14 +2,7 @@ import { http, HttpResponse } from 'msw';
 
 import { getBearerToken, MOCK_ACCESS_TOKEN } from './mock-utils';
 
-const MOCK_BANK_NAMES = new Set([
-  'KB국민은행',
-  '신한은행',
-  '우리은행',
-  '하나은행',
-  '카카오뱅크',
-  '토스뱅크',
-]);
+const MOCK_BANK_CODES = new Set(['kb', 'shinhan', 'woori', 'hana', 'nh', 'ibk', 'kakao', 'toss']);
 
 const MOCK_USER = {
   id: 7,
@@ -98,7 +91,7 @@ export const userHandlers = [
       return validationErrorResponse('은행명과 계좌번호를 모두 입력해주세요', 'bank_name');
     }
 
-    if (!MOCK_BANK_NAMES.has(bankName)) {
+    if (!MOCK_BANK_CODES.has(bankName)) {
       return validationErrorResponse('지원하지 않는 은행입니다', 'bank_name');
     }
 

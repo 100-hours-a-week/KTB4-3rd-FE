@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 
-import { BANK_ACCOUNT_BANK_NAMES, type BankAccountBankName } from '@/entities/user';
+import { BANK_ACCOUNT_OPTIONS, type BankCode } from '@/entities/user';
 import { ApiError } from '@/shared/api/client';
 import { Dialog, type DialogButtonProps } from '@/shared/ui/dialog';
 import { Field } from '@/shared/ui/field';
@@ -18,24 +18,21 @@ type BankAccountDialogProps = {
   onOpenChange: (open: boolean) => void;
 };
 
-const bankOptions = BANK_ACCOUNT_BANK_NAMES.map((bankName) => ({
-  label: bankName,
-  value: bankName,
-}));
+const bankOptions = BANK_ACCOUNT_OPTIONS.map(({ label, value }) => ({ label, value }));
 
 export function BankAccountDialog({ open, onDismiss, onOpenChange }: BankAccountDialogProps) {
-  const [bankName, setBankName] = useState<BankAccountBankName | null>(null);
+  const [bankCode, setBankCode] = useState<BankCode | null>(null);
   const [accountNumber, setAccountNumber] = useState('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const saveBankAccountMutation = useSaveBankAccountMutation();
 
   const isAccountNumberValid = /^\d{10,14}$/.test(accountNumber);
-  const canSubmit = bankName !== null && isAccountNumberValid;
+  const canSubmit = bankCode !== null && isAccountNumberValid;
   const apiErrorField =
     saveBankAccountMutation.error instanceof ApiError ? saveBankAccountMutation.error.field : null;
 
   const resetForm = () => {
-    setBankName(null);
+    setBankCode(null);
     setAccountNumber('');
     setErrorMessage(null);
     saveBankAccountMutation.reset();
@@ -61,13 +58,13 @@ export function BankAccountDialog({ open, onDismiss, onOpenChange }: BankAccount
   const handleSubmit: NonNullable<DialogButtonProps['onClick']> = (event) => {
     event.preventDefault();
 
-    if (!bankName || !isAccountNumberValid || saveBankAccountMutation.isPending) {
+    if (!bankCode || !isAccountNumberValid || saveBankAccountMutation.isPending) {
       return;
     }
 
     setErrorMessage(null);
     saveBankAccountMutation.mutate(
-      { bank_name: bankName, account_no: accountNumber },
+      { bank_name: bankCode, account_no: accountNumber },
       {
         onSuccess: () => handleOpenChange(false, false),
         onError: (error) => {
@@ -99,14 +96,14 @@ export function BankAccountDialog({ open, onDismiss, onOpenChange }: BankAccount
         <Field
           errorMessage={bankErrorMessage}
           inputSlot={
-            <Select<BankAccountBankName>
+            <Select<BankCode>
               aria-label="은행명"
               invalid={Boolean(bankErrorMessage)}
               options={bankOptions}
               placeholder="은행을 선택해주세요"
-              value={bankName}
+              value={bankCode}
               onValueChange={(value) => {
-                setBankName(value);
+                setBankCode(value);
                 setErrorMessage(null);
               }}
             />

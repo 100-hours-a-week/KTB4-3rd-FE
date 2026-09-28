@@ -156,6 +156,11 @@ describe('MatchingPage', () => {
     render(<MatchingPage />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      origin_name: '서울역',
+      origin_lat: 37.5547,
+      origin_lng: 126.9707,
+    });
     expect(screen.getByRole('button', { name: '도착지' })).toHaveTextContent('어디로 갈까요?');
     expect(screen.getByTestId('matching-location-panel')).toHaveClass(
       'fixed',
@@ -216,6 +221,19 @@ describe('MatchingPage', () => {
 });
 
 describe('MatchingLocationPage', () => {
+  it('초기 출발지를 매칭 등록 상태에 반영한다', () => {
+    searchParams.set('field', 'destination');
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      origin_name: '서울역',
+      origin_lat: 37.5547,
+      origin_lng: 126.9707,
+    });
+  });
+
   it('출발지 검색 화면은 장소명만 표시하고 해당 입력에 자동 포커스한다', () => {
     searchParams.set('field', 'departure');
     useMatchingStore.getState().setLocation('departure', {
