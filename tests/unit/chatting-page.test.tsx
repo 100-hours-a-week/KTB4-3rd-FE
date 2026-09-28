@@ -126,6 +126,45 @@ describe('ChattingPage', () => {
     expect(sendMessage).not.toHaveBeenCalled();
   });
 
+  it('새로운 메시지가 추가되면 메시지 목록을 하단으로 스크롤한다', () => {
+    const connection = {
+      error: null,
+      sendMessage: vi.fn<(content: string) => boolean>(() => true),
+      status: 'open',
+    } satisfies ChatRoomWebSocketConnectionValue;
+    const { rerender } = render(
+      <ChatRoomContent connection={connection} liveMessages={[]} room={generalChatRoom} />,
+    );
+    const messageList = screen.getByLabelText('채팅 메시지');
+    const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
+
+    Object.defineProperty(messageList, 'scrollHeight', {
+      configurable: true,
+      value: 640,
+    });
+    Object.defineProperty(messageList, 'scrollTo', {
+      configurable: true,
+      value: scrollTo,
+    });
+
+    rerender(
+      <ChatRoomContent
+        connection={connection}
+        liveMessages={[
+          {
+            id: 'live-message',
+            kind: 'bubble',
+            content: '새로운 메시지',
+            variant: 'other',
+          },
+        ]}
+        room={generalChatRoom}
+      />,
+    );
+
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 640 });
+  });
+
   it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {
     renderChattingPage('599');
 
