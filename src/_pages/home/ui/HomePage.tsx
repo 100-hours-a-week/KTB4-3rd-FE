@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getMapPinMarkerImage } from '@/entities/map-pin';
 import {
   PostList,
+  PostDetailSkeleton,
   type CommunityPost,
   type CompanionPost,
   type CommunityPostComment,
@@ -60,7 +61,8 @@ import type { MapCoordinate } from '@/shared/types/common';
 import { ResultSection } from '@/shared/ui/result-section';
 import { Snackbar } from '@/shared/ui/snackbar';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
-import { Text } from '@/shared/ui/text';
+
+import { HomeNearbyPostsSkeleton } from './home-page-loading';
 
 type PositionedPost = {
   position: MapCoordinate;
@@ -417,11 +419,7 @@ export function HomePage() {
           title="근처 핀 게시글"
           description="가까운 순"
         >
-          {nearbyPostsQuery.isPending ? (
-            <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
-              게시글을 불러오는 중이에요.
-            </Text>
-          ) : null}
+          {nearbyPostsQuery.isPending ? <HomeNearbyPostsSkeleton /> : null}
           {nearbyPostsQuery.isError ? (
             <ResultSection
               buttons="primary"
@@ -457,14 +455,10 @@ export function HomePage() {
             onOpenChange={handleDetailModalChange}
           >
             {selectedPost.post.type === 'COMPANION' && companionDetailQuery.isPending ? (
-              <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
-                게시글을 불러오는 중이에요.
-              </Text>
+              <PostDetailSkeleton type="COMPANION" />
             ) : null}
             {selectedPost.post.type === 'COMMUNITY' && communityDetailQuery.isPending ? (
-              <Text className="block p-6" color="fg.neutralSubtle" variant="t4Regular">
-                게시글을 불러오는 중이에요.
-              </Text>
+              <PostDetailSkeleton type="COMMUNITY" />
             ) : null}
             {selectedDetailQuery?.isError && !selectedDetailIsNotFound ? (
               <ResultSection

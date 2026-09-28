@@ -7,6 +7,7 @@ import { Icon } from '@/shared/ui/icon';
 import { Input } from '@/shared/ui/input';
 import { Text } from '@/shared/ui/text';
 
+import { LocationSearchResultsSkeleton } from './location-search-results-skeleton';
 import {
   type LocationSearchResult,
   type LocationSelection,
@@ -178,11 +179,7 @@ export function LocationSearchScreen({
             {results === undefined &&
             kakaoSearch.status === 'loading' &&
             !kakaoSearch.results.length ? (
-              <p aria-live="polite" className="px-5 py-4" role="status">
-                <Text color="fg.neutralMuted" variant="t1Regular">
-                  장소를 검색 중이에요.
-                </Text>
-              </p>
+              <LocationSearchResultsSkeleton />
             ) : null}
             {results === undefined && kakaoSearch.status === 'empty' ? (
               <p aria-live="polite" className="px-5 py-4" role="status">

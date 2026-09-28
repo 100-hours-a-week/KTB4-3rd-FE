@@ -6,6 +6,7 @@ import { BottomNav } from '@/shared/ui/BottomNav';
 import { Header } from '@/shared/ui/header';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { ScrollFog } from '@/shared/ui/scroll-fog';
+import { Skeleton } from '@/shared/ui/skeleton';
 
 import { useScrollFog } from './use-scroll-fog';
 
@@ -33,10 +34,10 @@ export function ChatListPageContentLoading() {
                 className="flex h-[84px] w-full items-start border-b border-[var(--color-stroke-neutral-subtle)] pt-[18px]"
                 key={row}
               >
-                <div className="size-12 shrink-0 animate-pulse rounded-full bg-[var(--color-bg-neutral-weak)]" />
+                <Skeleton className="size-12 shrink-0 rounded-full" />
                 <div className="flex flex-1 flex-col gap-2 pt-[1px] pl-4">
-                  <div className="h-5 w-3/5 animate-pulse rounded bg-[var(--color-bg-neutral-weak)]" />
-                  <div className="h-4 w-1/4 animate-pulse rounded bg-[var(--color-bg-neutral-weak)]" />
+                  <Skeleton className="h-5 w-3/5" />
+                  <Skeleton className="h-4 w-1/4" />
                 </div>
               </li>
             ))}
