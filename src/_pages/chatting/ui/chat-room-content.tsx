@@ -14,6 +14,9 @@ type ChatRoomContentProps = {
   onReport?: (target: ChatReportTarget) => void;
   topContent?: ReactNode;
   bottomContent?: ReactNode;
+  hasPreviousMessages?: boolean;
+  isFetchingPreviousMessages?: boolean;
+  onLoadPreviousMessages?: () => void;
 };
 
 export function ChatRoomContent({
@@ -23,6 +26,9 @@ export function ChatRoomContent({
   connection,
   topContent,
   bottomContent,
+  hasPreviousMessages = false,
+  isFetchingPreviousMessages = false,
+  onLoadPreviousMessages = () => {},
 }: ChatRoomContentProps) {
   const messages = useMemo(() => {
     const roomMessageIds = new Set(room.messages.map((message) => message.id));
@@ -44,6 +50,9 @@ export function ChatRoomContent({
           onReport={onReport}
           roomId={room.id}
           bottomContent={bottomContent}
+          hasPreviousMessages={hasPreviousMessages}
+          isFetchingPreviousMessages={isFetchingPreviousMessages}
+          onLoadPreviousMessages={onLoadPreviousMessages}
         />
         <ChatComposer
           className="!fixed bottom-0 left-1/2 z-20 !h-[calc(78px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)] !pb-[env(safe-area-inset-bottom,0px)]"

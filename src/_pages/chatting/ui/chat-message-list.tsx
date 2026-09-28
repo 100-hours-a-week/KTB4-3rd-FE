@@ -1,4 +1,11 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  type ReactNode,
+  type UIEvent,
+} from 'react';
 
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
@@ -11,6 +18,9 @@ type ChatMessageListProps = {
   lastReadMessageId: number | null;
   onReport: (target: ChatReportTarget) => void;
   bottomContent?: ReactNode;
+  hasPreviousMessages: boolean;
+  isFetchingPreviousMessages: boolean;
+  onLoadPreviousMessages: () => void;
 };
 
 export function ChatMessageList({
@@ -19,14 +29,54 @@ export function ChatMessageList({
   lastReadMessageId,
   onReport,
   bottomContent,
+  hasPreviousMessages,
+  isFetchingPreviousMessages,
+  onLoadPreviousMessages,
 }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
+  const previousScrollRef = useRef<{ height: number; top: number } | null>(null);
   const latestMessageId = messages[messages.length - 1]?.id;
+  const firstMessageId = messages[0]?.id;
   const previousMessagesRef = useRef({
     count: messages.length,
+    firstMessageId,
     lastMessageId: latestMessageId,
     roomId,
   });
+
+  const handleScroll = useCallback(
+    (event: UIEvent<HTMLDivElement>) => {
+      const messageList = event.currentTarget;
+
+      if (
+        messageList.scrollTop > 80 ||
+        !hasPreviousMessages ||
+        isFetchingPreviousMessages ||
+        previousScrollRef.current
+      ) {
+        return;
+      }
+
+      previousScrollRef.current = {
+        height: messageList.scrollHeight,
+        top: messageList.scrollTop,
+      };
+      onLoadPreviousMessages();
+    },
+    [hasPreviousMessages, isFetchingPreviousMessages, onLoadPreviousMessages],
+  );
+
+  useLayoutEffect(() => {
+    const previousScroll = previousScrollRef.current;
+    const messageList = messagesRef.current;
+
+    if (!previousScroll || isFetchingPreviousMessages || !messageList) {
+      return;
+    }
+
+    messageList.scrollTop = previousScroll.top + (messageList.scrollHeight - previousScroll.height);
+    previousScrollRef.current = null;
+  }, [isFetchingPreviousMessages, messages.length]);
 
   useEffect(() => {
     if (lastReadMessageId === null) {
@@ -43,17 +93,23 @@ export function ChatMessageList({
   useEffect(() => {
     const previousMessages = previousMessagesRef.current;
     const isRoomChanged = previousMessages.roomId !== roomId;
+    const isPreviousMessagePageLoaded =
+      messages.length > previousMessages.count &&
+      firstMessageId !== previousMessages.firstMessageId &&
+      latestMessageId === previousMessages.lastMessageId;
     const hasNewMessage =
-      messages.length > previousMessages.count ||
-      latestMessageId !== previousMessages.lastMessageId;
+      latestMessageId !== previousMessages.lastMessageId ||
+      (messages.length > previousMessages.count &&
+        firstMessageId === previousMessages.firstMessageId);
 
     previousMessagesRef.current = {
       count: messages.length,
+      firstMessageId,
       lastMessageId: latestMessageId,
       roomId,
     };
 
-    if (isRoomChanged || !hasNewMessage) {
+    if (isRoomChanged || isPreviousMessagePageLoaded || !hasNewMessage) {
       return;
     }
 
@@ -63,12 +119,13 @@ export function ChatMessageList({
       behavior: 'smooth',
       top: messageList.scrollHeight,
     });
-  }, [latestMessageId, messages.length, roomId]);
+  }, [firstMessageId, latestMessageId, messages.length, roomId]);
 
   return (
     <div
       aria-label="채팅 메시지"
       className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
+      onScroll={handleScroll}
       ref={messagesRef}
     >
       {messages.map((message, index) => (

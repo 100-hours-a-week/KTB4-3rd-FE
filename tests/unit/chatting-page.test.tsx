@@ -165,6 +165,22 @@ describe('ChattingPage', () => {
     expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 640 });
   });
 
+  it('메시지 목록 상단에 도달하면 이전 메시지를 조회한다', async () => {
+    renderChattingPage();
+    await screen.findByRole('heading', { name: '8시 판교역' });
+
+    const messageList = screen.getByLabelText('채팅 메시지');
+    Object.defineProperty(messageList, 'scrollTop', {
+      configurable: true,
+      value: 0,
+      writable: true,
+    });
+
+    fireEvent.scroll(messageList);
+
+    expect(await screen.findByText('조금 늦을 것 같아요.')).toBeInTheDocument();
+  });
+
   it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {
     renderChattingPage('599');
 

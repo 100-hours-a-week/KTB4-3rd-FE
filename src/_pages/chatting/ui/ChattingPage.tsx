@@ -175,14 +175,18 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     enabled: isTaxiPot,
   });
   const taxiPotDetail = taxiPotQuery.data?.data;
+  const chatRoomMessages = useMemo(
+    () => messagesQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
+    [messagesQuery.data?.pages],
+  );
   const evaluationParticipants = useMemo(
     () =>
       createEvaluationParticipants(
         chatRoomDetail,
-        messagesQuery.data?.data.items,
+        chatRoomMessages,
         currentUserQuery.data?.data.id,
       ),
-    [chatRoomDetail, currentUserQuery.data?.data.id, messagesQuery.data?.data.items],
+    [chatRoomDetail, chatRoomMessages, currentUserQuery.data?.data.id],
   );
 
   const appendLiveMessage = useCallback(
@@ -337,7 +341,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
   const baseRoom =
     chatRoomDetail && messagesQuery.data
-      ? createChatRoomFromApi(chatRoomDetail, messagesQuery.data.data.items, currentUserId)
+      ? createChatRoomFromApi(chatRoomDetail, chatRoomMessages, currentUserId)
       : undefined;
   const taxiPotEntryMessages = taxiPotDetail
     ? createTaxiPotChatEntryMessages(taxiPotDetail).map(toChatRoomMessage)
@@ -384,6 +388,16 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
     router.push('/');
   }, [lastMessageId, readMarkerMutation, roomId, router]);
+  const {
+    fetchNextPage: fetchPreviousMessages,
+    hasNextPage: hasPreviousMessages,
+    isFetchingNextPage: isFetchingPreviousMessages,
+  } = messagesQuery;
+  const handleLoadPreviousMessages = useCallback(() => {
+    if (hasPreviousMessages && !isFetchingPreviousMessages) {
+      void fetchPreviousMessages();
+    }
+  }, [fetchPreviousMessages, hasPreviousMessages, isFetchingPreviousMessages]);
   const handleLeaveConfirm = useCallback(async () => {
     if (companionId === undefined) {
       return;
@@ -424,6 +438,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
           onBack={handleBack}
+          onLoadPreviousMessages={handleLoadPreviousMessages}
           onEvaluationReport={handleEvaluationReport}
           onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
@@ -466,6 +481,7 @@ type ChattingPageContentProps = {
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
   onBack: () => void;
+  onLoadPreviousMessages: () => void;
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
@@ -499,6 +515,7 @@ function ChattingPageContent({
   isTaxiPotHost,
   messagesQuery,
   onBack,
+  onLoadPreviousMessages,
   onEvaluationReport,
   onEvaluationSubmit,
   onEvaluationOpenChange,
@@ -564,7 +581,10 @@ function ChattingPageContent({
         <ChatRoomContent
           bottomContent={rideActionContent}
           connection={connection}
+          hasPreviousMessages={messagesQuery.hasNextPage}
+          isFetchingPreviousMessages={messagesQuery.isFetchingNextPage}
           liveMessages={liveMessages}
+          onLoadPreviousMessages={onLoadPreviousMessages}
           onReport={onReport}
           room={room}
           topContent={topContent}

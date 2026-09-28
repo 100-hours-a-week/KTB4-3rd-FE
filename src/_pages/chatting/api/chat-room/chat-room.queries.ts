@@ -1,4 +1,4 @@
-import { queryOptions } from '@tanstack/react-query';
+import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 
 import { getChatRoomDetail, getChatRoomMessages } from './get-chat-room';
 
@@ -10,8 +10,10 @@ export const chatRoomQueries = {
       queryFn: () => getChatRoomDetail(roomId),
     }),
   messages: (roomId: string) =>
-    queryOptions({
+    infiniteQueryOptions({
       queryKey: [...chatRoomQueries.all(), 'messages', roomId] as const,
-      queryFn: () => getChatRoomMessages(roomId),
+      initialPageParam: undefined as string | undefined,
+      queryFn: ({ pageParam }) => getChatRoomMessages(roomId, pageParam),
+      getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,
     }),
 };
