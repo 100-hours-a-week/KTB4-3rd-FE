@@ -26,6 +26,7 @@ export type CommunityPostDetailProps = {
   hasMoreComments?: boolean;
   isCommentSubmitting?: boolean;
   isLoadingMoreComments?: boolean;
+  layout?: 'modal' | 'page';
   onCommentFeedbackDismiss?: () => void;
   onCommentSubmit?: (content: string) => void;
   onLoadMoreComments?: () => void;
@@ -40,11 +41,13 @@ export function CommunityPostDetail({
   hasMoreComments = false,
   isCommentSubmitting = false,
   isLoadingMoreComments = false,
+  layout = 'modal',
   onCommentFeedbackDismiss,
   onCommentSubmit,
   onLoadMoreComments,
   post,
 }: CommunityPostDetailProps) {
+  const isPageLayout = layout === 'page';
   const loadMoreCommentsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -75,15 +78,35 @@ export function CommunityPostDetail({
   }, [commentsError, hasMoreComments, isLoadingMoreComments, onLoadMoreComments]);
 
   return (
-    <article className={cn('flex flex-col', className)}>
-      <PostDetailInfo description={post.description} title={post.title} type={post.type} />
+    <article
+      className={cn('flex flex-col', isPageLayout && 'min-h-[calc(100dvh-56px)]', className)}
+    >
+      <PostDetailInfo
+        description={post.description}
+        layout={layout}
+        title={post.title}
+        type={post.type}
+      />
 
-      <div className="flex items-center justify-between px-6 pb-5">
-        <CommentSummary count={post.comment_count} />
-        <Text color="fg.neutral" variant="t4Bold">
-          {post.author.nickname}
-        </Text>
-      </div>
+      {isPageLayout ? (
+        <>
+          <div className="mx-auto mt-[14px] flex w-[312px] justify-end">
+            <Text color="fg.neutral" variant="t6Bold">
+              {post.author.nickname}
+            </Text>
+          </div>
+          <div className="mt-[21px] px-10">
+            <CommentSummary count={post.comment_count} />
+          </div>
+        </>
+      ) : (
+        <div className="flex items-center justify-between px-6 pb-5">
+          <CommentSummary count={post.comment_count} />
+          <Text color="fg.neutral" variant="t4Bold">
+            {post.author.nickname}
+          </Text>
+        </div>
+      )}
 
       {commentsLoading && post.comments.length === 0 ? (
         <Text className="block px-6 py-5" color="fg.neutralSubtle" variant="t4Regular">
@@ -100,7 +123,13 @@ export function CommunityPostDetail({
           아직 댓글이 없어요.
         </Text>
       ) : null}
-      {post.comments.length > 0 ? <CommentList comments={post.comments} /> : null}
+      {post.comments.length > 0 ? (
+        <CommentList
+          className={isPageLayout ? 'mt-[38px]' : undefined}
+          layout={layout}
+          comments={post.comments}
+        />
+      ) : null}
       {hasMoreComments && onLoadMoreComments ? (
         <div
           aria-live="polite"
@@ -128,7 +157,13 @@ export function CommunityPostDetail({
           type={commentFeedback.type}
         />
       ) : null}
-      <CommentComposer disabled={isCommentSubmitting} onSubmit={onCommentSubmit} />
+      <CommentComposer
+        className={
+          isPageLayout ? 'sticky bottom-0 z-10 mt-auto bg-white !px-[27px] !py-1' : undefined
+        }
+        disabled={isCommentSubmitting}
+        onSubmit={onCommentSubmit}
+      />
     </article>
   );
 }

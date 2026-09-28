@@ -53,3 +53,10 @@ export const Default: Story = {
     post: communityPost,
   },
 };
+
+export const Page: Story = {
+  args: {
+    layout: 'page',
+    post: communityPost,
+  },
+};

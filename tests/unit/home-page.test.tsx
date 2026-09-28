@@ -495,7 +495,7 @@ describe('HomePage', () => {
             current_count: 2,
             capacity: 4,
             is_expired: false,
-            participants: [],
+            participants: null,
           },
         });
       }),

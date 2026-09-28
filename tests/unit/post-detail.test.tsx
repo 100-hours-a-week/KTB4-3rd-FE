@@ -65,6 +65,25 @@ describe('CompanionPostDetail', () => {
 
     expect(onJoinClick).toHaveBeenCalledOnce();
   });
+
+  it('페이지 레이아웃에서 Figma 기준 이동 상세정보 정렬을 적용한다', () => {
+    render(<CompanionPostDetail layout="page" post={companionPost} />);
+
+    const departureTimeRow = screen.getByText('출발 시간').parentElement;
+    const movementDetail = departureTimeRow?.parentElement;
+    const departureTimeValue = screen.getByText('2026/08/24 18:40 (오후)');
+    const description = screen.getByText('판교역 → 유스페이스까지 차 같이 타실 분을 찾아요.');
+    const title = screen.getByRole('heading', { name: companionPost.title });
+    const participantList = screen.getByText('참여자').parentElement;
+
+    expect(movementDetail).toHaveClass('ml-7', 'w-[325px]');
+    expect(participantList).toHaveClass('ml-7', 'w-[325px]');
+    expect(departureTimeRow).toHaveClass('grid', 'h-5', 'grid-cols-[105px_206px]');
+    expect(departureTimeValue).toHaveClass('!leading-5');
+    expect(description).toHaveClass('w-[318px]', 'px-[3px]');
+    expect(title).toHaveClass('max-w-[312px]', 'break-words', 'whitespace-normal');
+    expect(title).not.toHaveClass('truncate');
+  });
 });
 
 describe('CommunityPostDetail', () => {

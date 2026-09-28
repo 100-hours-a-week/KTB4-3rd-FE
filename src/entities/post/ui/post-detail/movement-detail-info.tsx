@@ -8,6 +8,7 @@ export type MovementDetailInfoProps = Pick<
   'capacity' | 'current_count' | 'departure_at' | 'departure_location' | 'destination'
 > & {
   className?: string;
+  layout?: 'modal' | 'page';
 };
 
 function formatDepartureAt(value: string) {
@@ -39,13 +40,30 @@ export function MovementDetailInfo({
   departure_at,
   departure_location,
   destination,
+  layout = 'modal',
 }: MovementDetailInfoProps) {
+  const isPageLayout = layout === 'page';
+
   return (
-    <div className={cn('flex flex-col gap-2 px-6', className)}>
-      <PostDetailInfoRow label="출발 시간" value={formatDepartureAt(departure_at)} />
-      <PostDetailInfoRow label="출발지" value={departure_location} />
-      <PostDetailInfoRow label="목적지" value={destination} />
-      <PostDetailInfoRow label="현재 인원" value={`${current_count} / ${capacity}명`} />
+    <div
+      className={cn(
+        'flex flex-col',
+        isPageLayout ? 'ml-7 w-[325px] gap-4 pt-4' : 'gap-2 px-6',
+        className,
+      )}
+    >
+      <PostDetailInfoRow
+        layout={layout}
+        label="출발 시간"
+        value={formatDepartureAt(departure_at)}
+      />
+      <PostDetailInfoRow layout={layout} label="출발지" value={departure_location} />
+      <PostDetailInfoRow layout={layout} label="목적지" value={destination} />
+      <PostDetailInfoRow
+        layout={layout}
+        label="현재 인원"
+        value={`${current_count} / ${capacity}명`}
+      />
     </div>
   );
 }
