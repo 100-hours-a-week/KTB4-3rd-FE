@@ -12,7 +12,7 @@ import {
 import { cn } from '@/shared/lib/cn';
 import { Icon } from '@/shared/ui/icon';
 import { ResultSection } from '@/shared/ui/result-section';
-import { ScrollFog } from '@/shared/ui/scroll-fog';
+import { ScrollFog, useScrollFog } from '@/shared/ui/scroll-fog';
 
 import {
   DEFAULT_CHAT_LIST_STATES,
@@ -21,7 +21,6 @@ import {
 } from '@/_pages/chat-list/model/chat-list-state';
 import { useChatRoomListQuery } from '@/_pages/chat-list/api/chat-room-list';
 import { ChatListPageContentLoading } from './chat-list-page-loading';
-import { useScrollFog } from './use-scroll-fog';
 
 export type ChatListPageContentProps = {
   className?: string;
