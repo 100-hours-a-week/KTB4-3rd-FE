@@ -8,7 +8,7 @@ type StompFrame = {
   body: string;
 };
 
-const websocketUrl = 'ws://localhost:8080/ws';
+const websocketUrl = 'ws://localhost:8080/wss';
 
 function createFrame(command: string, headers: Record<string, string>, body = '') {
   const headerText = Object.entries(headers)
