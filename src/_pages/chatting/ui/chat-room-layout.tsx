@@ -11,6 +11,7 @@ import type { ChatRoom } from '@/_pages/chatting/model/chat-room';
 
 type ChatRoomLayoutProps = {
   children: ReactNode;
+  onBack?: () => void;
   onLeave?: () => void;
   room?: ChatRoom;
   showLeaveButton?: boolean;
@@ -18,6 +19,7 @@ type ChatRoomLayoutProps = {
 
 export function ChatRoomLayout({
   children,
+  onBack,
   onLeave,
   room,
   showLeaveButton = true,
@@ -29,7 +31,19 @@ export function ChatRoomLayout({
       header={
         <Header
           className="z-20"
-          leftSlot={<BackButton href="/" />}
+          leftSlot={
+            <BackButton
+              href="/"
+              onClick={
+                onBack
+                  ? (event) => {
+                      event.preventDefault();
+                      onBack();
+                    }
+                  : undefined
+              }
+            />
+          }
           rightSlot={
             <div
               className={cn(
