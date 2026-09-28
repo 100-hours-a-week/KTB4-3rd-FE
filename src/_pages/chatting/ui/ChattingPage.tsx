@@ -388,6 +388,16 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
     router.push('/');
   }, [lastMessageId, readMarkerMutation, roomId, router]);
+  const {
+    fetchNextPage: fetchPreviousMessages,
+    hasNextPage: hasPreviousMessages,
+    isFetchingNextPage: isFetchingPreviousMessages,
+  } = messagesQuery;
+  const handleLoadPreviousMessages = useCallback(() => {
+    if (hasPreviousMessages && !isFetchingPreviousMessages) {
+      void fetchPreviousMessages();
+    }
+  }, [fetchPreviousMessages, hasPreviousMessages, isFetchingPreviousMessages]);
   const handleLeaveConfirm = useCallback(async () => {
     if (companionId === undefined) {
       return;
@@ -428,6 +438,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
           onBack={handleBack}
+          onLoadPreviousMessages={handleLoadPreviousMessages}
           onEvaluationReport={handleEvaluationReport}
           onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
@@ -470,6 +481,7 @@ type ChattingPageContentProps = {
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
   onBack: () => void;
+  onLoadPreviousMessages: () => void;
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
@@ -503,6 +515,7 @@ function ChattingPageContent({
   isTaxiPotHost,
   messagesQuery,
   onBack,
+  onLoadPreviousMessages,
   onEvaluationReport,
   onEvaluationSubmit,
   onEvaluationOpenChange,
@@ -568,7 +581,10 @@ function ChattingPageContent({
         <ChatRoomContent
           bottomContent={rideActionContent}
           connection={connection}
+          hasPreviousMessages={messagesQuery.hasNextPage}
+          isFetchingPreviousMessages={messagesQuery.isFetchingNextPage}
           liveMessages={liveMessages}
+          onLoadPreviousMessages={onLoadPreviousMessages}
           onReport={onReport}
           room={room}
           topContent={topContent}
