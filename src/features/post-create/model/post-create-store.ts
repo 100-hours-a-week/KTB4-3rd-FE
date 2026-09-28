@@ -30,6 +30,24 @@ export type CompanionPostCreateDraft = {
   content: string;
 };
 
+export type CompanionPostCreateRequiredField =
+  | 'origin'
+  | 'destination'
+  | 'departureDate'
+  | 'departureTime'
+  | 'recruitCount';
+
+type CompleteCompanionPostCreateDraft = Omit<
+  CompanionPostCreateDraft,
+  'origin' | 'destination' | 'departureDate' | 'departureTime' | 'recruitCount'
+> & {
+  origin: PostCreateLocation & { lat: number; lng: number };
+  destination: PostCreateLocation & { lat: number; lng: number };
+  departureDate: string;
+  departureTime: PostCreateTime;
+  recruitCount: number;
+};
+
 export type CommunityPostCreateDraft = {
   title: string;
   content: string;
@@ -129,14 +147,42 @@ function isCompleteLocation(
   );
 }
 
+export function getCompanionMissingFields(
+  draft: CompanionPostCreateDraft,
+): CompanionPostCreateRequiredField[] {
+  const missingFields: CompanionPostCreateRequiredField[] = [];
+
+  if (!isCompleteLocation(draft.origin)) {
+    missingFields.push('origin');
+  }
+
+  if (!isCompleteLocation(draft.destination)) {
+    missingFields.push('destination');
+  }
+
+  if (!draft.departureDate) {
+    missingFields.push('departureDate');
+  }
+
+  if (draft.departureTime === null) {
+    missingFields.push('departureTime');
+  }
+
+  if (draft.recruitCount === null) {
+    missingFields.push('recruitCount');
+  }
+
+  return missingFields;
+}
+
+function isCompleteCompanionDraft(
+  draft: CompanionPostCreateDraft,
+): draft is CompleteCompanionPostCreateDraft {
+  return getCompanionMissingFields(draft).length === 0;
+}
+
 function toCompanionPayload(draft: CompanionPostCreateDraft): CompanionPostCreatePayload | null {
-  if (
-    !isCompleteLocation(draft.origin) ||
-    !isCompleteLocation(draft.destination) ||
-    !draft.departureDate ||
-    draft.departureTime === null ||
-    draft.recruitCount === null
-  ) {
+  if (!isCompleteCompanionDraft(draft)) {
     return null;
   }
 
