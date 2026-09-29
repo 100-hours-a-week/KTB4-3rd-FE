@@ -78,11 +78,19 @@ _app → _pages → features → entities → shared
 
 ## Git 및 PR 규칙
 
+- 새 작업 브랜치의 base 브랜치와 PR target 브랜치는 항상 `develop`으로 한다. 작업 브랜치는 최신 `origin/develop`을 기준으로 생성한다.
 - 커밋 메시지는 Conventional Commits 형식(`type: 한글 설명`)으로 작성합니다.
 - 커밋 타입은 `feat`, `fix`, `docs`, `refactor`, `chore`, `test` 등 영어 표기를 사용합니다.
 - 커밋 설명은 반드시 한글로 작성합니다.
 - 예시: `feat: 회원가입 입력 필드 추가`, `docs: 프로젝트 작업 규칙 추가`
+- 새 작업 브랜치는 항상 `develop` 브랜치를 기준으로 생성합니다.
 - PR 제목은 항상 한글로 작성합니다.
+- 모든 기능 브랜치의 PR 대상 브랜치는 `develop`으로 설정합니다.
+- 변경사항은 먼저 `develop`에 병합하며, `main` 병합은 별도 요청이 있을 때만 진행합니다.
+- PR 작성 전 저장소 이슈 목록에서 작업과 관련된 이슈를 검색합니다.
+- 관련 이슈가 있으면 PR 본문에 `Refs #이슈번호` 또는 작업을 완료하는 경우 `Closes #이슈번호`로 연결합니다.
+- 관련 이슈가 없으면 이슈를 새로 생성한 뒤 PR 본문에 연결합니다.
+- 모든 PR은 관련 이슈 연결 여부를 확인한 뒤 작성합니다.
 - Draft PR 작성 시 `.github/pull_request_template.md`를 사용합니다.
 - PR 템플릿의 모든 항목을 빠짐없이 작성합니다.
 - 테스트 체크리스트는 실제 실행 결과에 맞게 표시합니다.
@@ -141,3 +149,13 @@ pnpm build
 - 실행한 검증 명령
 - 검증 결과
 - 남아 있는 주의사항
+
+<!-- BEGIN:nextjs-agent-rules -->
+
+# This is NOT the Next.js you know
+
+This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` (resolved from this file's directory; in monorepos the `next` package may not be visible from the repo root) before writing any code. Heed deprecation notices.
+
+This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
+
+<!-- END:nextjs-agent-rules -->

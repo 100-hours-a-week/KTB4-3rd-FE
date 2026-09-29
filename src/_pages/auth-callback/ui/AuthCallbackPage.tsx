@@ -1,8 +1,13 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import {
+  bottomActionFixedClassName,
+  bottomActionScrollPaddingClassName,
+} from '@/shared/ui/bottom-action-button';
 import { Button } from '@/shared/ui/button';
 import { PageLayout } from '@/shared/ui/page-layout';
 import { Text } from '@/shared/ui/text';
@@ -16,39 +21,39 @@ export function AuthCallbackPage() {
   const searchParams = useSearchParams();
   const status = searchParams.get('status');
   const errorDescription = searchParams.get('error_description');
+  const successHandledRef = useRef(false);
 
   useEffect(() => {
     if (status === SIGNUP_REQUIRED_STATUS) {
       router.replace('/signup');
     }
+
+    if (status === SUCCESS_STATUS && !successHandledRef.current) {
+      successHandledRef.current = true;
+      useSnackbarStore.getState().showSnackbar('로그인했어요', 'positive');
+      router.replace('/');
+    }
   }, [router, status]);
 
-  if (status === SUCCESS_STATUS) {
-    return (
-      <PageLayout>
-        <VStack className="flex-1" align="center" justify="center">
-          <Text as="h1" variant="t4Bold" color="fg.neutral">
-            로그인되었습니다
-          </Text>
-        </VStack>
-      </PageLayout>
-    );
-  }
-
-  if (status === SIGNUP_REQUIRED_STATUS) {
+  if (status === SUCCESS_STATUS || status === SIGNUP_REQUIRED_STATUS) {
     return null;
   }
 
   return (
-    <PageLayout>
+    <PageLayout contentClassName={bottomActionScrollPaddingClassName}>
       <VStack className="flex-1" align="center" justify="center">
         <Text as="h1" variant="t4Bold" color="fg.critical" align="center">
           {errorDescription ?? '카카오 로그인에 실패했습니다'}
         </Text>
-        <Button type="button" width="fill" onClick={() => router.replace('/login')}>
-          로그인으로 돌아가기
-        </Button>
       </VStack>
+      <Button
+        className={bottomActionFixedClassName}
+        type="button"
+        width="fill"
+        onClick={() => router.replace('/login')}
+      >
+        로그인으로 돌아가기
+      </Button>
     </PageLayout>
   );
 }

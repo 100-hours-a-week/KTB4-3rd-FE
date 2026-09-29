@@ -12,10 +12,16 @@ export type KakaoMap = {
   getBounds: () => KakaoLatLngBounds;
   getCenter: () => KakaoLatLng;
   getLevel: () => number;
+  getProjection: () => KakaoMapProjection;
   panTo: (position: KakaoLatLng) => void;
   relayout: () => void;
   setCenter: (position: KakaoLatLng) => void;
   setLevel: (level: number, options?: { anchor?: KakaoLatLng; animate?: boolean }) => void;
+};
+
+export type KakaoMapProjection = {
+  containerPointFromCoords: (position: KakaoLatLng) => KakaoPoint;
+  coordsFromContainerPoint: (point: KakaoPoint) => KakaoLatLng;
 };
 
 export type KakaoMarker = {
@@ -31,6 +37,8 @@ export type KakaoMarkerClusterer = {
   clear: () => void;
   setMap: (map: KakaoMap | null) => void;
 };
+
+export type KakaoMarkerClustererStyle = Record<string, string | number>;
 
 export type KakaoAddress = {
   address_name: string;
@@ -50,10 +58,46 @@ export type KakaoGeocoder = {
   ) => void;
 };
 
+export type KakaoPlace = {
+  address_name: string;
+  category_group_code?: string;
+  category_name?: string;
+  distance?: string;
+  id: string;
+  place_name: string;
+  place_url?: string;
+  phone?: string;
+  road_address_name?: string;
+  x: string;
+  y: string;
+};
+
+export type KakaoPlaceSearchOptions = {
+  category_group_code?: string;
+  page?: number;
+  radius?: number;
+  size?: number;
+  sort?: 'accuracy' | 'distance';
+  x?: string;
+  y?: string;
+};
+
+export type KakaoPlaces = {
+  keywordSearch: (
+    keyword: string,
+    callback: (data: KakaoPlace[], status: string) => void,
+    options?: KakaoPlaceSearchOptions,
+  ) => void;
+};
+
 export type KakaoServicesApi = {
   Geocoder: new () => KakaoGeocoder;
+  Places: new () => KakaoPlaces;
   Status: {
+    ERROR?: string;
     OK: string;
+    RESULT_NOT_FOUND?: string;
+    ZERO_RESULT?: string;
   };
 };
 
@@ -64,8 +108,10 @@ export type KakaoMapEvent = {
     handler: (cluster: KakaoCluster) => void,
   ): void;
   addListener(target: object, eventName: 'idle', handler: () => void): void;
+  addListener(target: object, eventName: 'bounds_changed', handler: () => void): void;
   addListener(target: object, eventName: 'click', handler: () => void): void;
   removeListener(target: object, eventName: 'idle', handler: () => void): void;
+  removeListener(target: object, eventName: 'bounds_changed', handler: () => void): void;
   removeListener(target: object, eventName: 'click', handler: () => void): void;
 };
 
@@ -82,6 +128,7 @@ export type KakaoMapsApi = {
     disableClickZoom: boolean;
     map: KakaoMap;
     minLevel: number;
+    styles?: KakaoMarkerClustererStyle[];
   }) => KakaoMarkerClusterer;
   MarkerImage: new (
     src: string,
@@ -96,7 +143,10 @@ export type KakaoMapsApi = {
 };
 
 export type KakaoMarkerImage = object;
-export type KakaoPoint = object;
+export type KakaoPoint = {
+  x: number;
+  y: number;
+};
 export type KakaoSize = object;
 
 export type KakaoNamespace = {

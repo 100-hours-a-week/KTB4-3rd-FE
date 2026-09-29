@@ -1,19 +1,9 @@
 import { apiFetch } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/api/types';
 
-import { BankCode } from '@/features/signup/model/bank';
+import type { BankCode } from '@/features/signup/model/bank';
+import type { GenderCode } from '@/features/signup/model/gender';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
-
-const BANK_API_NAMES: Record<BankCode, string> = {
-  [BankCode.KB]: 'KB국민은행',
-  [BankCode.SHINHAN]: '신한은행',
-  [BankCode.WOORI]: '우리은행',
-  [BankCode.HANA]: '하나은행',
-  [BankCode.NH]: 'NH농협은행',
-  [BankCode.IBK]: 'IBK기업은행',
-  [BankCode.KAKAO]: '카카오뱅크',
-  [BankCode.TOSS]: '토스뱅크',
-};
 
 export type SignupAgreements = {
   service: boolean;
@@ -25,7 +15,8 @@ export type SignupAgreements = {
 
 export type SignupPayload = {
   nickname: string;
-  bank_name?: string;
+  gender: GenderCode;
+  bank_name?: BankCode;
   profile_image_key?: string;
   account_no?: string;
   agreements: SignupAgreements;
@@ -41,13 +32,18 @@ export function toSignupPayload(
   values: SignupFormValues,
   profileImageKey?: string | null,
 ): SignupPayload {
+  if (values.gender === null) {
+    throw new Error('성별을 선택해주세요.');
+  }
+
   const payload: SignupPayload = {
     nickname: values.nickname.trim(),
+    gender: values.gender,
     agreements: values.agreements,
   };
 
   if (values.bank_name) {
-    payload.bank_name = BANK_API_NAMES[values.bank_name];
+    payload.bank_name = values.bank_name;
   }
 
   const accountNumber = values.account_no.replaceAll('-', '');
@@ -62,10 +58,9 @@ export function toSignupPayload(
   return payload;
 }
 
-export async function completeSignup(signupToken: string, payload: SignupPayload) {
+export async function completeSignup(payload: SignupPayload) {
   return apiFetch<ApiResponse<SignupData>>('/users', {
     method: 'POST',
-    token: signupToken,
     body: JSON.stringify(payload),
   });
 }

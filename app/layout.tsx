@@ -2,12 +2,21 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
-import { MockApiProvider, QueryProvider } from '@/_app/providers';
+import {
+  AuthBootstrapProvider,
+  ClarityProvider,
+  LoginRequiredProvider,
+  MockApiProvider,
+  QueryProvider,
+} from '@/_app/providers';
 
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '모여타',
+  title: {
+    default: '모여타',
+    template: '모여타 | %s',
+  },
   description: '이동을 모아, 일상을 잇다',
 };
 
@@ -29,9 +38,15 @@ export default function RootLayout({ children }: RootLayoutProps) {
     <html lang="ko">
       <body>
         <div id="app-root" className="isolate min-h-dvh">
-          <MockApiProvider>
-            <QueryProvider>{children}</QueryProvider>
-          </MockApiProvider>
+          <ClarityProvider>
+            <MockApiProvider>
+              <QueryProvider>
+                <AuthBootstrapProvider>
+                  <LoginRequiredProvider>{children}</LoginRequiredProvider>
+                </AuthBootstrapProvider>
+              </QueryProvider>
+            </MockApiProvider>
+          </ClarityProvider>
         </div>
         {googleAnalyticsId ? <GoogleAnalytics gaId={googleAnalyticsId} /> : null}
       </body>

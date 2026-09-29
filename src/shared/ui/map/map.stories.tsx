@@ -127,12 +127,50 @@ export const PostMarkers: Story = {
   },
 };
 
+export const UserLocation: Story = {
+  args: {
+    className: 'h-screen',
+    clusterMarkers: false,
+    markers: [],
+    userLocation: { lat: 37.5547, lng: 126.9707 },
+  },
+};
+
+export const OverlayContent: Story = {
+  args: {
+    children: (
+      <button
+        className="absolute top-24 left-1/2 z-10 -translate-x-1/2 rounded-full bg-white px-4 py-2 text-sm font-semibold shadow-md"
+        type="button"
+      >
+        지도 위 콘텐츠
+      </button>
+    ),
+    className: 'h-screen',
+    showCurrentLocationButton: false,
+    showZoomControls: false,
+  },
+};
+
 export const LocationSelection: Story = {
   render: (args) => <LocationSelectionPreview {...args} />,
   args: {
     className: 'h-full',
     clusterMarkers: false,
     markers: [],
+    selectionMode: true,
+  },
+};
+
+export const CustomSelectionMarker: Story = {
+  args: {
+    className: 'h-screen',
+    clusterMarkers: false,
+    selectionMarker: {
+      height: 56,
+      src: '/map-pins/accompany-marker.svg',
+      width: 54,
+    },
     selectionMode: true,
   },
 };

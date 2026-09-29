@@ -2,6 +2,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { AuthCallbackPage } from '@/_pages/auth-callback/ui/AuthCallbackPage';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 const navigation = vi.hoisted(() => ({
   replace: vi.fn<(path: string) => void>(),
@@ -17,6 +18,7 @@ afterEach(() => {
   cleanup();
   navigation.replace.mockReset();
   navigation.searchParams = new URLSearchParams();
+  useSnackbarStore.getState().reset();
 });
 
 describe('AuthCallbackPage', () => {
@@ -44,12 +46,18 @@ describe('AuthCallbackPage', () => {
     expect(navigation.replace).not.toHaveBeenCalled();
   });
 
-  it('기존 회원이면 로그인 완료 상태를 보여준다', () => {
+  it('기존 회원이면 홈으로 이동하고 로그인 완료 Snackbar를 준비한다', async () => {
     navigation.searchParams = new URLSearchParams({ status: 'ok' });
 
     render(<AuthCallbackPage />);
 
-    expect(screen.getByRole('heading', { name: '로그인되었습니다' })).toBeInTheDocument();
-    expect(navigation.replace).not.toHaveBeenCalled();
+    await waitFor(() => {
+      expect(navigation.replace).toHaveBeenCalledWith('/');
+    });
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '로그인했어요',
+      open: true,
+      type: 'positive',
+    });
   });
 });

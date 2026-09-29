@@ -1,0 +1,128 @@
+'use client';
+
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+import { getMapPinMarkerImage } from '@/entities/map-pin';
+import { type LocationSearchResult, useKakaoPlaceSearch } from '@/features/location-search';
+import { usePostCreateStore } from '@/features/post-create';
+import {
+  LocationSearchHeader,
+  LocationSelectionFooter,
+  reverseGeocodeLocation,
+  type ReverseGeocodedLocation,
+} from '@/features/post-location';
+import type { MapCoordinate } from '@/shared/types/common';
+import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+
+const companionMarker = getMapPinMarkerImage('accompany');
+
+export type PostLocationPageProps = {
+  onLocationRegister?: (coordinate: MapCoordinate) => void;
+};
+
+export function PostLocationPage({ onLocationRegister }: PostLocationPageProps) {
+  const router = useRouter();
+  const mapRef = useRef<MapRef>(null);
+  const [selectedCoordinate, setSelectedCoordinate] = useState<MapCoordinate | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchCenter, setSearchCenter] = useState<MapCoordinate>();
+  const [locationDetails, setLocationDetails] = useState<ReverseGeocodedLocation | null>(null);
+  const [locationDetailsCoordinate, setLocationDetailsCoordinate] = useState<MapCoordinate | null>(
+    null,
+  );
+  const setPostLocation = usePostCreateStore((state) => state.setPostLocation);
+  const kakaoSearch = useKakaoPlaceSearch(searchQuery);
+
+  const requestCurrentLocation = useCallback(() => {
+    mapRef.current?.requestCurrentLocation();
+  }, []);
+
+  const handleCenterChange = useCallback((center: MapCoordinate) => {
+    setSelectedCoordinate(center);
+  }, []);
+
+  const handleSearchResultSelect = useCallback((result: LocationSearchResult) => {
+    if (result.latitude === undefined || result.longitude === undefined) {
+      return;
+    }
+
+    setSearchCenter({ lat: result.latitude, lng: result.longitude });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedCoordinate) {
+      return;
+    }
+
+    let cancelled = false;
+
+    reverseGeocodeLocation(selectedCoordinate)
+      .then((details) => {
+        if (!cancelled) {
+          setLocationDetails(details);
+          setLocationDetailsCoordinate(selectedCoordinate);
+        }
+      })
+      .catch(() => {
+        // 새 위치 조회에 실패해도 이전 위치 정보를 유지해 화면이 깜빡이지 않도록 한다.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCoordinate]);
+
+  const handleRegister = () => {
+    if (selectedCoordinate) {
+      const hasCurrentLocationDetails =
+        locationDetailsCoordinate?.lat === selectedCoordinate.lat &&
+        locationDetailsCoordinate?.lng === selectedCoordinate.lng;
+      const placeName = hasCurrentLocationDetails
+        ? (locationDetails?.placeName ?? locationDetails?.roadAddress ?? null)
+        : null;
+
+      setPostLocation(selectedCoordinate, placeName);
+      onLocationRegister?.(selectedCoordinate);
+      router.push('/post/create/type');
+    }
+  };
+
+  return (
+    <div className="relative mx-auto h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
+      <main className="relative h-full" aria-label="글 등록 장소 선택">
+        <Map
+          className="absolute inset-0 h-full"
+          clusterMarkers={false}
+          center={searchCenter}
+          onCenterChange={handleCenterChange}
+          ref={mapRef}
+          selectionMode
+          selectionMarker={companionMarker}
+          showCurrentLocationButton={false}
+          showZoomControls={false}
+        >
+          <MyLocationButton
+            className="absolute right-4 bottom-[248px] z-30"
+            onClick={requestCurrentLocation}
+          />
+        </Map>
+
+        <LocationSearchHeader
+          className="absolute top-5 right-5 left-5 z-50"
+          results={kakaoSearch.results}
+          searchStatus={kakaoSearch.status}
+          onResultSelect={handleSearchResultSelect}
+          onValueChange={setSearchQuery}
+        />
+      </main>
+
+      <LocationSelectionFooter
+        className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-[393px]"
+        placeName={locationDetails ? (locationDetails.placeName ?? '건물명 정보 없음') : ''}
+        roadAddress={locationDetails ? (locationDetails.roadAddress ?? '도로명주소 정보 없음') : ''}
+        onRegister={handleRegister}
+      />
+    </div>
+  );
+}

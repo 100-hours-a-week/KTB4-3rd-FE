@@ -39,6 +39,13 @@ export const WithImage: Story = {
   },
 };
 
+export const BrokenImage: Story = {
+  args: {
+    alt: '깨진 프로필 이미지',
+    src: '/avatars/missing.svg',
+  },
+};
+
 export const AllSizes: Story = {
   render: () => (
     <div className="flex items-end gap-6">

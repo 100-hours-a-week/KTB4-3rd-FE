@@ -1,0 +1,515 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import type { ReactNode } from 'react';
+
+import {
+  MatchingLocationAdjustPage,
+  MatchingLocationPage,
+  MatchingConfirmationPage,
+  MatchingPage,
+  MatchingTimePage,
+} from '@/_pages/matching';
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
+import { useAuthStore } from '@/entities/auth';
+import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
+import {
+  getMatchingTimePickerInitialValue,
+  isMatchingTimeWithinThreeHours,
+} from '@/_pages/matching/model/matching-time';
+import { useMatchingStore } from '@/_pages/matching/model/matching-store';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import type * as LocationSearchModule from '@/features/location-search';
+import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
+import type { ReverseGeocodedLocation } from '@/features/post-location';
+import type { MapCoordinate } from '@/shared/types/common';
+
+const { navigation, useKakaoPlaceSearch, reverseGeocodeLocation, searchParams } = vi.hoisted(
+  () => ({
+    navigation: {
+      push: vi.fn<(path: string) => void>(),
+      replace: vi.fn<(path: string) => void>(),
+    },
+    reverseGeocodeLocation:
+      vi.fn<(coordinate: MapCoordinate) => Promise<ReverseGeocodedLocation>>(),
+    searchParams: new URLSearchParams('field=destination'),
+    useKakaoPlaceSearch: vi.fn<() => UseKakaoPlaceSearchResult>(),
+  }),
+);
+
+const searchResult = {
+  distance: '116m',
+  id: 'uspace-1',
+  latitude: 37.402,
+  longitude: 127.108,
+  placeName: '유스페이스1빌딩',
+  roadAddress: '경기 성남시 분당구 대왕판교로 660',
+};
+
+function createQueryWrapper() {
+  const queryClient = new QueryClient({
+    defaultOptions: { mutations: { retry: false } },
+  });
+
+  return function Wrapper({ children }: { children: ReactNode }) {
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+  };
+}
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => navigation,
+  useSearchParams: () => searchParams,
+}));
+
+vi.mock('@/features/location-search', async () => {
+  const actual = await vi.importActual<typeof LocationSearchModule>('@/features/location-search');
+
+  return { ...actual, useKakaoPlaceSearch };
+});
+
+vi.mock('@/features/post-location', () => ({ reverseGeocodeLocation }));
+
+vi.mock('@/shared/ui/map', () => ({
+  Map: ({
+    children,
+    locateOnMount,
+    onCenterChange,
+    onUserLocationChange,
+  }: {
+    children?: ReactNode;
+    locateOnMount?: boolean;
+    onCenterChange?: (coordinate: MapCoordinate) => void;
+    onUserLocationChange?: (coordinate: MapCoordinate) => void;
+  }) => (
+    <div data-locate-on-mount={locateOnMount} data-testid="map" role="application">
+      <button type="button" onClick={() => onCenterChange?.({ lat: 37.402, lng: 127.108 })}>
+        조정 지도 위치 변경
+      </button>
+      <button type="button" onClick={() => onUserLocationChange?.({ lat: 37.5, lng: 127.0 })}>
+        테스트 현재 위치 지정
+      </button>
+      {children}
+    </div>
+  ),
+  MyLocationButton: () => <button aria-label="현재 위치로 이동" type="button" />,
+}));
+
+afterEach(() => {
+  cleanup();
+  vi.useRealTimers();
+  navigation.push.mockReset();
+  navigation.replace.mockReset();
+  useKakaoPlaceSearch.mockReset();
+  reverseGeocodeLocation.mockReset();
+  useAuthStore.getState().clearTokens();
+  useMatchingStore.getState().reset();
+  useMatchingRegistrationStore.getState().reset();
+  useSnackbarStore.getState().reset();
+  searchParams.delete('field');
+  searchParams.set('field', 'destination');
+});
+
+describe('MatchingPage', () => {
+  it('계좌가 등록되지 않은 사용자가 진입하면 계좌 등록 Dialog를 표시한다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    expect(
+      await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('매칭을 시작하려면 정산 계좌 등록이 필요해요.')).toBeInTheDocument();
+  });
+
+  it('계좌 등록 Dialog가 열려 있으면 위치 권한 요청을 시작하지 않는다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    expect(
+      await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('map')).toHaveAttribute('data-locate-on-mount', 'false');
+    expect(screen.getAllByRole('dialog')).toHaveLength(1);
+  });
+
+  it('계좌 정보를 등록하면 계좌 등록 Dialog를 닫는다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' });
+    await user.click(screen.getByRole('combobox', { name: '은행명' }));
+    await user.click(await screen.findByRole('option', { name: 'KB국민은행' }));
+    await user.type(screen.getByRole('textbox', { name: '계좌번호' }), '11012345678');
+    await user.click(screen.getByRole('button', { name: '등록하기' }));
+
+    await waitFor(() => {
+      expect(
+        screen.queryByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
+  it('계좌 등록 Dialog의 닫기 버튼을 누르면 홈으로 이동한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' });
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/');
+  });
+
+  it('출발지와 도착지 LocationInputButton을 표시하고 검색 화면으로 이동한다', () => {
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      origin_name: '서울역',
+      origin_lat: 37.5547,
+      origin_lng: 126.9707,
+    });
+    expect(screen.getByRole('button', { name: '도착지' })).toHaveTextContent('어디로 갈까요?');
+    expect(screen.getByTestId('matching-location-panel')).toHaveClass(
+      'fixed',
+      'bottom-0',
+      'h-[calc(205px+env(safe-area-inset-bottom,0px))]',
+      'pb-[env(safe-area-inset-bottom,0px)]',
+    );
+    expect(screen.getByTestId('map')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '도착지' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/matching/location?field=destination');
+  });
+
+  it('현재 위치를 받으면 출발지를 현위치 장소명으로 갱신한다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: '강남역',
+      roadAddress: '서울특별시 강남구 강남대로 396',
+    });
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('현위치: 강남역');
+      expect(useMatchingRegistrationStore.getState()).toMatchObject({
+        origin_name: '강남역',
+        origin_lat: 37.5,
+        origin_lng: 127.0,
+      });
+    });
+  });
+
+  it('역지오코딩 결과가 없으면 현위치 fallback을 표시하지 않는다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
+
+    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('출발지');
+      expect(screen.getByRole('button', { name: '출발지' })).not.toHaveTextContent(
+        '현위치: 현재 위치',
+      );
+      expect(useMatchingStore.getState().departure).toMatchObject({
+        id: 'current-location',
+        placeName: '',
+      });
+      expect(useMatchingRegistrationStore.getState()).toMatchObject({
+        origin_name: '',
+        origin_lat: 37.5,
+        origin_lng: 127.0,
+      });
+    });
+  });
+});
+
+describe('MatchingLocationPage', () => {
+  it('초기 출발지를 매칭 등록 상태에 반영한다', () => {
+    searchParams.set('field', 'destination');
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      origin_name: '서울역',
+      origin_lat: 37.5547,
+      origin_lng: 126.9707,
+    });
+  });
+
+  it('출발지 검색 화면은 장소명만 표시하고 해당 입력에 자동 포커스한다', () => {
+    searchParams.set('field', 'departure');
+    useMatchingStore.getState().setLocation('departure', {
+      ...searchResult,
+      id: 'current-location',
+      placeName: '유스페이스1',
+    });
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    const departureInput = screen.getByRole('textbox', { name: '출발지' });
+    expect(departureInput).toHaveValue('유스페이스1');
+    expect(departureInput).toHaveFocus();
+  });
+
+  it('현위치 장소명이 없으면 출발지 검색 입력을 비운다', () => {
+    searchParams.set('field', 'departure');
+    useMatchingStore.getState().setLocation('departure', {
+      ...searchResult,
+      id: 'current-location',
+      placeName: '',
+    });
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    expect(screen.getByRole('textbox', { name: '출발지' })).toHaveValue('');
+  });
+
+  it('출발지 검색어가 없으면 mock 검색 결과를 표시하지 않는다', () => {
+    searchParams.set('field', 'departure');
+    useMatchingStore.getState().setLocation('departure', null);
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
+
+    render(<MatchingLocationPage />);
+
+    expect(screen.queryByRole('list', { name: '장소 검색 결과' })).not.toBeInTheDocument();
+    expect(screen.queryByText('유스페이스1빌딩')).not.toBeInTheDocument();
+  });
+
+  it('검색 결과의 도착 버튼을 누르면 위치를 바로 지정한다', () => {
+    useKakaoPlaceSearch.mockReturnValue({
+      error: null,
+      results: [searchResult],
+      status: 'success',
+    });
+
+    render(<MatchingLocationPage />);
+
+    expect(screen.getByRole('textbox', { name: '도착지' })).toHaveFocus();
+    expect(screen.getByRole('list', { name: '장소 검색 결과' })).toHaveClass(
+      'flex-1',
+      'overflow-y-auto',
+    );
+    fireEvent.click(screen.getByRole('button', { name: '도착 유스페이스1빌딩' }));
+
+    expect(useMatchingStore.getState().destination).toEqual(searchResult);
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      dest_name: '유스페이스1빌딩',
+      dest_lat: 37.402,
+      dest_lng: 127.108,
+    });
+    expect(navigation.push).toHaveBeenCalledWith('/matching/time');
+  });
+
+  it('검색 결과 본문을 누르면 위치 세부 조정 화면으로 이동한다', () => {
+    useKakaoPlaceSearch.mockReturnValue({
+      error: null,
+      results: [searchResult],
+      status: 'success',
+    });
+
+    render(<MatchingLocationPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /유스페이스1빌딩.*상세 위치 조정/ }));
+
+    expect(useMatchingStore.getState().pendingLocation).toEqual(searchResult);
+    expect(navigation.push).toHaveBeenCalledWith('/matching/location/adjust?field=destination');
+  });
+});
+
+describe('MatchingLocationAdjustPage', () => {
+  it('지도 위치를 조정하고 도착지로 설정한다', async () => {
+    useMatchingStore.getState().setPendingLocation(searchResult);
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: '새로운 장소',
+      roadAddress: '새로운 도로명주소',
+    });
+
+    render(<MatchingLocationAdjustPage />);
+
+    expect(screen.getByRole('region', { name: '선택한 도착지' })).toHaveClass(
+      'h-[calc(215px+env(safe-area-inset-bottom,0px))]',
+      'pb-[env(safe-area-inset-bottom,0px)]',
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '조정 지도 위치 변경' }));
+    expect(await screen.findByText('새로운 장소')).toBeInTheDocument();
+    expect(await screen.findByText('새로운 도로명주소')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '도착지로 설정' }));
+
+    expect(useMatchingStore.getState().destination).toMatchObject({
+      latitude: 37.402,
+      longitude: 127.108,
+      placeName: '새로운 장소',
+      roadAddress: '새로운 도로명주소',
+    });
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      dest_name: '새로운 장소',
+      dest_lat: 37.402,
+      dest_lng: 127.108,
+    });
+    expect(navigation.push).toHaveBeenCalledWith('/matching/time');
+    expect(navigation.replace).not.toHaveBeenCalled();
+  });
+});
+
+describe('MatchingTimePage', () => {
+  it('현재 시각을 다음 10분 단위로 올림해 초기 시간으로 사용한다', () => {
+    expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 18, 41, 5))).toEqual({
+      period: '오후',
+      hour: 6,
+      minute: 50,
+    });
+    expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 23, 59))).toEqual({
+      period: '오전',
+      hour: 12,
+      minute: 0,
+    });
+  });
+
+  it('선택 시간이 현재 시각으로부터 3시간 이내인지 확인한다', () => {
+    const now = new Date(2026, 8, 26, 18, 0);
+
+    expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 0 }, now)).toBe(true);
+    expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 10 }, now)).toBe(
+      false,
+    );
+  });
+
+  it('유효하지 않은 시간을 다음으로 진행하면 안내 Dialog를 표시한다', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 26, 18, 0));
+
+    render(<MatchingTimePage />);
+
+    vi.setSystemTime(new Date(2026, 8, 26, 21, 1));
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(screen.getByRole('dialog', { name: '시간을 다시 입력해주세요' })).toBeInTheDocument();
+    expect(screen.getByText('현재 시각으로부터 3시간 이내로 설정해주세요')).toBeInTheDocument();
+
+    vi.useRealTimers();
+  });
+
+  it('초기화 버튼을 누르면 페이지 진입 시각 기준 초기 시간으로 되돌린다', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 26, 18, 1));
+    vi.spyOn(window, 'requestAnimationFrame').mockImplementation((callback) => {
+      callback(performance.now() + 1000);
+      return 0;
+    });
+
+    render(<MatchingTimePage />);
+
+    const minuteColumn = screen.getByRole('listbox', { name: '분' });
+    const minuteWheel = minuteColumn.querySelector('[data-rwp]');
+
+    if (!(minuteWheel instanceof HTMLElement)) {
+      throw new Error('분 휠을 찾을 수 없습니다.');
+    }
+
+    fireEvent.keyDown(minuteWheel, { key: 'ArrowDown' });
+    expect(minuteColumn).toHaveAttribute('aria-valuetext', '20');
+
+    fireEvent.click(screen.getByRole('button', { name: '초기화' }));
+
+    expect(minuteColumn).toHaveAttribute('aria-valuetext', '10');
+  });
+
+  it('유효한 시간을 다음으로 진행하면 정보 확인 화면으로 이동한다', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date(2026, 8, 26, 18, 0));
+
+    render(<MatchingTimePage />);
+
+    fireEvent.click(screen.getByRole('button', { name: '다음' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/matching/confirm');
+    expect(useMatchingRegistrationStore.getState().departure_at).toBe(
+      new Date(2026, 8, 26, 18, 0).toISOString(),
+    );
+  });
+
+  it('탑승 희망 시간 선택 화면을 표시한다', () => {
+    render(<MatchingTimePage />);
+
+    expect(
+      screen.getByRole('heading', { name: '탑승 희망 시간을 입력해주세요' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('현재 시각으로부터 3시간 이내만 가능해요')).toBeInTheDocument();
+    expect(screen.getByRole('group', { name: '탑승 희망 시간' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '초기화' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' }).parentElement).toHaveClass(
+      'bottom-[calc(var(--dimension-x10)+env(safe-area-inset-bottom,0px))]',
+    );
+  });
+});
+
+describe('MatchingConfirmationPage', () => {
+  it('선택 정보 확인 화면의 안내와 선택 정보를 표시한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+    store.setOrigin({ name: '판교역 2번 출구', lat: 37.3945, lng: 127.1112 });
+    store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDepartureAt(new Date(2026, 8, 26, 18, 40).toISOString());
+
+    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+
+    expect(screen.getByRole('heading', { name: '이 정보가 맞나요?' })).toBeInTheDocument();
+    expect(screen.getByText('매칭 등록 이후에는 수정할 수 없어요.')).toBeInTheDocument();
+    expect(screen.getByText('판교역 2번 출구')).toBeInTheDocument();
+    expect(screen.getByText('강남역')).toBeInTheDocument();
+    expect(screen.getByText('오후 6:40')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '매칭 시작하기' })).toHaveClass(
+      'bottom-[calc(var(--dimension-x10)+env(safe-area-inset-bottom,0px))]',
+    );
+  });
+
+  it('매칭 시작에 성공하면 응답의 채팅방으로 이동한다', async () => {
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    const store = useMatchingRegistrationStore.getState();
+    store.setOrigin({ name: '판교역', lat: 37.3945678, lng: 127.11123456 });
+    store.setDestination({ name: '강남역', lat: 37.4979004, lng: 127.02760049 });
+    store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+
+    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/599'));
+  });
+
+  it('등록 필드가 누락되면 API 요청 없이 누락된 영역을 안내한다', () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const store = useMatchingRegistrationStore.getState();
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
+
+    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '도착지 정보를 입력해주세요',
+      open: true,
+      type: 'critical',
+    });
+
+    fetchSpy.mockRestore();
+  });
+});

@@ -4,8 +4,8 @@ import type { KakaoLatLng, KakaoLatLngBounds } from './kakao-map.types';
 import type { MapLocationError, MapViewport } from './map.types';
 
 export const DEFAULT_MAP_CENTER: MapCoordinate = {
-  lat: 37.5665,
-  lng: 126.978,
+  lat: 37.5547,
+  lng: 126.9707,
 };
 
 export function toMapCoordinate(position: KakaoLatLng): MapCoordinate {

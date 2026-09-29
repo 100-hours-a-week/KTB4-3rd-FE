@@ -2,28 +2,36 @@
 
 import { useMutation } from '@tanstack/react-query';
 
-import { useAuthStore } from '@/entities/auth';
+import { refreshAccessToken, useAuthStore } from '@/entities/auth';
+import { requestProfileImageUpload, uploadProfileImage } from '@/features/signup/api/profile-image';
 import { completeSignup, toSignupPayload } from '@/features/signup/api/signup';
 import type { SignupFormValues } from '@/features/signup/model/signup-schema';
-
-const MISSING_SIGNUP_TOKEN_MESSAGE =
-  '회원가입 진행 시간이 만료됐어요. 카카오 로그인부터 다시 시도해주세요.';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 export function useSignupMutation() {
-  const signupToken = useAuthStore((state) => state.signupToken);
-
   return useMutation({
     mutationFn: async (values: SignupFormValues) => {
-      if (!signupToken) {
-        throw new Error(MISSING_SIGNUP_TOKEN_MESSAGE);
+      let profileImageKey: string | null = null;
+
+      if (values.profile_image_key) {
+        const { data: uploadData } = await requestProfileImageUpload(values.profile_image_key);
+        await uploadProfileImage(uploadData.upload_url, values.profile_image_key);
+        profileImageKey = uploadData.image_key;
       }
 
-      return completeSignup(signupToken, toSignupPayload(values));
+      const signupResponse = await completeSignup(toSignupPayload(values, profileImageKey));
+      const authResponse = await refreshAccessToken();
+
+      return {
+        ...authResponse,
+        message: signupResponse.message,
+      };
     },
     onSuccess: ({ data }) => {
       const authStore = useAuthStore.getState();
       authStore.setAccessToken(data.access_token);
       authStore.clearSignupToken();
+      useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive');
     },
   });
 }

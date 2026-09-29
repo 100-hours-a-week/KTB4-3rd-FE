@@ -36,6 +36,20 @@ describe('Icon', () => {
     expect(getByRole('img', { name: '정보' })).toBeInTheDocument();
   });
 
+  it('CalendarDays, Clock3, Search Lucide 아이콘을 렌더링한다', () => {
+    const { getByRole } = render(
+      <>
+        <Icon name="calendarDays" title="날짜" />
+        <Icon name="clock3" title="시간" />
+        <Icon name="search" title="검색" />
+      </>,
+    );
+
+    expect(getByRole('img', { name: '날짜' })).toBeInTheDocument();
+    expect(getByRole('img', { name: '시간' })).toBeInTheDocument();
+    expect(getByRole('img', { name: '검색' })).toBeInTheDocument();
+  });
+
   it('장식용 아이콘은 기본적으로 보조 기술에서 숨긴다', () => {
     const { container } = render(<Icon name="chevronRight" />);
 

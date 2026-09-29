@@ -1,8 +1,25 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
+const KAKAO_MAP_SDK_PROXY_PATH = '/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js';
+const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || 'http://dev.moyeota.com').replace(
+  /\/$/,
+  '',
+);
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  env: {
+    NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
+  },
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${API_PROXY_TARGET}/api/:path*`,
+      },
+    ];
+  },
   // Docker 런타임 이미지를 최소화하기 위한 설정.
   // 빌드 시 .next/standalone 에 실행에 필요한 최소 파일이 생성된다.
   output: 'standalone',

@@ -13,9 +13,11 @@ pnpm dev
 개발 서버는 [http://localhost:3000](http://localhost:3000)에서 실행됩니다. API 기본 주소는
 `NEXT_PUBLIC_API_BASE_URL`로 설정합니다.
 
-GA4는 `NEXT_PUBLIC_GA_ID`, Sentry는 `NEXT_PUBLIC_SENTRY_DSN`(브라우저)과 `SENTRY_DSN`(서버)을
-`.env.local`에 설정하면 활성화됩니다. 값이 비어 있으면 SDK가 초기화되지 않습니다. Sentry 운영
-소스맵 업로드가 필요할 때만 `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, `SENTRY_PROJECT`를 추가합니다.
+GA4는 `NEXT_PUBLIC_GA_ID`, Microsoft Clarity는 `NEXT_PUBLIC_CLARITY_PROJECT_ID`, Sentry는
+`NEXT_PUBLIC_SENTRY_DSN`(브라우저)과 `SENTRY_DSN`(서버)을 `.env.local`에 설정하면 활성화됩니다.
+GA4와 Clarity 값이 비어 있으면 각각의 브라우저 스크립트를 로드하지 않습니다. 로컬·개발 환경에는
+운영용 분석 ID를 넣지 마세요. Sentry 운영 소스맵 업로드가 필요할 때만 `SENTRY_AUTH_TOKEN`,
+`SENTRY_ORG`, `SENTRY_PROJECT`를 추가합니다.
 
 ## 프로젝트 구조
 

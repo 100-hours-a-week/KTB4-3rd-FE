@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
@@ -89,5 +89,123 @@ describe('BottomSheet', () => {
 
     expect(onOpenChange).not.toHaveBeenCalled();
     expect(screen.getByRole('heading', { name: '게시글' })).toBeInTheDocument();
+  });
+
+  it('allows a dismissible sheet to close from Escape', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+
+    render(
+      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('allows a dismissible sheet to close from backdrop click', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>();
+
+    render(
+      <BottomSheet dismissible defaultOpen onOpenChange={onOpenChange} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    fireEvent.click(screen.getAllByTestId('bottom-sheet-backdrop').at(-1) as HTMLElement);
+
+    expect(onOpenChange).toHaveBeenCalledWith(false);
+  });
+
+  it('can hide the backdrop for an inline map sheet', () => {
+    render(
+      <BottomSheet defaultOpen showBackdrop={false} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('hidden');
+  });
+
+  it('renders below the dialog backdrop layer', () => {
+    render(
+      <BottomSheet defaultOpen title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-backdrop').at(-1)).toHaveClass('z-30');
+    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveClass('z-30');
+  });
+
+  it('keeps the viewport above the bottom navigation when an offset is provided', () => {
+    render(
+      <BottomSheet bottomOffset="72px" defaultOpen title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveStyle({
+      bottom: '72px',
+    });
+  });
+
+  it('hides the scrollbar and renders scroll fog when enabled', async () => {
+    const { rerender } = render(
+      <BottomSheet defaultOpen scrollContentKey={0} showScrollFog title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    const content = screen.getAllByTestId('bottom-sheet-content').at(-1) as HTMLElement;
+
+    expect(content).toHaveClass(
+      '[scrollbar-width:none]',
+      '[-ms-overflow-style:none]',
+      '[&::-webkit-scrollbar]:hidden',
+    );
+
+    const scrollTop = 0;
+    Object.defineProperties(content, {
+      clientHeight: { configurable: true, value: 500 },
+      scrollHeight: { configurable: true, value: 1000 },
+      scrollTop: { configurable: true, get: () => scrollTop },
+    });
+    fireEvent.scroll(content);
+
+    rerender(
+      <BottomSheet defaultOpen scrollContentKey={1} showScrollFog title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    await waitFor(() => {
+      expect(screen.getByTestId('scroll-fog-bottom')).toBeInTheDocument();
+    });
+  });
+
+  it('supports a custom minimum height for content-specific sheets', () => {
+    render(
+      <BottomSheet defaultOpen minHeight="420px" title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByRole('dialog').at(-1)).toHaveStyle({ minHeight: '420px' });
+  });
+
+  it('allows map interactions outside a non-modal sheet', () => {
+    render(
+      <BottomSheet defaultOpen modal={false} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>,
+    );
+
+    expect(screen.getAllByTestId('bottom-sheet-viewport').at(-1)).toHaveClass(
+      'pointer-events-none',
+    );
+    expect(screen.getAllByRole('dialog').at(-1)).toHaveClass('pointer-events-auto');
   });
 });

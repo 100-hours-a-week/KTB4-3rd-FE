@@ -1,0 +1,152 @@
+import type { BubbleVariant, ChatNoticeVariant } from '@/features/chatting';
+
+import type { ChatRoomDetailData, ChatRoomMessageData } from '@/_pages/chatting/api/chat-room';
+
+export type ChatRoomMessage =
+  | {
+      id: string;
+      kind: 'bubble';
+      content: string;
+      variant: BubbleVariant;
+      senderId?: number;
+      senderNickname?: string;
+      senderProfileImageUrl?: string | null;
+      layout?: 'default' | 'tall' | 'large';
+      loading?: boolean;
+    }
+  | {
+      id: string;
+      kind: 'notice';
+      content: string;
+      variant?: ChatNoticeVariant;
+    };
+
+export type ChatRoom = {
+  id: string;
+  lastReadMessageId: number | null;
+  title: string;
+  memberCount: number;
+  memberLimit: number;
+  messages: ChatRoomMessage[];
+};
+
+export const generalChatRoom: ChatRoom = {
+  id: 'general-1',
+  lastReadMessageId: null,
+  title: '5시 판교역',
+  memberCount: 1,
+  memberLimit: 4,
+  messages: [
+    {
+      id: 'first-user',
+      kind: 'bubble',
+      content: '첫번째 유저예요!',
+      variant: 'other',
+    },
+    {
+      id: 'finding-companion',
+      kind: 'bubble',
+      content: '같이 갈 사람을 찾는 중이에요.',
+      variant: 'other',
+      layout: 'tall',
+    },
+    {
+      id: 'user-joined',
+      kind: 'notice',
+      content: 'ㅇㅇ 님이 입장하셨어요',
+    },
+    {
+      id: 'greeting',
+      kind: 'bubble',
+      content: '안녕하세요',
+      variant: 'me',
+    },
+    {
+      id: 'meeting-place',
+      kind: 'bubble',
+      content: '어디서 만나실건가요',
+      variant: 'other',
+    },
+  ],
+};
+
+export function createChatRoom(id: string): ChatRoom {
+  return {
+    ...generalChatRoom,
+    id,
+  };
+}
+
+function getSystemMessageContent(message: ChatRoomMessageData) {
+  if (message.type === 'SYSTEM_JOIN') {
+    return message.joiner
+      ? `${message.joiner.name} 님이 입장하셨어요`
+      : '새로운 멤버가 입장하셨어요';
+  }
+
+  if (message.type === 'SYSTEM_RIDE_START_REQUESTED') {
+    return '운행이 시작됐나요?';
+  }
+
+  if (message.type === 'SYSTEM_RIDE_STARTED') {
+    return '운행이 시작됐어요';
+  }
+
+  if (message.type === 'SYSTEM_RIDE_END_REQUESTED') {
+    return '운행이 종료됐나요?';
+  }
+
+  if (message.type === 'SYSTEM_RIDE_ENDED') {
+    return '운행이 종료됐어요';
+  }
+
+  if (message.type === 'SYSTEM_LEAVE') {
+    return message.leaver ? `${message.leaver.name} 님이 퇴장하셨어요` : '새로운 멤버가 퇴장했어요';
+  }
+
+  return message.content ?? '채팅방 시스템 알림';
+}
+
+export function createChatRoomMessageFromApi(
+  message: ChatRoomMessageData,
+  currentUserId?: number,
+): ChatRoomMessage {
+  if (message.type === 'TEXT') {
+    return {
+      id: String(message.id),
+      kind: 'bubble',
+      content: message.content ?? '',
+      senderId: message.sender?.id,
+      senderNickname: message.sender?.nickname,
+      senderProfileImageUrl: message.sender?.profile_image_url,
+      variant: currentUserId !== undefined && message.sender?.id === currentUserId ? 'me' : 'other',
+    };
+  }
+
+  return {
+    id: String(message.id),
+    kind: 'notice',
+    content: getSystemMessageContent(message),
+    variant:
+      message.type === 'SYSTEM_RIDE_STARTED' || message.type === 'SYSTEM_RIDE_ENDED'
+        ? 'informative'
+        : 'system',
+  };
+}
+
+export function createChatRoomFromApi(
+  detail: ChatRoomDetailData,
+  messages: readonly ChatRoomMessageData[],
+  currentUserId?: number,
+): ChatRoom {
+  return {
+    id: String(detail.id),
+    lastReadMessageId: detail.last_read_message_id,
+    title: detail.title,
+    memberCount: detail.current_count,
+    memberLimit: detail.capacity,
+    messages: [...messages]
+      .reverse()
+      .map((message) => createChatRoomMessageFromApi(message, currentUserId)),
+  };
+}

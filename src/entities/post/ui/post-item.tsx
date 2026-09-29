@@ -25,7 +25,7 @@ const categoryBackground = {
 } as const;
 
 const transportLabel: Record<CompanionTransport, string> = {
-  CAR: '자차',
+  OWNED_CAR: '자차',
   TAXI: '택시',
   SUBWAY: '지하철',
   BUS: '버스',
@@ -52,7 +52,7 @@ function formatDepartureTime(departureAt: string) {
 function getPostMeta(post: Post) {
   if (post.type === 'COMPANION') {
     return [
-      transportLabel[post.transport],
+      transportLabel[post.transport_type],
       formatDistance(post.distance_m),
       `${formatDepartureTime(post.departure_at)} 출발`,
       `${post.current_count}/${post.capacity}명 참여 중`,

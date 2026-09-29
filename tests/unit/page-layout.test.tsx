@@ -16,6 +16,7 @@ describe('PageLayout', () => {
 
     expect(screen.getByRole('banner')).toBeInTheDocument();
     expect(screen.getByRole('main')).toHaveClass('px-5');
+    expect(screen.getByRole('main')).toHaveClass('overflow-y-auto');
     expect(screen.getByRole('main')).toHaveClass(
       'pb-[calc(var(--spacing-y-screen-bottom)+env(safe-area-inset-bottom))]',
     );
@@ -27,5 +28,16 @@ describe('PageLayout', () => {
     );
 
     expect(screen.queryByRole('banner')).not.toBeInTheDocument();
+  });
+
+  it('하단 영역을 본문 바깥에 렌더링한다', () => {
+    render(
+      <PageLayout footer={<button type="button">다음</button>}>
+        <p>페이지 콘텐츠</p>
+      </PageLayout>,
+    );
+
+    expect(screen.getByRole('button', { name: '다음' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '다음' }).closest('main')).toBeNull();
   });
 });

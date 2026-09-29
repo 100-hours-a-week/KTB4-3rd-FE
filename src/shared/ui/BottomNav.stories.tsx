@@ -39,7 +39,7 @@ export const ChatRequest: Story = {
     nextjs: {
       appDirectory: true,
       navigation: {
-        pathname: '/chatting/request',
+        pathname: '/chat/request',
       },
     },
   },

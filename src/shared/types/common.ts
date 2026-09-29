@@ -18,4 +18,4 @@ export type LocationPermissionStatus =
   | 'denied'
   | 'unavailable';
 
-export type Transport = 'WALK' | 'PUBLIC_TRANSIT' | 'CAR' | 'BICYCLE';
+export type Transport = 'OWNED_CAR' | 'TAXI' | 'SUBWAY' | 'BUS';

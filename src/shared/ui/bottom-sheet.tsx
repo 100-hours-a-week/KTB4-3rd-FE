@@ -1,15 +1,17 @@
 'use client';
 
-import { Drawer } from '@base-ui/react/drawer';
-import { useState, type ReactNode } from 'react';
+import { Drawer, type DrawerRootActions } from '@base-ui/react/drawer';
+import { useRef, useState, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
 import { Button } from './button';
 import { Divider } from './divider';
+import { ScrollFog, useScrollFog } from './scroll-fog';
 import { Text } from './text';
 
 export type BottomSheetSnapPoint = number | string;
+export type BottomSheetModal = boolean | 'trap-focus';
 
 export type BottomSheetProps = {
   open?: boolean;
@@ -21,9 +23,17 @@ export type BottomSheetProps = {
   snapPoint?: BottomSheetSnapPoint | null;
   onSnapPointChange?: (snapPoint: BottomSheetSnapPoint | null) => void;
 
+  modal?: BottomSheetModal;
+  /** Allows the sheet to close from dismissive interactions or controlled state changes. */
+  dismissible?: boolean;
   title?: ReactNode;
   description?: ReactNode;
   children: ReactNode;
+  minHeight?: number | string;
+  bottomOffset?: number | string;
+  showBackdrop?: boolean;
+  showScrollFog?: boolean;
+  scrollContentKey?: string | number;
   showViewAllButton?: boolean;
   onViewAll?: () => void;
   className?: string;
@@ -38,7 +48,7 @@ const popupClassName = cn(
 );
 
 const backdropClassName = cn(
-  'fixed inset-0 z-40 min-h-dvh bg-[var(--color-bg-overlay)] opacity-[calc(1-var(--drawer-swipe-progress))]',
+  'fixed inset-0 z-30 min-h-dvh bg-[var(--color-bg-overlay)] opacity-[calc(1-var(--drawer-swipe-progress))]',
   'transition-opacity duration-[450ms] ease-[cubic-bezier(0.32,0.72,0,1)] data-swiping:duration-0',
   'data-starting-style:opacity-0 data-ending-style:opacity-0 data-ending-style:duration-[calc(var(--drawer-swipe-strength)*400ms)]',
 );
@@ -68,6 +78,38 @@ function resolveNonDismissiveSnapPoint(
   return snapPoint;
 }
 
+function resolveViewportHeight(bottomOffset: BottomSheetSnapPoint | undefined) {
+  if (bottomOffset === undefined) {
+    return undefined;
+  }
+
+  if (typeof bottomOffset === 'number') {
+    return `calc(100% - ${bottomOffset}px)`;
+  }
+
+  if (bottomOffset === 'calc(72px + env(safe-area-inset-bottom, 0px))') {
+    return 'calc(100% - 72px - env(safe-area-inset-bottom, 0px))';
+  }
+
+  return `calc(100% - ${bottomOffset})`;
+}
+
+function resolvePopupMaxHeight(bottomOffset: BottomSheetSnapPoint | undefined) {
+  if (bottomOffset === undefined) {
+    return undefined;
+  }
+
+  if (typeof bottomOffset === 'number') {
+    return `calc(100dvh - ${bottomOffset}px)`;
+  }
+
+  if (bottomOffset === 'calc(72px + env(safe-area-inset-bottom, 0px))') {
+    return 'calc(100dvh - 72px - env(safe-area-inset-bottom, 0px))';
+  }
+
+  return `calc(100dvh - ${bottomOffset})`;
+}
+
 /**
  * Mobile-first bottom panel built on Base UI Drawer.
  *
@@ -82,9 +124,16 @@ export function BottomSheet({
   defaultSnapPoint,
   snapPoint,
   onSnapPointChange,
+  modal = true,
+  dismissible = false,
   title,
   description,
   children,
+  minHeight,
+  bottomOffset,
+  showBackdrop = true,
+  showScrollFog = false,
+  scrollContentKey,
   showViewAllButton = false,
   onViewAll,
   className,
@@ -92,6 +141,8 @@ export function BottomSheet({
   const hasTitle = title !== undefined && title !== null;
   const hasDescription = description !== undefined && description !== null;
   const hasViewAllButton = showViewAllButton && onViewAll !== undefined;
+  const actionsRef = useRef<DrawerRootActions | null>(null);
+  const { scrollRef, showBottom, showTop } = useScrollFog(scrollContentKey);
   const resolvedSnapPoints = (snapPoints ?? defaultSnapPoints).filter(
     (point) => !isDismissiveSnapPoint(point),
   );
@@ -101,17 +152,21 @@ export function BottomSheet({
     resolveNonDismissiveSnapPoint(defaultSnapPoint, minimumSnapPoint) ?? minimumSnapPoint;
   const resolvedSnapPoint = resolveNonDismissiveSnapPoint(snapPoint, minimumSnapPoint);
   const isSnapPointControlled = snapPoint !== undefined;
+  const resolvedBottomOffset =
+    typeof bottomOffset === 'number' ? `${bottomOffset}px` : bottomOffset;
+  const resolvedViewportHeight = resolveViewportHeight(bottomOffset);
+  const resolvedPopupMaxHeight = resolvePopupMaxHeight(bottomOffset);
   const [internalSnapPoint, setInternalSnapPoint] =
     useState<BottomSheetSnapPoint>(resolvedDefaultSnapPoint);
   const activeSnapPoint = isSnapPointControlled ? resolvedSnapPoint : internalSnapPoint;
 
   const handleOpenChange = (nextOpen: boolean, eventDetails: Drawer.Root.ChangeEventDetails) => {
-    if (!nextOpen) {
+    if (!nextOpen && !dismissible) {
       eventDetails.cancel();
       return;
     }
 
-    onOpenChange?.(true);
+    onOpenChange?.(nextOpen);
   };
 
   const handleSnapPointChange = (
@@ -130,6 +185,11 @@ export function BottomSheet({
   };
 
   const handleBackdropClick = () => {
+    if (dismissible) {
+      actionsRef.current?.close();
+      return;
+    }
+
     if (!isSnapPointControlled) {
       setInternalSnapPoint(minimumSnapPoint);
     }
@@ -138,9 +198,11 @@ export function BottomSheet({
 
   return (
     <Drawer.Root
-      disablePointerDismissal
+      actionsRef={actionsRef}
+      disablePointerDismissal={!dismissible}
       defaultOpen={defaultOpen}
       defaultSnapPoint={resolvedDefaultSnapPoint}
+      modal={modal}
       onOpenChange={handleOpenChange}
       onSnapPointChange={handleSnapPointChange}
       open={open}
@@ -149,19 +211,42 @@ export function BottomSheet({
       snapToSequentialPoints
     >
       <Drawer.Portal>
-        <Drawer.Backdrop className={backdropClassName} data-testid="bottom-sheet-backdrop" />
+        <Drawer.Backdrop
+          className={showBackdrop ? backdropClassName : 'hidden'}
+          data-testid="bottom-sheet-backdrop"
+          onClick={dismissible ? handleBackdropClick : undefined}
+        />
         <Drawer.Viewport
-          className="fixed inset-0 z-50 flex touch-none items-end justify-center"
+          className={cn(
+            'fixed inset-x-0 top-0 bottom-0 z-30 flex touch-none items-end justify-center overflow-hidden',
+            modal !== true && 'pointer-events-none',
+          )}
           data-testid="bottom-sheet-viewport"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) {
               handleBackdropClick();
             }
           }}
+          style={
+            resolvedBottomOffset === undefined
+              ? undefined
+              : { bottom: resolvedBottomOffset, height: resolvedViewportHeight }
+          }
         >
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
-            className={cn(popupClassName, className)}
+            className={cn(
+              popupClassName,
+              modal !== true && 'pointer-events-auto',
+              bottomOffset !== undefined &&
+                'pb-[max(0px,calc(var(--drawer-snap-point-offset)+var(--drawer-swipe-movement-y)))]',
+              className,
+            )}
+            style={
+              minHeight === undefined && resolvedPopupMaxHeight === undefined
+                ? undefined
+                : { maxHeight: resolvedPopupMaxHeight, minHeight }
+            }
           >
             <div className="shrink-0 touch-none px-[var(--dimension-x5)] pt-3 select-none">
               <div
@@ -205,12 +290,16 @@ export function BottomSheet({
               ) : null}
               <Divider className="mt-3" color="neutral-subtle" data-testid="bottom-sheet-divider" />
             </div>
-            <Drawer.Content
-              className="min-h-0 flex-1 touch-auto overflow-y-auto overscroll-contain pb-[calc(var(--dimension-x5)+env(safe-area-inset-bottom,0px))]"
-              data-testid="bottom-sheet-content"
-            >
-              {children}
-            </Drawer.Content>
+            <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
+              <Drawer.Content
+                className="h-full min-h-0 touch-auto [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(var(--dimension-x5)+env(safe-area-inset-bottom,0px))] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                data-testid="bottom-sheet-content"
+                ref={scrollRef}
+              >
+                {children}
+              </Drawer.Content>
+              {showScrollFog ? <ScrollFog showBottom={showBottom} showTop={showTop} /> : null}
+            </div>
           </Drawer.Popup>
         </Drawer.Viewport>
       </Drawer.Portal>

@@ -1,0 +1,91 @@
+import { afterEach, describe, expect, it } from 'vitest';
+
+import { useMatchingRegistrationStore } from '@/features/matching-registration';
+
+afterEach(() => {
+  useMatchingRegistrationStore.getState().reset();
+});
+
+describe('useMatchingRegistrationStore', () => {
+  it('백엔드 매칭 등록 payload에 맞춰 위치와 탑승 시간을 관리한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(useMatchingRegistrationStore.getState().getPayload()).toEqual({
+      origin_name: '판교역',
+      origin_lat: 37.3945,
+      origin_lng: 127.1112,
+      dest_name: '강남역',
+      dest_lat: 37.4979,
+      dest_lng: 127.0276,
+      departure_at: '2026-09-05T08:30:00.000Z',
+    });
+  });
+
+  it('매칭 등록 payload의 좌표를 소수점 6자리까지 반올림한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '판교역', lat: 37.3945678, lng: 127.11123456 });
+    store.setDestination({ name: '강남역', lat: 37.4979004, lng: 127.02760049 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(store.getPayload()).toMatchObject({
+      origin_lat: 37.394568,
+      origin_lng: 127.111235,
+      dest_lat: 37.4979,
+      dest_lng: 127.0276,
+    });
+  });
+
+  it('필수 값이 모두 채워지기 전에는 payload를 반환하지 않는다', () => {
+    useMatchingRegistrationStore.getState().setOrigin({
+      name: '판교역',
+      lat: 37.3945,
+      lng: 127.1112,
+    });
+
+    expect(useMatchingRegistrationStore.getState().getPayload()).toBeNull();
+  });
+
+  it('등록 요청 전 검증에서 누락된 등록 영역을 반환한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(store.getValidationFields()).toEqual(['destination']);
+  });
+
+  it('출발지 역지오코딩 장소명과 좌표가 있으면 등록 요청 검증을 통과한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDestination({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+
+    expect(store.getValidationFields()).toEqual([]);
+    expect(store.getPayload()).not.toBeNull();
+  });
+
+  it('reset으로 등록 데이터를 초기화한다', () => {
+    const store = useMatchingRegistrationStore.getState();
+
+    store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
+    store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
+    store.setDepartureAt('2026-09-05T08:30:00.000Z');
+    store.reset();
+
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      origin_name: null,
+      origin_lat: null,
+      origin_lng: null,
+      dest_name: null,
+      dest_lat: null,
+      dest_lng: null,
+      departure_at: null,
+    });
+  });
+});
