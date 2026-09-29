@@ -567,7 +567,7 @@ function ChattingPageContent({
 
   const topContent = taxiPotDetail ? (
     <TaxiPotAnnouncement
-      className="absolute top-1.5 left-3 z-10 w-[calc(100%-24px)]"
+      className="absolute inset-x-3 top-1.5 z-10"
       departureTime={formatDepartureTime(taxiPotDetail.departure_at)}
     />
   ) : null;
