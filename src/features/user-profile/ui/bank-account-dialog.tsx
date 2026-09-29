@@ -92,7 +92,7 @@ export function BankAccountDialog({ open, onDismiss, onOpenChange }: BankAccount
       title="정산 계좌를 등록해주세요"
       onOpenChange={handleOpenChange}
     >
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-4" data-clarity-mask="true">
         <Field
           errorMessage={bankErrorMessage}
           inputSlot={

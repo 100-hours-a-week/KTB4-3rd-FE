@@ -23,6 +23,7 @@
     "@base-ui/react": "^1.8.0",
     "@hookform/resolvers": "^5.9.1",
     "@internationalized/date": "^3.12.4",
+    "@microsoft/clarity": "^1.0.2",
     "@ncdai/react-wheel-picker": "^1.2.3",
     "@next/third-parties": "^16.3.5",
     "@react-aria/button": "^3.15.1",

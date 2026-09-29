@@ -149,7 +149,7 @@ export function LocationSearchScreen({
 
       <div aria-hidden="true" className="h-[var(--dimension-x14)] shrink-0" />
 
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden">
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden" data-clarity-mask="true">
         <div className="flex flex-col gap-2 px-5 pt-3">
           {(['departure', 'destination'] as const).map((field) => (
             <Input
