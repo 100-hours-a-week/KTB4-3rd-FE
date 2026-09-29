@@ -6,65 +6,67 @@ const MOCK_COMMENT_NEXT_CURSOR = 'v1.eyJsYXN0X2lkIjoxfQ';
 const MOCK_COMMENT_ID = 2;
 const MAX_COMMENT_LENGTH = 280;
 const MOCK_COMMUNITY_POST_IDS = new Set([3, 4, 88]);
+const MOCK_COMMENT_PROFILE_IMAGE_URL =
+  'https://moyeota-prod-images.s3.ap-northeast-2.amazonaws.com/profile/e40f6edd-55d2-4440-ab80-0921501cc4f7.jpg';
 
 const MOCK_COMMUNITY_COMMENTS = [
   {
     id: 2,
-    nickname: '우림',
+    author: { nickname: '우림', profile_image_url: MOCK_COMMENT_PROFILE_IMAGE_URL },
     content: '저도 궁금해요!',
     created_at: '2026-09-03T11:00:00.000Z',
   },
   {
     id: 3,
-    nickname: '하루',
+    author: { nickname: '하루', profile_image_url: null },
     content: '저는 조용한 카페를 선호해요.',
     created_at: '2026-09-03T10:55:00.000Z',
   },
   {
     id: 4,
-    nickname: '루디',
+    author: { nickname: '루디', profile_image_url: null },
     content: '판교역 근처 카페를 찾아보고 있어요.',
     created_at: '2026-09-03T10:50:00.000Z',
   },
   {
     id: 5,
-    nickname: '모여타',
+    author: { nickname: '모여타', profile_image_url: null },
     content: '좋은 곳을 찾으면 공유해주세요!',
     created_at: '2026-09-03T10:45:00.000Z',
   },
   {
     id: 6,
-    nickname: '길동',
+    author: { nickname: '길동', profile_image_url: null },
     content: '주말에도 사람이 많을까요?',
     created_at: '2026-09-03T10:40:00.000Z',
   },
   {
     id: 7,
-    nickname: '타요',
+    author: { nickname: '타요', profile_image_url: null },
     content: '창가 자리가 있는 곳이면 좋겠네요.',
     created_at: '2026-09-03T10:35:00.000Z',
   },
   {
     id: 8,
-    nickname: '제리',
+    author: { nickname: '제리', profile_image_url: null },
     content: '판교역 1번 출구 쪽 카페를 추천해요.',
     created_at: '2026-09-03T10:30:00.000Z',
   },
   {
     id: 9,
-    nickname: '소다',
+    author: { nickname: '소다', profile_image_url: null },
     content: '콘센트가 많은지도 궁금합니다.',
     created_at: '2026-09-03T10:25:00.000Z',
   },
   {
     id: 10,
-    nickname: '다온',
+    author: { nickname: '다온', profile_image_url: null },
     content: '저도 카페 추천 기다릴게요.',
     created_at: '2026-09-03T10:20:00.000Z',
   },
   {
     id: 11,
-    nickname: '온유',
+    author: { nickname: '온유', profile_image_url: null },
     content: '조용한 분위기의 카페를 찾고 있어요.',
     created_at: '2026-09-03T10:15:00.000Z',
   },

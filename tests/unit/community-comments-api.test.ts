@@ -16,7 +16,11 @@ describe('community comments API', () => {
         items: expect.arrayContaining([
           {
             id: 2,
-            nickname: '우림',
+            author: {
+              nickname: '우림',
+              profile_image_url:
+                'https://moyeota-prod-images.s3.ap-northeast-2.amazonaws.com/profile/e40f6edd-55d2-4440-ab80-0921501cc4f7.jpg',
+            },
             content: '저도 궁금해요!',
             created_at: '2026-09-03T11:00:00.000Z',
           },

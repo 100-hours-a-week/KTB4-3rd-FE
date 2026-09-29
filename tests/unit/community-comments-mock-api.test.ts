@@ -23,7 +23,12 @@ describe('커뮤니티 댓글 MSW mock API', () => {
     const response = await fetch('http://localhost:8080/community-posts/88/comments');
     const body = await readJson<
       ApiResponse<{
-        items: { id: number; nickname: string; content: string; created_at: string }[];
+        items: {
+          id: number;
+          author: { nickname: string; profile_image_url: string | null };
+          content: string;
+          created_at: string;
+        }[];
         next_cursor: string | null;
       }>
     >(response);
@@ -33,7 +38,11 @@ describe('커뮤니티 댓글 MSW mock API', () => {
     expect(body.data.items).toHaveLength(10);
     expect(body.data.items[0]).toEqual({
       id: 2,
-      nickname: '우림',
+      author: {
+        nickname: '우림',
+        profile_image_url:
+          'https://moyeota-prod-images.s3.ap-northeast-2.amazonaws.com/profile/e40f6edd-55d2-4440-ab80-0921501cc4f7.jpg',
+      },
       content: '저도 궁금해요!',
       created_at: '2026-09-03T11:00:00.000Z',
     });
