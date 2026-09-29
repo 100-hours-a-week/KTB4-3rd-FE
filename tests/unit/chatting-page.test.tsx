@@ -489,6 +489,27 @@ describe('ChattingPage', () => {
     expect(input).toHaveValue('');
   });
 
+  it('택시팟 웹소켓 TEXT 메시지의 sender.name을 표시한다', async () => {
+    mockCurrentUserId(1);
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await new Promise((resolve) => setTimeout(resolve, 30));
+
+    emitMockChatRoomMessage('599', {
+      id: 1501,
+      type: 'TEXT',
+      sender: { id: 9, name: '김동균', profile_image_url: null },
+      content: '아하',
+      created_at: '2026-09-29T23:31:25.384056368',
+    });
+
+    expect(await screen.findByText('김동균')).toBeInTheDocument();
+    expect(screen.getByText('아하').closest('[data-variant]')).toHaveAttribute(
+      'data-variant',
+      'other',
+    );
+  });
+
   it('방장이 운행 시작을 확인하면 PATCH 성공 후 시작 알림으로 바꾸고 나가기 버튼을 숨긴다', async () => {
     const user = userEvent.setup();
 
