@@ -199,7 +199,13 @@ describe('ChattingPage', () => {
       status: 'connecting',
     } satisfies ChatRoomWebSocketConnectionValue;
 
-    render(<ChatRoomContent connection={connection} liveMessages={[]} room={generalChatRoom} />);
+    render(
+      <ChatRoomContent
+        connection={connection}
+        liveMessages={[]}
+        room={{ ...generalChatRoom, memberCount: 2 }}
+      />,
+    );
 
     const input = screen.getByRole('textbox', { name: '메시지 입력' });
     const sendButton = screen.getByRole('button', { name: '메시지 전송' });
@@ -211,6 +217,19 @@ describe('ChattingPage', () => {
 
     expect(input).toHaveValue('입장 직후 입력한 메시지');
     expect(sendMessage).not.toHaveBeenCalled();
+  });
+
+  it('채팅방 인원이 한 명이면 메시지 입력 영역을 비활성화한다', () => {
+    const connection = {
+      error: null,
+      sendMessage: vi.fn<(content: string) => boolean>(() => true),
+      status: 'open',
+    } satisfies ChatRoomWebSocketConnectionValue;
+
+    render(<ChatRoomContent connection={connection} liveMessages={[]} room={generalChatRoom} />);
+
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
   });
 
   it('새로운 메시지가 추가되면 메시지 목록을 하단으로 스크롤한다', () => {
