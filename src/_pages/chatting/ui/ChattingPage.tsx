@@ -107,7 +107,11 @@ function createEvaluationParticipants(
   } else {
     for (const message of messages ?? []) {
       if (message.sender) {
-        participantMap.set(message.sender.id, message.sender.nickname);
+        const senderName = message.sender.nickname ?? message.sender.name;
+
+        if (senderName) {
+          participantMap.set(message.sender.id, senderName);
+        }
       }
 
       if (message.joiner) {

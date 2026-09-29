@@ -11,7 +11,8 @@ export type ChatWebSocketMessage = {
   content?: string | null;
   sender?: {
     id: number;
-    nickname: string;
+    nickname?: string;
+    name?: string;
     profile_image_url: string | null;
   };
   joiner?: {

@@ -107,6 +107,10 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
   return message.content ?? '채팅방 시스템 알림';
 }
 
+function getSenderName(sender: ChatRoomMessageData['sender']) {
+  return sender?.nickname ?? sender?.name;
+}
+
 export function createChatRoomMessageFromApi(
   message: ChatRoomMessageData,
   currentUserId?: number,
@@ -117,7 +121,7 @@ export function createChatRoomMessageFromApi(
       kind: 'bubble',
       content: message.content ?? '',
       senderId: message.sender?.id,
-      senderNickname: message.sender?.nickname,
+      senderNickname: getSenderName(message.sender),
       senderProfileImageUrl: message.sender?.profile_image_url,
       variant: currentUserId !== undefined && message.sender?.id === currentUserId ? 'me' : 'other',
     };
