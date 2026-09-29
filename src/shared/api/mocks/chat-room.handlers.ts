@@ -75,6 +75,22 @@ const MOCK_CHAT_ROOMS = {
       { id: 15, nickname: '타요' },
     ],
   },
+  601: {
+    id: 601,
+    companion_id: 32,
+    kind: 'TAXI_POT',
+    title: '8시 판교역',
+    host_id: 7,
+    origin_name: '판교역',
+    dest_name: '강남역',
+    departure_at: '2026-09-05T08:30:00.000Z',
+    current_count: 1,
+    capacity: 4,
+    companion_status: 'RECRUITING',
+    closed_at: null,
+    last_read_message_id: null,
+    participants: [{ id: 7, nickname: '제리' }],
+  },
 } as const;
 
 const MOCK_CHAT_ROOM_LISTS: Record<ChatRoomKind, ChatRoomListData> = {
@@ -224,6 +240,10 @@ const MOCK_CHAT_MESSAGES = {
         created_at: '2026-09-05T08:00:00.000Z',
       },
     ],
+    next_cursor: null,
+  },
+  601: {
+    items: [],
     next_cursor: null,
   },
 } as const;

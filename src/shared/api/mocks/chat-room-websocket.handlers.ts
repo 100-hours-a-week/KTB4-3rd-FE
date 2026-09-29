@@ -35,10 +35,53 @@ type ChatRoomSubscription = {
   roomId: string;
 };
 
-const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600']);
+const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601']);
+const MOCK_CHAT_UI_PREVIEW_ROOM_ID = '601';
+const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
+  {
+    id: 1456,
+    type: 'TEXT',
+    sender: { id: 7, nickname: 'rachel', profile_image_url: null },
+    content: '3분 뒤 도착합니다',
+    created_at: '2026-09-05T07:59:03.000Z',
+  },
+  {
+    id: 1457,
+    type: 'SYSTEM_JOIN',
+    joiner: { id: 9, name: '루디' },
+    created_at: '2026-09-05T07:40:00.000Z',
+  },
+  {
+    id: 1458,
+    type: 'SYSTEM_LEAVE',
+    leaver: { id: 12, name: '민준' },
+    created_at: '2026-09-05T07:35:00.000Z',
+  },
+  {
+    id: 1459,
+    type: 'SYSTEM_RIDE_START_REQUESTED',
+    created_at: '2026-09-05T07:58:12.000Z',
+  },
+  {
+    id: 1460,
+    type: 'SYSTEM_RIDE_STARTED',
+    created_at: '2026-09-05T07:58:40.000Z',
+  },
+  {
+    id: 1461,
+    type: 'SYSTEM_RIDE_END_REQUESTED',
+    created_at: '2026-09-05T08:22:00.000Z',
+  },
+  {
+    id: 1462,
+    type: 'SYSTEM_RIDE_ENDED',
+    created_at: '2026-09-05T08:23:00.000Z',
+  },
+];
 const subscriptions = new Map<string, ChatRoomSubscription>();
 const processedMessages = new Map<string, MockChatMessage>();
 const pendingMessages = new Map<string, MockChatMessage[]>();
+const previewTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
 let nextMessageId = 1454;
 
 function getHeader(headers: Record<string, string>, name: string) {
@@ -135,8 +178,25 @@ function removeClientSubscriptions(client: WebSocketHandlerConnection['client'])
   for (const [subscriptionId, subscription] of subscriptions) {
     if (subscription.client.id === client.id) {
       subscriptions.delete(subscriptionId);
+      previewTimers.get(subscriptionId)?.forEach((timer) => clearTimeout(timer));
+      previewTimers.delete(subscriptionId);
     }
   }
+}
+
+function sendMessageToSubscription(subscription: ChatRoomSubscription, message: MockChatMessage) {
+  subscription.client.send(
+    createFrame(
+      'MESSAGE',
+      {
+        destination: `/sub/chat/${subscription.roomId}`,
+        subscription: subscription.subscriptionId,
+        'message-id': String(message.id),
+        'content-type': 'application/json',
+      },
+      JSON.stringify(message),
+    ),
+  );
 }
 
 export function emitMockChatRoomMessage(roomId: string, message: MockChatMessage) {
@@ -149,23 +209,34 @@ export function emitMockChatRoomMessage(roomId: string, message: MockChatMessage
 
     delivered = true;
 
-    subscription.client.send(
-      createFrame(
-        'MESSAGE',
-        {
-          destination: `/sub/chat/${roomId}`,
-          subscription: subscription.subscriptionId,
-          'message-id': String(message.id),
-          'content-type': 'application/json',
-        },
-        JSON.stringify(message),
-      ),
-    );
+    sendMessageToSubscription(subscription, message);
   }
 
   if (!delivered) {
     pendingMessages.set(roomId, [...(pendingMessages.get(roomId) ?? []), message]);
   }
+}
+
+function scheduleChatUiPreview(subscription: ChatRoomSubscription) {
+  if (subscription.roomId !== MOCK_CHAT_UI_PREVIEW_ROOM_ID) {
+    return;
+  }
+
+  const subscriptionKey = `${subscription.client.id}:${subscription.subscriptionId}`;
+  const timers = MOCK_CHAT_UI_PREVIEW_MESSAGES.map((message, index) =>
+    setTimeout(
+      () => {
+        const activeSubscription = subscriptions.get(subscriptionKey);
+
+        if (activeSubscription) {
+          sendMessageToSubscription(activeSubscription, message);
+        }
+      },
+      (index + 1) * 2500,
+    ),
+  );
+
+  previewTimers.set(subscriptionKey, timers);
 }
 
 function handleConnect(client: WebSocketHandlerConnection['client'], frame: StompFrame) {
@@ -196,8 +267,9 @@ function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: St
   }
 
   const subscription = { client, roomId, subscriptionId };
+  const subscriptionKey = `${client.id}:${subscriptionId}`;
 
-  subscriptions.set(`${client.id}:${subscriptionId}`, subscription);
+  subscriptions.set(subscriptionKey, subscription);
 
   const pendingRoomMessages = pendingMessages.get(roomId);
 
@@ -205,20 +277,11 @@ function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: St
     pendingMessages.delete(roomId);
 
     for (const message of pendingRoomMessages) {
-      subscription.client.send(
-        createFrame(
-          'MESSAGE',
-          {
-            destination: `/sub/chat/${roomId}`,
-            subscription: subscription.subscriptionId,
-            'message-id': String(message.id),
-            'content-type': 'application/json',
-          },
-          JSON.stringify(message),
-        ),
-      );
+      sendMessageToSubscription(subscription, message);
     }
   }
+
+  scheduleChatUiPreview(subscription);
 }
 
 function handleUnsubscribe(client: WebSocketHandlerConnection['client'], frame: StompFrame) {

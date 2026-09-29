@@ -10,6 +10,8 @@ export {
 } from './api/taxi-pot';
 export {
   createTaxiPotChatEntryMessages,
+  getLatestTaxiPotRideAction,
+  isTaxiPotRideActionMessage,
   type TaxiPotRideAction,
   type TaxiPotChatEntryMessage,
 } from './model/taxi-pot-chat';

@@ -21,6 +21,8 @@ import type { ChatWebSocketMessage } from '@/entities/chat';
 import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
   createTaxiPotChatEntryMessages,
+  getLatestTaxiPotRideAction,
+  isTaxiPotRideActionMessage,
   TaxiPotAnnouncement,
   TaxiPotRideActionNotice,
   taxiPotQueries,
@@ -130,7 +132,7 @@ const reportReasonMap = {
   unpaid: 'UNSETTLED',
 } as const;
 
-function getLastPersistedMessageId(messages: readonly ChatRoomMessage[]) {
+function getLastPersistedMessageId(messages: readonly { id: string | number }[]) {
   let latestMessage: { id: string; numericId: number } | undefined;
 
   for (const message of messages) {
@@ -141,7 +143,7 @@ function getLastPersistedMessageId(messages: readonly ChatRoomMessage[]) {
     }
 
     if (!latestMessage || numericId > latestMessage.numericId) {
-      latestMessage = { id: message.id, numericId };
+      latestMessage = { id: String(message.id), numericId };
     }
   }
 
@@ -178,6 +180,14 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const chatRoomMessages = useMemo(
     () => messagesQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
     [messagesQuery.data?.pages],
+  );
+  const initialRideAction = isTaxiPot ? getLatestTaxiPotRideAction(chatRoomMessages) : undefined;
+  const chatRoomMessagesForDisplay = useMemo(
+    () =>
+      isTaxiPot
+        ? chatRoomMessages.filter((message) => !isTaxiPotRideActionMessage(message))
+        : chatRoomMessages,
+    [chatRoomMessages, isTaxiPot],
   );
   const evaluationParticipants = useMemo(
     () =>
@@ -218,6 +228,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     [appendLiveMessage],
   );
   const taxiPotFlow = useTaxiPotChatFlow({
+    initialRideAction,
     onStartConfirmed: handleTaxiPotStartConfirmed,
     taxiPotDetail,
     taxiPotId,
@@ -341,7 +352,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
   const baseRoom =
     chatRoomDetail && messagesQuery.data
-      ? createChatRoomFromApi(chatRoomDetail, chatRoomMessages, currentUserId)
+      ? createChatRoomFromApi(chatRoomDetail, chatRoomMessagesForDisplay, currentUserId)
       : undefined;
   const taxiPotEntryMessages = taxiPotDetail
     ? createTaxiPotChatEntryMessages(taxiPotDetail).map(toChatRoomMessage)
@@ -371,8 +382,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     });
   }, [currentUserId, liveMessagesState, roomId]);
   const lastMessageId = useMemo(
-    () => getLastPersistedMessageId([...(room?.messages ?? []), ...liveMessages]),
-    [liveMessages, room?.messages],
+    () =>
+      getLastPersistedMessageId([...chatRoomMessages, ...(room?.messages ?? []), ...liveMessages]),
+    [chatRoomMessages, liveMessages, room?.messages],
   );
   const handleBack = useCallback(async () => {
     if (lastMessageId) {

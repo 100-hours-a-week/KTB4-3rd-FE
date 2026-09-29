@@ -11,6 +11,7 @@ import { useTaxiPotStatusMutation } from '@/features/taxi-pot-chat/model/use-tax
 import type { TaxiPotRideAction } from './taxi-pot-chat';
 
 type TaxiPotChatFlowOptions = {
+  initialRideAction?: TaxiPotRideAction;
   taxiPotDetail?: TaxiPotDetailData;
   taxiPotId?: string;
   onStartConfirmed?: (taxiPotId: string) => void;
@@ -28,6 +29,7 @@ type TaxiPotRideActionState = {
 };
 
 export function useTaxiPotChatFlow({
+  initialRideAction,
   onStartConfirmed,
   taxiPotDetail,
   taxiPotId,
@@ -45,10 +47,15 @@ export function useTaxiPotChatFlow({
     statusState !== undefined && statusState.taxiPotId === taxiPotId
       ? statusState.status
       : taxiPotDetail?.status;
-  const rideAction =
+  const currentRideAction =
     rideActionState !== undefined && rideActionState.taxiPotId === taxiPotId
       ? rideActionState.action
       : undefined;
+  const canShowInitialRideAction =
+    (initialRideAction === 'start' && status === 'RECRUITING') ||
+    (initialRideAction === 'end' && status === 'IN_PROGRESS');
+  const rideAction =
+    currentRideAction ?? (canShowInitialRideAction ? initialRideAction : undefined);
 
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {

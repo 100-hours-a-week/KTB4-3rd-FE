@@ -1,6 +1,49 @@
+import type { ChatWebSocketMessage } from '@/entities/chat';
 import type { TaxiPotDetailData } from '@/features/taxi-pot-chat/api/taxi-pot';
 
 export type TaxiPotRideAction = 'start' | 'end';
+
+const rideActionMessageTypes = new Set<ChatWebSocketMessage['type']>([
+  'SYSTEM_RIDE_START_REQUESTED',
+  'SYSTEM_RIDE_END_REQUESTED',
+]);
+
+const rideLifecycleMessageTypes = new Set<ChatWebSocketMessage['type']>([
+  ...rideActionMessageTypes,
+  'SYSTEM_RIDE_STARTED',
+  'SYSTEM_RIDE_ENDED',
+]);
+
+export function isTaxiPotRideActionMessage(message: Pick<ChatWebSocketMessage, 'type'>): boolean {
+  return rideActionMessageTypes.has(message.type);
+}
+
+export function getLatestTaxiPotRideAction(
+  messages: readonly Pick<ChatWebSocketMessage, 'id' | 'type'>[],
+): TaxiPotRideAction | undefined {
+  let latestRideMessage: Pick<ChatWebSocketMessage, 'id' | 'type'> | undefined;
+
+  for (const message of messages) {
+    if (
+      !rideLifecycleMessageTypes.has(message.type) ||
+      (latestRideMessage !== undefined && message.id <= latestRideMessage.id)
+    ) {
+      continue;
+    }
+
+    latestRideMessage = message;
+  }
+
+  if (latestRideMessage?.type === 'SYSTEM_RIDE_START_REQUESTED') {
+    return 'start';
+  }
+
+  if (latestRideMessage?.type === 'SYSTEM_RIDE_END_REQUESTED') {
+    return 'end';
+  }
+
+  return undefined;
+}
 
 export type TaxiPotChatEntryMessage = {
   id: string;

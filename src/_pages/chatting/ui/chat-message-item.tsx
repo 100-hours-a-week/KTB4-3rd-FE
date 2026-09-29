@@ -1,5 +1,6 @@
 import { Bubble, ChatNotice } from '@/features/chatting';
 import { cn } from '@/shared/lib/cn';
+import { Avatar } from '@/shared/ui/avatar';
 import { Text } from '@/shared/ui/text';
 
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
@@ -38,6 +39,7 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
   }
 
   const messageClassName = getMessageClassName(message, index);
+  const isOtherMessage = message.variant === 'other';
   const hasSenderNickname = message.variant === 'other' && Boolean(message.senderNickname);
   const numericMessageId = Number(message.id);
   const canReportMessage = message.variant === 'other' && message.senderId !== undefined;
@@ -75,8 +77,23 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
     bubble
   );
 
+  const avatar = isOtherMessage ? (
+    <Avatar
+      alt={`${message.senderNickname ?? '상대방'} 프로필`}
+      size="sm"
+      src={message.senderProfileImageUrl}
+    />
+  ) : null;
+
   if (!hasSenderNickname) {
-    return bubbleWithMenu;
+    return isOtherMessage ? (
+      <div className={cn(messageClassName, 'flex self-start items-end gap-2')}>
+        {avatar}
+        {bubbleWithMenu}
+      </div>
+    ) : (
+      bubbleWithMenu
+    );
   }
 
   return (
@@ -84,7 +101,10 @@ export function ChatMessageItem({ message, index, onReport }: ChatMessageItemPro
       <Text as="span" className="mb-1 ml-1" color="fg.neutralMuted" variant="t5Regular">
         {message.senderNickname}
       </Text>
-      {bubbleWithMenu}
+      <div className="flex items-end gap-2">
+        {avatar}
+        {bubbleWithMenu}
+      </div>
     </div>
   );
 }

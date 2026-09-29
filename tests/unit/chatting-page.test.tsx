@@ -6,6 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
 import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
+import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
 import { useAuthStore } from '@/entities/auth';
 import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.handlers';
 import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
@@ -75,6 +76,49 @@ async function emitTaxiPotMessage(
 }
 
 describe('ChattingPage', () => {
+  it('상대방 메시지 좌측에 프로필 아바타를 표시하고 이미지 오류 시 기본 아바타로 전환한다', () => {
+    const message = {
+      id: 'message-with-avatar',
+      kind: 'bubble' as const,
+      content: '안녕하세요',
+      senderNickname: '루디',
+      senderProfileImageUrl: 'https://cdn.moyeota.app/profile/rudy.jpg',
+      variant: 'other' as const,
+    };
+
+    const { rerender } = render(
+      <ChatMessageItem index={0} message={message} onReport={() => {}} />,
+    );
+    const avatar = screen.getByRole('img', { name: '루디 프로필' });
+    const bubble = screen.getByText('안녕하세요').closest<HTMLElement>('[data-variant]');
+    const messageRow = avatar.parentElement?.parentElement;
+
+    expect(messageRow?.firstElementChild).toBe(avatar.parentElement);
+    expect(messageRow).toContainElement(bubble);
+
+    expect(avatar).toHaveAttribute(
+      'src',
+      expect.stringContaining('https://cdn.moyeota.app/profile/rudy.jpg'),
+    );
+
+    fireEvent.error(avatar);
+
+    expect(avatar).toHaveAttribute('src', expect.stringContaining('/avatars/avatar-default.svg'));
+
+    rerender(
+      <ChatMessageItem
+        index={0}
+        message={{ ...message, senderProfileImageUrl: null }}
+        onReport={() => {}}
+      />,
+    );
+
+    expect(screen.getByRole('img', { name: '루디 프로필' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/avatars/avatar-default.svg'),
+    );
+  });
+
   it('채팅방 ID를 동적으로 반영한 목업 채팅방을 생성한다', () => {
     expect(createChatRoom('501')).toMatchObject({
       id: '501',
@@ -102,6 +146,49 @@ describe('ChattingPage', () => {
       '!h-[calc(78px+env(safe-area-inset-bottom,0px))]',
       '!pb-[env(safe-area-inset-bottom,0px)]',
     );
+  });
+
+  it('기존 운행 시작 요청 메시지를 방장용 시스템 액션으로 표시한다', async () => {
+    server.use(
+      http.get('*/chat-rooms/599/messages', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                id: 1452,
+                type: 'SYSTEM_RIDE_START_REQUESTED',
+                created_at: '2026-09-05T07:58:12.000Z',
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      ),
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'RECRUITING',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+    );
+
+    renderChattingPage('599');
+
+    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
+      '운행이 시작됐나요?',
+    );
+    expect(screen.queryByText('운행이 시작됐나요?')?.closest('[data-variant]')).toBeNull();
   });
 
   it('웹소켓 연결 중에도 채팅 입력은 가능하고 전송만 비활성화한다', () => {
