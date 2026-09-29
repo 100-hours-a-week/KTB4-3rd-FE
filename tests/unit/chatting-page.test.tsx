@@ -148,6 +148,49 @@ describe('ChattingPage', () => {
     );
   });
 
+  it('기존 운행 시작 요청 메시지를 방장용 시스템 액션으로 표시한다', async () => {
+    server.use(
+      http.get('*/chat-rooms/599/messages', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                id: 1452,
+                type: 'SYSTEM_RIDE_START_REQUESTED',
+                created_at: '2026-09-05T07:58:12.000Z',
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      ),
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'RECRUITING',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 1,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+    );
+
+    renderChattingPage('599');
+
+    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
+      '운행이 시작됐나요?',
+    );
+    expect(screen.queryByText('운행이 시작됐나요?')?.closest('[data-variant]')).toBeNull();
+  });
+
   it('웹소켓 연결 중에도 채팅 입력은 가능하고 전송만 비활성화한다', () => {
     const sendMessage = vi.fn<(content: string) => boolean>(() => false);
     const connection = {
