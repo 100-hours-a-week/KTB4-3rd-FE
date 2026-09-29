@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
 import { StartPin } from '@/entities/map-pin';
 import type { LocationSearchResult } from '@/features/location-search';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
@@ -50,6 +51,7 @@ export function MatchingPage() {
   const mapRef = useRef<MapRef>(null);
   const geocodingRequestIdRef = useRef(0);
   const [isBankAccountDialogDismissed, setIsBankAccountDialogDismissed] = useState(false);
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const currentUserQuery = useCurrentUserQuery();
   const departure = useMatchingStore((state) => state.departure);
   const destination = useMatchingStore((state) => state.destination);
@@ -60,6 +62,10 @@ export function MatchingPage() {
   const currentUser = currentUserQuery.data?.data;
   const shouldShowBankAccountDialog =
     currentUser?.has_bank_account === false && !isBankAccountDialogDismissed;
+  const canLocateOnMount =
+    !isAuthenticated || (currentUserQuery.isFetched && !currentUserQuery.isFetching);
+  const shouldLocateOnMount =
+    departure?.id === SEOUL_STATION_LOCATION.id && canLocateOnMount && !shouldShowBankAccountDialog;
 
   useEffect(() => {
     setOrigin(
@@ -136,7 +142,7 @@ export function MatchingPage() {
           className="absolute inset-0 h-[780px]"
           clusterMarkers={false}
           defaultCenter={mapCenter}
-          locateOnMount={departure?.id === SEOUL_STATION_LOCATION.id}
+          locateOnMount={shouldLocateOnMount}
           onUserLocationChange={handleUserLocationChange}
           onUserLocationError={handleUserLocationError}
           showCurrentLocationButton={false}
