@@ -1,6 +1,7 @@
 export { PostItem, type PostItemProps } from './ui/post-item';
 export { PostList, type PostListProps } from './ui/post-list';
 export { getCommunityPostComments } from './api/community-comments';
+export { toPostComments } from './model/to-post-comments';
 export { CommentList, type CommentListProps } from './ui/post-detail/comment-list';
 export { CommentSummary, type CommentSummaryProps } from './ui/post-detail/comment-summary';
 export {

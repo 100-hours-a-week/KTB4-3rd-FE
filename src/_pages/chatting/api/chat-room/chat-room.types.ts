@@ -26,7 +26,8 @@ export type ChatRoomDetailResponse = ApiResponse<ChatRoomDetailData>;
 
 export type ChatRoomMessageSender = {
   id: number;
-  nickname: string;
+  nickname?: string;
+  name?: string;
   profile_image_url: string | null;
 };
 

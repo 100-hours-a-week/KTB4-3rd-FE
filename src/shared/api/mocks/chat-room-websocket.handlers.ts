@@ -20,7 +20,8 @@ export type MockChatMessage = {
     | 'SYSTEM_RIDE_ENDED';
   sender?: {
     id: number;
-    nickname: string;
+    nickname?: string;
+    name?: string;
     profile_image_url: string | null;
   };
   joiner?: { id: number; name: string };
@@ -36,12 +37,13 @@ type ChatRoomSubscription = {
 };
 
 const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601']);
+const MOCK_TAXI_POT_ROOM_IDS = new Set(['599', '600', '601']);
 const MOCK_CHAT_UI_PREVIEW_ROOM_ID = '601';
 const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
   {
     id: 1456,
     type: 'TEXT',
-    sender: { id: 7, nickname: 'rachel', profile_image_url: null },
+    sender: { id: 7, name: 'rachel', profile_image_url: null },
     content: '3분 뒤 도착합니다',
     created_at: '2026-09-05T07:59:03.000Z',
   },
@@ -322,7 +324,9 @@ function handleSend(frame: StompFrame) {
   const message: MockChatMessage = {
     id: nextMessageId++,
     type: 'TEXT',
-    sender: { id: 7, nickname: '우림', profile_image_url: null },
+    sender: MOCK_TAXI_POT_ROOM_IDS.has(roomId)
+      ? { id: 7, name: '우림', profile_image_url: null }
+      : { id: 7, nickname: '우림', profile_image_url: null },
     content,
     created_at: new Date().toISOString(),
   };

@@ -1,8 +1,10 @@
 import type { ApiResponse } from '@/shared/api/types';
 
+import type { PostAuthor } from './post';
+
 export type CommunityPostComment = {
   id: number;
-  nickname: string;
+  author: PostAuthor;
   content: string;
   created_at: string;
 };
@@ -18,7 +20,11 @@ export type CreateCommunityPostCommentPayload = {
   content: string;
 };
 
-export type CreatedCommunityPostComment = CommunityPostComment & {
+export type CreatedCommunityPostComment = {
+  id: number;
+  nickname: string;
+  content: string;
+  created_at: string;
   comment_count: number;
 };
 
