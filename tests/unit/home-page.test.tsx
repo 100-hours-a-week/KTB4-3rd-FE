@@ -456,6 +456,14 @@ describe('HomePage', () => {
     await user.click(await screen.findByRole('button', { name: /판교역 근처 카페 추천/ }));
 
     expect(await screen.findByText('저도 궁금해요!')).toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '우림 프로필' })).toHaveAttribute(
+      'src',
+      'https://moyeota-prod-images.s3.ap-northeast-2.amazonaws.com/profile/e40f6edd-55d2-4440-ab80-0921501cc4f7.jpg',
+    );
+
+    const commentList = screen.getByText('저도 궁금해요!').closest('ul');
+    expect(commentList?.firstElementChild).toHaveTextContent('조용한 분위기의 카페를 찾고 있어요.');
+    expect(commentList?.lastElementChild).toHaveTextContent('저도 궁금해요!');
     expect(MockIntersectionObserver.callbacks).not.toHaveLength(0);
 
     MockIntersectionObserver.trigger();
