@@ -28,7 +28,7 @@ export type ChatRoomMessageSender = {
   id: number;
   nickname?: string;
   name?: string;
-  profile_image_url: string | null;
+  profile_image_url?: string | null;
 };
 
 export type ChatRoomMessageJoiner = {
@@ -60,7 +60,8 @@ export type ChatRoomMessageData = {
 
 export type ChatRoomMessagesData = {
   items: ChatRoomMessageData[];
-  next_cursor: string | null;
+  before_cursor: string | null;
+  after_cursor: string | null;
 };
 
 export type ChatRoomMessagesResponse = ApiResponse<ChatRoomMessagesData>;
@@ -71,3 +72,13 @@ export type ChatRoomReadMarkerData = {
 };
 
 export type ChatRoomReadMarkerResponse = ApiResponse<ChatRoomReadMarkerData>;
+
+export type ChatRoomMessagesDirection = 'before' | 'after';
+
+export type ChatRoomMessagesRequest = {
+  direction?: ChatRoomMessagesDirection;
+  before?: string;
+  after?: string;
+};
+
+export type ChatRoomMessagesPageParam = ChatRoomMessagesRequest | undefined;

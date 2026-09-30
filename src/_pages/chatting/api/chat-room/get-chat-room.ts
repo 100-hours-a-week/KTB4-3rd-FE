@@ -3,6 +3,7 @@ import { apiFetch } from '@/shared/api/client';
 
 import type {
   ChatRoomDetailResponse,
+  ChatRoomMessagesRequest,
   ChatRoomMessagesResponse,
   ChatRoomReadMarkerResponse,
 } from './chat-room.types';
@@ -17,14 +18,31 @@ export async function getChatRoomDetail(roomId: string): Promise<ChatRoomDetailR
 
 export async function getChatRoomMessages(
   roomId: string,
-  cursor?: string,
+  request?: ChatRoomMessagesRequest,
 ): Promise<ChatRoomMessagesResponse> {
   const accessToken = await getAccessToken();
-  const searchParams = cursor ? `?cursor=${encodeURIComponent(cursor)}` : '';
+  const searchParams = new URLSearchParams();
 
-  return apiFetch<ChatRoomMessagesResponse>(`/chat-rooms/${roomId}/messages${searchParams}`, {
-    token: accessToken,
-  });
+  if (request?.direction) {
+    searchParams.set('direction', request.direction);
+  }
+
+  if (request?.before) {
+    searchParams.set('before', request.before);
+  }
+
+  if (request?.after) {
+    searchParams.set('after', request.after);
+  }
+
+  const queryString = searchParams.toString();
+
+  return apiFetch<ChatRoomMessagesResponse>(
+    `/chat-rooms/${roomId}/messages${queryString ? `?${queryString}` : ''}`,
+    {
+      token: accessToken,
+    },
+  );
 }
 
 export async function markChatRoomAsRead(

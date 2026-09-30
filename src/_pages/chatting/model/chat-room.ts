@@ -143,14 +143,20 @@ export function createChatRoomFromApi(
   messages: readonly ChatRoomMessageData[],
   currentUserId?: number,
 ): ChatRoom {
+  const uniqueMessages = new Map<number, ChatRoomMessageData>();
+
+  for (const message of messages) {
+    uniqueMessages.set(message.id, message);
+  }
+
   return {
     id: String(detail.id),
     lastReadMessageId: detail.last_read_message_id,
     title: detail.title,
     memberCount: detail.current_count,
     memberLimit: detail.capacity,
-    messages: [...messages]
-      .reverse()
+    messages: [...uniqueMessages.values()]
+      .sort((left, right) => left.id - right.id)
       .map((message) => createChatRoomMessageFromApi(message, currentUserId)),
   };
 }

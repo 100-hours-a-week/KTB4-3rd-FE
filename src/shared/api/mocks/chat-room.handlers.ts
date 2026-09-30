@@ -191,7 +191,8 @@ const MOCK_CHAT_MESSAGES = {
         created_at: '2026-09-22T09:30:00.000Z',
       },
     ],
-    next_cursor: null,
+    before_cursor: null,
+    after_cursor: null,
   },
   501: {
     items: [
@@ -225,11 +226,13 @@ const MOCK_CHAT_MESSAGES = {
         created_at: '2026-09-05T07:35:00.000Z',
       },
     ],
-    next_cursor: 'v1.eyJsYXN0X2lkIjoxNDM5fQ',
+    before_cursor: 'v1.eyJpZCI6MTQzMn0',
+    after_cursor: null,
   },
   599: {
     items: [],
-    next_cursor: null,
+    before_cursor: null,
+    after_cursor: null,
   },
   600: {
     items: [
@@ -240,16 +243,18 @@ const MOCK_CHAT_MESSAGES = {
         created_at: '2026-09-05T08:00:00.000Z',
       },
     ],
-    next_cursor: null,
+    before_cursor: null,
+    after_cursor: null,
   },
   601: {
     items: [],
-    next_cursor: null,
+    before_cursor: null,
+    after_cursor: null,
   },
 } as const;
 
-const MOCK_CHAT_MESSAGE_NEXT_PAGES = {
-  'v1.eyJsYXN0X2lkIjoxNDM5fQ': {
+const MOCK_CHAT_MESSAGE_BEFORE_PAGES = {
+  'v1.eyJpZCI6MTQzMn0': {
     items: [
       {
         id: 1438,
@@ -259,7 +264,24 @@ const MOCK_CHAT_MESSAGE_NEXT_PAGES = {
         created_at: '2026-09-05T07:30:00.000Z',
       },
     ],
-    next_cursor: null,
+    before_cursor: null,
+    after_cursor: null,
+  },
+} as const;
+
+const MOCK_CHAT_MESSAGE_AFTER_PAGES = {
+  'v1.eyJpZCI6MTQ1M30': {
+    items: [
+      {
+        id: 1454,
+        type: 'TEXT',
+        sender: { id: 7, nickname: '우림', profile_image_url: null },
+        content: '새 메시지예요.',
+        created_at: '2026-09-05T08:11:00.000Z',
+      },
+    ],
+    before_cursor: null,
+    after_cursor: null,
   },
 } as const;
 
@@ -392,9 +414,18 @@ export const chatRoomHandlers = [
     }
 
     const roomId = String(params.roomId);
-    const cursor = new URL(request.url).searchParams.get('cursor');
+    const searchParams = new URL(request.url).searchParams;
+    const direction = searchParams.get('direction');
+    const before = searchParams.get('before');
+    const after = searchParams.get('after');
 
-    if (cursor === 'invalid') {
+    if (
+      (direction !== null && direction !== 'before' && direction !== 'after') ||
+      (direction === 'before' && before === null) ||
+      (direction === 'after' && after === null) ||
+      before === 'invalid' ||
+      after === 'invalid'
+    ) {
       return errorResponse('잘못된 커서입니다', 'INVALID_CURSOR', null, 400);
     }
 
@@ -408,9 +439,21 @@ export const chatRoomHandlers = [
       return errorResponse('존재하지 않는 채팅방입니다', 'CHATROOM_NOT_FOUND', null, 404);
     }
 
-    const data = cursor
-      ? MOCK_CHAT_MESSAGE_NEXT_PAGES[cursor as keyof typeof MOCK_CHAT_MESSAGE_NEXT_PAGES]
-      : messages;
+    let cursor: string | null = null;
+
+    if (direction === 'before') {
+      cursor = before;
+    } else if (direction === 'after') {
+      cursor = after;
+    }
+
+    let data: object | undefined = messages;
+
+    if (direction === 'before') {
+      data = MOCK_CHAT_MESSAGE_BEFORE_PAGES[cursor as keyof typeof MOCK_CHAT_MESSAGE_BEFORE_PAGES];
+    } else if (direction === 'after') {
+      data = MOCK_CHAT_MESSAGE_AFTER_PAGES[cursor as keyof typeof MOCK_CHAT_MESSAGE_AFTER_PAGES];
+    }
 
     if (!data) {
       return errorResponse('잘못된 커서입니다', 'INVALID_CURSOR', null, 400);

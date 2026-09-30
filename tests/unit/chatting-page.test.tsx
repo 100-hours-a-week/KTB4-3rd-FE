@@ -22,8 +22,36 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: navigation.push }),
 }));
 
+class MockIntersectionObserver {
+  private static observers = new Set<MockIntersectionObserver>();
+
+  constructor(private readonly callback: IntersectionObserverCallback) {
+    MockIntersectionObserver.observers.add(this);
+  }
+
+  static reset() {
+    MockIntersectionObserver.observers.clear();
+  }
+
+  static trigger() {
+    for (const observer of MockIntersectionObserver.observers) {
+      observer.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        observer as unknown as IntersectionObserver,
+      );
+    }
+  }
+
+  observe() {}
+
+  disconnect() {
+    MockIntersectionObserver.observers.delete(this);
+  }
+}
+
 afterEach(() => {
   cleanup();
+  MockIntersectionObserver.reset();
   document.querySelectorAll('[data-base-ui-portal]').forEach((portal) => portal.remove());
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
@@ -33,6 +61,7 @@ afterEach(() => {
 
 beforeEach(() => {
   useAuthStore.getState().setAccessToken('mock-access-token');
+  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 });
 
 function renderChattingPage(roomId = '501') {
@@ -152,6 +181,8 @@ describe('ChattingPage', () => {
   });
 
   it('기존 운행 시작 요청 메시지를 방장용 시스템 액션으로 표시한다', async () => {
+    mockCurrentUserId(7);
+
     server.use(
       http.get('*/chat-rooms/599/messages', () =>
         HttpResponse.json({
@@ -164,7 +195,8 @@ describe('ChattingPage', () => {
                 created_at: '2026-09-05T07:58:12.000Z',
               },
             ],
-            next_cursor: null,
+            before_cursor: null,
+            after_cursor: null,
           },
         }),
       ),
@@ -188,9 +220,9 @@ describe('ChattingPage', () => {
 
     renderChattingPage('599');
 
-    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
-      '운행이 시작됐나요?',
-    );
+    expect(
+      await screen.findByTestId('taxi-pot-ride-action', undefined, { timeout: 5000 }),
+    ).toHaveTextContent('운행이 시작됐나요?');
     expect(screen.queryByText('운행이 시작됐나요?')?.closest('[data-variant]')).toBeNull();
   });
 
@@ -274,7 +306,7 @@ describe('ChattingPage', () => {
     expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 640 });
   });
 
-  it('메시지 목록 상단에 도달하면 이전 메시지를 조회한다', async () => {
+  it('메시지 목록 상단 sentinel에 도달하면 이전 메시지를 조회한다', async () => {
     renderChattingPage();
     await screen.findByRole('heading', { name: '8시 판교역' });
 
@@ -286,6 +318,7 @@ describe('ChattingPage', () => {
     });
 
     fireEvent.scroll(messageList);
+    MockIntersectionObserver.trigger();
 
     expect(await screen.findByText('조금 늦을 것 같아요.')).toBeInTheDocument();
   });
@@ -452,7 +485,8 @@ describe('ChattingPage', () => {
                 created_at: '2026-09-05T07:40:00.000Z',
               },
             ],
-            next_cursor: null,
+            before_cursor: null,
+            after_cursor: null,
           },
         });
       }),

@@ -31,7 +31,7 @@ describe('chat room API', () => {
     });
   });
 
-  it('채팅방 메시지 목록과 다음 커서를 조회한다', async () => {
+  it('채팅방 메시지 목록과 양방향 커서를 조회한다', async () => {
     const response = await getChatRoomMessages('501');
 
     expect(response.data.items).toHaveLength(5);
@@ -48,7 +48,8 @@ describe('chat room API', () => {
       type: 'SYSTEM_LEAVE',
       leaver: { name: '민준' },
     });
-    expect(response.data.next_cursor).toBe('v1.eyJsYXN0X2lkIjoxNDM5fQ');
+    expect(response.data.before_cursor).toBe('v1.eyJpZCI6MTQzMn0');
+    expect(response.data.after_cursor).toBeNull();
   });
 
   it('존재하지 않는 채팅방 오류를 반환한다', async () => {
@@ -59,7 +60,13 @@ describe('chat room API', () => {
   });
 
   it('잘못된 메시지 커서를 거부한다', async () => {
-    await expect(getChatRoomMessages('501', 'invalid')).rejects.toMatchObject({
+    await expect(
+      getChatRoomMessages('501', {
+        direction: 'before',
+        before: 'invalid',
+        after: 'current-page',
+      }),
+    ).rejects.toMatchObject({
       status: 400,
       code: 'INVALID_CURSOR',
     });
