@@ -232,6 +232,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     [appendLiveMessage],
   );
   const taxiPotFlow = useTaxiPotChatFlow({
+    currentUserId,
     initialRideAction,
     onStartConfirmed: handleTaxiPotStartConfirmed,
     taxiPotDetail,
