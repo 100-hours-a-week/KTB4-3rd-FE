@@ -11,6 +11,7 @@ import { useTaxiPotStatusMutation } from '@/features/taxi-pot-chat/model/use-tax
 import type { TaxiPotRideAction } from './taxi-pot-chat';
 
 type TaxiPotChatFlowOptions = {
+  currentUserId?: number;
   initialRideAction?: TaxiPotRideAction;
   taxiPotDetail?: TaxiPotDetailData;
   taxiPotId?: string;
@@ -29,6 +30,7 @@ type TaxiPotRideActionState = {
 };
 
 export function useTaxiPotChatFlow({
+  currentUserId,
   initialRideAction,
   onStartConfirmed,
   taxiPotDetail,
@@ -42,7 +44,7 @@ export function useTaxiPotChatFlow({
   const isHost =
     statusState !== undefined && statusState.taxiPotId === taxiPotId
       ? statusState.isHost
-      : isTaxiPot && taxiPotDetail?.current_count === 1;
+      : isTaxiPot && taxiPotDetail?.host_id === currentUserId;
   const status =
     statusState !== undefined && statusState.taxiPotId === taxiPotId
       ? statusState.status
