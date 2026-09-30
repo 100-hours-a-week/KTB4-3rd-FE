@@ -64,6 +64,12 @@ type LiveMessagesState = {
   messages: ChatRoomMessage[];
 };
 
+type NewMessagesState = {
+  roomId: string;
+  cursor: string | null;
+  hasNewMessages: boolean;
+};
+
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
     id: message.id,
@@ -160,7 +166,19 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     roomId,
     messages: [],
   });
-  const { detailQuery, messagesQuery } = useChatRoomQueries(roomId);
+  const {
+    detailQuery,
+    afterCursor,
+    fetchNewerMessages,
+    fetchPreviousMessages,
+    hasNewerMessages,
+    hasPreviousMessages,
+    isFetchNewerMessagesError,
+    isFetchPreviousMessagesError,
+    isFetchingNewerMessages,
+    isFetchingPreviousMessages,
+    messagesQuery,
+  } = useChatRoomQueries(roomId);
   const currentUserQuery = useCurrentUserQuery();
   const ratingMutation = useChatRatingMutation();
   const reportMutation = useChatReportMutation();
@@ -170,6 +188,22 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
+  const [newMessagesState, setNewMessagesState] = useState<NewMessagesState>({
+    roomId,
+    cursor: null,
+    hasNewMessages: false,
+  });
+  const hasDeferredAfterCursor =
+    afterCursor !== undefined &&
+    afterCursor !== null &&
+    !(
+      newMessagesState.roomId === roomId &&
+      newMessagesState.cursor === afterCursor &&
+      !newMessagesState.hasNewMessages
+    );
+  const hasNewMessages =
+    (newMessagesState.roomId === roomId && newMessagesState.hasNewMessages) ||
+    hasDeferredAfterCursor;
   const chatRoomDetail = detailQuery.data?.data;
   const companionId = chatRoomDetail?.companion_id;
   const currentUserId = currentUserQuery.data?.data.id;
@@ -349,10 +383,38 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         return;
       }
 
+      if (hasNewMessages) {
+        setNewMessagesState({
+          cursor: afterCursor ?? newMessagesState.cursor,
+          hasNewMessages: true,
+          roomId,
+        });
+        return;
+      }
+
       appendLiveMessage(createChatRoomMessageFromApi(message, currentUserId));
     },
-    [appendLiveMessage, currentUserId, taxiPotFlow],
+    [
+      afterCursor,
+      appendLiveMessage,
+      currentUserId,
+      hasNewMessages,
+      newMessagesState.cursor,
+      roomId,
+      taxiPotFlow,
+    ],
   );
+
+  const handleLoadNewerMessages = useCallback(async () => {
+    const requestedCursor = afterCursor ?? null;
+
+    await fetchNewerMessages();
+    setNewMessagesState((currentState) => ({
+      ...currentState,
+      cursor: requestedCursor,
+      hasNewMessages: false,
+    }));
+  }, [afterCursor, fetchNewerMessages]);
 
   const baseRoom =
     chatRoomDetail && messagesQuery.data
@@ -404,16 +466,6 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
     router.push('/');
   }, [lastMessageId, readMarkerMutation, roomId, router]);
-  const {
-    fetchNextPage: fetchPreviousMessages,
-    hasNextPage: hasPreviousMessages,
-    isFetchingNextPage: isFetchingPreviousMessages,
-  } = messagesQuery;
-  const handleLoadPreviousMessages = useCallback(() => {
-    if (hasPreviousMessages && !isFetchingPreviousMessages) {
-      void fetchPreviousMessages();
-    }
-  }, [fetchPreviousMessages, hasPreviousMessages, isFetchingPreviousMessages]);
   const handleLeaveConfirm = useCallback(async () => {
     if (companionId === undefined) {
       return;
@@ -447,20 +499,28 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           connection={connection}
           detailQuery={detailQuery}
           evaluationParticipants={evaluationParticipants}
+          hasNewerMessages={hasNewerMessages}
+          hasNewMessages={hasNewMessages}
+          hasPreviousMessages={hasPreviousMessages}
           isEvaluationOpen={taxiPotFlow.isEvaluationOpen}
+          isFetchNewerMessagesError={isFetchNewerMessagesError}
+          isFetchPreviousMessagesError={isFetchPreviousMessagesError}
+          isFetchingNewerMessages={isFetchingNewerMessages}
+          isFetchingPreviousMessages={isFetchingPreviousMessages}
           isLeaveDialogOpen={isLeaveDialogOpen}
           isReportDialogOpen={isReportDialogOpen}
           isTaxiPot={isTaxiPot}
           isTaxiPotHost={taxiPotFlow.isHost}
           messagesQuery={messagesQuery}
           onBack={handleBack}
-          onLoadPreviousMessages={handleLoadPreviousMessages}
           onEvaluationReport={handleEvaluationReport}
           onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
           onLeave={handleLeave}
           onLeaveConfirm={handleLeaveConfirm}
           onLeaveDialogChange={setIsLeaveDialogOpen}
+          onLoadNewerMessages={handleLoadNewerMessages}
+          onLoadPreviousMessages={fetchPreviousMessages}
           onReport={handleReportRequest}
           onReportDialogChange={(open) => {
             setIsReportDialogOpen(open);
@@ -490,14 +550,20 @@ type ChattingPageContentProps = {
   connection: ChatRoomWebSocketConnectionValue;
   detailQuery: ReturnType<typeof useChatRoomQueries>['detailQuery'];
   evaluationParticipants?: readonly ChatSatisfactionParticipant[];
+  hasPreviousMessages: boolean;
+  hasNewerMessages: boolean;
+  hasNewMessages: boolean;
   isEvaluationOpen: boolean;
+  isFetchingPreviousMessages: boolean;
+  isFetchingNewerMessages: boolean;
+  isFetchPreviousMessagesError: boolean;
+  isFetchNewerMessagesError: boolean;
   isLeaveDialogOpen: boolean;
   isReportDialogOpen: boolean;
   isTaxiPot: boolean;
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
   onBack: () => void;
-  onLoadPreviousMessages: () => void;
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
@@ -512,6 +578,8 @@ type ChattingPageContentProps = {
   onLeave: () => void;
   onLeaveConfirm: () => void;
   onLeaveDialogChange: (open: boolean) => void;
+  onLoadPreviousMessages: () => Promise<unknown>;
+  onLoadNewerMessages: () => Promise<unknown>;
   onReport: (target: ChatReportTarget) => void;
   onReportDialogChange: (open: boolean) => void;
   onReportSubmit: (payload: ChatReportDialogSubmitPayload) => void;
@@ -524,20 +592,28 @@ function ChattingPageContent({
   connection,
   detailQuery,
   evaluationParticipants,
+  hasPreviousMessages,
+  hasNewerMessages,
+  hasNewMessages,
   isEvaluationOpen,
   isLeaveDialogOpen,
+  isFetchingPreviousMessages,
+  isFetchingNewerMessages,
+  isFetchPreviousMessagesError,
+  isFetchNewerMessagesError,
   isReportDialogOpen,
   isTaxiPot,
   isTaxiPotHost,
   messagesQuery,
   onBack,
-  onLoadPreviousMessages,
   onEvaluationReport,
   onEvaluationSubmit,
   onEvaluationOpenChange,
   onLeave,
   onLeaveConfirm,
   onLeaveDialogChange,
+  onLoadPreviousMessages,
+  onLoadNewerMessages,
   onReport,
   onReportDialogChange,
   onReportSubmit,
@@ -597,10 +673,16 @@ function ChattingPageContent({
         <ChatRoomContent
           bottomContent={rideActionContent}
           connection={connection}
-          hasPreviousMessages={messagesQuery.hasNextPage}
-          isFetchingPreviousMessages={messagesQuery.isFetchingNextPage}
+          hasPreviousMessages={hasPreviousMessages}
+          hasNewerMessages={hasNewerMessages}
+          isFetchPreviousMessagesError={isFetchPreviousMessagesError}
+          isFetchNewerMessagesError={isFetchNewerMessagesError}
+          isFetchingPreviousMessages={isFetchingPreviousMessages}
+          isFetchingNewerMessages={isFetchingNewerMessages}
+          hasNewMessages={hasNewMessages}
           liveMessages={liveMessages}
           onLoadPreviousMessages={onLoadPreviousMessages}
+          onLoadNewerMessages={onLoadNewerMessages}
           onReport={onReport}
           room={room}
           topContent={topContent}
