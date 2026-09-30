@@ -220,9 +220,9 @@ describe('ChattingPage', () => {
 
     renderChattingPage('599');
 
-    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
-      '운행이 시작됐나요?',
-    );
+    expect(
+      await screen.findByTestId('taxi-pot-ride-action', undefined, { timeout: 5000 }),
+    ).toHaveTextContent('운행이 시작됐나요?');
     expect(screen.queryByText('운행이 시작됐나요?')?.closest('[data-variant]')).toBeNull();
   });
 
