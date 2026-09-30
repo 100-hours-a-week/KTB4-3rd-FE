@@ -1,6 +1,7 @@
 import { act, cleanup, render } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { SnackbarProvider } from '@/_app/providers';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
@@ -13,9 +14,14 @@ afterEach(() => {
 describe('SnackbarViewport', () => {
   it('positive Snackbar를 3초 후 닫는다', () => {
     vi.useFakeTimers();
-    useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive');
 
-    render(<SnackbarViewport />);
+    render(
+      <SnackbarProvider>
+        <SnackbarViewport />
+      </SnackbarProvider>,
+    );
+
+    act(() => useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive'));
 
     expect(useSnackbarStore.getState().open).toBe(true);
 
@@ -23,6 +29,24 @@ describe('SnackbarViewport', () => {
     expect(useSnackbarStore.getState().open).toBe(true);
 
     act(() => vi.advanceTimersByTime(1));
+    expect(useSnackbarStore.getState().open).toBe(false);
+  });
+
+  it('viewport가 사라져도 기존 토스트의 타이머를 다시 시작하지 않는다', () => {
+    vi.useFakeTimers();
+
+    const { rerender } = render(
+      <SnackbarProvider>
+        <SnackbarViewport />
+      </SnackbarProvider>,
+    );
+
+    act(() => useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive'));
+    act(() => vi.advanceTimersByTime(2000));
+
+    rerender(<SnackbarProvider>{null}</SnackbarProvider>);
+
+    act(() => vi.advanceTimersByTime(1000));
     expect(useSnackbarStore.getState().open).toBe(false);
   });
 });

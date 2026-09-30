@@ -1,5 +1,5 @@
 import { http, HttpResponse } from 'msw';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
@@ -11,7 +11,7 @@ import {
 } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LoginRequiredProvider } from '@/_app/providers';
+import { LoginRequiredProvider, SnackbarProvider } from '@/_app/providers';
 import { HomePage } from '@/_pages/home';
 import { useAuthStore } from '@/entities/auth';
 import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
@@ -127,9 +127,11 @@ function renderHomePage() {
     queryClient,
     ...render(
       <QueryClientProvider client={queryClient}>
-        <LoginRequiredProvider>
-          <HomePage />
-        </LoginRequiredProvider>
+        <SnackbarProvider>
+          <LoginRequiredProvider>
+            <HomePage />
+          </LoginRequiredProvider>
+        </SnackbarProvider>
       </QueryClientProvider>,
     ),
   };
@@ -629,18 +631,18 @@ describe('HomePage', () => {
     const snackbar = await screen.findByRole('status');
 
     expect(snackbar).toHaveTextContent('이미 참여 중인 게시글입니다');
-    expect(snackbar.nextElementSibling).toBe(joinButton);
+    expect(snackbar.parentElement?.nextElementSibling).toBe(joinButton);
     expect(navigation.push).not.toHaveBeenCalled();
   });
 
   it('가입 완료 Snackbar를 홈 하단에 표시한다', () => {
-    useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive');
-
     renderHomePage();
 
-    const snackbar = screen.getByText('가입이 완료되었어요').closest('[role="status"]');
+    act(() => useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive'));
 
-    expect(snackbar).toBeInTheDocument();
-    expect(snackbar).toHaveClass('z-[2147483647]');
+    const snackbarViewport = screen.getByText('가입이 완료되었어요').closest('[role="region"]');
+
+    expect(snackbarViewport).toBeInTheDocument();
+    expect(snackbarViewport).toHaveClass('z-[2147483647]');
   });
 });

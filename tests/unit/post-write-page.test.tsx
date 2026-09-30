@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { PostWritePage } from '@/_pages/post-write';
 import { usePostCreateStore } from '@/features/post-create';
@@ -35,7 +36,9 @@ function renderPostWritePage(type: 'accompany' | 'community') {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <PostWritePage type={type} />
+      <SnackbarProvider>
+        <PostWritePage type={type} />
+      </SnackbarProvider>
     </QueryClientProvider>,
   );
 }

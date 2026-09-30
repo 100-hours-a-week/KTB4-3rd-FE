@@ -8,6 +8,7 @@ import {
   LoginRequiredProvider,
   MockApiProvider,
   QueryProvider,
+  SnackbarProvider,
 } from '@/_app/providers';
 
 import './globals.css';
@@ -41,9 +42,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <ClarityProvider>
             <MockApiProvider>
               <QueryProvider>
-                <AuthBootstrapProvider>
-                  <LoginRequiredProvider>{children}</LoginRequiredProvider>
-                </AuthBootstrapProvider>
+                <SnackbarProvider>
+                  <AuthBootstrapProvider>
+                    <LoginRequiredProvider>{children}</LoginRequiredProvider>
+                  </AuthBootstrapProvider>
+                </SnackbarProvider>
               </QueryProvider>
             </MockApiProvider>
           </ClarityProvider>
