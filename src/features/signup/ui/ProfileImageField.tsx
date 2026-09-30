@@ -71,6 +71,7 @@ export function ProfileImageField({
       }
       invalid={invalid}
       label="프로필 이미지"
+      requirementMark={required ? undefined : 'optional'}
       required={required}
     />
   );

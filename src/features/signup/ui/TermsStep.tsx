@@ -10,6 +10,7 @@ import { cn } from '@/shared/lib/cn';
 import { Divider } from '@/shared/ui/divider';
 import { Text } from '@/shared/ui/text';
 import { VStack } from '@/shared/ui/stack';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 const agreementFields = [
   'service',
@@ -39,6 +40,12 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
     agreementFields.forEach((field) => {
       setValue(`agreements.${field}`, checked, { shouldDirty: true, shouldValidate: true });
     });
+  };
+
+  const handleSignupClick = () => {
+    if (requiredAgreementFields.some((field) => !agreements[field])) {
+      useSnackbarStore.getState().showSnackbar('필수 약관에 동의해주세요.', 'critical');
+    }
   };
 
   return (
@@ -147,6 +154,7 @@ export function TermsStep({ isSubmitting = false, submitError, submitSuccess }: 
         className={cn(bottomActionFixedClassName, 'mt-auto')}
         loading={isSubmitting}
         disabled={Boolean(submitSuccess)}
+        onClick={handleSignupClick}
       >
         회원가입하기
       </Button>
