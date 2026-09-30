@@ -15,7 +15,6 @@ type TaxiPotChatFlowOptions = {
   initialRideAction?: TaxiPotRideAction;
   taxiPotDetail?: TaxiPotDetailData;
   taxiPotId?: string;
-  onStartConfirmed?: (taxiPotId: string) => void;
 };
 
 type TaxiPotStatusState = {
@@ -32,7 +31,6 @@ type TaxiPotRideActionState = {
 export function useTaxiPotChatFlow({
   currentUserId,
   initialRideAction,
-  onStartConfirmed,
   taxiPotDetail,
   taxiPotId,
 }: TaxiPotChatFlowOptions) {
@@ -104,15 +102,13 @@ export function useTaxiPotChatFlow({
       setStatusState({ taxiPotId, status: response.data.status, isHost: true });
       setRideActionState(undefined);
 
-      if (nextStatus === 'IN_PROGRESS') {
-        onStartConfirmed?.(taxiPotId);
-      } else {
+      if (nextStatus !== 'IN_PROGRESS') {
         setEvaluationTaxiPotId(taxiPotId);
       }
     } catch {
       useSnackbarStore.getState().showSnackbar('요청 중 오류가 발생했어요', 'critical');
     }
-  }, [isHost, onStartConfirmed, rideAction, statusMutation, taxiPotId]);
+  }, [isHost, rideAction, statusMutation, taxiPotId]);
 
   return {
     confirmRideAction,

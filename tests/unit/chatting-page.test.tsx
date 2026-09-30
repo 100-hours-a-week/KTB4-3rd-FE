@@ -547,7 +547,7 @@ describe('ChattingPage', () => {
     );
   });
 
-  it('방장이 운행 시작을 확인하면 PATCH 성공 후 시작 알림으로 바꾸고 나가기 버튼을 숨긴다', async () => {
+  it('방장이 운행 시작을 확인하면 PATCH 성공 후 액션을 숨기고 나가기 버튼을 숨긴다', async () => {
     const user = userEvent.setup();
 
     server.use(
@@ -594,8 +594,8 @@ describe('ChattingPage', () => {
     expect(await screen.findByText('운행이 시작됐나요?')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '확인' }));
 
-    expect(await screen.findByText('운행이 시작됐어요')).toBeInTheDocument();
-    expect(screen.queryByText('운행이 시작됐나요?')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument();
+    expect(screen.queryByText('운행이 시작됐어요')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 

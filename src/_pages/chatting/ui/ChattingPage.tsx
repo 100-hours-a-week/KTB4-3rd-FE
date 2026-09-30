@@ -254,21 +254,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     [roomId],
   );
 
-  const handleTaxiPotStartConfirmed = useCallback(
-    (confirmedTaxiPotId: string) => {
-      appendLiveMessage({
-        id: `taxi-pot-ride-started-${confirmedTaxiPotId}`,
-        kind: 'notice',
-        content: '운행이 시작됐어요',
-        variant: 'informative',
-      });
-    },
-    [appendLiveMessage],
-  );
   const taxiPotFlow = useTaxiPotChatFlow({
     currentUserId,
     initialRideAction,
-    onStartConfirmed: handleTaxiPotStartConfirmed,
     taxiPotDetail,
     taxiPotId,
   });
