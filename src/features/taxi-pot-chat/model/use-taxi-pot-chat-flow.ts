@@ -11,10 +11,10 @@ import { useTaxiPotStatusMutation } from '@/features/taxi-pot-chat/model/use-tax
 import type { TaxiPotRideAction } from './taxi-pot-chat';
 
 type TaxiPotChatFlowOptions = {
+  currentUserId?: number;
   initialRideAction?: TaxiPotRideAction;
   taxiPotDetail?: TaxiPotDetailData;
   taxiPotId?: string;
-  onStartConfirmed?: (taxiPotId: string) => void;
 };
 
 type TaxiPotStatusState = {
@@ -29,8 +29,8 @@ type TaxiPotRideActionState = {
 };
 
 export function useTaxiPotChatFlow({
+  currentUserId,
   initialRideAction,
-  onStartConfirmed,
   taxiPotDetail,
   taxiPotId,
 }: TaxiPotChatFlowOptions) {
@@ -42,7 +42,7 @@ export function useTaxiPotChatFlow({
   const isHost =
     statusState !== undefined && statusState.taxiPotId === taxiPotId
       ? statusState.isHost
-      : isTaxiPot && taxiPotDetail?.current_count === 1;
+      : isTaxiPot && taxiPotDetail?.host_id === currentUserId;
   const status =
     statusState !== undefined && statusState.taxiPotId === taxiPotId
       ? statusState.status
@@ -102,15 +102,13 @@ export function useTaxiPotChatFlow({
       setStatusState({ taxiPotId, status: response.data.status, isHost: true });
       setRideActionState(undefined);
 
-      if (nextStatus === 'IN_PROGRESS') {
-        onStartConfirmed?.(taxiPotId);
-      } else {
+      if (nextStatus !== 'IN_PROGRESS') {
         setEvaluationTaxiPotId(taxiPotId);
       }
     } catch {
       useSnackbarStore.getState().showSnackbar('요청 중 오류가 발생했어요', 'critical');
     }
-  }, [isHost, onStartConfirmed, rideAction, statusMutation, taxiPotId]);
+  }, [isHost, rideAction, statusMutation, taxiPotId]);
 
   return {
     confirmRideAction,

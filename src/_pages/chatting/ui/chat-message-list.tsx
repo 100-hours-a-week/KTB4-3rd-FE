@@ -1,11 +1,6 @@
-import {
-  useCallback,
-  useEffect,
-  useLayoutEffect,
-  useRef,
-  type ReactNode,
-  type UIEvent,
-} from 'react';
+import { useCallback, useEffect, useLayoutEffect, useRef, type ReactNode } from 'react';
+
+import { Icon } from '@/shared/ui/icon';
 
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
@@ -17,122 +12,338 @@ type ChatMessageListProps = {
   messages: readonly ChatRoomMessage[];
   lastReadMessageId: number | null;
   onReport: (target: ChatReportTarget) => void;
+  hasPreviousMessages?: boolean;
+  hasNewerMessages?: boolean;
+  isFetchingPreviousMessages?: boolean;
+  isFetchingNewerMessages?: boolean;
+  isFetchPreviousMessagesError?: boolean;
+  isFetchNewerMessagesError?: boolean;
+  onLoadPreviousMessages?: () => Promise<unknown>;
+  onLoadNewerMessages?: () => Promise<unknown>;
+  hasNewMessages?: boolean;
+  liveMessageCount?: number;
   bottomContent?: ReactNode;
-  hasPreviousMessages: boolean;
-  isFetchingPreviousMessages: boolean;
-  onLoadPreviousMessages: () => void;
 };
+
+type LoadDirection = 'before' | 'after';
+
+function getLoadStatus(
+  isFetching: boolean,
+  hasError: boolean,
+  loadingMessage: string,
+  errorMessage: string,
+) {
+  if (isFetching) {
+    return loadingMessage;
+  }
+
+  if (hasError) {
+    return errorMessage;
+  }
+
+  return null;
+}
+
+function scrollToBottom(element: HTMLDivElement | null, behavior: ScrollBehavior = 'auto') {
+  if (!element) {
+    return;
+  }
+
+  if (typeof element.scrollTo === 'function') {
+    element.scrollTo({ top: element.scrollHeight, behavior });
+  } else {
+    element.scrollTop = element.scrollHeight;
+  }
+}
 
 export function ChatMessageList({
   roomId,
   messages,
   lastReadMessageId,
   onReport,
-  bottomContent,
-  hasPreviousMessages,
-  isFetchingPreviousMessages,
+  hasPreviousMessages = false,
+  hasNewerMessages = false,
+  isFetchingPreviousMessages = false,
+  isFetchingNewerMessages = false,
+  isFetchPreviousMessagesError = false,
+  isFetchNewerMessagesError = false,
   onLoadPreviousMessages,
+  onLoadNewerMessages,
+  hasNewMessages = false,
+  liveMessageCount = 0,
+  bottomContent,
 }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
-  const previousScrollRef = useRef<{ height: number; top: number } | null>(null);
-  const latestMessageId = messages[messages.length - 1]?.id;
-  const firstMessageId = messages[0]?.id;
-  const previousMessagesRef = useRef({
-    count: messages.length,
-    firstMessageId,
-    lastMessageId: latestMessageId,
-    roomId,
-  });
+  const previousMessagesRef = useRef<HTMLDivElement>(null);
+  const nextMessagesRef = useRef<HTMLDivElement>(null);
+  const initialPositionedRoomRef = useRef<string | null>(null);
+  const previousLiveMessageCountRef = useRef(liveMessageCount);
+  const pendingPrependRef = useRef<{
+    messageCount: number;
+    scrollHeight: number;
+    scrollTop: number;
+  } | null>(null);
+  const pendingAppendRef = useRef<number | null>(null);
 
-  const handleScroll = useCallback(
-    (event: UIEvent<HTMLDivElement>) => {
-      const messageList = event.currentTarget;
+  useEffect(() => {
+    initialPositionedRoomRef.current = null;
+    previousLiveMessageCountRef.current = 0;
+    pendingPrependRef.current = null;
+    pendingAppendRef.current = null;
+  }, [roomId]);
 
-      if (
-        messageList.scrollTop > 80 ||
-        !hasPreviousMessages ||
-        isFetchingPreviousMessages ||
-        previousScrollRef.current
-      ) {
+  const handleLoadMore = useCallback(
+    (direction: LoadDirection) => {
+      const isBefore = direction === 'before';
+      const onLoad = isBefore ? onLoadPreviousMessages : onLoadNewerMessages;
+      const isFetching = isBefore ? isFetchingPreviousMessages : isFetchingNewerMessages;
+      const hasError = isBefore ? isFetchPreviousMessagesError : isFetchNewerMessagesError;
+
+      if (!onLoad || isFetching || hasError) {
         return;
       }
 
-      previousScrollRef.current = {
-        height: messageList.scrollHeight,
-        top: messageList.scrollTop,
-      };
-      onLoadPreviousMessages();
+      const scrollElement = messagesRef.current;
+
+      if (isBefore && scrollElement) {
+        pendingPrependRef.current = {
+          messageCount: messages.length,
+          scrollHeight: scrollElement.scrollHeight,
+          scrollTop: scrollElement.scrollTop,
+        };
+      }
+
+      if (!isBefore) {
+        pendingAppendRef.current = messages.length;
+      }
+
+      void onLoad().catch(() => {
+        if (isBefore) {
+          pendingPrependRef.current = null;
+        } else {
+          pendingAppendRef.current = null;
+        }
+      });
     },
-    [hasPreviousMessages, isFetchingPreviousMessages, onLoadPreviousMessages],
+    [
+      isFetchNewerMessagesError,
+      isFetchPreviousMessagesError,
+      isFetchingNewerMessages,
+      isFetchingPreviousMessages,
+      messages.length,
+      onLoadNewerMessages,
+      onLoadPreviousMessages,
+    ],
   );
 
-  useLayoutEffect(() => {
-    const previousScroll = previousScrollRef.current;
-    const messageList = messagesRef.current;
-
-    if (!previousScroll || isFetchingPreviousMessages || !messageList) {
-      return;
-    }
-
-    messageList.scrollTop = previousScroll.top + (messageList.scrollHeight - previousScroll.height);
-    previousScrollRef.current = null;
-  }, [isFetchingPreviousMessages, messages.length]);
-
   useEffect(() => {
-    if (lastReadMessageId === null) {
+    const target = previousMessagesRef.current;
+    const scrollElement = messagesRef.current;
+
+    if (
+      !target ||
+      !scrollElement ||
+      !hasPreviousMessages ||
+      !onLoadPreviousMessages ||
+      isFetchPreviousMessagesError ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
       return;
     }
 
-    const lastReadMessage = messagesRef.current?.querySelector<HTMLElement>(
-      `[data-message-id="${lastReadMessageId}"]`,
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !isFetchingPreviousMessages) {
+          handleLoadMore('before');
+        }
+      },
+      { root: scrollElement, rootMargin: '160px 0px 0px 0px' },
     );
 
-    lastReadMessage?.scrollIntoView?.({ block: 'center' });
-  }, [roomId, lastReadMessageId]);
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [
+    handleLoadMore,
+    hasPreviousMessages,
+    isFetchPreviousMessagesError,
+    isFetchingPreviousMessages,
+    onLoadPreviousMessages,
+  ]);
 
   useEffect(() => {
-    const previousMessages = previousMessagesRef.current;
-    const isRoomChanged = previousMessages.roomId !== roomId;
-    const isPreviousMessagePageLoaded =
-      messages.length > previousMessages.count &&
-      firstMessageId !== previousMessages.firstMessageId &&
-      latestMessageId === previousMessages.lastMessageId;
-    const hasNewMessage =
-      latestMessageId !== previousMessages.lastMessageId ||
-      (messages.length > previousMessages.count &&
-        firstMessageId === previousMessages.firstMessageId);
+    const target = nextMessagesRef.current;
+    const scrollElement = messagesRef.current;
 
-    previousMessagesRef.current = {
-      count: messages.length,
-      firstMessageId,
-      lastMessageId: latestMessageId,
-      roomId,
-    };
-
-    if (isRoomChanged || isPreviousMessagePageLoaded || !hasNewMessage) {
+    if (
+      !target ||
+      !scrollElement ||
+      !hasNewerMessages ||
+      hasNewMessages ||
+      !onLoadNewerMessages ||
+      isFetchNewerMessagesError ||
+      typeof IntersectionObserver === 'undefined'
+    ) {
       return;
     }
 
-    const messageList = messagesRef.current;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting && !isFetchingNewerMessages) {
+          handleLoadMore('after');
+        }
+      },
+      { root: scrollElement, rootMargin: '0px 0px 160px 0px' },
+    );
 
-    messageList?.scrollTo?.({
-      behavior: 'smooth',
-      top: messageList.scrollHeight,
-    });
-  }, [firstMessageId, latestMessageId, messages.length, roomId]);
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [
+    handleLoadMore,
+    hasNewMessages,
+    hasNewerMessages,
+    isFetchNewerMessagesError,
+    isFetchingNewerMessages,
+    onLoadNewerMessages,
+  ]);
+
+  useLayoutEffect(() => {
+    const pendingPrepend = pendingPrependRef.current;
+
+    if (!pendingPrepend || isFetchingPreviousMessages) {
+      return;
+    }
+
+    const scrollElement = messagesRef.current;
+
+    if (
+      !isFetchPreviousMessagesError &&
+      scrollElement &&
+      messages.length > pendingPrepend.messageCount
+    ) {
+      scrollElement.scrollTop =
+        pendingPrepend.scrollTop + scrollElement.scrollHeight - pendingPrepend.scrollHeight;
+    }
+
+    pendingPrependRef.current = null;
+  }, [isFetchPreviousMessagesError, isFetchingPreviousMessages, messages.length]);
+
+  useLayoutEffect(() => {
+    const pendingAppendCount = pendingAppendRef.current;
+
+    if (pendingAppendCount === null || isFetchingNewerMessages) {
+      return;
+    }
+
+    if (!isFetchNewerMessagesError && messages.length > pendingAppendCount) {
+      scrollToBottom(messagesRef.current, 'smooth');
+    }
+
+    pendingAppendRef.current = null;
+  }, [isFetchNewerMessagesError, isFetchingNewerMessages, messages.length]);
+
+  useLayoutEffect(() => {
+    const previousLiveMessageCount = previousLiveMessageCountRef.current;
+
+    if (liveMessageCount > previousLiveMessageCount && pendingAppendRef.current === null) {
+      scrollToBottom(messagesRef.current, 'smooth');
+    }
+
+    previousLiveMessageCountRef.current = liveMessageCount;
+  }, [liveMessageCount, messages.length]);
+
+  useEffect(() => {
+    if (initialPositionedRoomRef.current === roomId || messages.length === 0) {
+      return;
+    }
+
+    const scrollElement = messagesRef.current;
+
+    if (!scrollElement) {
+      return;
+    }
+
+    if (lastReadMessageId === null) {
+      scrollElement.scrollTop = scrollElement.scrollHeight;
+    } else {
+      const firstUnreadMessage = [
+        ...scrollElement.querySelectorAll<HTMLElement>('[data-message-id]'),
+      ].find((messageElement) => {
+        const messageId = Number(messageElement.dataset.messageId);
+
+        return Number.isSafeInteger(messageId) && messageId > lastReadMessageId;
+      });
+
+      if (firstUnreadMessage) {
+        firstUnreadMessage.scrollIntoView?.({ block: 'center' });
+      } else {
+        scrollElement.scrollTop = scrollElement.scrollHeight;
+      }
+    }
+
+    initialPositionedRoomRef.current = roomId;
+  }, [lastReadMessageId, messages.length, roomId]);
+
+  const previousMessagesStatus = getLoadStatus(
+    isFetchingPreviousMessages,
+    isFetchPreviousMessagesError,
+    '이전 메시지를 불러오는 중이에요.',
+    '이전 메시지를 불러오지 못했어요.',
+  );
+  const newerMessagesStatus = getLoadStatus(
+    isFetchingNewerMessages,
+    isFetchNewerMessagesError,
+    '새 메시지를 불러오는 중이에요.',
+    '새 메시지를 불러오지 못했어요.',
+  );
 
   return (
-    <div
-      aria-label="채팅 메시지"
-      className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
-      data-clarity-mask="true"
-      onScroll={handleScroll}
-      ref={messagesRef}
-    >
-      {messages.map((message, index) => (
-        <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
-      ))}
-      {bottomContent}
+    <div className="relative min-h-0 flex-1">
+      <div
+        aria-label="채팅 메시지"
+        className="flex h-full min-h-0 flex-col overflow-y-auto overscroll-contain px-5 pt-[95px] pb-8"
+        data-clarity-mask="true"
+        ref={messagesRef}
+      >
+        {hasPreviousMessages && onLoadPreviousMessages ? (
+          <div
+            aria-busy={isFetchingPreviousMessages}
+            aria-live="polite"
+            className="flex min-h-8 shrink-0 items-center justify-center py-2"
+            data-testid="chat-message-load-previous"
+            ref={previousMessagesRef}
+          >
+            {previousMessagesStatus}
+          </div>
+        ) : null}
+        {messages.map((message, index) => (
+          <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
+        ))}
+        {hasNewerMessages && onLoadNewerMessages ? (
+          <div
+            aria-busy={isFetchingNewerMessages}
+            aria-live="polite"
+            className="flex min-h-8 shrink-0 items-center justify-center py-2"
+            data-testid="chat-message-load-newer"
+            ref={nextMessagesRef}
+          >
+            {newerMessagesStatus}
+          </div>
+        ) : null}
+        {bottomContent}
+      </div>
+      {hasNewMessages && onLoadNewerMessages ? (
+        <button
+          aria-label="새 메시지 보기"
+          className="absolute bottom-5 left-1/2 z-10 inline-flex size-10 -translate-x-1/2 items-center justify-center rounded-full bg-[var(--color-bg-layer-default)] shadow-[0_2px_8px_rgba(0,0,0,0.16)] disabled:cursor-not-allowed disabled:opacity-60"
+          disabled={isFetchingNewerMessages}
+          onClick={() => handleLoadMore('after')}
+          type="button"
+        >
+          <Icon aria-hidden="true" name="chevronDown" size={20} />
+        </button>
+      ) : null}
     </div>
   );
 }

@@ -27,27 +27,48 @@ afterEach(() => {
 });
 
 describe('useChatRoomQueries', () => {
-  it('메시지 목록의 next_cursor로 이전 메시지 페이지를 조회한다', async () => {
-    const requestedCursors: (string | null)[] = [];
+  it('before_cursor로 이전 메시지 페이지를 조회하며 반대 방향 커서를 유지한다', async () => {
+    const requestedParams: {
+      direction: string | null;
+      before: string | null;
+      after: string | null;
+    }[] = [];
 
     server.use(
       http.get('*/chat-rooms/:roomId/messages', ({ request }) => {
-        const cursor = new URL(request.url).searchParams.get('cursor');
-        requestedCursors.push(cursor);
+        const searchParams = new URL(request.url).searchParams;
+        const direction = searchParams.get('direction');
+        const before = searchParams.get('before');
+        const after = searchParams.get('after');
+        requestedParams.push({ direction, before, after });
+
+        const isBefore = direction === 'before';
+        const isAfter = direction === 'after';
+        let messageId = 1440;
+        let content = '현재 메시지';
+
+        if (isBefore) {
+          messageId = 1438;
+          content = '이전 메시지';
+        } else if (isAfter) {
+          messageId = 1454;
+          content = '새 메시지';
+        }
 
         return HttpResponse.json({
           message: '조회에 성공했습니다',
           data: {
             items: [
               {
-                id: cursor ? 1438 : 1440,
+                id: messageId,
                 type: 'TEXT',
                 sender: { id: 7, nickname: '우림', profile_image_url: null },
-                content: cursor ? '이전 메시지' : '현재 메시지',
+                content,
                 created_at: '2026-09-05T07:40:00.000Z',
               },
             ],
-            next_cursor: cursor ? null : 'previous-page',
+            before_cursor: isBefore ? null : 'previous-page',
+            after_cursor: isAfter ? null : 'newer-page',
           },
         });
       }),
@@ -59,14 +80,31 @@ describe('useChatRoomQueries', () => {
 
     await waitFor(() => expect(result.current.messagesQuery.isSuccess).toBe(true));
     expect(result.current.messagesQuery.data?.pages).toHaveLength(1);
-    expect(result.current.messagesQuery.hasNextPage).toBe(true);
+    expect(result.current.hasPreviousMessages).toBe(true);
+    expect(result.current.hasNewerMessages).toBe(true);
 
-    await act(async () => {
-      await result.current.messagesQuery.fetchNextPage();
+    act(() => {
+      void result.current.fetchPreviousMessages();
     });
 
     await waitFor(() => expect(result.current.messagesQuery.data?.pages).toHaveLength(2));
-    expect(result.current.messagesQuery.hasNextPage).toBe(false);
-    expect(requestedCursors).toEqual([null, 'previous-page']);
+    expect(result.current.hasPreviousMessages).toBe(false);
+    expect(result.current.hasNewerMessages).toBe(true);
+    expect(requestedParams).toEqual([
+      { direction: null, before: null, after: null },
+      { direction: 'before', before: 'previous-page', after: 'newer-page' },
+    ]);
+
+    act(() => {
+      void result.current.fetchNewerMessages();
+    });
+
+    await waitFor(() => expect(result.current.messagesQuery.data?.pages).toHaveLength(3));
+    expect(result.current.hasNewerMessages).toBe(false);
+    expect(requestedParams).toEqual([
+      { direction: null, before: null, after: null },
+      { direction: 'before', before: 'previous-page', after: 'newer-page' },
+      { direction: 'after', before: null, after: 'newer-page' },
+    ]);
   });
 });

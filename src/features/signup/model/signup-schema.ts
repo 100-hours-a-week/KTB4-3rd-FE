@@ -19,7 +19,6 @@ export const signupSchema = z
         (value) => value === null || (typeof File !== 'undefined' && value instanceof File),
         '프로필 이미지를 확인해주세요.',
       )
-      .refine((file): boolean => file !== null, '프로필 이미지를 선택해주세요.')
       .refine((file) => file === null || isSupportedProfileImageContentType(file.type), {
         message: '프로필 이미지는 JPEG 또는 PNG 형식만 업로드할 수 있어요.',
       })
