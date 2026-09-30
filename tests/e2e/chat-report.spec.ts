@@ -83,7 +83,8 @@ async function setupGeneralChat(page: Page) {
             created_at: '2026-09-05T07:41:12.000Z',
           },
         ],
-        next_cursor: null,
+        before_cursor: null,
+        after_cursor: null,
       },
     });
   });
@@ -132,7 +133,7 @@ async function setupTaxiPotChat(page: Page) {
   await page.route('**/api/chat-rooms/599/messages', async (route) => {
     await fulfillJson(route, {
       message: '조회에 성공했습니다',
-      data: { items: [], next_cursor: null },
+      data: { items: [], before_cursor: null, after_cursor: null },
     });
   });
 

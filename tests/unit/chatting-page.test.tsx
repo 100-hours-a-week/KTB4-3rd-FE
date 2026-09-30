@@ -22,8 +22,36 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: navigation.push }),
 }));
 
+class MockIntersectionObserver {
+  private static observers = new Set<MockIntersectionObserver>();
+
+  constructor(private readonly callback: IntersectionObserverCallback) {
+    MockIntersectionObserver.observers.add(this);
+  }
+
+  static reset() {
+    MockIntersectionObserver.observers.clear();
+  }
+
+  static trigger() {
+    for (const observer of MockIntersectionObserver.observers) {
+      observer.callback(
+        [{ isIntersecting: true } as IntersectionObserverEntry],
+        observer as unknown as IntersectionObserver,
+      );
+    }
+  }
+
+  observe() {}
+
+  disconnect() {
+    MockIntersectionObserver.observers.delete(this);
+  }
+}
+
 afterEach(() => {
   cleanup();
+  MockIntersectionObserver.reset();
   document.querySelectorAll('[data-base-ui-portal]').forEach((portal) => portal.remove());
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
@@ -33,6 +61,7 @@ afterEach(() => {
 
 beforeEach(() => {
   useAuthStore.getState().setAccessToken('mock-access-token');
+  vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
 });
 
 function renderChattingPage(roomId = '501') {
@@ -164,7 +193,8 @@ describe('ChattingPage', () => {
                 created_at: '2026-09-05T07:58:12.000Z',
               },
             ],
-            next_cursor: null,
+            before_cursor: null,
+            after_cursor: null,
           },
         }),
       ),
@@ -178,7 +208,7 @@ describe('ChattingPage', () => {
             origin_name: '판교역',
             dest_name: '강남역',
             departure_at: '2026-09-05T08:30:00.000Z',
-            current_count: 1,
+            current_count: 2,
             capacity: 4,
             host_id: 7,
           },
@@ -274,7 +304,7 @@ describe('ChattingPage', () => {
     expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 640 });
   });
 
-  it('메시지 목록 상단에 도달하면 이전 메시지를 조회한다', async () => {
+  it('메시지 목록 상단 sentinel에 도달하면 이전 메시지를 조회한다', async () => {
     renderChattingPage();
     await screen.findByRole('heading', { name: '8시 판교역' });
 
@@ -286,6 +316,7 @@ describe('ChattingPage', () => {
     });
 
     fireEvent.scroll(messageList);
+    MockIntersectionObserver.trigger();
 
     expect(await screen.findByText('조금 늦을 것 같아요.')).toBeInTheDocument();
   });
@@ -452,7 +483,8 @@ describe('ChattingPage', () => {
                 created_at: '2026-09-05T07:40:00.000Z',
               },
             ],
-            next_cursor: null,
+            before_cursor: null,
+            after_cursor: null,
           },
         });
       }),
