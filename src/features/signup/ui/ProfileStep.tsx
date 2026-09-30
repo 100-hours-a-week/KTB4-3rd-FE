@@ -26,7 +26,7 @@ export function ProfileStep() {
             errorMessage={fieldState.error?.message}
             invalid={fieldState.invalid}
             onChange={field.onChange}
-            required
+            required={false}
             value={field.value}
           />
         )}

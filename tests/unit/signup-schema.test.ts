@@ -20,19 +20,13 @@ const baseValues = {
 };
 
 describe('signupSchema', () => {
-  it('프로필 이미지를 입력하지 않으면 검증에 실패한다', () => {
+  it('프로필 이미지를 입력하지 않아도 검증에 성공한다', () => {
     const result = signupSchema.safeParse({
       ...baseValues,
       profile_image_key: null,
     });
 
-    expect(result.success).toBe(false);
-    if (result.success) {
-      throw new Error('프로필 이미지가 없는 값이 통과했습니다.');
-    }
-    expect(result.error.issues).toContainEqual(
-      expect.objectContaining({ path: ['profile_image_key'] }),
-    );
+    expect(result.success).toBe(true);
   });
 
   it('JPEG와 PNG가 아닌 프로필 이미지는 검증에 실패한다', () => {
