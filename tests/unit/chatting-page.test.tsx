@@ -181,6 +181,8 @@ describe('ChattingPage', () => {
   });
 
   it('기존 운행 시작 요청 메시지를 방장용 시스템 액션으로 표시한다', async () => {
+    mockCurrentUserId(7);
+
     server.use(
       http.get('*/chat-rooms/599/messages', () =>
         HttpResponse.json({
