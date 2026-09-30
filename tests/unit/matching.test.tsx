@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
+import { SnackbarProvider } from '@/_app/providers';
 import {
   MatchingLocationAdjustPage,
   MatchingLocationPage,
@@ -53,7 +54,11 @@ function createQueryWrapper() {
   });
 
   return function Wrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <QueryClientProvider client={queryClient}>
+        <SnackbarProvider>{children}</SnackbarProvider>
+      </QueryClientProvider>
+    );
   };
 }
 

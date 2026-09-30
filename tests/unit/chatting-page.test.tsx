@@ -7,6 +7,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
 import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
+import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.handlers';
 import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
@@ -43,7 +44,9 @@ function renderChattingPage(roomId = '501') {
 
   return render(
     <QueryClientProvider client={queryClient}>
-      <ChattingPage roomId={roomId} />
+      <SnackbarProvider>
+        <ChattingPage roomId={roomId} />
+      </SnackbarProvider>
     </QueryClientProvider>,
   );
 }

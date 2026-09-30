@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 
+import { GLOBAL_SNACKBAR_ID, snackbarToastManager } from '@/shared/model/snackbar-manager';
+
 type SnackbarType = 'default' | 'positive' | 'critical';
 
 export type SnackbarState = {
@@ -19,7 +21,22 @@ const initialState = {
 
 export const useSnackbarStore = create<SnackbarState>((set) => ({
   ...initialState,
-  showSnackbar: (description, type = 'default') => set({ open: true, description, type }),
-  closeSnackbar: () => set({ open: false }),
-  reset: () => set(initialState),
+  showSnackbar: (description, type = 'default') => {
+    set({ open: true, description, type });
+    snackbarToastManager.add({
+      description,
+      id: GLOBAL_SNACKBAR_ID,
+      onClose: () => set({ open: false }),
+      timeout: type === 'positive' ? 3000 : 5000,
+      type,
+    });
+  },
+  closeSnackbar: () => {
+    set({ open: false });
+    snackbarToastManager.close(GLOBAL_SNACKBAR_ID);
+  },
+  reset: () => {
+    set(initialState);
+    snackbarToastManager.close(GLOBAL_SNACKBAR_ID);
+  },
 }));
