@@ -179,7 +179,6 @@ export function ChatMessageList({
       !target ||
       !scrollElement ||
       !hasNewerMessages ||
-      hasNewMessages ||
       !onLoadNewerMessages ||
       isFetchNewerMessagesError ||
       typeof IntersectionObserver === 'undefined'
@@ -201,7 +200,6 @@ export function ChatMessageList({
     return () => observer.disconnect();
   }, [
     handleLoadMore,
-    hasNewMessages,
     hasNewerMessages,
     isFetchNewerMessagesError,
     isFetchingNewerMessages,

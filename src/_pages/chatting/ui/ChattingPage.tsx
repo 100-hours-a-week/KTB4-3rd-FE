@@ -70,6 +70,13 @@ type NewMessagesState = {
   hasNewMessages: boolean;
 };
 
+type LiveMemberCountState = {
+  roomId: string;
+  baseCount: number | null;
+  count: number | null;
+  processedMessageIds: Set<number>;
+};
+
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
     id: message.id,
@@ -193,6 +200,12 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     cursor: null,
     hasNewMessages: false,
   });
+  const [liveMemberCountState, setLiveMemberCountState] = useState<LiveMemberCountState>({
+    roomId,
+    baseCount: null,
+    count: null,
+    processedMessageIds: new Set(),
+  });
   const hasDeferredAfterCursor =
     afterCursor !== undefined &&
     afterCursor !== null &&
@@ -215,6 +228,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     enabled: isTaxiPot,
   });
   const taxiPotDetail = taxiPotQuery.data?.data;
+  const baseMemberCount = taxiPotDetail?.current_count ?? chatRoomDetail?.current_count;
   const chatRoomMessages = useMemo(
     () => messagesQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
     [messagesQuery.data?.pages],
@@ -260,6 +274,50 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     taxiPotDetail,
     taxiPotId,
   });
+
+  const syncLiveMemberCount = useCallback(
+    (message: ChatWebSocketMessage) => {
+      let delta = 0;
+
+      if (message.type === 'SYSTEM_JOIN') {
+        delta = 1;
+      } else if (message.type === 'SYSTEM_LEAVE') {
+        delta = -1;
+      }
+
+      if (delta === 0 || baseMemberCount === undefined) {
+        return;
+      }
+
+      setLiveMemberCountState((currentState) => {
+        const isSameRoom = currentState.roomId === roomId;
+
+        if (isSameRoom && currentState.processedMessageIds.has(message.id)) {
+          return currentState;
+        }
+
+        const isSameBase = isSameRoom && currentState.baseCount === baseMemberCount;
+        const currentCount = isSameBase ? currentState.count : baseMemberCount;
+
+        if (currentCount === undefined || currentCount === null) {
+          return currentState;
+        }
+
+        const processedMessageIds = isSameRoom
+          ? new Set(currentState.processedMessageIds)
+          : new Set<number>();
+        processedMessageIds.add(message.id);
+
+        return {
+          baseCount: baseMemberCount,
+          count: Math.max(0, currentCount + delta),
+          processedMessageIds,
+          roomId,
+        };
+      });
+    },
+    [baseMemberCount, roomId],
+  );
 
   const handleReportRequest = useCallback(
     (target: ChatReportTarget) => {
@@ -368,6 +426,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const handleLeave = useCallback(() => setIsLeaveDialogOpen(true), []);
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
+      syncLiveMemberCount(message);
+
       if (taxiPotFlow.handleWebSocketMessage(message)) {
         return;
       }
@@ -390,6 +450,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
       hasNewMessages,
       newMessagesState.cursor,
       roomId,
+      syncLiveMemberCount,
       taxiPotFlow,
     ],
   );
@@ -415,7 +476,12 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const room: ChatRoom | undefined = baseRoom
     ? {
         ...baseRoom,
-        memberCount: taxiPotDetail?.current_count ?? baseRoom.memberCount,
+        memberCount:
+          liveMemberCountState.roomId === roomId &&
+          liveMemberCountState.baseCount === baseMemberCount &&
+          liveMemberCountState.count !== null
+            ? liveMemberCountState.count
+            : baseRoom.memberCount,
         memberLimit: taxiPotDetail?.capacity ?? baseRoom.memberLimit,
         messages: [...taxiPotEntryMessages, ...baseRoom.messages],
       }
@@ -482,7 +548,11 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const leaveLoading = leaveCompanionMutation.isPending || leaveTaxiPotMutation.isPending;
 
   return (
-    <ChatRoomWebSocketConnection roomId={roomId} onMessage={handleWebSocketMessage}>
+    <ChatRoomWebSocketConnection
+      enabled={Boolean(room)}
+      roomId={roomId}
+      onMessage={handleWebSocketMessage}
+    >
       {(connection) => (
         <ChattingPageContent
           connection={connection}
