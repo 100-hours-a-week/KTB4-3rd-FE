@@ -1,4 +1,4 @@
-import { act, cleanup, render } from '@testing-library/react';
+import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { SnackbarProvider } from '@/_app/providers';
@@ -12,6 +12,19 @@ afterEach(() => {
 });
 
 describe('SnackbarViewport', () => {
+  it('앱 레이아웃 너비 안에서 토스트를 중앙 정렬한다', () => {
+    render(
+      <SnackbarProvider>
+        <SnackbarViewport />
+      </SnackbarProvider>,
+    );
+
+    act(() => useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive'));
+
+    expect(screen.getByRole('region')).toHaveClass('mx-auto', 'w-full', 'max-w-[393px]');
+    expect(screen.getByRole('status')).toHaveClass('mx-auto');
+  });
+
   it('positive Snackbar를 3초 후 닫는다', () => {
     vi.useFakeTimers();
 
