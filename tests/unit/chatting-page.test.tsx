@@ -323,6 +323,60 @@ describe('ChattingPage', () => {
     expect(await screen.findByText('조금 늦을 것 같아요.')).toBeInTheDocument();
   });
 
+  it('새 메시지 버튼이 표시되어도 하단 sentinel에 도달하면 이후 메시지를 조회한다', async () => {
+    server.use(
+      http.get('*/chat-rooms/501/messages', ({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+
+        if (searchParams.get('direction') === 'after') {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: {
+              items: [
+                {
+                  id: 1454,
+                  type: 'TEXT',
+                  sender: { id: 7, nickname: '우림', profile_image_url: null },
+                  content: '새 메시지예요.',
+                  created_at: '2026-09-05T08:11:00.000Z',
+                },
+              ],
+              before_cursor: null,
+              after_cursor: null,
+            },
+          });
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                id: 1441,
+                type: 'TEXT',
+                sender: { id: 7, nickname: '우림', profile_image_url: null },
+                content: '기존 메시지예요.',
+                created_at: '2026-09-05T07:41:12.000Z',
+              },
+            ],
+            before_cursor: null,
+            after_cursor: 'v1.eyJpZCI6MTQ1M30',
+          },
+        });
+      }),
+    );
+
+    renderChattingPage();
+    expect(await screen.findByText('기존 메시지예요.')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '새 메시지 보기' })).toBeInTheDocument();
+
+    const messageList = screen.getByLabelText('채팅 메시지');
+    fireEvent.scroll(messageList);
+    MockIntersectionObserver.trigger();
+
+    expect(await screen.findByText('새 메시지예요.')).toBeInTheDocument();
+  });
+
   it('택시팟 상세 API 응답으로 안내 영역을 렌더링한다', async () => {
     renderChattingPage('599');
 
