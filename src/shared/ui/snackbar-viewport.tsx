@@ -15,7 +15,9 @@ export function SnackbarViewport({ className }: SnackbarViewportProps) {
 
   return (
     <Toast.Portal>
-      <Toast.Viewport className={cn('pointer-events-none z-[2147483647]', className)}>
+      <Toast.Viewport
+        className={cn('pointer-events-none z-[2147483647] mx-auto w-full max-w-[393px]', className)}
+      >
         {toasts.map((toast) => (
           <SnackbarToast key={toast.id} toast={toast} />
         ))}

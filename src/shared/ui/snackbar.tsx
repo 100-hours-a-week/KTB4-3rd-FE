@@ -113,7 +113,7 @@ export function SnackbarToast({ toast }: { toast: Toast.Root.ToastObject }) {
       aria-live={ariaLive ?? (type === 'critical' ? 'assertive' : 'polite')}
       className={cn(
         styles.root,
-        'pointer-events-auto flex h-[var(--dimension-x10)] w-[340px] max-w-[calc(100vw-32px)] items-center overflow-clip rounded-[var(--dimension-x2)] bg-[var(--color-bg-neutral-inverted)]',
+        'pointer-events-auto mx-auto flex h-[var(--dimension-x10)] w-[340px] max-w-[calc(100vw-32px)] items-center overflow-clip rounded-[var(--dimension-x2)] bg-[var(--color-bg-neutral-inverted)]',
         getSpacingClassName(hasIcon, hasAction),
         className,
         data?.className,
