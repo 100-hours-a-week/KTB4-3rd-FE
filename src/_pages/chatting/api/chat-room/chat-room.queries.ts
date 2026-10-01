@@ -16,6 +16,8 @@ export const chatRoomQueries = {
   ) =>
     infiniteQueryOptions({
       queryKey: [...chatRoomQueries.all(), 'messages', roomId] as const,
+      staleTime: 0,
+      gcTime: 0,
       initialPageParam: undefined as ChatRoomMessagesPageParam,
       queryFn: ({ pageParam }) => getChatRoomMessages(roomId, pageParam),
       // before/after 페이지는 스크롤 방향에 따라 fetchNextPage의 pageParam을 직접 전달한다.
