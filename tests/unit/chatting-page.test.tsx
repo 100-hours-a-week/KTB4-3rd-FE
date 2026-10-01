@@ -267,6 +267,43 @@ describe('ChattingPage', () => {
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
   });
 
+  it('웹소켓 입퇴장 메시지에 따라 헤더 인원수와 메시지 입력 상태를 동기화한다', async () => {
+    renderChattingPage('601');
+
+    expect(await screen.findByRole('heading', { name: '8시 판교역' })).toBeInTheDocument();
+    expect(screen.getByText('1/4')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeDisabled();
+
+    emitMockChatRoomMessage('601', {
+      id: 1501,
+      type: 'SYSTEM_JOIN',
+      joiner: { id: 15, name: '타요' },
+      created_at: '2026-10-01T10:00:00.000Z',
+    });
+
+    expect(await screen.findByText('2/4')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeEnabled();
+
+    emitMockChatRoomMessage('601', {
+      id: 1501,
+      type: 'SYSTEM_JOIN',
+      joiner: { id: 15, name: '타요' },
+      created_at: '2026-10-01T10:00:00.000Z',
+    });
+
+    await waitFor(() => expect(screen.getAllByText('2/4')).toHaveLength(1));
+
+    emitMockChatRoomMessage('601', {
+      id: 1502,
+      type: 'SYSTEM_LEAVE',
+      leaver: { id: 15, name: '타요' },
+      created_at: '2026-10-01T10:01:00.000Z',
+    });
+
+    expect(await screen.findByText('1/4')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeDisabled();
+  });
+
   it('새로운 메시지가 추가되면 메시지 목록을 하단으로 스크롤한다', () => {
     const connection = {
       error: null,
