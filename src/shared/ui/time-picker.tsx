@@ -8,6 +8,7 @@ import { Text } from './text';
 
 export type TimePeriod = '오전' | '오후';
 export type TimeMinute = 0 | 10 | 20 | 30 | 40 | 50;
+export type TimePickerMinuteStep = 10 | 30;
 export type TimeHour = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
 
 export type TimePickerValue = {
@@ -23,6 +24,8 @@ export type TimePickerProps = {
   defaultValue?: TimePickerValue;
   /** Called whenever one of the three columns changes. */
   onValueChange?: (value: TimePickerValue) => void;
+  /** The interval between minute options. */
+  minuteStep?: TimePickerMinuteStep;
   /** Accessible name for the complete time picker. */
   'aria-label'?: string;
   /** Disables all time selection controls. */
@@ -45,7 +48,10 @@ type TimePickerColumnProps = {
 
 const TIME_PERIODS = ['오전', '오후'] as const satisfies readonly TimePeriod[];
 const TIME_HOURS = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12] as const satisfies readonly TimeHour[];
-const TIME_MINUTES = [0, 10, 20, 30, 40, 50] as const satisfies readonly TimeMinute[];
+const TIME_MINUTES_BY_STEP = {
+  10: [0, 10, 20, 30, 40, 50],
+  30: [0, 30],
+} as const satisfies Record<TimePickerMinuteStep, readonly TimeMinute[]>;
 
 export const DEFAULT_TIME_PICKER_VALUE: TimePickerValue = {
   period: '오후',
@@ -73,10 +79,18 @@ const PERIOD_OPTIONS: WheelPickerOption<string>[] = TIME_PERIODS.map((value) =>
 const HOUR_OPTIONS: WheelPickerOption<string>[] = TIME_HOURS.map((value) =>
   createWheelOption(String(value), String(value)),
 );
-const MINUTE_OPTIONS: WheelPickerOption<string>[] = TIME_MINUTES.map((value) => {
+const MINUTE_OPTIONS: WheelPickerOption<string>[] = TIME_MINUTES_BY_STEP[10].map((value) => {
   const label = value.toString().padStart(2, '0');
   return createWheelOption(String(value), label);
 });
+
+const MINUTE_OPTIONS_BY_STEP: Record<TimePickerMinuteStep, WheelPickerOption<string>[]> = {
+  10: MINUTE_OPTIONS,
+  30: TIME_MINUTES_BY_STEP[30].map((value) => {
+    const label = value.toString().padStart(2, '0');
+    return createWheelOption(String(value), label);
+  }),
+};
 
 function isTimePeriod(value: string | undefined): value is TimePeriod {
   return value === '오전' || value === '오후';
@@ -86,15 +100,33 @@ function isTimeHour(value: number | undefined): value is TimeHour {
   return value !== undefined && TIME_HOURS.includes(value as TimeHour);
 }
 
-function isTimeMinute(value: number | undefined): value is TimeMinute {
-  return value !== undefined && TIME_MINUTES.includes(value as TimeMinute);
+function isTimeMinute(
+  value: number | undefined,
+  minuteStep: TimePickerMinuteStep,
+): value is TimeMinute {
+  const minutes = TIME_MINUTES_BY_STEP[minuteStep] as readonly TimeMinute[];
+
+  return value !== undefined && minutes.includes(value as TimeMinute);
 }
 
-function normalizeTimeValue(value?: Partial<TimePickerValue>): TimePickerValue {
+function getDefaultTimePickerValue(minuteStep: TimePickerMinuteStep): TimePickerValue {
+  if (minuteStep === 30) {
+    return { ...DEFAULT_TIME_PICKER_VALUE, minute: 30 };
+  }
+
+  return DEFAULT_TIME_PICKER_VALUE;
+}
+
+function normalizeTimeValue(
+  value: Partial<TimePickerValue> | undefined,
+  minuteStep: TimePickerMinuteStep,
+): TimePickerValue {
+  const defaultValue = getDefaultTimePickerValue(minuteStep);
+
   return {
-    period: isTimePeriod(value?.period) ? value.period : DEFAULT_TIME_PICKER_VALUE.period,
-    hour: isTimeHour(value?.hour) ? value.hour : DEFAULT_TIME_PICKER_VALUE.hour,
-    minute: isTimeMinute(value?.minute) ? value.minute : DEFAULT_TIME_PICKER_VALUE.minute,
+    period: isTimePeriod(value?.period) ? value.period : defaultValue.period,
+    hour: isTimeHour(value?.hour) ? value.hour : defaultValue.hour,
+    minute: isTimeMinute(value?.minute, minuteStep) ? value.minute : defaultValue.minute,
   };
 }
 
@@ -171,20 +203,24 @@ export function TimePicker({
   value,
   defaultValue,
   onValueChange,
+  minuteStep = 10,
   'aria-label': ariaLabel = '시간 선택',
   disabled = false,
   className,
 }: TimePickerProps) {
   const [internalValue, setInternalValue] = useState(() =>
-    normalizeTimeValue(defaultValue ?? DEFAULT_TIME_PICKER_VALUE),
+    normalizeTimeValue(defaultValue ?? getDefaultTimePickerValue(minuteStep), minuteStep),
   );
-  const currentValue = value === undefined ? internalValue : normalizeTimeValue(value);
+  const currentValue = value === undefined ? internalValue : normalizeTimeValue(value, minuteStep);
 
   const updateColumnValue = (name: TimePickerColumnName, nextValue: string) => {
-    const nextTime = normalizeTimeValue({
-      ...currentValue,
-      [name]: name === 'hour' || name === 'minute' ? Number(nextValue) : nextValue,
-    });
+    const nextTime = normalizeTimeValue(
+      {
+        ...currentValue,
+        [name]: name === 'hour' || name === 'minute' ? Number(nextValue) : nextValue,
+      },
+      minuteStep,
+    );
 
     if (value === undefined) {
       setInternalValue(nextTime);
@@ -236,7 +272,7 @@ export function TimePicker({
           infinite
           name="minute"
           onValueChange={(nextValue) => updateColumnValue('minute', nextValue)}
-          options={MINUTE_OPTIONS}
+          options={MINUTE_OPTIONS_BY_STEP[minuteStep]}
           value={getColumnValue(currentValue, 'minute')}
         />
       </WheelPickerWrapper>

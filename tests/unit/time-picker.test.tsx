@@ -83,6 +83,33 @@ describe('TimePicker', () => {
     });
   });
 
+  it('30분 단위 옵션을 사용하면 분을 00분과 30분으로만 선택한다', async () => {
+    useImmediateAnimationFrame();
+    const handleValueChange = vi.fn<(value: TimePickerValue) => void>();
+
+    render(
+      <TimePicker
+        defaultValue={{ period: '오후', hour: 6, minute: 0 }}
+        minuteStep={30}
+        onValueChange={handleValueChange}
+      />,
+    );
+
+    const minuteColumn = getColumn('분');
+    const optionTexts = Array.from(
+      minuteColumn.querySelectorAll('[data-rwp-option] .time-picker-wheel-text'),
+    ).map((element) => element.textContent);
+
+    expect(optionTexts).toEqual(expect.arrayContaining(['00', '30']));
+    expect(optionTexts).not.toContain('10');
+
+    fireEvent.keyDown(getWheel(minuteColumn), { key: 'ArrowDown' });
+
+    await waitFor(() => {
+      expect(handleValueChange).toHaveBeenLastCalledWith({ period: '오후', hour: 6, minute: 30 });
+    });
+  });
+
   it('키보드 방향키로 이전/다음 시간을 선택한다', async () => {
     useImmediateAnimationFrame();
     const handleValueChange = vi.fn<(value: TimePickerValue) => void>();

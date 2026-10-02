@@ -1,6 +1,6 @@
 import type { TimePickerValue } from '@/shared/ui/time-picker';
 
-const TIME_PICKER_MINUTE_STEP = 10;
+const TIME_PICKER_MINUTE_STEP = 30;
 const MATCHING_TIME_LIMIT_IN_HOURS = 3;
 
 export function getMatchingTimePickerInitialValue(now = new Date()): TimePickerValue {
