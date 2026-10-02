@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -118,18 +118,38 @@ describe('CommunityPostDetail', () => {
       '!leading-[var(--line-height-t4)]',
       '!font-[var(--font-weight-regular)]',
     );
-    expect(input).toHaveAttribute('maxLength', '280');
-    expect(screen.getByLabelText('글자 수')).toHaveTextContent('0 / 280');
+    expect(input).not.toHaveAttribute('maxLength');
     expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();
 
     await user.type(input, '새 댓글입니다');
     expect(submitButton).toBeEnabled();
-    expect(screen.getByLabelText('글자 수')).toHaveTextContent('7 / 280');
 
     await user.click(submitButton);
 
     expect(onCommentSubmit).toHaveBeenCalledWith('새 댓글입니다');
     expect(input).toHaveValue('');
+  });
+
+  it('댓글이 270자부터 카운터를 표시하고 280자 초과 시 전송을 막는다', () => {
+    render(<CommunityPostDetail post={communityPost} />);
+
+    const input = screen.getByRole('textbox', { name: '댓글 입력' });
+    const submitButton = screen.getByRole('button', { name: '댓글 전송' });
+    const characterCount = screen.getByTestId('character-count');
+
+    fireEvent.change(input, { target: { value: '가'.repeat(269) } });
+    expect(characterCount).toHaveClass('invisible');
+
+    fireEvent.change(input, { target: { value: '가'.repeat(270) } });
+    expect(characterCount).not.toHaveClass('invisible');
+    expect(characterCount).toHaveTextContent('270 / 280');
+    expect(submitButton).toBeEnabled();
+
+    fireEvent.change(input, { target: { value: '가'.repeat(281) } });
+    expect(input).toHaveValue('가'.repeat(281));
+    expect(characterCount).toHaveTextContent('281 / 280');
+    expect(characterCount).toHaveStyle({ color: 'var(--color-fg-critical)' });
+    expect(submitButton).toBeDisabled();
   });
 });

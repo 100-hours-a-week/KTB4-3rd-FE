@@ -9,6 +9,7 @@ import { Input } from '@/shared/ui/input';
 
 const DEFAULT_PLACEHOLDER = '메시지를 입력하세요.';
 const MAX_MESSAGE_LENGTH = 500;
+const MESSAGE_COUNTER_START = 490;
 
 export type ChatComposerProps = {
   className?: string;
@@ -34,7 +35,8 @@ export function ChatComposer({
   const isControlled = value !== undefined;
   const [internalValue, setInternalValue] = useState(defaultValue);
   const currentValue = isControlled ? value : internalValue;
-  const canSubmit = currentValue.trim().length > 0 && !disabled && !submitDisabled;
+  const isOverLimit = currentValue.length > MAX_MESSAGE_LENGTH;
+  const canSubmit = currentValue.trim().length > 0 && !isOverLimit && !disabled && !submitDisabled;
 
   const handleValueChange = (nextValue: string) => {
     if (!isControlled) {
@@ -48,7 +50,7 @@ export function ChatComposer({
     event.preventDefault();
 
     const message = currentValue.trim();
-    if (!message || disabled || submitDisabled) {
+    if (!message || isOverLimit || disabled || submitDisabled) {
       return;
     }
 
@@ -69,8 +71,7 @@ export function ChatComposer({
           aria-label="메시지 입력"
           disabled={disabled}
           disableFocusBorder
-          inputClassName="!text-[length:var(--font-size-t5)] !leading-[var(--line-height-t5)] !font-[var(--font-weight-regular)] placeholder:!text-[var(--color-fg-neutral-muted)]"
-          maxLength={MAX_MESSAGE_LENGTH}
+          inputClassName="!pr-[44px] !text-[length:var(--font-size-t5)] !leading-[var(--line-height-t5)] !font-[var(--font-weight-regular)] placeholder:!text-[var(--color-fg-neutral-muted)]"
           onValueChange={handleValueChange}
           placeholder={placeholder}
           value={currentValue}
@@ -80,6 +81,7 @@ export function ChatComposer({
         characterCount={currentValue.length}
         className="absolute right-[22px] bottom-[6px]"
         maxCharacterCount={MAX_MESSAGE_LENGTH}
+        showFrom={MESSAGE_COUNTER_START}
       />
       <button
         aria-label="메시지 전송"

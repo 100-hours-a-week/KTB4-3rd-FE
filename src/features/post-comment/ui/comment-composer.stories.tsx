@@ -33,3 +33,9 @@ export const AtCharacterLimit: Story = {
     defaultValue: '가'.repeat(280),
   },
 };
+
+export const OverCharacterLimit: Story = {
+  args: {
+    defaultValue: '가'.repeat(281),
+  },
+};
