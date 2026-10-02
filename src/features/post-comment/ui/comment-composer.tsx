@@ -49,7 +49,7 @@ export function CommentComposer({
       <div className="relative flex items-center">
         <input
           aria-label="댓글 입력"
-          className="h-11 w-full rounded-full border-0 bg-[var(--color-bg-neutral-weak)] py-3 pr-12 pl-4 !text-[length:var(--font-size-t4)] !leading-[var(--line-height-t4)] !font-[var(--font-weight-regular)] text-[var(--color-fg-neutral)] outline-none placeholder:text-[var(--color-fg-neutral-muted)] focus-visible:ring-2 focus-visible:ring-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
+          className="h-11 w-full rounded-full border-0 bg-[var(--color-bg-neutral-weak)] py-3 pr-12 pl-4 !text-[length:var(--font-size-t4)] !leading-[var(--line-height-t4)] !font-[var(--font-weight-regular)] text-[var(--color-fg-neutral)] outline-none placeholder:text-[var(--color-fg-neutral-muted)] disabled:cursor-not-allowed disabled:opacity-60"
           disabled={disabled}
           id={inputId}
           onChange={(event) => setValue(event.target.value)}
@@ -73,6 +73,7 @@ export function CommentComposer({
       <div aria-live="polite" className="flex justify-end px-1">
         <CharacterCount
           characterCount={value.length}
+          className="mr-[10px]"
           maxCharacterCount={MAX_COMMENT_LENGTH}
           showFrom={COMMENT_COUNTER_START}
         />

@@ -18,6 +18,10 @@ describe('BottomModal', () => {
     expect(screen.getByText('게시글 상세')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '닫기' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: '크게보기' })).toHaveAttribute('href', '/posts/1');
+
+    const dialog = screen.getByRole('dialog', { name: '바텀모달' });
+    const header = dialog.querySelector('header');
+    expect(header).toHaveClass('z-10', 'bg-[var(--color-bg-layer-default)]');
   });
 
   it('bottomOffset만큼 하단에서 띄운다', () => {

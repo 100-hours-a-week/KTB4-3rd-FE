@@ -74,7 +74,7 @@ export function BottomModal({
         role="dialog"
         style={{ bottom: bottomOffset }}
       >
-        <header className="absolute inset-x-0 top-0 flex h-11 items-center justify-between">
+        <header className="absolute inset-x-0 top-0 z-10 flex h-11 items-center justify-between bg-[var(--color-bg-layer-default)]">
           <button aria-label="닫기" className={actionClassName} onClick={handleClose} type="button">
             <Icon name="xmark" size={12} />
           </button>

@@ -117,8 +117,11 @@ describe('CommunityPostDetail', () => {
       '!text-[length:var(--font-size-t4)]',
       '!leading-[var(--line-height-t4)]',
       '!font-[var(--font-weight-regular)]',
+      'outline-none',
     );
+    expect(input).not.toHaveClass('focus-visible:ring-2');
     expect(input).not.toHaveAttribute('maxLength');
+    expect(screen.getByTestId('character-count')).toHaveClass('mr-[10px]');
     expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();
 
