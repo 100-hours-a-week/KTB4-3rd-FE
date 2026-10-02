@@ -28,10 +28,7 @@ import { HeaderUser } from '@/features/header-user';
 import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
-import {
-  insertCreatedCommunityPostComment,
-  useCreateCommunityPostCommentMutation,
-} from '@/features/post-comment';
+import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
 import { useCurrentUserQuery } from '@/features/user-profile';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
@@ -377,35 +374,24 @@ export function HomePage() {
                 type: 'critical',
               });
             },
-            onSuccess: ({ data }) => {
+            onSuccess: async ({ data }) => {
               setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
-              insertCreatedCommunityPostComment(
-                queryClient,
-                communityPostQueries.comments(selectedCommunityId).queryKey,
-                data,
+
+              let commentsResult = await communityCommentsQuery.refetch();
+              let hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                page.data.items.some((comment) => comment.id === data.id),
               );
-              setCommentIdToScroll(data.id);
 
-              void (async () => {
-                try {
-                  let commentsResult = await communityCommentsQuery.refetch();
-                  let hasCreatedComment = commentsResult.data?.pages.some((page) =>
-                    page.data.items.some((comment) => comment.id === data.id),
-                  );
+              while (!hasCreatedComment && commentsResult.data?.pages.at(-1)?.data.next_cursor) {
+                commentsResult = await communityCommentsQuery.fetchNextPage();
+                hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                  page.data.items.some((comment) => comment.id === data.id),
+                );
+              }
 
-                  while (
-                    !hasCreatedComment &&
-                    commentsResult.data?.pages.at(-1)?.data.next_cursor
-                  ) {
-                    commentsResult = await communityCommentsQuery.fetchNextPage();
-                    hasCreatedComment = commentsResult.data?.pages.some((page) =>
-                      page.data.items.some((comment) => comment.id === data.id),
-                    );
-                  }
-                } catch {
-                  return;
-                }
-              })();
+              if (hasCreatedComment) {
+                setCommentIdToScroll(data.id);
+              }
 
               void queryClient.invalidateQueries({
                 queryKey: communityPostQueries.detail(selectedCommunityId).queryKey,

@@ -73,7 +73,7 @@ export function CommunityPostDetail({
       return;
     }
 
-    comment.scrollIntoView({ behavior: 'auto', block: 'nearest' });
+    comment.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     onCommentScrolled?.();
   }, [commentIdToScroll, onCommentScrolled, post.comments]);
 
