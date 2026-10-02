@@ -13,6 +13,10 @@ describe('ChatComposer', () => {
       'placeholder',
       '메시지를 입력하세요.',
     );
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toHaveAttribute(
+      'maxLength',
+      '500',
+    );
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
     expect(screen.getByRole('textbox').closest('form')).toHaveClass('h-[78px]');
     expect(screen.getByRole('textbox').parentElement).not.toHaveClass('focus-within:border-2');

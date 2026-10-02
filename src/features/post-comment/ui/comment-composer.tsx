@@ -45,6 +45,7 @@ export function CommentComposer({
           className="h-11 w-full rounded-full border-0 bg-[var(--color-bg-neutral-weak)] py-3 pr-12 pl-4 !text-[length:var(--font-size-t4)] !leading-[var(--line-height-t4)] !font-[var(--font-weight-regular)] text-[var(--color-fg-neutral)] outline-none placeholder:text-[var(--color-fg-neutral-muted)] focus-visible:ring-2 focus-visible:ring-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
           disabled={disabled}
           id={inputId}
+          maxLength={280}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
           value={value}

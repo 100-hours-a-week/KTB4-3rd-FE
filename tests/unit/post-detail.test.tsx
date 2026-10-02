@@ -118,6 +118,7 @@ describe('CommunityPostDetail', () => {
       '!leading-[var(--line-height-t4)]',
       '!font-[var(--font-weight-regular)]',
     );
+    expect(input).toHaveAttribute('maxLength', '280');
     expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();
 
