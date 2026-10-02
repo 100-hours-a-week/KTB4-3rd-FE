@@ -96,6 +96,17 @@ describe('CommunityPostDetail', () => {
     expect(screen.getByText('유저1')).toBeInTheDocument();
     expect(screen.getByText('와 레전드사건 ㅋㅋ')).toBeInTheDocument();
 
+    const commentComposer = screen.getByRole('textbox', { name: '댓글 입력' }).closest('form');
+    expect(screen.getByRole('article')).toHaveClass('min-h-full');
+    expect(commentComposer).toHaveClass(
+      'sticky',
+      'bottom-0',
+      'z-10',
+      'mt-auto',
+      'shrink-0',
+      'bg-[var(--color-bg-layer-default)]',
+    );
+
     const metadata = screen.getByText('애롱롱').parentElement;
     const metadataText = metadata?.textContent ?? '';
     expect(metadataText.indexOf('1')).toBeLessThan(metadataText.indexOf('애롱롱'));

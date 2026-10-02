@@ -79,7 +79,11 @@ export function CommunityPostDetail({
 
   return (
     <article
-      className={cn('flex flex-col', isPageLayout && 'min-h-[calc(100dvh-56px)]', className)}
+      className={cn(
+        'flex flex-col',
+        isPageLayout ? 'min-h-[calc(100dvh-56px)]' : 'min-h-full',
+        className,
+      )}
     >
       <PostDetailInfo
         description={post.description}
@@ -158,9 +162,10 @@ export function CommunityPostDetail({
         />
       ) : null}
       <CommentComposer
-        className={
-          isPageLayout ? 'sticky bottom-0 z-10 mt-auto bg-white !px-[27px] !py-1' : undefined
-        }
+        className={cn(
+          'sticky bottom-0 z-10 mt-auto shrink-0',
+          isPageLayout ? 'bg-white !px-[27px] !py-1' : 'bg-[var(--color-bg-layer-default)]',
+        )}
         disabled={isCommentSubmitting}
         onSubmit={onCommentSubmit}
       />
