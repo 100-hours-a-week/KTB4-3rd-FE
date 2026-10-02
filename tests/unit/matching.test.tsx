@@ -373,11 +373,11 @@ describe('MatchingLocationAdjustPage', () => {
 });
 
 describe('MatchingTimePage', () => {
-  it('현재 시각을 다음 10분 단위로 올림해 초기 시간으로 사용한다', () => {
+  it('현재 시각을 다음 30분 단위로 올림해 초기 시간으로 사용한다', () => {
     expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 18, 41, 5))).toEqual({
       period: '오후',
-      hour: 6,
-      minute: 50,
+      hour: 7,
+      minute: 0,
     });
     expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 23, 59))).toEqual({
       period: '오전',
@@ -390,7 +390,7 @@ describe('MatchingTimePage', () => {
     const now = new Date(2026, 8, 26, 18, 0);
 
     expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 0 }, now)).toBe(true);
-    expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 10 }, now)).toBe(
+    expect(isMatchingTimeWithinThreeHours({ period: '오후', hour: 9, minute: 30 }, now)).toBe(
       false,
     );
   });
@@ -428,11 +428,11 @@ describe('MatchingTimePage', () => {
     }
 
     fireEvent.keyDown(minuteWheel, { key: 'ArrowDown' });
-    expect(minuteColumn).toHaveAttribute('aria-valuetext', '20');
+    expect(minuteColumn).toHaveAttribute('aria-valuetext', '00');
 
     fireEvent.click(screen.getByRole('button', { name: '초기화' }));
 
-    expect(minuteColumn).toHaveAttribute('aria-valuetext', '10');
+    expect(minuteColumn).toHaveAttribute('aria-valuetext', '30');
   });
 
   it('유효한 시간을 다음으로 진행하면 정보 확인 화면으로 이동한다', () => {
