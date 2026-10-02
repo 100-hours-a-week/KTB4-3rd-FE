@@ -112,6 +112,22 @@ describe('ChatListPageContent', () => {
     expect(screen.getByText('참여중인 채팅방이 없어요')).toBeInTheDocument();
   });
 
+  it('매칭 탭이 비어 있으면 택시 매칭 빈 상태 문구를 표시한다', async () => {
+    const user = userEvent.setup();
+    const states: ChatListPageStates = {
+      matching: { status: 'success', data: { items: [], next_cursor: null } },
+      community: { status: 'success', data: { items: [], next_cursor: null } },
+    };
+
+    render(<ChatListPageContent states={states} />);
+
+    await user.click(screen.getByRole('tab', { name: '매칭' }));
+
+    expect(screen.getByText('참여중인 택시 매칭이 없어요')).toBeInTheDocument();
+    expect(screen.getByText('함께 택시 탈 사람을 찾아보세요')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '택시 동승자 매칭하기' })).toBeInTheDocument();
+  });
+
   it('오류 응답이면 오류 상태와 재시도 버튼을 표시한다', async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn<(tab: 'matching' | 'community') => void>();

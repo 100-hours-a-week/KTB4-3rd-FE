@@ -182,6 +182,27 @@ describe('ChatListPage API 연결', () => {
     expect(navigation.push).toHaveBeenCalledWith('/');
   });
 
+  it('매칭 탭이 비어 있으면 택시 동승자 매칭하기 클릭 시 매칭 페이지로 이동한다', async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/chat-rooms', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], next_cursor: null },
+        }),
+      ),
+    );
+
+    render(<ChatListPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByTestId('chat-list-empty')).toBeInTheDocument();
+    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    await user.click(screen.getByRole('button', { name: '택시 동승자 매칭하기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/matching');
+  });
+
   it('스크롤 하단에 도달하면 next_cursor로 다음 페이지를 이어서 렌더링한다', async () => {
     const requestedCursors: string[] = [];
     const user = userEvent.setup();
