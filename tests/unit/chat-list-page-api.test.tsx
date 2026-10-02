@@ -158,6 +158,28 @@ describe('ChatListPage API 연결', () => {
     await waitFor(() => {
       expect(requestCount.mock.calls.length).toBeGreaterThan(countBeforeRetry);
     });
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
+  it("참여 중인 채팅방이 없으면 '글 찾아보기' 클릭 시 홈으로 이동한다", async () => {
+    const user = userEvent.setup();
+
+    server.use(
+      http.get('*/chat-rooms', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], next_cursor: null },
+        }),
+      ),
+    );
+
+    render(<ChatListPage />, { wrapper: createWrapper() });
+
+    expect(await screen.findByTestId('chat-list-empty')).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '글 찾아보기' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/');
   });
 
   it('스크롤 하단에 도달하면 next_cursor로 다음 페이지를 이어서 렌더링한다', async () => {

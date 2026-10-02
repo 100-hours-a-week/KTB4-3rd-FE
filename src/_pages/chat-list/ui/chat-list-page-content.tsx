@@ -26,6 +26,7 @@ export type ChatListPageContentProps = {
   className?: string;
   defaultTab?: ChatListTabValue;
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onExplore?: () => void;
   onLoadMore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
   onTabChange?: (tab: ChatListTabValue) => void;
@@ -74,6 +75,7 @@ export function ChatListPageContentWithQuery() {
   return (
     <ChatListPageContent
       onChatRoomClick={handleChatRoomClick}
+      onExplore={() => router.push('/')}
       onRetry={(tab) => {
         void queries[tab].refetch();
       }}
@@ -107,10 +109,12 @@ export type ChatListPagePaginationState = {
 export type ChatListPagePaginationStates = Record<ChatListTabValue, ChatListPagePaginationState>;
 
 function ChatListResultState({
+  onExplore,
   onRetry,
   state,
   tab,
 }: {
+  onExplore?: () => void;
   onRetry?: (tab: ChatListTabValue) => void;
   state: ChatListPageState;
   tab: ChatListTabValue;
@@ -139,7 +143,9 @@ function ChatListResultState({
               size={66}
             />
           }
-          primaryButtonProps={{ onClick: () => onRetry?.(tab) }}
+          primaryButtonProps={{
+            onClick: isError ? () => onRetry?.(tab) : onExplore,
+          }}
           primaryLabel={isError ? '다시 불러오기' : '글 찾아보기'}
           size="medium"
           title={isError ? '채팅방을 불러올 수 없어요' : '참여중인 채팅방이 없어요'}
@@ -151,6 +157,7 @@ function ChatListResultState({
 
 function ChatListPageStateView({
   onChatRoomClick,
+  onExplore,
   onLoadMore,
   onRetry,
   pagination,
@@ -158,6 +165,7 @@ function ChatListPageStateView({
   tab,
 }: {
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onExplore?: () => void;
   onLoadMore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
   pagination?: ChatListPagePaginationStates;
@@ -165,7 +173,7 @@ function ChatListPageStateView({
   tab: ChatListTabValue;
 }) {
   if (state.status === 'error' || state.data.items.length === 0) {
-    return <ChatListResultState onRetry={onRetry} state={state} tab={tab} />;
+    return <ChatListResultState onExplore={onExplore} onRetry={onRetry} state={state} tab={tab} />;
   }
 
   return (
@@ -257,6 +265,7 @@ export function ChatListPageContent({
   className,
   defaultTab = 'community',
   onChatRoomClick,
+  onExplore,
   onLoadMore,
   onRetry,
   onTabChange,
@@ -276,6 +285,7 @@ export function ChatListPageContent({
       <ChatListTabs onValueChange={handleTabChange} value={selectedTab} />
       <ChatListPageStateView
         onChatRoomClick={onChatRoomClick}
+        onExplore={onExplore}
         onLoadMore={onLoadMore}
         onRetry={onRetry}
         pagination={pagination}
