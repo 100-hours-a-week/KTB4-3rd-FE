@@ -9,6 +9,7 @@ import {
   MockApiProvider,
   QueryProvider,
   SnackbarProvider,
+  SnackbarRouteLifecycle,
 } from '@/_app/providers';
 
 import './globals.css';
@@ -43,9 +44,11 @@ export default function RootLayout({ children }: RootLayoutProps) {
             <MockApiProvider>
               <QueryProvider>
                 <SnackbarProvider>
-                  <AuthBootstrapProvider>
-                    <LoginRequiredProvider>{children}</LoginRequiredProvider>
-                  </AuthBootstrapProvider>
+                  <SnackbarRouteLifecycle>
+                    <AuthBootstrapProvider>
+                      <LoginRequiredProvider>{children}</LoginRequiredProvider>
+                    </AuthBootstrapProvider>
+                  </SnackbarRouteLifecycle>
                 </SnackbarProvider>
               </QueryProvider>
             </MockApiProvider>
