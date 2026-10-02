@@ -71,6 +71,7 @@ export function MatchingTimePage() {
         <TimePicker
           aria-label="탑승 희망 시간"
           className="mt-[96px]"
+          minuteStep={30}
           value={selectedTime}
           onValueChange={updateSelectedTime}
         />

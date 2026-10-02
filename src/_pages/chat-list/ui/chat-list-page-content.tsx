@@ -26,6 +26,7 @@ export type ChatListPageContentProps = {
   className?: string;
   defaultTab?: ChatListTabValue;
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onExplore?: (tab: ChatListTabValue) => void;
   onLoadMore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
   onTabChange?: (tab: ChatListTabValue) => void;
@@ -74,6 +75,9 @@ export function ChatListPageContentWithQuery() {
   return (
     <ChatListPageContent
       onChatRoomClick={handleChatRoomClick}
+      onExplore={(tab) => {
+        router.push(tab === 'matching' ? '/matching' : '/');
+      }}
       onRetry={(tab) => {
         void queries[tab].refetch();
       }}
@@ -107,15 +111,31 @@ export type ChatListPagePaginationState = {
 export type ChatListPagePaginationStates = Record<ChatListTabValue, ChatListPagePaginationState>;
 
 function ChatListResultState({
+  onExplore,
   onRetry,
   state,
   tab,
 }: {
+  onExplore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
   state: ChatListPageState;
   tab: ChatListTabValue;
 }) {
   const isError = state.status === 'error';
+  const isMatching = tab === 'matching';
+  let resultDescription = '채팅방에 참여해 동행할 사람을 찾아보세요\n';
+  let resultButtonLabel = '글 찾아보기';
+  let resultTitle = '참여중인 채팅방이 없어요';
+
+  if (isError) {
+    resultDescription = '불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.';
+    resultButtonLabel = '다시 불러오기';
+    resultTitle = '채팅방을 불러올 수 없어요';
+  } else if (isMatching) {
+    resultDescription = '함께 택시 탈 사람을 찾아보세요';
+    resultButtonLabel = '매칭하러가기';
+    resultTitle = '참여중인 택시 매칭이 없어요';
+  }
 
   return (
     <div
@@ -127,11 +147,7 @@ function ChatListResultState({
         <ResultSection
           buttons="primary"
           className="relative left-[-86px] !w-[520px] [&>div>div:last-child]:!mt-[17px] [&>div>span]:!h-[38px]"
-          description={
-            isError
-              ? '불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.'
-              : '채팅방에 참여해 동행할 사람을 찾아보세요\n'
-          }
+          description={resultDescription}
           icon={
             <Icon
               color={isError ? 'var(--color-fg-critical)' : 'var(--color-fg-neutral-muted)'}
@@ -139,10 +155,12 @@ function ChatListResultState({
               size={66}
             />
           }
-          primaryButtonProps={{ onClick: () => onRetry?.(tab) }}
-          primaryLabel={isError ? '다시 불러오기' : '글 찾아보기'}
+          primaryButtonProps={{
+            onClick: isError ? () => onRetry?.(tab) : () => onExplore?.(tab),
+          }}
+          primaryLabel={resultButtonLabel}
           size="medium"
-          title={isError ? '채팅방을 불러올 수 없어요' : '참여중인 채팅방이 없어요'}
+          title={resultTitle}
         />
       </div>
     </div>
@@ -151,6 +169,7 @@ function ChatListResultState({
 
 function ChatListPageStateView({
   onChatRoomClick,
+  onExplore,
   onLoadMore,
   onRetry,
   pagination,
@@ -158,6 +177,7 @@ function ChatListPageStateView({
   tab,
 }: {
   onChatRoomClick?: (chatRoom: ChatRoomListItem) => void;
+  onExplore?: (tab: ChatListTabValue) => void;
   onLoadMore?: (tab: ChatListTabValue) => void;
   onRetry?: (tab: ChatListTabValue) => void;
   pagination?: ChatListPagePaginationStates;
@@ -165,7 +185,7 @@ function ChatListPageStateView({
   tab: ChatListTabValue;
 }) {
   if (state.status === 'error' || state.data.items.length === 0) {
-    return <ChatListResultState onRetry={onRetry} state={state} tab={tab} />;
+    return <ChatListResultState onExplore={onExplore} onRetry={onRetry} state={state} tab={tab} />;
   }
 
   return (
@@ -257,6 +277,7 @@ export function ChatListPageContent({
   className,
   defaultTab = 'community',
   onChatRoomClick,
+  onExplore,
   onLoadMore,
   onRetry,
   onTabChange,
@@ -276,6 +297,7 @@ export function ChatListPageContent({
       <ChatListTabs onValueChange={handleTabChange} value={selectedTab} />
       <ChatListPageStateView
         onChatRoomClick={onChatRoomClick}
+        onExplore={onExplore}
         onLoadMore={onLoadMore}
         onRetry={onRetry}
         pagination={pagination}
