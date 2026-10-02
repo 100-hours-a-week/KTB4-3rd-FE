@@ -182,7 +182,7 @@ describe('ChatListPage API 연결', () => {
     expect(navigation.push).toHaveBeenCalledWith('/');
   });
 
-  it('매칭 탭이 비어 있으면 택시 동승자 매칭하기 클릭 시 매칭 페이지로 이동한다', async () => {
+  it('매칭 탭이 비어 있으면 매칭하러가기 클릭 시 매칭 페이지로 이동한다', async () => {
     const user = userEvent.setup();
 
     server.use(
@@ -198,7 +198,7 @@ describe('ChatListPage API 연결', () => {
 
     expect(await screen.findByTestId('chat-list-empty')).toBeInTheDocument();
     await user.click(screen.getByRole('tab', { name: '매칭' }));
-    await user.click(screen.getByRole('button', { name: '택시 동승자 매칭하기' }));
+    await user.click(screen.getByRole('button', { name: '매칭하러가기' }));
 
     expect(navigation.push).toHaveBeenCalledWith('/matching');
   });

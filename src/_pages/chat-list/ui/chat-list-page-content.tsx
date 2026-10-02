@@ -133,7 +133,7 @@ function ChatListResultState({
     resultTitle = '채팅방을 불러올 수 없어요';
   } else if (isMatching) {
     resultDescription = '함께 택시 탈 사람을 찾아보세요';
-    resultButtonLabel = '택시 동승자 매칭하기';
+    resultButtonLabel = '매칭하러가기';
     resultTitle = '참여중인 택시 매칭이 없어요';
   }
 

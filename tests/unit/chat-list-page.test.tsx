@@ -125,7 +125,7 @@ describe('ChatListPageContent', () => {
 
     expect(screen.getByText('참여중인 택시 매칭이 없어요')).toBeInTheDocument();
     expect(screen.getByText('함께 택시 탈 사람을 찾아보세요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '택시 동승자 매칭하기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '매칭하러가기' })).toBeInTheDocument();
   });
 
   it('오류 응답이면 오류 상태와 재시도 버튼을 표시한다', async () => {
