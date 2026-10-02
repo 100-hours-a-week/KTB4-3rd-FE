@@ -81,12 +81,12 @@ export function CommunityPostDetail({
     <article
       className={cn(
         'flex flex-col',
-        isPageLayout ? 'min-h-[calc(100dvh-56px)]' : 'h-full min-h-0 overflow-hidden',
+        isPageLayout ? 'min-h-[calc(100dvh-56px)]' : 'h-full min-h-0 min-w-0 overflow-hidden',
         className,
       )}
     >
       <div
-        className={cn(!isPageLayout && 'min-h-0 flex-1 overflow-x-hidden overflow-y-auto')}
+        className={cn(!isPageLayout && 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto')}
         data-testid={isPageLayout ? undefined : 'community-post-detail-scroll'}
       >
         <PostDetailInfo

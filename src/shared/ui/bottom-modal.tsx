@@ -19,7 +19,7 @@ export type BottomModalProps = {
 };
 
 const modalClassName =
-  'fixed left-1/2 z-50 flex h-[min(504px,calc(100dvh-16px))] w-[calc(100%_-_32px)] max-w-[361px] -translate-x-1/2 flex-col overflow-hidden rounded-[24px] border border-[var(--color-stroke-neutral-subtle)] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_12px_rgba(0,0,0,0.18)]';
+  'fixed left-1/2 z-50 flex h-[min(504px,calc(100dvh-16px))] min-h-0 min-w-0 w-[calc(100vw_-_32px)] max-w-[361px] -translate-x-1/2 flex-col overflow-hidden rounded-[24px] border border-[var(--color-stroke-neutral-subtle)] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_12px_rgba(0,0,0,0.18)]';
 const backdropClassName = 'fixed inset-0 z-40 min-h-dvh border-0 bg-transparent p-0';
 
 const actionClassName =
@@ -88,7 +88,7 @@ export function BottomModal({
           </Link>
         </header>
         <div
-          className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
+          className="min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-contain"
           data-testid="bottom-modal-content"
         >
           {children}

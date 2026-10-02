@@ -26,7 +26,10 @@ export function CommentList({ className, comments, layout = 'modal' }: CommentLi
       {comments.map((comment, index) => (
         <li key={comment.id}>
           <div
-            className={cn('flex min-h-[72px] items-center gap-3 px-6 py-3', isPageLayout && 'px-3')}
+            className={cn(
+              'flex min-h-[72px] min-w-0 items-center gap-3 px-6 py-3',
+              isPageLayout && 'px-3',
+            )}
           >
             <Avatar
               alt={`${comment.author.nickname} 프로필`}
@@ -43,7 +46,7 @@ export function CommentList({ className, comments, layout = 'modal' }: CommentLi
                 </Text>
               </div>
             ) : (
-              <div className="flex min-w-0 flex-col gap-1">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
                 <Text color="fg.neutral" variant="t4Bold">
                   {comment.author.nickname}
                 </Text>

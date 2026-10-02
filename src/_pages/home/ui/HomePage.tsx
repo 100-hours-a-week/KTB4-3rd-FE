@@ -401,7 +401,7 @@ export function HomePage() {
           }
         />
 
-        <main className="relative h-[calc(100dvh-72px)] min-h-[780px]">
+        <main className="relative h-[calc(100dvh-72px)] min-h-0">
           <Map
             center={selectedPost?.position}
             className="h-full"
