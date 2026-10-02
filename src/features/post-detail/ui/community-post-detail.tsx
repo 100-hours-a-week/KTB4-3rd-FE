@@ -49,6 +49,45 @@ export function CommunityPostDetail({
 }: CommunityPostDetailProps) {
   const isPageLayout = layout === 'page';
   const loadMoreCommentsRef = useRef<HTMLDivElement>(null);
+  const commentScrollRef = useRef<HTMLDivElement>(null);
+  const submittedCommentRef = useRef<{ count: number; latestId?: number } | null>(null);
+
+  const latestCommentId = post.comments.at(-1)?.id;
+
+  const handleCommentSubmit = (content: string) => {
+    submittedCommentRef.current = {
+      count: post.comments.length,
+      latestId: latestCommentId,
+    };
+    onCommentSubmit?.(content);
+  };
+
+  useEffect(() => {
+    if (commentFeedback?.type === 'critical') {
+      submittedCommentRef.current = null;
+      return;
+    }
+
+    if (commentFeedback?.type !== 'positive') {
+      return;
+    }
+
+    const submittedComment = submittedCommentRef.current;
+    const hasNewComment =
+      submittedComment !== null &&
+      (post.comments.length > submittedComment.count ||
+        latestCommentId !== submittedComment.latestId);
+
+    if (!hasNewComment) {
+      return;
+    }
+
+    const target = commentScrollRef.current;
+    if (target) {
+      target.scrollTo({ behavior: 'smooth', top: target.scrollHeight });
+    }
+    submittedCommentRef.current = null;
+  }, [commentFeedback, latestCommentId, post.comments.length]);
 
   useEffect(() => {
     const target = loadMoreCommentsRef.current;
@@ -88,6 +127,7 @@ export function CommunityPostDetail({
       <div
         className={cn(!isPageLayout && 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto')}
         data-testid={isPageLayout ? undefined : 'community-post-detail-scroll'}
+        ref={isPageLayout ? undefined : commentScrollRef}
       >
         <PostDetailInfo
           description={post.description}
@@ -174,7 +214,7 @@ export function CommunityPostDetail({
             : 'bg-[var(--color-bg-layer-default)]',
         )}
         disabled={isCommentSubmitting}
-        onSubmit={onCommentSubmit}
+        onSubmit={handleCommentSubmit}
       />
     </article>
   );

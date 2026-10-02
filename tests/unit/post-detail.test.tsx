@@ -118,6 +118,46 @@ describe('CommunityPostDetail', () => {
     ).toBeInTheDocument();
   });
 
+  it('댓글을 성공적으로 등록하면 최신 댓글 위치로 스크롤한다', async () => {
+    const user = userEvent.setup();
+    const onCommentSubmit = vi.fn<(content: string) => void>();
+    const { rerender } = render(
+      <CommunityPostDetail onCommentSubmit={onCommentSubmit} post={communityPost} />,
+    );
+    const scrollContainer = screen.getByTestId('community-post-detail-scroll');
+    const scrollTo = vi.fn<(options: ScrollToOptions) => void>();
+
+    Object.defineProperty(scrollContainer, 'scrollHeight', { configurable: true, value: 640 });
+    Object.defineProperty(scrollContainer, 'scrollTo', { configurable: true, value: scrollTo });
+
+    const input = screen.getByRole('textbox', { name: '댓글 입력' });
+    await user.type(input, '새 댓글입니다');
+    await user.click(screen.getByRole('button', { name: '댓글 전송' }));
+
+    rerender(
+      <CommunityPostDetail
+        commentFeedback={{ description: '댓글이 등록되었어요', type: 'positive' }}
+        onCommentSubmit={onCommentSubmit}
+        post={{
+          ...communityPost,
+          comment_count: 2,
+          comments: [
+            ...communityPost.comments,
+            {
+              author: { nickname: '애롱롱', profile_image_url: null },
+              content: '새 댓글입니다',
+              id: 2,
+            },
+          ],
+        }}
+      />,
+    );
+
+    expect(onCommentSubmit).toHaveBeenCalledWith('새 댓글입니다');
+    expect(scrollTo).toHaveBeenCalledWith({ behavior: 'smooth', top: 640 });
+    expect(input).toHaveValue('');
+  });
+
   it('댓글 입력값을 전송하고 입력창을 비운다', async () => {
     const user = userEvent.setup();
     const onCommentSubmit = vi.fn<(content: string) => void>();
