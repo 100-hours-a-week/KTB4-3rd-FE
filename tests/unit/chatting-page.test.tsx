@@ -97,7 +97,11 @@ function mockCurrentUserId(id: number) {
 }
 
 async function emitTaxiPotMessage(
-  type: 'SYSTEM_RIDE_START_REQUESTED' | 'SYSTEM_RIDE_STARTED' | 'SYSTEM_RIDE_END_REQUESTED',
+  type:
+    | 'SYSTEM_RIDE_START_REQUESTED'
+    | 'SYSTEM_RIDE_STARTED'
+    | 'SYSTEM_RIDE_END_REQUESTED'
+    | 'SYSTEM_RIDE_ENDED',
 ) {
   await new Promise((resolve) => setTimeout(resolve, 30));
   emitMockChatRoomMessage('599', {
@@ -800,6 +804,38 @@ describe('ChattingPage', () => {
 
     expect(dialog).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+  });
+
+  it('비방장이 운행 종료 웹소켓 이벤트를 받으면 평가 모달을 연다', async () => {
+    mockCurrentUserId(9);
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'IN_PROGRESS',
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 2,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_RIDE_ENDED');
+
+    expect(
+      await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument();
   });
 
   it('평가 모달 확인 버튼을 누르면 동승자 평가를 제출한다', async () => {
