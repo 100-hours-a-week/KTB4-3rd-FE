@@ -337,19 +337,21 @@ export function HomePage() {
       return;
     }
 
-    setJoinErrorMessage(null);
-    joinCompanionMutation.mutate(selectedDetail.id, {
-      onSuccess: ({ data }) => {
-        setJoinErrorMessage(null);
-        router.push(`/chatroom/${data.chat_room_id}`);
-      },
-      onError: (error) => {
-        setJoinErrorMessage(
-          error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
-        );
-      },
+    requireAuth(() => {
+      setJoinErrorMessage(null);
+      joinCompanionMutation.mutate(selectedDetail.id, {
+        onSuccess: ({ data }) => {
+          setJoinErrorMessage(null);
+          router.push(`/chatroom/${data.chat_room_id}`);
+        },
+        onError: (error) => {
+          setJoinErrorMessage(
+            error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
+          );
+        },
+      });
     });
-  }, [joinCompanionMutation, router, selectedDetail]);
+  }, [joinCompanionMutation, requireAuth, router, selectedDetail]);
 
   const handleLoadMoreComments = useCallback(() => {
     if (!hasNextComments || isCommentsError || isFetchingNextComments) {

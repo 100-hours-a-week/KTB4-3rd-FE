@@ -196,16 +196,18 @@ export function PostDetailPage() {
       return;
     }
 
-    setJoinErrorMessage(null);
-    joinCompanionMutation.mutate(selectedDetail.id, {
-      onError: (error) => {
-        setJoinErrorMessage(
-          error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
-        );
-      },
-      onSuccess: ({ data }) => {
-        router.push(`/chatroom/${data.chat_room_id}`);
-      },
+    requireAuth(() => {
+      setJoinErrorMessage(null);
+      joinCompanionMutation.mutate(selectedDetail.id, {
+        onError: (error) => {
+          setJoinErrorMessage(
+            error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
+          );
+        },
+        onSuccess: ({ data }) => {
+          router.push(`/chatroom/${data.chat_room_id}`);
+        },
+      });
     });
   };
 

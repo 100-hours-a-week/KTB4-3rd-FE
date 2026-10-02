@@ -338,14 +338,22 @@ export function PostWritePage({ className, type }: PostWritePageProps) {
       return;
     }
 
+    if (draft.postLocation === null) {
+      useSnackbarStore.getState().showSnackbar('위치 정보를 먼저 설정해주세요', 'critical');
+      return;
+    }
+
     const payload = draft.getCommunityPayload();
 
-    if (payload) {
-      postCreateMutation.mutate(
-        { payload, type: 'COMMUNITY' },
-        { onError: handlePostCreateError, onSuccess: handlePostCreateSuccess },
-      );
+    if (!payload) {
+      useSnackbarStore.getState().showSnackbar('제목과 내용을 작성해주세요', 'critical');
+      return;
     }
+
+    postCreateMutation.mutate(
+      { payload, type: 'COMMUNITY' },
+      { onError: handlePostCreateError, onSuccess: handlePostCreateSuccess },
+    );
   };
 
   return (

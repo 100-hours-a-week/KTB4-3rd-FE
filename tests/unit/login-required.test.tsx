@@ -110,6 +110,7 @@ describe('useRequireAuth', () => {
     '/chatting',
     '/chatroom/101',
     '/post/create/type',
+    '/posts/write',
   ])('비로그인 사용자가 보호된 경로(%s)에 접근하면 로그인 유도 Dialog를 보여준다', (pathname) => {
     navigation.pathname = pathname;
 

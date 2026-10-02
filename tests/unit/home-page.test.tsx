@@ -626,6 +626,25 @@ describe('HomePage', () => {
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/501'));
   });
 
+  it('비로그인 사용자가 동행 참여를 누르면 로그인 유도 Dialog를 표시하고 API를 호출하지 않는다', async () => {
+    const user = userEvent.setup();
+    let joinRequestCount = 0;
+
+    server.use(
+      http.post('*/companion-posts/10/participants', () => {
+        joinRequestCount += 1;
+        return HttpResponse.json({ data: { chat_room_id: 501 } }, { status: 201 });
+      }),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 → 강남역/ }));
+    await user.click(await screen.findByRole('button', { name: '채팅 참여하기' }));
+
+    expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
+    expect(joinRequestCount).toBe(0);
+  });
+
   it('채팅 참여 API 오류를 버튼 위 Snackbar로 표시한다', async () => {
     const user = userEvent.setup();
     useAuthStore.getState().setAccessToken('mock-access-token');

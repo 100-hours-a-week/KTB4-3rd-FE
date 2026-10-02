@@ -1,13 +1,34 @@
+import { http, HttpResponse } from 'msw';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { LoginRequiredProvider } from '@/_app/providers';
 import {
   CompanionPostDetail,
   CommunityPostDetail,
+  PostDetailPage,
   type CompanionPostDetailProps,
   type CommunityPostDetailProps,
 } from '@/_pages/post-detail';
+import { useAuthStore } from '@/entities/auth';
+import { server } from '@/shared/api/mocks/server';
+
+const pageNavigation = vi.hoisted(() => ({
+  back: vi.fn<() => void>(),
+  pathname: '/posts/10',
+  postId: '10',
+  push: vi.fn<(path: string) => void>(),
+  type: 'companion',
+}));
+
+vi.mock('next/navigation', () => ({
+  useParams: () => ({ postId: pageNavigation.postId }),
+  usePathname: () => pageNavigation.pathname,
+  useRouter: () => ({ back: pageNavigation.back, push: pageNavigation.push }),
+  useSearchParams: () => new URLSearchParams(`type=${pageNavigation.type}`),
+}));
 
 const companionPost: CompanionPostDetailProps['post'] = {
   type: 'COMPANION',
@@ -44,7 +65,29 @@ const communityPost: CommunityPostDetailProps['post'] = {
   ],
 };
 
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  pageNavigation.back.mockReset();
+  pageNavigation.push.mockReset();
+  useAuthStore.getState().clearTokens();
+});
+
+function renderPostDetailPage() {
+  const queryClient = new QueryClient({
+    defaultOptions: {
+      mutations: { retry: false },
+      queries: { retry: false },
+    },
+  });
+
+  return render(
+    <QueryClientProvider client={queryClient}>
+      <LoginRequiredProvider>
+        <PostDetailPage />
+      </LoginRequiredProvider>
+    </QueryClientProvider>,
+  );
+}
 
 describe('CompanionPostDetail', () => {
   it('게시글 정보, 이동 상세정보, 참여자와 채팅 참여 버튼을 조합한다', async () => {
@@ -204,5 +247,25 @@ describe('CommunityPostDetail', () => {
     expect(characterCount).toHaveTextContent('281 / 280');
     expect(characterCount).toHaveStyle({ color: 'var(--color-fg-critical)' });
     expect(submitButton).toBeDisabled();
+  });
+});
+
+describe('PostDetailPage', () => {
+  it('비로그인 사용자가 동행 참여를 누르면 로그인 유도 Dialog를 표시하고 API를 호출하지 않는다', async () => {
+    const user = userEvent.setup();
+    let joinRequestCount = 0;
+
+    server.use(
+      http.post('*/companion-posts/10/participants', () => {
+        joinRequestCount += 1;
+        return HttpResponse.json({ data: { chat_room_id: 501 } }, { status: 201 });
+      }),
+    );
+
+    renderPostDetailPage();
+    await user.click(await screen.findByRole('button', { name: '채팅 참여하기' }));
+
+    expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
+    expect(joinRequestCount).toBe(0);
   });
 });
