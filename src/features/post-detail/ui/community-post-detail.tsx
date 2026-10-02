@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
   CommentList,
@@ -62,7 +62,7 @@ export function CommunityPostDetail({
     onCommentSubmit?.(content);
   };
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (commentFeedback?.type === 'critical') {
       submittedCommentRef.current = null;
       return;
