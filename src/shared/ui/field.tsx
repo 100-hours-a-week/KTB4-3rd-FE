@@ -11,8 +11,9 @@ import {
 
 import { cn } from '@/shared/lib/cn';
 
+import { CharacterCount } from './character-count';
 import { Icon } from './icon';
-import { Text, type TextColor } from './text';
+import { Text } from './text';
 
 export type FieldLabelWeight = 'medium' | 'bold';
 
@@ -89,33 +90,6 @@ function getRequirementMark(
       {resolvedMark}
     </span>
   );
-}
-
-function getCharacterCountInvalidState(
-  characterCount: ReactNode | null | undefined,
-  maxCharacterCount: ReactNode | null | undefined,
-) {
-  return (
-    typeof characterCount === 'number' &&
-    typeof maxCharacterCount === 'number' &&
-    characterCount > maxCharacterCount
-  );
-}
-
-function hasEnteredCharacters(characterCount: ReactNode | null | undefined) {
-  return typeof characterCount === 'number' ? characterCount > 0 : hasContent(characterCount);
-}
-
-function getCharacterCountColor(isInvalid: boolean, hasCurrentCount: boolean): TextColor {
-  if (isInvalid) {
-    return 'fg.critical';
-  }
-
-  if (hasCurrentCount) {
-    return 'fg.neutral';
-  }
-
-  return 'fg.neutralSubtle';
 }
 
 function renderFooterMessage(
@@ -208,10 +182,6 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
     const isInvalid = invalid || hasErrorMessage;
     const hasCharacterCount = hasContent(characterCount) || hasContent(maxCharacterCount);
     const hasFooter = hasContent(helperContent) || hasErrorMessage || hasCharacterCount;
-    const isCharacterCountInvalid = getCharacterCountInvalidState(
-      characterCount,
-      maxCharacterCount,
-    );
 
     return (
       <BaseField.Root
@@ -248,23 +218,10 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
             </div>
 
             {hasCharacterCount ? (
-              <Text
-                aria-label="글자 수"
-                className="shrink-0"
-                color={getCharacterCountColor(
-                  isCharacterCountInvalid,
-                  hasEnteredCharacters(characterCount),
-                )}
-                variant="t3Regular"
-              >
-                {hasContent(characterCount) ? characterCount : 0}
-                {hasContent(maxCharacterCount) ? (
-                  <Text as="span" color="fg.neutralSubtle" variant="t3Regular">
-                    {' / '}
-                    {maxCharacterCount}
-                  </Text>
-                ) : null}
-              </Text>
+              <CharacterCount
+                characterCount={characterCount}
+                maxCharacterCount={maxCharacterCount}
+              />
             ) : null}
           </div>
         ) : null}

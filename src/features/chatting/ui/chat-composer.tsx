@@ -3,10 +3,12 @@
 import { useState, type FormEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
+import { CharacterCount } from '@/shared/ui/character-count';
 import { Icon } from '@/shared/ui/icon';
 import { Input } from '@/shared/ui/input';
 
 const DEFAULT_PLACEHOLDER = '메시지를 입력하세요.';
+const MAX_MESSAGE_LENGTH = 500;
 
 export type ChatComposerProps = {
   className?: string;
@@ -59,7 +61,7 @@ export function ChatComposer({
 
   return (
     <form
-      className={cn('relative h-[78px] w-full bg-[var(--color-bg-layer-default)]', className)}
+      className={cn('relative h-[98px] w-full bg-[var(--color-bg-layer-default)]', className)}
       onSubmit={handleSubmit}
     >
       <div className="absolute top-[13px] right-[18px] left-[22px]">
@@ -68,12 +70,17 @@ export function ChatComposer({
           disabled={disabled}
           disableFocusBorder
           inputClassName="!text-[length:var(--font-size-t5)] !leading-[var(--line-height-t5)] !font-[var(--font-weight-regular)] placeholder:!text-[var(--color-fg-neutral-muted)]"
-          maxLength={500}
+          maxLength={MAX_MESSAGE_LENGTH}
           onValueChange={handleValueChange}
           placeholder={placeholder}
           value={currentValue}
         />
       </div>
+      <CharacterCount
+        characterCount={currentValue.length}
+        className="absolute right-[22px] bottom-[6px]"
+        maxCharacterCount={MAX_MESSAGE_LENGTH}
+      />
       <button
         aria-label="메시지 전송"
         className="absolute top-[17px] right-[20px] inline-flex size-[44px] items-center justify-center rounded-[12px] outline-none focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed"

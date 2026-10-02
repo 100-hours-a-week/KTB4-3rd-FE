@@ -3,10 +3,14 @@
 import { useId, useState, type FormEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
+import { CharacterCount } from '@/shared/ui/character-count';
 import { Icon } from '@/shared/ui/icon';
+
+const MAX_COMMENT_LENGTH = 280;
 
 export type CommentComposerProps = {
   className?: string;
+  defaultValue?: string;
   disabled?: boolean;
   onSubmit?: (content: string) => void;
   placeholder?: string;
@@ -14,12 +18,13 @@ export type CommentComposerProps = {
 
 export function CommentComposer({
   className,
+  defaultValue = '',
   disabled = false,
   onSubmit,
   placeholder = '댓글을 입력해 주세요',
 }: CommentComposerProps) {
   const inputId = useId();
-  const [value, setValue] = useState('');
+  const [value, setValue] = useState(defaultValue);
   const canSubmit = value.trim().length > 0 && !disabled;
 
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
@@ -45,7 +50,7 @@ export function CommentComposer({
           className="h-11 w-full rounded-full border-0 bg-[var(--color-bg-neutral-weak)] py-3 pr-12 pl-4 !text-[length:var(--font-size-t4)] !leading-[var(--line-height-t4)] !font-[var(--font-weight-regular)] text-[var(--color-fg-neutral)] outline-none placeholder:text-[var(--color-fg-neutral-muted)] focus-visible:ring-2 focus-visible:ring-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-60"
           disabled={disabled}
           id={inputId}
-          maxLength={280}
+          maxLength={MAX_COMMENT_LENGTH}
           onChange={(event) => setValue(event.target.value)}
           placeholder={placeholder}
           value={value}
@@ -63,6 +68,9 @@ export function CommentComposer({
             size={24}
           />
         </button>
+      </div>
+      <div aria-live="polite" className="flex justify-end px-1">
+        <CharacterCount characterCount={value.length} maxCharacterCount={MAX_COMMENT_LENGTH} />
       </div>
     </form>
   );

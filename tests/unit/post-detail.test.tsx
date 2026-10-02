@@ -119,11 +119,13 @@ describe('CommunityPostDetail', () => {
       '!font-[var(--font-weight-regular)]',
     );
     expect(input).toHaveAttribute('maxLength', '280');
+    expect(screen.getByLabelText('글자 수')).toHaveTextContent('0 / 280');
     expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();
 
     await user.type(input, '새 댓글입니다');
     expect(submitButton).toBeEnabled();
+    expect(screen.getByLabelText('글자 수')).toHaveTextContent('7 / 280');
 
     await user.click(submitButton);
 

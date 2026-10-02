@@ -18,7 +18,8 @@ describe('ChatComposer', () => {
       '500',
     );
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
-    expect(screen.getByRole('textbox').closest('form')).toHaveClass('h-[78px]');
+    expect(screen.getByRole('textbox').closest('form')).toHaveClass('h-[98px]');
+    expect(screen.getByLabelText('글자 수')).toHaveTextContent('0 / 500');
     expect(screen.getByRole('textbox').parentElement).not.toHaveClass('focus-within:border-2');
   });
 
@@ -31,6 +32,7 @@ describe('ChatComposer', () => {
 
     fireEvent.change(input, { target: { value: '  안녕하세요  ' } });
     expect(sendButton).toBeEnabled();
+    expect(screen.getByLabelText('글자 수')).toHaveTextContent('9 / 500');
 
     fireEvent.click(sendButton);
 
