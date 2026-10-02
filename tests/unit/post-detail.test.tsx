@@ -150,7 +150,7 @@ describe('CommunityPostDetail', () => {
     );
 
     expect(targetComment).toHaveAttribute('data-comment-id', '2');
-    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'auto', block: 'nearest' });
     expect(onCommentScrolled).toHaveBeenCalledOnce();
   });
 

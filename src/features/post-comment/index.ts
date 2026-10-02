@@ -8,3 +8,4 @@ export {
   useCreateCommunityPostCommentMutation,
   type CreateCommunityPostCommentVariables,
 } from './model/use-create-community-post-comment';
+export { insertCreatedCommunityPostComment } from './model/insert-created-community-post-comment';
