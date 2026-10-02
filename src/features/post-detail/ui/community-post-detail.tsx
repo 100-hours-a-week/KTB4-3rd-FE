@@ -21,6 +21,7 @@ export type CommunityPostCommentFeedback = {
 export type CommunityPostDetailProps = {
   className?: string;
   commentFeedback?: CommunityPostCommentFeedback | null;
+  commentIdToScroll?: number | null;
   commentsError?: boolean;
   commentsLoading?: boolean;
   hasMoreComments?: boolean;
@@ -28,6 +29,7 @@ export type CommunityPostDetailProps = {
   isLoadingMoreComments?: boolean;
   layout?: 'modal' | 'page';
   onCommentFeedbackDismiss?: () => void;
+  onCommentScrolled?: () => void;
   onCommentSubmit?: (content: string) => void;
   onLoadMoreComments?: () => void;
   post: CommunityPostDetail;
@@ -36,6 +38,7 @@ export type CommunityPostDetailProps = {
 export function CommunityPostDetail({
   className,
   commentFeedback,
+  commentIdToScroll = null,
   commentsError = false,
   commentsLoading = false,
   hasMoreComments = false,
@@ -43,51 +46,36 @@ export function CommunityPostDetail({
   isLoadingMoreComments = false,
   layout = 'modal',
   onCommentFeedbackDismiss,
+  onCommentScrolled,
   onCommentSubmit,
   onLoadMoreComments,
   post,
 }: CommunityPostDetailProps) {
   const isPageLayout = layout === 'page';
   const loadMoreCommentsRef = useRef<HTMLDivElement>(null);
-  const commentScrollRef = useRef<HTMLDivElement>(null);
-  const submittedCommentRef = useRef<{ count: number; latestId?: number } | null>(null);
-
-  const latestCommentId = post.comments.at(-1)?.id;
-
-  const handleCommentSubmit = (content: string) => {
-    submittedCommentRef.current = {
-      count: post.comments.length,
-      latestId: latestCommentId,
-    };
-    onCommentSubmit?.(content);
-  };
+  const detailRef = useRef<HTMLElement>(null);
 
   useLayoutEffect(() => {
-    if (commentFeedback?.type === 'critical') {
-      submittedCommentRef.current = null;
+    if (commentIdToScroll === null) {
       return;
     }
 
-    if (commentFeedback?.type !== 'positive') {
+    const target = detailRef.current;
+    const comment = Array.from(
+      target?.querySelectorAll<HTMLElement>('[data-comment-id]') ?? [],
+    ).find((element) => Number(element.dataset.commentId) === commentIdToScroll);
+
+    if (!comment) {
       return;
     }
 
-    const submittedComment = submittedCommentRef.current;
-    const hasNewComment =
-      submittedComment !== null &&
-      (post.comments.length > submittedComment.count ||
-        latestCommentId !== submittedComment.latestId);
-
-    if (!hasNewComment) {
+    if (typeof comment.scrollIntoView !== 'function') {
       return;
     }
 
-    const target = commentScrollRef.current;
-    if (target) {
-      target.scrollTo({ behavior: 'smooth', top: target.scrollHeight });
-    }
-    submittedCommentRef.current = null;
-  }, [commentFeedback, latestCommentId, post.comments.length]);
+    comment.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    onCommentScrolled?.();
+  }, [commentIdToScroll, onCommentScrolled, post.comments]);
 
   useEffect(() => {
     const target = loadMoreCommentsRef.current;
@@ -118,6 +106,7 @@ export function CommunityPostDetail({
 
   return (
     <article
+      ref={detailRef}
       className={cn(
         'flex flex-col',
         isPageLayout ? 'min-h-[calc(100dvh-56px)]' : 'h-full min-h-0 min-w-0 overflow-hidden',
@@ -127,7 +116,6 @@ export function CommunityPostDetail({
       <div
         className={cn(!isPageLayout && 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto')}
         data-testid={isPageLayout ? undefined : 'community-post-detail-scroll'}
-        ref={isPageLayout ? undefined : commentScrollRef}
       >
         <PostDetailInfo
           description={post.description}
@@ -214,7 +202,7 @@ export function CommunityPostDetail({
             : 'bg-[var(--color-bg-layer-default)]',
         )}
         disabled={isCommentSubmitting}
-        onSubmit={handleCommentSubmit}
+        onSubmit={onCommentSubmit}
       />
     </article>
   );

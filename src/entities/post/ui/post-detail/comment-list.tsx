@@ -24,7 +24,7 @@ export function CommentList({ className, comments, layout = 'modal' }: CommentLi
       data-clarity-mask="true"
     >
       {comments.map((comment, index) => (
-        <li key={comment.id}>
+        <li data-comment-id={comment.id} key={comment.id}>
           <div
             className={cn(
               'flex min-h-[72px] min-w-0 items-center gap-3 px-6 py-3',

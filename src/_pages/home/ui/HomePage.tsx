@@ -155,6 +155,7 @@ export function HomePage() {
   const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<PositionedPost | null>(null);
   const [commentFeedback, setCommentFeedback] = useState<CommunityPostCommentFeedback | null>(null);
+  const [commentIdToScroll, setCommentIdToScroll] = useState<number | null>(null);
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
@@ -373,15 +374,34 @@ export function HomePage() {
                 type: 'critical',
               });
             },
-            onSuccess: () => {
+            onSuccess: async ({ data }) => {
               setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
-              void queryClient.invalidateQueries({ queryKey: communityPostQueries.all() });
+
+              let commentsResult = await communityCommentsQuery.refetch();
+              let hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                page.data.items.some((comment) => comment.id === data.id),
+              );
+
+              while (!hasCreatedComment && commentsResult.data?.pages.at(-1)?.data.next_cursor) {
+                commentsResult = await communityCommentsQuery.fetchNextPage();
+                hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                  page.data.items.some((comment) => comment.id === data.id),
+                );
+              }
+
+              if (hasCreatedComment) {
+                setCommentIdToScroll(data.id);
+              }
+
+              void queryClient.invalidateQueries({
+                queryKey: communityPostQueries.detail(selectedCommunityId).queryKey,
+              });
             },
           },
         );
       });
     },
-    [createCommentMutation, queryClient, requireAuth, selectedCommunityId],
+    [communityCommentsQuery, createCommentMutation, queryClient, requireAuth, selectedCommunityId],
   );
 
   return (
@@ -534,12 +554,14 @@ export function HomePage() {
             {selectedDetail?.type === 'COMMUNITY' ? (
               <CommunityPostDetailView
                 commentFeedback={commentFeedback}
+                commentIdToScroll={commentIdToScroll}
                 commentsError={isCommentsError}
                 commentsLoading={isCommentsPending}
                 hasMoreComments={hasNextComments}
                 isCommentSubmitting={createCommentMutation.isPending}
                 isLoadingMoreComments={isFetchingNextComments}
                 onCommentFeedbackDismiss={() => setCommentFeedback(null)}
+                onCommentScrolled={() => setCommentIdToScroll(null)}
                 onCommentSubmit={handleCommentSubmit}
                 onLoadMoreComments={handleLoadMoreComments}
                 post={selectedDetail}
