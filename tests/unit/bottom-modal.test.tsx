@@ -22,6 +22,10 @@ describe('BottomModal', () => {
     const dialog = screen.getByRole('dialog', { name: '바텀모달' });
     const header = dialog.querySelector('header');
     expect(header).toHaveClass('z-10', 'bg-[var(--color-bg-layer-default)]');
+    expect(screen.getByTestId('bottom-modal-content')).toHaveClass(
+      'overflow-x-hidden',
+      'overflow-y-auto',
+    );
   });
 
   it('bottomOffset만큼 하단에서 띄운다', () => {

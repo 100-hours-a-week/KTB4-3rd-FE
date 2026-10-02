@@ -82,7 +82,12 @@ export function BottomModal({
             <Icon name="arrowUpRight" size={12} />
           </Link>
         </header>
-        <div className="h-full overflow-y-auto pt-11">{children}</div>
+        <div
+          className="h-full overflow-x-hidden overflow-y-auto pt-11"
+          data-testid="bottom-modal-content"
+        >
+          {children}
+        </div>
       </div>
     </>
   );

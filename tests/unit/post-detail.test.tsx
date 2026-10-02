@@ -97,11 +97,14 @@ describe('CommunityPostDetail', () => {
     expect(screen.getByText('와 레전드사건 ㅋㅋ')).toBeInTheDocument();
 
     const commentComposer = screen.getByRole('textbox', { name: '댓글 입력' }).closest('form');
-    expect(screen.getByRole('article')).toHaveClass('min-h-full');
+    expect(screen.getByRole('article')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden');
+    expect(screen.getByTestId('community-post-detail-scroll')).toHaveClass(
+      'min-h-0',
+      'flex-1',
+      'overflow-x-hidden',
+      'overflow-y-auto',
+    );
     expect(commentComposer).toHaveClass(
-      'sticky',
-      'bottom-0',
-      'z-10',
       'mt-auto',
       'shrink-0',
       'bg-[var(--color-bg-layer-default)]',
