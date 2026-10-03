@@ -140,6 +140,7 @@ export function PostDetailPage() {
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
   const [commentFeedback, setCommentFeedback] = useState<CommunityPostCommentFeedback | null>(null);
+  const [commentIdToScroll, setCommentIdToScroll] = useState<number | null>(null);
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
 
   const postId = parsePostId(params.postId);
@@ -235,9 +236,28 @@ export function PostDetailPage() {
               type: 'critical',
             });
           },
-          onSuccess: () => {
+          onSuccess: async ({ data }) => {
             setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
-            void queryClient.invalidateQueries({ queryKey: communityPostQueries.all() });
+
+            let commentsResult = await communityCommentsQuery.refetch();
+            let hasCreatedComment = commentsResult.data?.pages.some((page) =>
+              page.data.items.some((comment) => comment.id === data.id),
+            );
+
+            while (!hasCreatedComment && commentsResult.data?.pages.at(-1)?.data.next_cursor) {
+              commentsResult = await communityCommentsQuery.fetchNextPage();
+              hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                page.data.items.some((comment) => comment.id === data.id),
+              );
+            }
+
+            if (hasCreatedComment) {
+              setCommentIdToScroll(data.id);
+            }
+
+            void queryClient.invalidateQueries({
+              queryKey: communityPostQueries.detail(selectedDetail.id).queryKey,
+            });
           },
         },
       );
@@ -275,6 +295,7 @@ export function PostDetailPage() {
         {selectedDetail?.type === 'COMMUNITY' ? (
           <CommunityPostDetailView
             commentFeedback={commentFeedback}
+            commentIdToScroll={commentIdToScroll}
             commentsError={communityCommentsQuery.isError}
             commentsLoading={communityCommentsQuery.isPending}
             hasMoreComments={communityCommentsQuery.hasNextPage}
@@ -282,6 +303,7 @@ export function PostDetailPage() {
             isLoadingMoreComments={communityCommentsQuery.isFetchingNextPage}
             layout="page"
             onCommentFeedbackDismiss={() => setCommentFeedback(null)}
+            onCommentScrolled={() => setCommentIdToScroll(null)}
             onCommentSubmit={handleCommentSubmit}
             onLoadMoreComments={handleLoadMoreComments}
             post={selectedDetail}

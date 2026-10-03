@@ -175,7 +175,7 @@ describe('ChattingPage', () => {
     expect(screen.getByText('운행이 종료됐어요')).toBeInTheDocument();
     expect(screen.getByLabelText('채팅 메시지')).toHaveClass('overflow-y-auto');
     expect(screen.getByRole('textbox', { name: '메시지 입력' }).closest('form')).toHaveClass(
-      '!h-[calc(78px+env(safe-area-inset-bottom,0px))]',
+      '!h-[calc(98px+env(safe-area-inset-bottom,0px))]',
       '!pb-[env(safe-area-inset-bottom,0px)]',
     );
   });

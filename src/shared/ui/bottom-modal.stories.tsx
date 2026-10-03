@@ -35,6 +35,23 @@ function ModalContent() {
   );
 }
 
+function ScrollableModalContent() {
+  return (
+    <div className="space-y-6 p-6">
+      <ModalContent />
+      {Array.from({ length: 6 }, (_, index) => (
+        <p
+          className="leading-[var(--line-height-t4)] text-[var(--color-fg-neutral-muted)] text-[var(--font-size-t4)]"
+          key={index}
+        >
+          스크롤할 수 있는 바텀모달 콘텐츠입니다. 헤더 액션은 스크롤 중에도 상단에 유지되어야
+          합니다.
+        </p>
+      ))}
+    </div>
+  );
+}
+
 function ControlledStory() {
   const [open, setOpen] = useState(true);
 
@@ -72,4 +89,16 @@ export const Controlled: Story = {
     href: '/posts/1',
   },
   render: () => <ControlledStory />,
+};
+
+export const Scrollable: Story = {
+  args: {
+    children: <ScrollableModalContent />,
+    href: '/posts/1',
+  },
+  render: (args) => (
+    <div className="min-h-dvh bg-[var(--color-bg-layer-fill)]">
+      <BottomModal {...args} />
+    </div>
+  ),
 };

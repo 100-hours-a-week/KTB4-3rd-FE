@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 
 import {
   CommentList,
@@ -21,6 +21,7 @@ export type CommunityPostCommentFeedback = {
 export type CommunityPostDetailProps = {
   className?: string;
   commentFeedback?: CommunityPostCommentFeedback | null;
+  commentIdToScroll?: number | null;
   commentsError?: boolean;
   commentsLoading?: boolean;
   hasMoreComments?: boolean;
@@ -28,6 +29,7 @@ export type CommunityPostDetailProps = {
   isLoadingMoreComments?: boolean;
   layout?: 'modal' | 'page';
   onCommentFeedbackDismiss?: () => void;
+  onCommentScrolled?: () => void;
   onCommentSubmit?: (content: string) => void;
   onLoadMoreComments?: () => void;
   post: CommunityPostDetail;
@@ -36,6 +38,7 @@ export type CommunityPostDetailProps = {
 export function CommunityPostDetail({
   className,
   commentFeedback,
+  commentIdToScroll = null,
   commentsError = false,
   commentsLoading = false,
   hasMoreComments = false,
@@ -43,12 +46,36 @@ export function CommunityPostDetail({
   isLoadingMoreComments = false,
   layout = 'modal',
   onCommentFeedbackDismiss,
+  onCommentScrolled,
   onCommentSubmit,
   onLoadMoreComments,
   post,
 }: CommunityPostDetailProps) {
   const isPageLayout = layout === 'page';
   const loadMoreCommentsRef = useRef<HTMLDivElement>(null);
+  const detailRef = useRef<HTMLElement>(null);
+
+  useLayoutEffect(() => {
+    if (commentIdToScroll === null) {
+      return;
+    }
+
+    const target = detailRef.current;
+    const comment = Array.from(
+      target?.querySelectorAll<HTMLElement>('[data-comment-id]') ?? [],
+    ).find((element) => Number(element.dataset.commentId) === commentIdToScroll);
+
+    if (!comment) {
+      return;
+    }
+
+    if (typeof comment.scrollIntoView !== 'function') {
+      return;
+    }
+
+    comment.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    onCommentScrolled?.();
+  }, [commentIdToScroll, onCommentScrolled, post.comments]);
 
   useEffect(() => {
     const target = loadMoreCommentsRef.current;
@@ -79,88 +106,101 @@ export function CommunityPostDetail({
 
   return (
     <article
-      className={cn('flex flex-col', isPageLayout && 'min-h-[calc(100dvh-56px)]', className)}
+      ref={detailRef}
+      className={cn(
+        'flex flex-col',
+        isPageLayout ? 'min-h-[calc(100dvh-56px)]' : 'h-full min-h-0 min-w-0 overflow-hidden',
+        className,
+      )}
     >
-      <PostDetailInfo
-        description={post.description}
-        layout={layout}
-        title={post.title}
-        type={post.type}
-      />
+      <div
+        className={cn(!isPageLayout && 'min-h-0 min-w-0 flex-1 overflow-x-hidden overflow-y-auto')}
+        data-testid={isPageLayout ? undefined : 'community-post-detail-scroll'}
+      >
+        <PostDetailInfo
+          description={post.description}
+          layout={layout}
+          title={post.title}
+          type={post.type}
+        />
 
-      {isPageLayout ? (
-        <>
-          <div className="mx-auto mt-[14px] flex w-[312px] justify-end" data-clarity-mask="true">
-            <Text color="fg.neutral" variant="t6Bold">
+        {isPageLayout ? (
+          <>
+            <div className="mx-auto mt-[14px] flex w-[312px] justify-end" data-clarity-mask="true">
+              <Text color="fg.neutral" variant="t6Bold">
+                {post.author.nickname}
+              </Text>
+            </div>
+            <div className="mt-[21px] px-10">
+              <CommentSummary count={post.comment_count} />
+            </div>
+          </>
+        ) : (
+          <div className="flex items-center justify-between px-6 pb-5" data-clarity-mask="true">
+            <CommentSummary count={post.comment_count} />
+            <Text color="fg.neutral" variant="t4Bold">
               {post.author.nickname}
             </Text>
           </div>
-          <div className="mt-[21px] px-10">
-            <CommentSummary count={post.comment_count} />
-          </div>
-        </>
-      ) : (
-        <div className="flex items-center justify-between px-6 pb-5" data-clarity-mask="true">
-          <CommentSummary count={post.comment_count} />
-          <Text color="fg.neutral" variant="t4Bold">
-            {post.author.nickname}
-          </Text>
-        </div>
-      )}
+        )}
 
-      {commentsLoading && post.comments.length === 0 ? (
-        <Text className="block px-6 py-5" color="fg.neutralSubtle" variant="t4Regular">
-          댓글을 불러오는 중이에요.
-        </Text>
-      ) : null}
-      {commentsError ? (
-        <Text className="block px-6 py-5" color="fg.critical" variant="t4Regular">
-          댓글을 불러오지 못했어요.
-        </Text>
-      ) : null}
-      {!commentsLoading && !commentsError && post.comments.length === 0 ? (
-        <Text className="block px-6 py-5" color="fg.neutralSubtle" variant="t4Regular">
-          아직 댓글이 없어요.
-        </Text>
-      ) : null}
-      {post.comments.length > 0 ? (
-        <CommentList
-          className={isPageLayout ? 'mt-[38px]' : undefined}
-          layout={layout}
-          comments={post.comments}
-        />
-      ) : null}
-      {hasMoreComments && onLoadMoreComments ? (
-        <div
-          aria-live="polite"
-          className="flex min-h-8 items-center justify-center px-6 py-2"
-          ref={loadMoreCommentsRef}
-        >
-          {isLoadingMoreComments ? (
-            <Text color="fg.neutralSubtle" variant="t4Regular">
-              댓글을 불러오는 중이에요.
-            </Text>
-          ) : null}
-        </div>
-      ) : null}
-      {commentFeedback ? (
-        <Snackbar
-          className="mx-6 mb-2 !w-auto !max-w-none"
-          description={commentFeedback.description}
-          onOpenChange={(open) => {
-            if (!open) {
-              onCommentFeedbackDismiss?.();
-            }
-          }}
-          open
-          timeout={commentFeedback.type === 'positive' ? 3000 : undefined}
-          type={commentFeedback.type}
-        />
-      ) : null}
+        {commentsLoading && post.comments.length === 0 ? (
+          <Text className="block px-6 py-5" color="fg.neutralSubtle" variant="t4Regular">
+            댓글을 불러오는 중이에요.
+          </Text>
+        ) : null}
+        {commentsError ? (
+          <Text className="block px-6 py-5" color="fg.critical" variant="t4Regular">
+            댓글을 불러오지 못했어요.
+          </Text>
+        ) : null}
+        {!commentsLoading && !commentsError && post.comments.length === 0 ? (
+          <Text className="block px-6 py-5" color="fg.neutralSubtle" variant="t4Regular">
+            아직 댓글이 없어요.
+          </Text>
+        ) : null}
+        {post.comments.length > 0 ? (
+          <CommentList
+            className={isPageLayout ? 'mt-[38px]' : undefined}
+            layout={layout}
+            comments={post.comments}
+          />
+        ) : null}
+        {hasMoreComments && onLoadMoreComments ? (
+          <div
+            aria-live="polite"
+            className="flex min-h-8 items-center justify-center px-6 py-2"
+            ref={loadMoreCommentsRef}
+          >
+            {isLoadingMoreComments ? (
+              <Text color="fg.neutralSubtle" variant="t4Regular">
+                댓글을 불러오는 중이에요.
+              </Text>
+            ) : null}
+          </div>
+        ) : null}
+        {commentFeedback ? (
+          <Snackbar
+            className="mx-6 mb-2 !w-auto !max-w-none"
+            description={commentFeedback.description}
+            onOpenChange={(open) => {
+              if (!open) {
+                onCommentFeedbackDismiss?.();
+              }
+            }}
+            open
+            timeout={commentFeedback.type === 'positive' ? 3000 : undefined}
+            type={commentFeedback.type}
+          />
+        ) : null}
+      </div>
       <CommentComposer
-        className={
-          isPageLayout ? 'sticky bottom-0 z-10 mt-auto bg-white !px-[27px] !py-1' : undefined
-        }
+        className={cn(
+          'mt-auto shrink-0',
+          isPageLayout
+            ? 'sticky bottom-0 z-10 bg-white !px-[27px] !py-1'
+            : 'bg-[var(--color-bg-layer-default)]',
+        )}
         disabled={isCommentSubmitting}
         onSubmit={onCommentSubmit}
       />

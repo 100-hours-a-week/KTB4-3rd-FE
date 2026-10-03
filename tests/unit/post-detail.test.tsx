@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -96,12 +96,62 @@ describe('CommunityPostDetail', () => {
     expect(screen.getByText('유저1')).toBeInTheDocument();
     expect(screen.getByText('와 레전드사건 ㅋㅋ')).toBeInTheDocument();
 
+    const commentComposer = screen.getByRole('textbox', { name: '댓글 입력' }).closest('form');
+    expect(screen.getByRole('article')).toHaveClass('h-full', 'min-h-0', 'overflow-hidden');
+    expect(screen.getByTestId('community-post-detail-scroll')).toHaveClass(
+      'min-h-0',
+      'flex-1',
+      'overflow-x-hidden',
+      'overflow-y-auto',
+    );
+    expect(commentComposer).toHaveClass(
+      'mt-auto',
+      'shrink-0',
+      'bg-[var(--color-bg-layer-default)]',
+    );
+
     const metadata = screen.getByText('애롱롱').parentElement;
     const metadataText = metadata?.textContent ?? '';
     expect(metadataText.indexOf('1')).toBeLessThan(metadataText.indexOf('애롱롱'));
     expect(
       screen.getByRole('article').querySelector('svg.lucide-message-square'),
     ).toBeInTheDocument();
+  });
+
+  it('등록된 댓글 ID가 전달되면 해당 댓글 위치로 스크롤한다', () => {
+    const onCommentScrolled = vi.fn<() => void>();
+    const nextComment = {
+      author: { nickname: '애롱롱', profile_image_url: null },
+      content: '새 댓글입니다',
+      id: 2,
+    };
+    const nextPost = {
+      ...communityPost,
+      comment_count: 2,
+      comments: [...communityPost.comments, nextComment],
+    };
+    const { rerender } = render(
+      <CommunityPostDetail onCommentScrolled={onCommentScrolled} post={nextPost} />,
+    );
+    const targetComment = screen.getByText('새 댓글입니다').closest('li');
+    const scrollIntoView = vi.fn<(options: ScrollIntoViewOptions) => void>();
+
+    Object.defineProperty(targetComment, 'scrollIntoView', {
+      configurable: true,
+      value: scrollIntoView,
+    });
+
+    rerender(
+      <CommunityPostDetail
+        commentIdToScroll={2}
+        onCommentScrolled={onCommentScrolled}
+        post={nextPost}
+      />,
+    );
+
+    expect(targetComment).toHaveAttribute('data-comment-id', '2');
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'nearest' });
+    expect(onCommentScrolled).toHaveBeenCalledOnce();
   });
 
   it('댓글 입력값을 전송하고 입력창을 비운다', async () => {
@@ -117,7 +167,11 @@ describe('CommunityPostDetail', () => {
       '!text-[length:var(--font-size-t4)]',
       '!leading-[var(--line-height-t4)]',
       '!font-[var(--font-weight-regular)]',
+      'outline-none',
     );
+    expect(input).not.toHaveClass('focus-visible:ring-2');
+    expect(input).not.toHaveAttribute('maxLength');
+    expect(screen.getByTestId('character-count')).toHaveClass('mr-[10px]');
     expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();
 
@@ -128,5 +182,27 @@ describe('CommunityPostDetail', () => {
 
     expect(onCommentSubmit).toHaveBeenCalledWith('새 댓글입니다');
     expect(input).toHaveValue('');
+  });
+
+  it('댓글이 270자부터 카운터를 표시하고 280자 초과 시 전송을 막는다', () => {
+    render(<CommunityPostDetail post={communityPost} />);
+
+    const input = screen.getByRole('textbox', { name: '댓글 입력' });
+    const submitButton = screen.getByRole('button', { name: '댓글 전송' });
+    const characterCount = screen.getByTestId('character-count');
+
+    fireEvent.change(input, { target: { value: '가'.repeat(269) } });
+    expect(characterCount).toHaveClass('invisible');
+
+    fireEvent.change(input, { target: { value: '가'.repeat(270) } });
+    expect(characterCount).not.toHaveClass('invisible');
+    expect(characterCount).toHaveTextContent('270 / 280');
+    expect(submitButton).toBeEnabled();
+
+    fireEvent.change(input, { target: { value: '가'.repeat(281) } });
+    expect(input).toHaveValue('가'.repeat(281));
+    expect(characterCount).toHaveTextContent('281 / 280');
+    expect(characterCount).toHaveStyle({ color: 'var(--color-fg-critical)' });
+    expect(submitButton).toBeDisabled();
   });
 });
