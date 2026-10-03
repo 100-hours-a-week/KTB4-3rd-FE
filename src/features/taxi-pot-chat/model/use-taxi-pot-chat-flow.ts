@@ -81,6 +81,7 @@ export function useTaxiPotChatFlow({
       if (message.type === 'SYSTEM_RIDE_ENDED') {
         setRideActionState(undefined);
         setStatusState({ taxiPotId, status: 'COMPLETED', isHost });
+        setEvaluationTaxiPotId(taxiPotId);
       }
 
       return false;

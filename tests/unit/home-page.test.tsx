@@ -416,10 +416,29 @@ describe('HomePage', () => {
     expect(screen.queryByRole('heading', { name: '근처 핀 게시글' })).not.toBeInTheDocument();
   });
 
-  it('동행모집 상세의 참여자 정보가 null이어도 핀 상세를 표시한다', async () => {
+  it('동행모집 게시글이 주변 목록에 없어도 핀 상세와 참여자 정보를 표시한다', async () => {
     const user = userEvent.setup();
 
     server.use(
+      http.get('*/nearby-posts', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                type: 'COMMUNITY',
+                id: 88,
+                title: '판교역 근처 카페 추천',
+                author: { nickname: '루디', profile_image_url: null },
+                distance_m: 540,
+                comment_count: 3,
+                created_at: '2026-09-03T10:00:00.000Z',
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      ),
       http.get('*/companion-posts/10', () =>
         HttpResponse.json({
           message: '조회에 성공했습니다',
@@ -605,6 +624,25 @@ describe('HomePage', () => {
     await user.click(await screen.findByRole('button', { name: '채팅 참여하기' }));
 
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/501'));
+  });
+
+  it('비로그인 사용자가 동행 참여를 누르면 로그인 유도 Dialog를 표시하고 API를 호출하지 않는다', async () => {
+    const user = userEvent.setup();
+    let joinRequestCount = 0;
+
+    server.use(
+      http.post('*/companion-posts/10/participants', () => {
+        joinRequestCount += 1;
+        return HttpResponse.json({ data: { chat_room_id: 501 } }, { status: 201 });
+      }),
+    );
+
+    renderHomePage();
+    await user.click(await screen.findByRole('button', { name: /판교역 → 강남역/ }));
+    await user.click(await screen.findByRole('button', { name: '채팅 참여하기' }));
+
+    expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
+    expect(joinRequestCount).toBe(0);
   });
 
   it('채팅 참여 API 오류를 버튼 위 Snackbar로 표시한다', async () => {

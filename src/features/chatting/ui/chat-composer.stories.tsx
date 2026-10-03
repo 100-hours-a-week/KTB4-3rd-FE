@@ -29,6 +29,18 @@ export const WithMessage: Story = {
   },
 };
 
+export const AtCharacterLimit: Story = {
+  args: {
+    defaultValue: '가'.repeat(500),
+  },
+};
+
+export const OverCharacterLimit: Story = {
+  args: {
+    defaultValue: '가'.repeat(501),
+  },
+};
+
 function ControlledChatComposer() {
   const [value, setValue] = useState('');
 

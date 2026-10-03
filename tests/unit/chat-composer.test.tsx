@@ -13,8 +13,11 @@ describe('ChatComposer', () => {
       'placeholder',
       '메시지를 입력하세요.',
     );
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).not.toHaveAttribute('maxLength');
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
-    expect(screen.getByRole('textbox').closest('form')).toHaveClass('h-[78px]');
+    expect(screen.getByRole('textbox').closest('form')).toHaveClass('h-[98px]');
+    expect(screen.getByTestId('character-count')).toHaveClass('invisible');
+    expect(screen.getByRole('textbox')).toHaveClass('!pr-[44px]');
     expect(screen.getByRole('textbox').parentElement).not.toHaveClass('focus-within:border-2');
   });
 
@@ -32,6 +35,28 @@ describe('ChatComposer', () => {
 
     expect(onSubmit).toHaveBeenCalledWith('안녕하세요');
     expect(input).toHaveValue('');
+    expect(sendButton).toBeDisabled();
+  });
+
+  it('490자부터 카운터를 표시하고 500자 초과 입력 시 전송을 막는다', () => {
+    render(<ChatComposer />);
+
+    const input = screen.getByRole('textbox', { name: '메시지 입력' });
+    const sendButton = screen.getByRole('button', { name: '메시지 전송' });
+    const characterCount = screen.getByTestId('character-count');
+
+    fireEvent.change(input, { target: { value: '가'.repeat(489) } });
+    expect(characterCount).toHaveClass('invisible');
+
+    fireEvent.change(input, { target: { value: '가'.repeat(490) } });
+    expect(characterCount).not.toHaveClass('invisible');
+    expect(characterCount).toHaveTextContent('490 / 500');
+    expect(sendButton).toBeEnabled();
+
+    fireEvent.change(input, { target: { value: '가'.repeat(501) } });
+    expect(input).toHaveValue('가'.repeat(501));
+    expect(characterCount).toHaveTextContent('501 / 500');
+    expect(characterCount).toHaveStyle({ color: 'var(--color-fg-critical)' });
     expect(sendButton).toBeDisabled();
   });
 

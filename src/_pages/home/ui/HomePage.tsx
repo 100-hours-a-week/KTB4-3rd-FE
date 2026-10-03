@@ -65,9 +65,11 @@ import { Text } from '@/shared/ui/text';
 
 import { HomeNearbyPostsSkeleton } from './home-page-loading';
 
-type PositionedPost = {
+type SelectedPost = {
+  id: number;
   position: MapCoordinate;
-  post: Post;
+  summary?: Post;
+  type: Post['type'];
 };
 
 const POST_LOCATION_ROUTE = '/post/create/location';
@@ -97,23 +99,38 @@ function getPostMarkerId(post: Pick<Post, 'type' | 'id'> | MapPin) {
   return `${post.type}-${post.id}`;
 }
 
-function getPositionedPost(post: Post, mapPins: readonly MapPin[]): PositionedPost | null {
+function getPositionedPost(post: Post, mapPins: readonly MapPin[]): SelectedPost | null {
   const mapPin = mapPins.find((pin) => getPostMarkerId(pin) === getPostMarkerId(post));
 
   return mapPin
     ? {
+        id: post.id,
         position: { lat: mapPin.lat, lng: mapPin.lng },
-        post,
+        summary: post,
+        type: post.type,
       }
     : null;
 }
 
 function toCompanionPostDetail(
-  post: CompanionPost,
+  post: CompanionPost | undefined,
   data: CompanionPostDetailData,
 ): CompanionPostDetail {
+  const summary: CompanionPost = post ?? {
+    type: 'COMPANION',
+    id: data.id,
+    title: data.title,
+    author: { nickname: data.author.nickname, profile_image_url: null },
+    transport_type: data.transport_type,
+    distance_m: 0,
+    current_count: data.current_count,
+    capacity: data.capacity,
+    departure_at: data.departure_at,
+    is_expired: data.is_expired,
+  };
+
   return {
-    ...post,
+    ...summary,
     id: data.id,
     title: data.title,
     description: data.content,
@@ -122,7 +139,7 @@ function toCompanionPostDetail(
     is_expired: data.is_expired,
     current_count: data.current_count,
     capacity: data.capacity,
-    author: { ...post.author, nickname: data.author.nickname },
+    author: { ...summary.author, nickname: data.author.nickname },
     departure_location: data.origin_name,
     destination: data.dest_name,
     participants: (data.participants ?? []).map((participant, index) => ({
@@ -133,16 +150,26 @@ function toCompanionPostDetail(
 }
 
 function toCommunityPostDetail(
-  post: CommunityPost,
+  post: CommunityPost | undefined,
   data: CommunityPostDetailData,
   comments: readonly PostComment[],
 ): CommunityPostDetail {
+  const summary: CommunityPost = post ?? {
+    type: 'COMMUNITY',
+    id: data.id,
+    title: data.title,
+    author: { nickname: data.author.nickname, profile_image_url: null },
+    distance_m: 0,
+    comment_count: data.comment_count,
+    created_at: data.created_at,
+  };
+
   return {
-    ...post,
+    ...summary,
     id: data.id,
     title: data.title,
     description: data.content,
-    author: { ...post.author, nickname: data.author.nickname },
+    author: { ...summary.author, nickname: data.author.nickname },
     comment_count: data.comment_count,
     created_at: data.created_at,
     comments,
@@ -153,8 +180,9 @@ export function HomePage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
-  const [selectedPost, setSelectedPost] = useState<PositionedPost | null>(null);
+  const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
   const [commentFeedback, setCommentFeedback] = useState<CommunityPostCommentFeedback | null>(null);
+  const [commentIdToScroll, setCommentIdToScroll] = useState<number | null>(null);
   const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
   const [mapViewport, setMapViewport] = useState<MapViewport | null>(null);
@@ -162,8 +190,8 @@ export function HomePage() {
   const loadMorePostsRef = useRef<HTMLDivElement>(null);
   const currentUserQuery = useCurrentUserQuery();
 
-  const selectedCompanionId = selectedPost?.post.type === 'COMPANION' ? selectedPost.post.id : null;
-  const selectedCommunityId = selectedPost?.post.type === 'COMMUNITY' ? selectedPost.post.id : null;
+  const selectedCompanionId = selectedPost?.type === 'COMPANION' ? selectedPost.id : null;
+  const selectedCommunityId = selectedPost?.type === 'COMMUNITY' ? selectedPost.id : null;
 
   const companionDetailQuery = useCompanionPostDetailQuery(selectedCompanionId);
   const joinCompanionMutation = useJoinCompanionMutation();
@@ -207,13 +235,20 @@ export function HomePage() {
   );
 
   const selectedDetail: PostDetail | null = useMemo(() => {
-    if (selectedPost?.post.type === 'COMPANION' && companionDetailQuery.data) {
-      return toCompanionPostDetail(selectedPost.post, companionDetailQuery.data.data);
+    if (selectedPost?.type === 'COMPANION' && companionDetailQuery.data) {
+      const summary = selectedPost.summary;
+
+      return toCompanionPostDetail(
+        summary?.type === 'COMPANION' ? summary : undefined,
+        companionDetailQuery.data.data,
+      );
     }
 
-    if (selectedPost?.post.type === 'COMMUNITY' && communityDetailQuery.data) {
+    if (selectedPost?.type === 'COMMUNITY' && communityDetailQuery.data) {
+      const summary = selectedPost.summary;
+
       return toCommunityPostDetail(
-        selectedPost.post,
+        summary?.type === 'COMMUNITY' ? summary : undefined,
         communityDetailQuery.data.data,
         communityComments,
       );
@@ -224,9 +259,9 @@ export function HomePage() {
 
   let selectedDetailQuery: typeof companionDetailQuery | typeof communityDetailQuery | null = null;
 
-  if (selectedPost?.post.type === 'COMPANION') {
+  if (selectedPost?.type === 'COMPANION') {
     selectedDetailQuery = companionDetailQuery;
-  } else if (selectedPost?.post.type === 'COMMUNITY') {
+  } else if (selectedPost?.type === 'COMMUNITY') {
     selectedDetailQuery = communityDetailQuery;
   }
   const selectedDetailIsNotFound =
@@ -243,16 +278,20 @@ export function HomePage() {
   const handleMarkerClick = useCallback(
     (marker: MapMarker) => {
       const mapPin = mapPins.find((pin) => getPostMarkerId(pin) === String(marker.id));
-      const post = nearbyPosts.find(
+      const summary = nearbyPosts.find(
         (nearbyPost) => getPostMarkerId(nearbyPost) === String(marker.id),
       );
 
-      if (mapPin && post) {
-        setSelectedPost({
-          position: { lat: mapPin.lat, lng: mapPin.lng },
-          post,
-        });
+      if (!mapPin) {
+        return;
       }
+
+      setSelectedPost({
+        id: mapPin.id,
+        position: { lat: mapPin.lat, lng: mapPin.lng },
+        summary,
+        type: mapPin.type,
+      });
     },
     [mapPins, nearbyPosts],
   );
@@ -298,19 +337,21 @@ export function HomePage() {
       return;
     }
 
-    setJoinErrorMessage(null);
-    joinCompanionMutation.mutate(selectedDetail.id, {
-      onSuccess: ({ data }) => {
-        setJoinErrorMessage(null);
-        router.push(`/chatroom/${data.chat_room_id}`);
-      },
-      onError: (error) => {
-        setJoinErrorMessage(
-          error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
-        );
-      },
+    requireAuth(() => {
+      setJoinErrorMessage(null);
+      joinCompanionMutation.mutate(selectedDetail.id, {
+        onSuccess: ({ data }) => {
+          setJoinErrorMessage(null);
+          router.push(`/chatroom/${data.chat_room_id}`);
+        },
+        onError: (error) => {
+          setJoinErrorMessage(
+            error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
+          );
+        },
+      });
     });
-  }, [joinCompanionMutation, router, selectedDetail]);
+  }, [joinCompanionMutation, requireAuth, router, selectedDetail]);
 
   const handleLoadMoreComments = useCallback(() => {
     if (!hasNextComments || isCommentsError || isFetchingNextComments) {
@@ -373,15 +414,34 @@ export function HomePage() {
                 type: 'critical',
               });
             },
-            onSuccess: () => {
+            onSuccess: async ({ data }) => {
               setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
-              void queryClient.invalidateQueries({ queryKey: communityPostQueries.all() });
+
+              let commentsResult = await communityCommentsQuery.refetch();
+              let hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                page.data.items.some((comment) => comment.id === data.id),
+              );
+
+              while (!hasCreatedComment && commentsResult.data?.pages.at(-1)?.data.next_cursor) {
+                commentsResult = await communityCommentsQuery.fetchNextPage();
+                hasCreatedComment = commentsResult.data?.pages.some((page) =>
+                  page.data.items.some((comment) => comment.id === data.id),
+                );
+              }
+
+              if (hasCreatedComment) {
+                setCommentIdToScroll(data.id);
+              }
+
+              void queryClient.invalidateQueries({
+                queryKey: communityPostQueries.detail(selectedCommunityId).queryKey,
+              });
             },
           },
         );
       });
     },
-    [createCommentMutation, queryClient, requireAuth, selectedCommunityId],
+    [communityCommentsQuery, createCommentMutation, queryClient, requireAuth, selectedCommunityId],
   );
 
   return (
@@ -401,7 +461,7 @@ export function HomePage() {
           }
         />
 
-        <main className="relative h-[calc(100dvh-72px)] min-h-[780px]">
+        <main className="relative h-[calc(100dvh-72px)] min-h-0">
           <Map
             center={selectedPost?.position}
             className="h-full"
@@ -501,14 +561,14 @@ export function HomePage() {
         {selectedPost && !selectedDetailIsNotFound ? (
           <BottomModal
             bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px) + 8px)"
-            href={`/posts/${selectedPost.post.id}?type=${selectedPost.post.type === 'COMPANION' ? 'companion' : 'community'}`}
+            href={`/posts/${selectedPost.id}?type=${selectedPost.type === 'COMPANION' ? 'companion' : 'community'}`}
             open
             onOpenChange={handleDetailModalChange}
           >
-            {selectedPost.post.type === 'COMPANION' && companionDetailQuery.isPending ? (
+            {selectedPost.type === 'COMPANION' && companionDetailQuery.isPending ? (
               <PostDetailSkeleton type="COMPANION" />
             ) : null}
-            {selectedPost.post.type === 'COMMUNITY' && communityDetailQuery.isPending ? (
+            {selectedPost.type === 'COMMUNITY' && communityDetailQuery.isPending ? (
               <PostDetailSkeleton type="COMMUNITY" />
             ) : null}
             {selectedDetailQuery?.isError && !selectedDetailIsNotFound ? (
@@ -534,12 +594,14 @@ export function HomePage() {
             {selectedDetail?.type === 'COMMUNITY' ? (
               <CommunityPostDetailView
                 commentFeedback={commentFeedback}
+                commentIdToScroll={commentIdToScroll}
                 commentsError={isCommentsError}
                 commentsLoading={isCommentsPending}
                 hasMoreComments={hasNextComments}
                 isCommentSubmitting={createCommentMutation.isPending}
                 isLoadingMoreComments={isFetchingNextComments}
                 onCommentFeedbackDismiss={() => setCommentFeedback(null)}
+                onCommentScrolled={() => setCommentIdToScroll(null)}
                 onCommentSubmit={handleCommentSubmit}
                 onLoadMoreComments={handleLoadMoreComments}
                 post={selectedDetail}

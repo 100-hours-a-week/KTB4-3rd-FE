@@ -747,7 +747,7 @@ function ChattingPageContent({
           topContent={topContent}
         />
       </ChatRoomLayout>
-      <SnackbarViewport className="fixed inset-x-0 bottom-[calc(78px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto max-w-[393px] px-5" />
+      <SnackbarViewport className="fixed inset-x-0 bottom-[calc(98px+env(safe-area-inset-bottom,0px)+16px)] z-[2147483647] mx-auto max-w-[393px] px-5" />
       <ChatLeaveDialog
         confirmButtonProps={{
           disabled: leaveLoading,
