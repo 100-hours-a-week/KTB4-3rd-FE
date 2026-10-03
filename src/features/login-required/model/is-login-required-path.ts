@@ -4,6 +4,7 @@ const LOGIN_REQUIRED_PATH_PREFIXES = [
   '/chatting',
   '/chatroom',
   '/post/create',
+  '/posts/write',
 ] as const;
 
 function normalizePathname(pathname: string) {

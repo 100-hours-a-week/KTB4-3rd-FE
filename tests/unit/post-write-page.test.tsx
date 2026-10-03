@@ -114,6 +114,25 @@ describe('PostWritePage', () => {
     expect(screen.queryByRole('textbox', { name: '출발지' })).not.toBeInTheDocument();
   });
 
+  it('커뮤니티 게시글 위치 정보가 없으면 등록 요청 없이 위치 설정을 안내한다', () => {
+    usePostCreateStore.getState().setCommunityField('title', '판교역 근처 카페 추천');
+    usePostCreateStore
+      .getState()
+      .setCommunityField('content', '조용히 작업하기 좋은 카페가 있을까요?');
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+
+    renderPostWritePage('community');
+    fireEvent.click(screen.getByRole('button', { name: '등록하기' }));
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(useSnackbarStore.getState()).toMatchObject({
+      description: '위치 정보를 먼저 설정해주세요',
+      open: true,
+      type: 'critical',
+    });
+    expect(screen.getByRole('status')).toHaveTextContent('위치 정보를 먼저 설정해주세요');
+  });
+
   it('동행모집 날짜의 년월 변경을 작성 화면과 클라이언트 상태에 반영한다', async () => {
     useImmediateAnimationFrame();
     usePostCreateStore.getState().setCompanionField('departureDate', '2026-02-09');
