@@ -161,5 +161,6 @@ describe('apiFetch 인증 토큰 재시도', () => {
 
     expect(protectedRequestCount).toBe(1);
     expect(refreshRequestCount).toBe(1);
+    expect(useAuthStore.getState().accessToken).toBeNull();
   });
 });
