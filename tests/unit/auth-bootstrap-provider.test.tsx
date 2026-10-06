@@ -66,7 +66,7 @@ describe('AuthBootstrapProvider', () => {
     expect(useAuthStore.getState().accessToken).toBeNull();
   });
 
-  it('토큰 재발급에 실패해도 저장된 access token은 유지한다', async () => {
+  it('토큰 재발급에 실패하면 저장된 access token도 초기화한다', async () => {
     useAuthStore.getState().setAccessToken('persisted-access-token');
     server.use(
       http.post('*/auth/tokens', () =>
@@ -87,8 +87,8 @@ describe('AuthBootstrapProvider', () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByText('persisted-access-token')).toBeInTheDocument();
+      expect(screen.getByText('anonymous')).toBeInTheDocument();
     });
-    expect(useAuthStore.getState().accessToken).toBe('persisted-access-token');
+    expect(useAuthStore.getState().accessToken).toBeNull();
   });
 });
