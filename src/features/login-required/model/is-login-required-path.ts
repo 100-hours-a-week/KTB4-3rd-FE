@@ -1,5 +1,6 @@
 const LOGIN_REQUIRED_PATH_PREFIXES = [
   '/matching',
+  '/taxi-pots/new',
   '/chat',
   '/chatting',
   '/chatroom',

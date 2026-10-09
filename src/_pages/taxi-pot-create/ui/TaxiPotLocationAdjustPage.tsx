@@ -7,12 +7,12 @@ import { DestinationPin, StartPin } from '@/entities/map-pin';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import type { LocationSearchResult } from '@/features/location-search';
 import { reverseGeocodeLocation } from '@/features/post-location';
-import { SEOUL_STATION_COORDINATE, useMatchingStore } from '@/_pages/matching/model/matching-store';
+import { SEOUL_STATION_COORDINATE, useMatchingStore } from '../model/matching-store'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import {
   getMatchingLocationLabel,
   getMatchingLocationPanelActionLabel,
   type MatchingLocationField,
-} from '@/_pages/matching/model/matching-location-field';
+} from '../model/matching-location-field'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
 import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
@@ -23,7 +23,7 @@ function getLocationField(value: string | null): MatchingLocationField {
   return value === 'destination' ? 'destination' : 'departure';
 }
 
-export function MatchingLocationAdjustPage() {
+export function TaxiPotLocationAdjustPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const field = getLocationField(searchParams.get('field'));
@@ -44,7 +44,7 @@ export function MatchingLocationAdjustPage() {
 
   useEffect(() => {
     if (!pendingLocation && !isConfirmingRef.current) {
-      router.replace(`/matching/location?field=${field}`);
+      router.replace(`/taxi-pots/new/location?field=${field}`);
     }
   }, [field, pendingLocation, router]);
 
@@ -106,7 +106,7 @@ export function MatchingLocationAdjustPage() {
       lng: center.lng,
     });
     setPendingLocation(null);
-    router.push(field === 'destination' ? '/matching/time' : '/matching');
+    router.push(field === 'destination' ? '/taxi-pots/new/time' : '/taxi-pots/new');
   };
 
   return (
@@ -168,7 +168,7 @@ export function MatchingLocationAdjustPage() {
       <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
         <BackButton
           className="absolute top-1.5 left-1.5"
-          href={`/matching/location?field=${field}`}
+          href={`/taxi-pots/new/location?field=${field}`}
         />
       </header>
     </div>

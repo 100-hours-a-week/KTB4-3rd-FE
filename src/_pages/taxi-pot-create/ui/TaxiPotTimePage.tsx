@@ -18,9 +18,9 @@ import {
   getMatchingDepartureAt,
   getMatchingTimePickerInitialValue,
   isMatchingTimeWithinThreeHours,
-} from '@/_pages/matching/model/matching-time';
+} from '../model/matching-time'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 
-export function MatchingTimePage() {
+export function TaxiPotTimePage() {
   const router = useRouter();
   const [initialTime] = useState(getMatchingTimePickerInitialValue);
   const [selectedTime, setSelectedTime] = useState<TimePickerValue>(initialTime);
@@ -39,7 +39,7 @@ export function MatchingTimePage() {
     }
 
     setDepartureAt(getMatchingDepartureAt(selectedTime));
-    router.push('/matching/confirm');
+    router.push('/taxi-pots/new/confirm');
   }, [router, selectedTime, setDepartureAt]);
 
   const handleReset = () => {
@@ -54,7 +54,7 @@ export function MatchingTimePage() {
       data-node-id="990:27007"
     >
       <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
-        <BackButton className="absolute top-1.5 left-1.5" href="/matching" />
+        <BackButton className="absolute top-1.5 left-1.5" href="/taxi-pots/new" />
       </header>
 
       <div aria-hidden="true" className="h-14 shrink-0" />

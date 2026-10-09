@@ -6,20 +6,20 @@ import type { ReactNode } from 'react';
 
 import { SnackbarProvider } from '@/_app/providers';
 import {
-  MatchingLocationAdjustPage,
-  MatchingLocationPage,
-  MatchingConfirmationPage,
-  MatchingPage,
-  MatchingTimePage,
-} from '@/_pages/matching';
+  TaxiPotLocationAdjustPage,
+  TaxiPotLocationPage,
+  TaxiPotConfirmationPage,
+  TaxiPotCreatePage,
+  TaxiPotTimePage,
+} from '@/_pages/taxi-pot-create';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
 import { useAuthStore } from '@/entities/auth';
 import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 import {
   getMatchingTimePickerInitialValue,
   isMatchingTimeWithinThreeHours,
-} from '@/_pages/matching/model/matching-time';
-import { useMatchingStore } from '@/_pages/matching/model/matching-store';
+} from '@/_pages/taxi-pot-create/model/matching-time';
+import { useMatchingStore } from '@/_pages/taxi-pot-create/model/matching-store';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type * as LocationSearchModule from '@/features/location-search';
 import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
@@ -115,11 +115,11 @@ afterEach(() => {
   searchParams.set('field', 'destination');
 });
 
-describe('MatchingPage', () => {
+describe('TaxiPotCreatePage', () => {
   it('계좌가 등록되지 않은 사용자가 진입하면 계좌 등록 Dialog를 표시한다', async () => {
     useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     expect(
       await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
@@ -130,7 +130,7 @@ describe('MatchingPage', () => {
   it('계좌 등록 Dialog가 열려 있으면 위치 권한 요청을 시작하지 않는다', async () => {
     useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     expect(
       await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' }),
@@ -143,7 +143,7 @@ describe('MatchingPage', () => {
     const user = userEvent.setup();
     useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' });
     await user.click(screen.getByRole('combobox', { name: '은행명' }));
@@ -163,7 +163,7 @@ describe('MatchingPage', () => {
     const user = userEvent.setup();
     useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     await screen.findByRole('dialog', { name: '정산 계좌를 등록해주세요' });
     await user.click(screen.getByRole('button', { name: '닫기' }));
@@ -172,7 +172,7 @@ describe('MatchingPage', () => {
   });
 
   it('출발지와 도착지 LocationInputButton을 표시하고 검색 화면으로 이동한다', () => {
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
     expect(useMatchingRegistrationStore.getState()).toMatchObject({
@@ -191,7 +191,7 @@ describe('MatchingPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '도착지' }));
 
-    expect(navigation.push).toHaveBeenCalledWith('/matching/location?field=destination');
+    expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/location?field=destination');
   });
 
   it('현재 위치를 받으면 출발지를 현위치 장소명으로 갱신한다', async () => {
@@ -200,7 +200,7 @@ describe('MatchingPage', () => {
       roadAddress: '서울특별시 강남구 강남대로 396',
     });
 
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     fireEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
 
@@ -217,7 +217,7 @@ describe('MatchingPage', () => {
   it('역지오코딩 결과가 없으면 현위치 fallback을 표시하지 않는다', async () => {
     reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
 
-    render(<MatchingPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
     fireEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
 
@@ -239,12 +239,12 @@ describe('MatchingPage', () => {
   });
 });
 
-describe('MatchingLocationPage', () => {
+describe('TaxiPotLocationPage', () => {
   it('초기 출발지를 매칭 등록 상태에 반영한다', () => {
     searchParams.set('field', 'destination');
     useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
 
-    render(<MatchingLocationPage />);
+    render(<TaxiPotLocationPage />);
 
     expect(useMatchingRegistrationStore.getState()).toMatchObject({
       origin_name: '서울역',
@@ -262,7 +262,7 @@ describe('MatchingLocationPage', () => {
     });
     useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
 
-    render(<MatchingLocationPage />);
+    render(<TaxiPotLocationPage />);
 
     const departureInput = screen.getByRole('textbox', { name: '출발지' });
     expect(departureInput).toHaveValue('유스페이스1');
@@ -278,7 +278,7 @@ describe('MatchingLocationPage', () => {
     });
     useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
 
-    render(<MatchingLocationPage />);
+    render(<TaxiPotLocationPage />);
 
     expect(screen.getByRole('textbox', { name: '출발지' })).toHaveValue('');
   });
@@ -288,7 +288,7 @@ describe('MatchingLocationPage', () => {
     useMatchingStore.getState().setLocation('departure', null);
     useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
 
-    render(<MatchingLocationPage />);
+    render(<TaxiPotLocationPage />);
 
     expect(screen.queryByRole('list', { name: '장소 검색 결과' })).not.toBeInTheDocument();
     expect(screen.queryByText('유스페이스1빌딩')).not.toBeInTheDocument();
@@ -301,7 +301,7 @@ describe('MatchingLocationPage', () => {
       status: 'success',
     });
 
-    render(<MatchingLocationPage />);
+    render(<TaxiPotLocationPage />);
 
     expect(screen.getByRole('textbox', { name: '도착지' })).toHaveFocus();
     expect(screen.getByRole('list', { name: '장소 검색 결과' })).toHaveClass(
@@ -316,7 +316,7 @@ describe('MatchingLocationPage', () => {
       dest_lat: 37.402,
       dest_lng: 127.108,
     });
-    expect(navigation.push).toHaveBeenCalledWith('/matching/time');
+    expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/time');
   });
 
   it('검색 결과 본문을 누르면 위치 세부 조정 화면으로 이동한다', () => {
@@ -326,16 +326,18 @@ describe('MatchingLocationPage', () => {
       status: 'success',
     });
 
-    render(<MatchingLocationPage />);
+    render(<TaxiPotLocationPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /유스페이스1빌딩.*상세 위치 조정/ }));
 
     expect(useMatchingStore.getState().pendingLocation).toEqual(searchResult);
-    expect(navigation.push).toHaveBeenCalledWith('/matching/location/adjust?field=destination');
+    expect(navigation.push).toHaveBeenCalledWith(
+      '/taxi-pots/new/location/adjust?field=destination',
+    );
   });
 });
 
-describe('MatchingLocationAdjustPage', () => {
+describe('TaxiPotLocationAdjustPage', () => {
   it('지도 위치를 조정하고 도착지로 설정한다', async () => {
     useMatchingStore.getState().setPendingLocation(searchResult);
     reverseGeocodeLocation.mockResolvedValue({
@@ -343,7 +345,7 @@ describe('MatchingLocationAdjustPage', () => {
       roadAddress: '새로운 도로명주소',
     });
 
-    render(<MatchingLocationAdjustPage />);
+    render(<TaxiPotLocationAdjustPage />);
 
     expect(screen.getByRole('region', { name: '선택한 도착지' })).toHaveClass(
       'h-[calc(215px+env(safe-area-inset-bottom,0px))]',
@@ -367,12 +369,12 @@ describe('MatchingLocationAdjustPage', () => {
       dest_lat: 37.402,
       dest_lng: 127.108,
     });
-    expect(navigation.push).toHaveBeenCalledWith('/matching/time');
+    expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/time');
     expect(navigation.replace).not.toHaveBeenCalled();
   });
 });
 
-describe('MatchingTimePage', () => {
+describe('TaxiPotTimePage', () => {
   it('현재 시각을 다음 30분 단위로 올림해 초기 시간으로 사용한다', () => {
     expect(getMatchingTimePickerInitialValue(new Date(2026, 8, 26, 18, 41, 5))).toEqual({
       period: '오후',
@@ -399,7 +401,7 @@ describe('MatchingTimePage', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 26, 18, 0));
 
-    render(<MatchingTimePage />);
+    render(<TaxiPotTimePage />);
 
     vi.setSystemTime(new Date(2026, 8, 26, 21, 1));
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
@@ -418,7 +420,7 @@ describe('MatchingTimePage', () => {
       return 0;
     });
 
-    render(<MatchingTimePage />);
+    render(<TaxiPotTimePage />);
 
     const minuteColumn = screen.getByRole('listbox', { name: '분' });
     const minuteWheel = minuteColumn.querySelector('[data-rwp]');
@@ -439,18 +441,18 @@ describe('MatchingTimePage', () => {
     vi.useFakeTimers();
     vi.setSystemTime(new Date(2026, 8, 26, 18, 0));
 
-    render(<MatchingTimePage />);
+    render(<TaxiPotTimePage />);
 
     fireEvent.click(screen.getByRole('button', { name: '다음' }));
 
-    expect(navigation.push).toHaveBeenCalledWith('/matching/confirm');
+    expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/confirm');
     expect(useMatchingRegistrationStore.getState().departure_at).toBe(
       new Date(2026, 8, 26, 18, 0).toISOString(),
     );
   });
 
   it('탑승 희망 시간 선택 화면을 표시한다', () => {
-    render(<MatchingTimePage />);
+    render(<TaxiPotTimePage />);
 
     expect(
       screen.getByRole('heading', { name: '탑승 희망 시간을 입력해주세요' }),
@@ -465,14 +467,14 @@ describe('MatchingTimePage', () => {
   });
 });
 
-describe('MatchingConfirmationPage', () => {
+describe('TaxiPotConfirmationPage', () => {
   it('선택 정보 확인 화면의 안내와 선택 정보를 표시한다', () => {
     const store = useMatchingRegistrationStore.getState();
     store.setOrigin({ name: '판교역 2번 출구', lat: 37.3945, lng: 127.1112 });
     store.setDestination({ name: '강남역', lat: 37.4979, lng: 127.0276 });
     store.setDepartureAt(new Date(2026, 8, 26, 18, 40).toISOString());
 
-    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotConfirmationPage />, { wrapper: createQueryWrapper() });
 
     expect(screen.getByRole('heading', { name: '이 정보가 맞나요?' })).toBeInTheDocument();
     expect(screen.getByText('매칭 등록 이후에는 수정할 수 없어요.')).toBeInTheDocument();
@@ -491,7 +493,7 @@ describe('MatchingConfirmationPage', () => {
     store.setDestination({ name: '강남역', lat: 37.4979004, lng: 127.02760049 });
     store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
 
-    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotConfirmationPage />, { wrapper: createQueryWrapper() });
 
     fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
 
@@ -504,7 +506,7 @@ describe('MatchingConfirmationPage', () => {
     store.setOrigin({ name: '판교역', lat: 37.3945, lng: 127.1112 });
     store.setDepartureAt(new Date(Date.now() + 60 * 60 * 1000).toISOString());
 
-    render(<MatchingConfirmationPage />, { wrapper: createQueryWrapper() });
+    render(<TaxiPotConfirmationPage />, { wrapper: createQueryWrapper() });
 
     fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
 

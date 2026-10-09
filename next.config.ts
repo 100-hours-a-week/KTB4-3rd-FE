@@ -12,6 +12,30 @@ const nextConfig: NextConfig = {
   env: {
     NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
   },
+  async redirects() {
+    return [
+      {
+        source: '/matching/location',
+        destination: '/taxi-pots/new/location',
+        permanent: false,
+      },
+      {
+        source: '/matching/location/adjust',
+        destination: '/taxi-pots/new/location/adjust',
+        permanent: false,
+      },
+      {
+        source: '/matching/time',
+        destination: '/taxi-pots/new/time',
+        permanent: false,
+      },
+      {
+        source: '/matching/confirm',
+        destination: '/taxi-pots/new/confirm',
+        permanent: false,
+      },
+    ];
+  },
   async rewrites() {
     return [
       {

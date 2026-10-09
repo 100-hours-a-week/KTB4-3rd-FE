@@ -4,4 +4,4 @@ export const metadata: Metadata = {
   title: '매칭 정보 확인',
 };
 
-export { MatchingConfirmationPage as default } from '@/_pages/matching';
+export { TaxiPotConfirmationPage as default } from '@/_pages/taxi-pot-create';
