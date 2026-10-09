@@ -1,16 +1,16 @@
 import type { Metadata } from 'next';
 import { Suspense } from 'react';
 
-import { MatchingLocationPage } from '@/_pages/matching';
+import { TaxiPotLocationPage } from '@/_pages/taxi-pot-create';
 
 export const metadata: Metadata = {
   title: '출발지 선택',
 };
 
-export default function MatchingLocationRoute() {
+export default function TaxiPotLocationRoute() {
   return (
     <Suspense fallback={null}>
-      <MatchingLocationPage />
+      <TaxiPotLocationPage />
     </Suspense>
   );
 }

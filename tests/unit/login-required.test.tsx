@@ -106,6 +106,12 @@ describe('useRequireAuth', () => {
   it.each([
     '/matching',
     '/matching/time',
+    '/taxi-pots/new',
+    '/taxi-pots/new/location',
+    '/taxi-pots/new/location/adjust',
+    '/taxi-pots/new/time',
+    '/taxi-pots/new/confirm',
+    '/taxi-pots/new/',
     '/chat',
     '/chatting',
     '/chatroom/101',
@@ -123,7 +129,7 @@ describe('useRequireAuth', () => {
     expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
   });
 
-  it.each(['/', '/chatty', '/post/123'])(
+  it.each(['/', '/chatty', '/post/123', '/taxi-pots/newer', '/taxi-pots/news/'])(
     '공개 경로(%s)에서는 Dialog를 보여주지 않는다',
     (pathname) => {
       navigation.pathname = pathname;

@@ -70,7 +70,7 @@ function MatchingConfirmationSummaryCard({
   );
 }
 
-export function MatchingConfirmationPage() {
+export function TaxiPotConfirmationPage() {
   const router = useRouter();
   const originName = useMatchingRegistrationStore((state) => state.origin_name);
   const destinationName = useMatchingRegistrationStore((state) => state.dest_name);
@@ -128,7 +128,7 @@ export function MatchingConfirmationPage() {
       data-node-id="990:27039"
     >
       <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
-        <BackButton className="absolute top-1.5 left-1.5" href="/matching/time" />
+        <BackButton className="absolute top-1.5 left-1.5" href="/taxi-pots/new/time" />
       </header>
 
       <main>

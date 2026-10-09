@@ -15,15 +15,15 @@ import {
   SEOUL_STATION_COORDINATE,
   SEOUL_STATION_LOCATION,
   useMatchingStore,
-} from '@/_pages/matching/model/matching-store';
+} from '../model/matching-store'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import { BackButton } from '@/shared/ui/back-button';
 import { LocationInputButton } from '@/shared/ui/location-input-button';
 import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
 
-const MATCHING_LOCATION_ROUTE = '/matching/location';
+const TAXI_POT_LOCATION_ROUTE = '/taxi-pots/new/location';
 
 function getLocationRoute(field: 'departure' | 'destination') {
-  return `${MATCHING_LOCATION_ROUTE}?field=${field}`;
+  return `${TAXI_POT_LOCATION_ROUTE}?field=${field}`;
 }
 
 function toRegistrationLocation(location: LocationSearchResult) {
@@ -46,7 +46,7 @@ function getDepartureValue(departure: LocationSearchResult | null) {
   return departure.placeName || null;
 }
 
-export function MatchingPage() {
+export function TaxiPotCreatePage() {
   const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const geocodingRequestIdRef = useRef(0);

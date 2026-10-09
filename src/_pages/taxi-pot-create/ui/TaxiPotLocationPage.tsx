@@ -9,12 +9,12 @@ import {
   type LocationSearchResult,
 } from '@/features/location-search';
 import { useMatchingRegistrationStore } from '@/features/matching-registration';
-import { useMatchingStore } from '@/_pages/matching/model/matching-store';
+import { useMatchingStore } from '../model/matching-store'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import {
   getMatchingLocationActionLabel,
   getMatchingLocationLabel,
   type MatchingLocationField,
-} from '@/_pages/matching/model/matching-location-field';
+} from '../model/matching-location-field'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
 import { Input } from '@/shared/ui/input';
@@ -37,7 +37,7 @@ function toRegistrationLocation(location: LocationSearchResult) {
   };
 }
 
-export function MatchingLocationPage() {
+export function TaxiPotLocationPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const initialField = getLocationField(searchParams.get('field'));
@@ -107,12 +107,12 @@ export function MatchingLocationPage() {
       return;
     }
 
-    router.push(activeField === 'destination' ? '/matching/time' : '/matching');
+    router.push(activeField === 'destination' ? '/taxi-pots/new/time' : '/taxi-pots/new');
   };
 
   const handleDetailSelection = (result: LocationSearchResult) => {
     setPendingLocation(result);
-    router.push(`/matching/location/adjust?field=${activeField}`);
+    router.push(`/taxi-pots/new/location/adjust?field=${activeField}`);
   };
 
   return (
@@ -121,7 +121,7 @@ export function MatchingLocationPage() {
       className="mx-auto flex h-dvh min-h-0 w-full max-w-[393px] flex-col overflow-hidden bg-[var(--color-bg-layer-default)]"
     >
       <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
-        <BackButton className="absolute top-1.5 left-1.5" href="/matching" />
+        <BackButton className="absolute top-1.5 left-1.5" href="/taxi-pots/new" />
       </header>
 
       <div aria-hidden="true" className="h-14 shrink-0" />
