@@ -1,5 +1,7 @@
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').replace(/\/$/, '');
 
+export type ApiErrorDetail = { field: string; reason: string };
+
 export type ApiErrorBody = {
   message?: string;
   error?: {

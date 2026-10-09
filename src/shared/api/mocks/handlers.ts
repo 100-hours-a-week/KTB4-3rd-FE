@@ -1,4 +1,5 @@
 import { authHandlers } from './auth.handlers';
+import { carpoolReadHandlers } from './carpool-read.handlers';
 import { chatRoomHandlers } from './chat-room.handlers';
 import { chatRoomWebSocketHandlers } from './chat-room-websocket.handlers';
 import { chatFeedbackHandlers } from './chat-feedback.handlers';
@@ -29,5 +30,6 @@ export const handlers = [
   ...taxiPotsHandlers,
   ...joinCompanionHandlers,
   ...homeHandlers,
+  ...carpoolReadHandlers,
   ...userHandlers,
 ];
