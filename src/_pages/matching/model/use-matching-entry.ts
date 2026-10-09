@@ -1,0 +1,60 @@
+'use client';
+
+import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useRef, useState } from 'react';
+
+import { useRequireAuth } from '@/features/login-required';
+
+export function useMatchingEntry() {
+  const router = useRouter();
+  const { requireAuth } = useRequireAuth();
+  const [isFabOpen, setIsFabOpen] = useState(false);
+  const fabContainerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isFabOpen) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !fabContainerRef.current?.contains(event.target)) {
+        setIsFabOpen(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || event.defaultPrevented) {
+        return;
+      }
+
+      event.preventDefault();
+      setIsFabOpen(false);
+      fabContainerRef.current?.querySelector<HTMLButtonElement>('button[aria-expanded]')?.focus();
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown, true);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown, true);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFabOpen]);
+
+  const openRegistration = useCallback(
+    (path: '/carpools/new' | '/taxi-pots/new') => {
+      setIsFabOpen(false);
+      requireAuth(() => router.push(path));
+    },
+    [requireAuth, router],
+  );
+
+  const onCarpoolClick = useCallback(() => openRegistration('/carpools/new'), [openRegistration]);
+  const onTaxipotClick = useCallback(() => openRegistration('/taxi-pots/new'), [openRegistration]);
+
+  return {
+    fabContainerRef,
+    isFabOpen,
+    onFabOpenChange: setIsFabOpen,
+    onCarpoolClick,
+    onTaxipotClick,
+  };
+}
