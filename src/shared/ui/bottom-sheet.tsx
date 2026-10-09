@@ -1,7 +1,7 @@
 'use client';
 
 import { Drawer, type DrawerRootActions } from '@base-ui/react/drawer';
-import { useRef, useState, type ReactNode } from 'react';
+import { useCallback, useRef, useState, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 
@@ -34,6 +34,7 @@ export type BottomSheetProps = {
   showBackdrop?: boolean;
   showScrollFog?: boolean;
   scrollContentKey?: string | number;
+  onScrollElementChange?: (element: HTMLElement | null) => void;
   showViewAllButton?: boolean;
   onViewAll?: () => void;
   className?: string;
@@ -134,6 +135,7 @@ export function BottomSheet({
   showBackdrop = true,
   showScrollFog = false,
   scrollContentKey,
+  onScrollElementChange,
   showViewAllButton = false,
   onViewAll,
   className,
@@ -142,7 +144,14 @@ export function BottomSheet({
   const hasDescription = description !== undefined && description !== null;
   const hasViewAllButton = showViewAllButton && onViewAll !== undefined;
   const actionsRef = useRef<DrawerRootActions | null>(null);
-  const { scrollRef, showBottom, showTop } = useScrollFog(scrollContentKey);
+  const { attachScrollRef, showBottom, showTop } = useScrollFog(scrollContentKey);
+  const handleScrollElementChange = useCallback(
+    (element: HTMLDivElement | null) => {
+      attachScrollRef(element);
+      onScrollElementChange?.(element);
+    },
+    [attachScrollRef, onScrollElementChange],
+  );
   const resolvedSnapPoints = (snapPoints ?? defaultSnapPoints).filter(
     (point) => !isDismissiveSnapPoint(point),
   );
@@ -294,7 +303,7 @@ export function BottomSheet({
               <Drawer.Content
                 className="h-full min-h-0 touch-auto [scrollbar-width:none] overflow-x-hidden overflow-y-auto overscroll-contain pb-[calc(var(--dimension-x5)+env(safe-area-inset-bottom,0px))] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
                 data-testid="bottom-sheet-content"
-                ref={scrollRef}
+                ref={handleScrollElementChange}
               >
                 {children}
               </Drawer.Content>
