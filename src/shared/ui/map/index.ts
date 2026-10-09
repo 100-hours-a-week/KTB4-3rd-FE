@@ -16,5 +16,7 @@ export type {
   MapMarker,
   MapMarkerImage,
   MapMarkerId,
+  MapCenterChangeSource,
+  MapViewportChangeSource,
   MapViewport,
 } from './model/map.types';

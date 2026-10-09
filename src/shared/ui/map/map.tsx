@@ -42,7 +42,9 @@ import type {
   MapLocationError,
   MapMarker,
   MapMarkerImage,
+  MapCenterChangeSource,
   MapViewport,
+  MapViewportChangeSource,
 } from './model/map.types';
 import { MyLocation } from './my-location';
 
@@ -68,6 +70,7 @@ export type MapProps = {
   center?: MapCoordinate;
   children?: ReactNode;
   className?: string;
+  centerChangeSource?: MapCenterChangeSource;
   clusterMarkers?: boolean;
   clusterMinLevel?: number;
   defaultCenter?: MapCoordinate;
@@ -80,7 +83,7 @@ export type MapProps = {
   onMarkerClick?: (marker: MapMarker) => void;
   onUserLocationChange?: (coordinate: MapCoordinate) => void;
   onUserLocationError?: (error: MapLocationError) => void;
-  onViewportChange?: (viewport: MapViewport) => void;
+  onViewportChange?: (viewport: MapViewport, source?: MapViewportChangeSource) => void;
   onCenterChange?: (center: MapCoordinate) => void;
   selectionMode?: boolean;
   selectionMarker?: MapMarkerImage;
@@ -164,6 +167,7 @@ function MapComponent(
   {
     apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
     center,
+    centerChangeSource = 'programmatic',
     children,
     className,
     clusterMarkers = true,
@@ -194,6 +198,15 @@ function MapComponent(
   const kakaoRef = useRef<KakaoNamespace | null>(null);
   const clustererRef = useRef<KakaoMarkerClusterer | null>(null);
   const viewportTimerRef = useRef<number | null>(null);
+  const initialViewportTimerRef = useRef<number | null>(null);
+  const viewportEventSequenceRef = useRef(0);
+  const viewportSourceRef = useRef<MapViewportChangeSource>('initial');
+  const initialViewportEmittedRef = useRef(false);
+  const activeDragSequenceRef = useRef<number | null>(null);
+  const activeZoomSequenceRef = useRef<number | null>(null);
+  const pendingProgrammaticZoomSequenceRef = useRef<number | null>(null);
+  const awaitingIdleSequenceRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
   const pendingLocationRef = useRef<MapCoordinate | null>(null);
   const [status, setStatus] = useState<MapStatus>('loading');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -265,37 +278,124 @@ function MapComponent(
     });
   }, []);
 
-  const emitMapState = useCallback(() => {
+  const emitMapState = useCallback(
+    (source: MapViewportChangeSource, eventSequence: number) => {
+      if (eventSequence !== viewportEventSequenceRef.current) {
+        return;
+      }
+
+      if (source === 'initial' && initialViewportEmittedRef.current) {
+        return;
+      }
+
+      const map = mapRef.current;
+
+      if (!map) {
+        return;
+      }
+
+      updateUserLocationPoint();
+
+      const mapCenter = toMapCoordinate(map.getCenter());
+      const viewport = toMapViewport(map.getBounds());
+
+      if (source === 'initial') {
+        initialViewportEmittedRef.current = true;
+      }
+
+      onViewportChangeRef.current?.(viewport, source);
+      onCenterChangeRef.current?.(mapCenter);
+    },
+    [updateUserLocationPoint],
+  );
+
+  const beginMapMovement = useCallback(
+    (source: MapViewportChangeSource) => {
+      if (viewportTimerRef.current !== null) {
+        window.clearTimeout(viewportTimerRef.current);
+        viewportTimerRef.current = null;
+      }
+
+      if (!initialViewportEmittedRef.current && mapRef.current) {
+        if (initialViewportTimerRef.current !== null) {
+          window.clearTimeout(initialViewportTimerRef.current);
+          initialViewportTimerRef.current = null;
+        }
+        emitMapState('initial', viewportEventSequenceRef.current);
+      }
+
+      const eventSequence = viewportEventSequenceRef.current + 1;
+
+      viewportEventSequenceRef.current = eventSequence;
+      viewportSourceRef.current = source;
+      awaitingIdleSequenceRef.current = source === 'drag' ? null : eventSequence;
+
+      return eventSequence;
+    },
+    [emitMapState],
+  );
+
+  const scheduleMapState = useCallback(
+    (source: MapViewportChangeSource, eventSequence: number) => {
+      if (viewportTimerRef.current !== null) {
+        window.clearTimeout(viewportTimerRef.current);
+      }
+
+      viewportTimerRef.current = window.setTimeout(() => {
+        viewportTimerRef.current = null;
+        emitMapState(source, eventSequence);
+      }, viewportDebounceMs);
+    },
+    [emitMapState, viewportDebounceMs],
+  );
+
+  const runMapMovement = useCallback(
+    (
+      source: MapViewportChangeSource,
+      changeMap: () => void,
+      { waitForIdle = true }: { waitForIdle?: boolean } = {},
+    ) => {
+      beginMapMovement(source);
+
+      changeMap();
+
+      if (!waitForIdle) {
+        const eventSequence = viewportEventSequenceRef.current;
+
+        awaitingIdleSequenceRef.current = null;
+        scheduleMapState(source, eventSequence);
+      }
+    },
+    [beginMapMovement, scheduleMapState],
+  );
+
+  const emitInitialMapState = useCallback(() => {
     const map = mapRef.current;
 
     if (!map) {
       return;
     }
 
-    updateUserLocationPoint();
-
-    const mapCenter = toMapCoordinate(map.getCenter());
-    const viewport = toMapViewport(map.getBounds());
-
-    onViewportChangeRef.current?.(viewport);
-    onCenterChangeRef.current?.(mapCenter);
-  }, [updateUserLocationPoint]);
-
-  const scheduleMapState = useCallback(() => {
-    if (viewportTimerRef.current !== null) {
-      window.clearTimeout(viewportTimerRef.current);
-    }
-
-    viewportTimerRef.current = window.setTimeout(() => {
-      viewportTimerRef.current = null;
-      emitMapState();
-    }, viewportDebounceMs);
-  }, [emitMapState, viewportDebounceMs]);
+    emitMapState('initial', viewportEventSequenceRef.current);
+  }, [emitMapState]);
 
   useEffect(() => {
     let cancelled = false;
     let idleHandler: (() => void) | null = null;
+    let dragStartHandler: (() => void) | null = null;
+    let dragEndHandler: (() => void) | null = null;
+    let zoomStartHandler: (() => void) | null = null;
+    let zoomChangedHandler: (() => void) | null = null;
     let boundsChangedHandler: (() => void) | null = null;
+
+    initialViewportEmittedRef.current = false;
+    viewportEventSequenceRef.current += 1;
+    viewportSourceRef.current = 'initial';
+    activeDragSequenceRef.current = null;
+    activeZoomSequenceRef.current = null;
+    pendingProgrammaticZoomSequenceRef.current = null;
+    awaitingIdleSequenceRef.current = null;
+    isDraggingRef.current = false;
 
     loadKakaoMaps(apiKey ?? '')
       .then((kakao) => {
@@ -311,20 +411,77 @@ function MapComponent(
 
         mapRef.current = map;
         kakaoRef.current = kakao;
-        idleHandler = scheduleMapState;
+        idleHandler = () => {
+          const eventSequence = awaitingIdleSequenceRef.current;
+
+          if (
+            isDraggingRef.current ||
+            eventSequence === null ||
+            eventSequence !== viewportEventSequenceRef.current
+          ) {
+            return;
+          }
+
+          awaitingIdleSequenceRef.current = null;
+          scheduleMapState(viewportSourceRef.current, eventSequence);
+        };
+        dragStartHandler = () => {
+          isDraggingRef.current = true;
+          activeDragSequenceRef.current = beginMapMovement('drag');
+        };
+        dragEndHandler = () => {
+          const eventSequence = activeDragSequenceRef.current;
+
+          isDraggingRef.current = false;
+          activeDragSequenceRef.current = null;
+
+          if (
+            eventSequence !== null &&
+            eventSequence === viewportEventSequenceRef.current &&
+            viewportSourceRef.current === 'drag'
+          ) {
+            scheduleMapState('drag', eventSequence);
+          }
+        };
+        zoomStartHandler = () => {
+          const programmaticSequence = pendingProgrammaticZoomSequenceRef.current;
+
+          pendingProgrammaticZoomSequenceRef.current = null;
+          activeZoomSequenceRef.current = programmaticSequence ?? beginMapMovement('zoom');
+        };
+        zoomChangedHandler = () => {
+          const eventSequence =
+            activeZoomSequenceRef.current ?? pendingProgrammaticZoomSequenceRef.current;
+
+          activeZoomSequenceRef.current = null;
+          pendingProgrammaticZoomSequenceRef.current = null;
+
+          if (eventSequence !== null && eventSequence === viewportEventSequenceRef.current) {
+            awaitingIdleSequenceRef.current = eventSequence;
+          }
+        };
         boundsChangedHandler = updateUserLocationPoint;
         maps.event.addListener(map, 'idle', idleHandler);
+        maps.event.addListener(map, 'dragstart', dragStartHandler);
+        maps.event.addListener(map, 'dragend', dragEndHandler);
+        maps.event.addListener(map, 'zoom_start', zoomStartHandler);
+        maps.event.addListener(map, 'zoom_changed', zoomChangedHandler);
         maps.event.addListener(map, 'bounds_changed', boundsChangedHandler);
         setStatus('ready');
 
         if (pendingLocationRef.current) {
-          map.panTo(
-            new maps.LatLng(pendingLocationRef.current.lat, pendingLocationRef.current.lng),
-          );
-          pendingLocationRef.current = null;
-        }
+          const pendingLocation = pendingLocationRef.current;
 
-        window.setTimeout(emitMapState, 0);
+          pendingLocationRef.current = null;
+          runMapMovement('locate', () =>
+            map.panTo(new maps.LatLng(pendingLocation.lat, pendingLocation.lng)),
+          );
+        } else {
+          initialViewportTimerRef.current = window.setTimeout(() => {
+            initialViewportTimerRef.current = null;
+            emitInitialMapState();
+          }, 0);
+        }
       })
       .catch((error: unknown) => {
         if (cancelled) {
@@ -346,16 +503,42 @@ function MapComponent(
         viewportTimerRef.current = null;
       }
 
-      if (idleHandler && mapRef.current && kakaoRef.current) {
-        kakaoRef.current.maps.event.removeListener(mapRef.current, 'idle', idleHandler);
+      if (initialViewportTimerRef.current !== null) {
+        window.clearTimeout(initialViewportTimerRef.current);
+        initialViewportTimerRef.current = null;
       }
 
-      if (boundsChangedHandler && mapRef.current && kakaoRef.current) {
-        kakaoRef.current.maps.event.removeListener(
-          mapRef.current,
-          'bounds_changed',
-          boundsChangedHandler,
-        );
+      if (mapRef.current && kakaoRef.current) {
+        if (idleHandler) {
+          kakaoRef.current.maps.event.removeListener(mapRef.current, 'idle', idleHandler);
+        }
+        if (dragStartHandler) {
+          kakaoRef.current.maps.event.removeListener(mapRef.current, 'dragstart', dragStartHandler);
+        }
+        if (dragEndHandler) {
+          kakaoRef.current.maps.event.removeListener(mapRef.current, 'dragend', dragEndHandler);
+        }
+        if (zoomStartHandler) {
+          kakaoRef.current.maps.event.removeListener(
+            mapRef.current,
+            'zoom_start',
+            zoomStartHandler,
+          );
+        }
+        if (zoomChangedHandler) {
+          kakaoRef.current.maps.event.removeListener(
+            mapRef.current,
+            'zoom_changed',
+            zoomChangedHandler,
+          );
+        }
+        if (boundsChangedHandler) {
+          kakaoRef.current.maps.event.removeListener(
+            mapRef.current,
+            'bounds_changed',
+            boundsChangedHandler,
+          );
+        }
       }
 
       clustererRef.current?.setMap(null);
@@ -363,7 +546,15 @@ function MapComponent(
       mapRef.current = null;
       kakaoRef.current = null;
     };
-  }, [apiKey, defaultLevel, emitMapState, scheduleMapState, updateUserLocationPoint]);
+  }, [
+    apiKey,
+    beginMapMovement,
+    defaultLevel,
+    emitInitialMapState,
+    runMapMovement,
+    scheduleMapState,
+    updateUserLocationPoint,
+  ]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -378,20 +569,32 @@ function MapComponent(
       const focusOffset = markerFocusOffsetRef.current;
       const targetLevel = Math.min(Math.max(markerFocusLevelRef.current ?? map.getLevel(), 1), 14);
 
-      if (map.getLevel() !== targetLevel) {
-        map.setLevel(targetLevel, {
-          anchor: centerPosition,
-          animate: !focusOffset,
-        });
+      const shouldChangeLevel = map.getLevel() !== targetLevel;
+      const shouldChangeCenter = Boolean(
+        focusOffset || !isSameCoordinate(center, toMapCoordinate(map.getCenter())),
+      );
+
+      if (!shouldChangeLevel && !shouldChangeCenter) {
+        return;
       }
 
-      if (focusOffset) {
-        map.panTo(getMarkerFocusCenter(kakao.maps, map, centerPosition, focusOffset));
-      } else if (!isSameCoordinate(center, toMapCoordinate(map.getCenter()))) {
-        map.setCenter(centerPosition);
-      }
+      runMapMovement(centerChangeSource, () => {
+        if (shouldChangeLevel) {
+          pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+          map.setLevel(targetLevel, {
+            anchor: centerPosition,
+            animate: !focusOffset,
+          });
+        }
+
+        if (focusOffset) {
+          map.panTo(getMarkerFocusCenter(kakao.maps, map, centerPosition, focusOffset));
+        } else if (shouldChangeCenter) {
+          map.setCenter(centerPosition);
+        }
+      });
     }
-  }, [center, status]);
+  }, [center, centerChangeSource, runMapMovement, status]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -422,18 +625,21 @@ function MapComponent(
         const shouldChangeLevel =
           markerFocusLevelRef.current === undefined || map.getLevel() !== targetLevel;
 
-        if (shouldChangeLevel) {
-          map.setLevel(targetLevel, {
-            anchor: position,
-            animate: !focusOffset,
-          });
-        }
+        runMapMovement('selection', () => {
+          if (shouldChangeLevel) {
+            pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+            map.setLevel(targetLevel, {
+              anchor: position,
+              animate: !focusOffset,
+            });
+          }
 
-        if (focusOffset) {
-          map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
-        } else {
-          map.panTo(position);
-        }
+          if (focusOffset) {
+            map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
+          } else {
+            map.panTo(position);
+          }
+        });
 
         onMarkerClickRef.current?.(markerData);
       });
@@ -452,9 +658,12 @@ function MapComponent(
       kakao.maps.event.addListener(clusterer, 'clusterclick', (cluster) => {
         const nextLevel = Math.max(map.getLevel() - 1, 1);
 
-        map.setLevel(nextLevel, {
-          anchor: cluster.getCenter(),
-          animate: true,
+        runMapMovement('zoom', () => {
+          pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+          map.setLevel(nextLevel, {
+            anchor: cluster.getCenter(),
+            animate: true,
+          });
         });
       });
       clusterer.addMarkers(markerInstances);
@@ -469,7 +678,7 @@ function MapComponent(
       clustererRef.current?.setMap(null);
       clustererRef.current = null;
     };
-  }, [clusterMarkers, clusterMinLevel, markerList, status]);
+  }, [clusterMarkers, clusterMinLevel, markerList, runMapMovement, status]);
 
   useEffect(() => {
     currentLocationRef.current = currentLocation;
@@ -492,24 +701,35 @@ function MapComponent(
       return;
     }
 
-    const observer = new ResizeObserver(() => map.relayout());
+    const observer = new ResizeObserver(() => {
+      runMapMovement('programmatic', () => map.relayout(), { waitForIdle: false });
+    });
 
     observer.observe(mapContainerRef.current);
 
     return () => observer.disconnect();
-  }, [status]);
+  }, [runMapMovement, status]);
 
-  const handleZoom = useCallback((direction: 'in' | 'out') => {
-    const map = mapRef.current;
+  const handleZoom = useCallback(
+    (direction: 'in' | 'out') => {
+      const map = mapRef.current;
 
-    if (!map) {
-      return;
-    }
+      if (!map) {
+        return;
+      }
 
-    const delta = direction === 'in' ? -1 : 1;
+      const delta = direction === 'in' ? -1 : 1;
+      const nextLevel = Math.min(Math.max(map.getLevel() + delta, 1), 14);
 
-    map.setLevel(Math.min(Math.max(map.getLevel() + delta, 1), 14), { animate: true });
-  }, []);
+      if (nextLevel !== map.getLevel()) {
+        runMapMovement('zoom', () => {
+          pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+          map.setLevel(nextLevel, { animate: true });
+        });
+      }
+    },
+    [runMapMovement],
+  );
 
   const reportLocationError = useCallback(
     (error: MapLocationError) => {
@@ -522,16 +742,23 @@ function MapComponent(
     [setLoading, setLocationError, setPermissionStatus],
   );
 
-  const centerMapOnLocation = useCallback((coordinate: MapCoordinate) => {
-    const map = mapRef.current;
-    const kakao = kakaoRef.current;
+  const centerMapOnLocation = useCallback(
+    (coordinate: MapCoordinate) => {
+      const map = mapRef.current;
+      const kakao = kakaoRef.current;
 
-    if (map && kakao) {
-      map.setCenter(new kakao.maps.LatLng(coordinate.lat, coordinate.lng));
-    } else {
-      pendingLocationRef.current = coordinate;
-    }
-  }, []);
+      if (map && kakao) {
+        runMapMovement(
+          'locate',
+          () => map.setCenter(new kakao.maps.LatLng(coordinate.lat, coordinate.lng)),
+          { waitForIdle: false },
+        );
+      } else {
+        pendingLocationRef.current = coordinate;
+      }
+    },
+    [runMapMovement],
+  );
 
   const handleCurrentLocation = useCallback(
     (maximumAge = 30_000) => {
