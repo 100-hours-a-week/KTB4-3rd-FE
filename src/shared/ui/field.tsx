@@ -29,6 +29,7 @@ type FieldOwnProps = {
   helperText?: ReactNode | null;
   errorMessage?: ReactNode | null;
   characterCount?: ReactNode | null;
+  characterCountShowFrom?: number;
   maxCharacterCount?: ReactNode | null;
   invalid?: boolean;
   disabled?: boolean;
@@ -161,6 +162,7 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
   (
     {
       characterCount,
+      characterCountShowFrom,
       className,
       disabled = false,
       errorMessage,
@@ -221,6 +223,7 @@ export const Field = forwardRef<ComponentRef<typeof BaseField.Root>, FieldProps>
               <CharacterCount
                 characterCount={characterCount}
                 maxCharacterCount={maxCharacterCount}
+                showFrom={characterCountShowFrom}
               />
             ) : null}
           </div>
