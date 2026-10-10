@@ -51,8 +51,9 @@ async function openReceivedRequests(page: Page) {
   await page.getByRole('button', { name: '요청 확인' }).click();
 }
 
-test('받은 요청을 목록 미리보기로 열고 최신 상세 내용으로 갱신한다', async ({ page }) => {
+test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에서 제거한다', async ({ page }) => {
   await mockSession(page);
+  let remaining = [receivedRequest];
   let releaseDetail: (() => void) | undefined;
   let markDetailStarted: (() => void) | undefined;
   const detailStarted = new Promise<void>((resolve) => {
@@ -65,33 +66,44 @@ test('받은 요청을 목록 미리보기로 열고 최신 상세 내용으로 
       contentType: 'application/json',
       body: JSON.stringify({
         message: '조회에 성공했습니다',
-        data: {
-          direction,
-          items: direction === 'RECEIVED' ? [receivedRequest] : [],
-          next_cursor: null,
-        },
+        data: { direction, items: direction === 'RECEIVED' ? remaining : [], next_cursor: null },
       }),
     });
   });
   await page.route('**/api/carpools/53/join-requests/90', async (route) => {
-    expect(route.request().method()).toBe('GET');
-    markDetailStarted?.();
-    await new Promise<void>((resolve) => {
-      releaseDetail = resolve;
-    });
+    if (route.request().method() === 'GET') {
+      markDetailStarted?.();
+      await new Promise<void>((resolve) => {
+        releaseDetail = resolve;
+      });
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 90,
+            carpool_id: 53,
+            status: 'PENDING',
+            content: '상세에서 다시 확인한 메시지',
+            requester: { id: 9, name: '이루디 상세', profile_image_url: null },
+            created_at: '2026-10-10T08:10:00.000Z',
+          },
+        }),
+      });
+      return;
+    }
+
+    expect(route.request().method()).toBe('PATCH');
+    expect(route.request().headers()['authorization']).toBe('Bearer mock-access-token');
+    expect(route.request().postDataJSON()).toEqual({ status: 'ACCEPTED' });
+    remaining = [];
     await route.fulfill({
       status: 200,
       contentType: 'application/json',
       body: JSON.stringify({
-        message: '조회에 성공했습니다',
-        data: {
-          id: 90,
-          carpool_id: 53,
-          status: 'PENDING',
-          content: '상세에서 다시 확인한 메시지',
-          requester: { id: 9, name: '이루디 상세', profile_image_url: null },
-          created_at: '2026-10-10T08:10:00.000Z',
-        },
+        message: '요청을 수락했습니다',
+        data: { id: 90, status: 'ACCEPTED', chat_room_id: 301, current_count: 3, capacity: 4 },
       }),
     });
   });
@@ -102,4 +114,9 @@ test('받은 요청을 목록 미리보기로 열고 최신 상세 내용으로 
   await detailStarted;
   releaseDetail?.();
   await expect(page.getByText('상세에서 다시 확인한 메시지')).toBeVisible();
+  await page.getByRole('button', { name: '수락' }).click();
+
+  await expect(page.getByText('요청을 수락했어요.')).toBeVisible();
+  await expect(page.getByTestId('carpool-request-list-empty')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '카풀 요청 확인' })).toHaveCount(0);
 });
