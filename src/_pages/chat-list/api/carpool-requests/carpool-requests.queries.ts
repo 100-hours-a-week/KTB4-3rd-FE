@@ -10,12 +10,12 @@ export const carpoolRequestListQueries = {
   list: (viewerId: number | null, direction: CarpoolRequestDirection) =>
     infiniteQueryOptions({
       queryKey: [...carpoolRequestListQueries.all(), { viewerId }, 'list', direction] as const,
-      queryFn: ({ pageParam }) => {
+      queryFn: ({ pageParam, signal }) => {
         if (viewerId === null) {
           throw new Error('로그인 사용자 정보를 확인한 뒤 요청 목록을 조회할 수 있습니다.');
         }
 
-        return getCarpoolRequestList({ direction, cursor: pageParam });
+        return getCarpoolRequestList({ direction, cursor: pageParam, signal });
       },
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,

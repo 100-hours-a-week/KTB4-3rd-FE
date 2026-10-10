@@ -1,4 +1,5 @@
 import { http, HttpResponse } from 'msw';
+import { QueryClient } from '@tanstack/react-query';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
@@ -88,5 +89,42 @@ describe('carpool request list API', () => {
     expect(carpoolRequestListQueries.list(7, 'SENT').queryKey).not.toEqual(
       carpoolRequestListQueries.list(7, 'RECEIVED').queryKey,
     );
+  });
+
+  it('query 취소 신호를 목록 fetch까지 전달한다', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const query = carpoolRequestListQueries.list(7, 'SENT');
+    let requestSignal: AbortSignal | undefined;
+    let releaseResponse: (() => void) | undefined;
+    let markRequestStarted: (() => void) | undefined;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+    const requestStarted = new Promise<void>((resolve) => {
+      markRequestStarted = resolve;
+    });
+
+    server.use(
+      http.get('*/users/me/carpool-requests', async ({ request }) => {
+        requestSignal = request.signal;
+        markRequestStarted?.();
+        await responseGate;
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { direction: 'SENT', items: [], next_cursor: null },
+        });
+      }),
+    );
+
+    const fetchResult = queryClient.fetchInfiniteQuery(query);
+    const fetchResultHandled = fetchResult.catch(() => undefined);
+    await requestStarted;
+    await queryClient.cancelQueries({ queryKey: query.queryKey });
+
+    expect(requestSignal?.aborted).toBe(true);
+
+    releaseResponse?.();
+    await fetchResultHandled;
   });
 });

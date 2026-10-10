@@ -7,7 +7,11 @@ import type {
   CarpoolRequestListResponse,
 } from './carpool-requests.types';
 
-export async function getCarpoolRequestList({ direction, cursor }: CarpoolRequestListQuery) {
+export async function getCarpoolRequestList({
+  direction,
+  cursor,
+  signal,
+}: CarpoolRequestListQuery) {
   const accessToken = await getAccessToken();
   const searchParams = new URLSearchParams({ direction });
 
@@ -17,7 +21,7 @@ export async function getCarpoolRequestList({ direction, cursor }: CarpoolReques
 
   const response = await apiFetch<CarpoolRequestListResponse>(
     `/users/me/carpool-requests?${searchParams.toString()}`,
-    { token: accessToken },
+    { token: accessToken, signal },
   );
 
   if (response.data.direction !== direction) {

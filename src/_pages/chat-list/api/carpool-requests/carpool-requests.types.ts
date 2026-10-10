@@ -31,4 +31,5 @@ export type CarpoolRequestListResponse = {
 export type CarpoolRequestListQuery = {
   cursor?: string;
   direction: CarpoolRequestDirection;
+  signal?: AbortSignal;
 };
