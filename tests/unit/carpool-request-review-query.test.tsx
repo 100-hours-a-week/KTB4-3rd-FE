@@ -10,6 +10,10 @@ import {
   useCarpoolRequestDecisionMutation,
 } from '@/features/carpool-request-review';
 import { useAuthStore } from '@/entities/auth';
+import {
+  carpoolMutationQueryKeys,
+  chatRoomMutationQueryKeys,
+} from '@/shared/api/carpool-mutation-query-keys';
 import { carpoolRequestQueryKeys } from '@/shared/api/carpool-request-query-keys';
 import { server } from '@/shared/api/mocks/server';
 
@@ -52,74 +56,123 @@ describe('카풀 요청 상세·처리 query', () => {
     ).toBe(false);
   });
 
-  it('수락 성공 시 받은 요청을 제거하고 확정 상태만 상세에 반영한다', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: true }, queries: { retry: false } },
-    });
-    const receivedKey = carpoolRequestQueryKeys.list(7, 'RECEIVED');
-    const sentKey = carpoolRequestQueryKeys.list(7, 'SENT');
-    const detailKey = carpoolRequestQueryKeys.detail(7, 51, 88);
-    queryClient.setQueryData(receivedKey, {
-      pages: [
-        {
-          data: {
-            direction: 'RECEIVED',
-            items: [{ id: 88 }, { id: 90 }],
-            next_cursor: 'next',
-          },
-        },
-      ],
-      pageParams: [undefined],
-    });
-    queryClient.setQueryData(sentKey, {
-      pages: [{ data: { direction: 'SENT', items: [{ id: 88 }], next_cursor: null } }],
-      pageParams: [undefined],
-    });
-    queryClient.setQueryData(detailKey, {
-      message: '조회에 성공했습니다',
-      data: {
-        id: 88,
-        carpool_id: 51,
-        status: 'PENDING',
-        content: '함께 가고 싶습니다',
-        requester: { id: 9, name: '이루디', profile_image_url: null },
-        created_at: '2026-10-10T08:10:00.000Z',
-      },
-    });
-    const requestCount = vi.fn<() => void>();
+  it('상세 query가 지정한 카풀과 요청 ID의 endpoint를 조회한다', async () => {
+    const requestedPath = vi.fn<(pathname: string) => void>();
     server.use(
-      http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
-        requestCount();
+      http.get('*/carpools/:carpoolId/join-requests/:requestId', ({ request }) => {
+        requestedPath(new URL(request.url).pathname);
         return HttpResponse.json({
-          message: '요청을 수락했습니다',
-          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
+          message: '조회에 성공했습니다',
+          data: {
+            id: 88,
+            carpool_id: 51,
+            status: 'PENDING',
+            content: '함께 가고 싶습니다',
+            requester: { id: 9, name: '이루디', profile_image_url: null },
+            created_at: '2026-10-10T08:10:00.000Z',
+          },
         });
       }),
     );
-    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(7), {
-      wrapper: createWrapper(queryClient),
-    });
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
 
-    await result.current.mutateAsync({
-      viewerId: 7,
-      carpoolId: 51,
-      requestId: 88,
-      status: 'ACCEPTED',
-    });
-
-    expect(requestCount).toHaveBeenCalledTimes(1);
-    expect(queryClient.getQueryData(receivedKey)).toMatchObject({
-      pages: [{ data: { items: [{ id: 90 }], next_cursor: 'next' } }],
-    });
-    expect(queryClient.getQueryData(sentKey)).toMatchObject({
-      pages: [{ data: { items: [{ id: 88 }] } }],
-    });
-    expect(queryClient.getQueryData(detailKey)).toMatchObject({ data: { status: 'ACCEPTED' } });
-    expect(queryClient.getQueryState(receivedKey)?.isInvalidated).toBe(true);
-    expect(queryClient.getMutationCache().getAll()[0]?.options.mutationKey).toEqual(
-      carpoolRequestDecisionMutationKeys.decide(7),
+    const response = await queryClient.fetchQuery(
+      carpoolRequestReviewQueries.detail({
+        viewerId: 7,
+        carpoolId: 51,
+        requestId: 88,
+        enabled: true,
+      }),
     );
+
+    expect(requestedPath).toHaveBeenCalledWith('/carpools/51/join-requests/88');
+    expect(response.data).toMatchObject({ id: 88, carpool_id: 51, status: 'PENDING' });
   });
+
+  it.each(['ACCEPTED', 'REJECTED'] as const)(
+    '%s 성공 시 받은 요청을 제거하고 상세 상태를 반영한다',
+    async (status) => {
+      const queryClient = new QueryClient({
+        defaultOptions: { mutations: { retry: true }, queries: { retry: false } },
+      });
+      const receivedKey = carpoolRequestQueryKeys.list(7, 'RECEIVED');
+      const sentKey = carpoolRequestQueryKeys.list(7, 'SENT');
+      const detailKey = carpoolRequestQueryKeys.detail(7, 51, 88);
+      queryClient.setQueryData(receivedKey, {
+        pages: [
+          {
+            data: {
+              direction: 'RECEIVED',
+              items: [{ id: 88 }, { id: 90 }],
+              next_cursor: 'next',
+            },
+          },
+        ],
+        pageParams: [undefined],
+      });
+      queryClient.setQueryData(sentKey, {
+        pages: [{ data: { direction: 'SENT', items: [{ id: 88 }], next_cursor: null } }],
+        pageParams: [undefined],
+      });
+      queryClient.setQueryData(detailKey, {
+        message: '조회에 성공했습니다',
+        data: {
+          id: 88,
+          carpool_id: 51,
+          status: 'PENDING',
+          content: '함께 가고 싶습니다',
+          requester: { id: 9, name: '이루디', profile_image_url: null },
+          created_at: '2026-10-10T08:10:00.000Z',
+        },
+      });
+      const relatedKeys = [
+        carpoolMutationQueryKeys.detail(51),
+        carpoolMutationQueryKeys.pins(),
+        carpoolMutationQueryKeys.nearby(),
+        chatRoomMutationQueryKeys.all(),
+      ];
+      relatedKeys.forEach((queryKey) => queryClient.setQueryData(queryKey, { value: 'stale' }));
+      const requestCount = vi.fn<() => void>();
+      server.use(
+        http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
+          requestCount();
+          return HttpResponse.json({
+            message: '요청을 수락했습니다',
+            data:
+              status === 'ACCEPTED'
+                ? { id: 88, status, chat_room_id: 620, current_count: 2, capacity: 4 }
+                : { id: 88, status },
+          });
+        }),
+      );
+      const { result } = renderHook(() => useCarpoolRequestDecisionMutation(7), {
+        wrapper: createWrapper(queryClient),
+      });
+
+      await result.current.mutateAsync({
+        viewerId: 7,
+        carpoolId: 51,
+        requestId: 88,
+        status,
+      });
+
+      expect(requestCount).toHaveBeenCalledTimes(1);
+      expect(queryClient.getQueryData(receivedKey)).toMatchObject({
+        pages: [{ data: { items: [{ id: 90 }], next_cursor: 'next' } }],
+      });
+      expect(queryClient.getQueryData(sentKey)).toMatchObject({
+        pages: [{ data: { items: [{ id: 88 }] } }],
+      });
+      expect(queryClient.getQueryData(detailKey)).toMatchObject({ data: { status } });
+      expect(queryClient.getQueryState(receivedKey)?.isInvalidated).toBe(true);
+      relatedKeys.forEach((queryKey) => {
+        expect(queryClient.getQueryState(queryKey)?.isInvalidated).toBe(status === 'ACCEPTED');
+      });
+      expect(queryClient.getMutationCache().getAll()[0]?.options.mutationKey).toEqual(
+        carpoolRequestDecisionMutationKeys.decide(7),
+      );
+    },
+  );
 
   it('PATCH 실패는 자동 재전송하지 않는다', async () => {
     const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: true } } });
