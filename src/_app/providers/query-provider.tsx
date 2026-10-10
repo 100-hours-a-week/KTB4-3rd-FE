@@ -1,8 +1,10 @@
 'use client';
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { useState, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 
+import { carpoolDetailQueryKeys } from '@/entities/carpool';
+import { useAuthStore } from '@/entities/auth';
 import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
 type QueryProviderProps = {
@@ -24,5 +26,23 @@ export function QueryProvider({ children }: QueryProviderProps) {
       }),
   );
 
+  useEffect(() => {
+    let previousIdentity = getAuthIdentity();
+    return useAuthStore.subscribe((state) => {
+      const nextIdentity = `${state.accessToken ?? ''}:${state.verifiedViewerId ?? ''}`;
+      if (nextIdentity === previousIdentity) {
+        return;
+      }
+
+      previousIdentity = nextIdentity;
+      void queryClient.removeQueries({ queryKey: carpoolDetailQueryKeys.all() });
+    });
+  }, [queryClient]);
+
   return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+}
+
+function getAuthIdentity() {
+  const { accessToken, verifiedViewerId } = useAuthStore.getState();
+  return `${accessToken ?? ''}:${verifiedViewerId ?? ''}`;
 }

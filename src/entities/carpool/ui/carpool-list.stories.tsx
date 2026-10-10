@@ -73,5 +73,6 @@ export const Error: Story = {
   },
 };
 export const LoadingMore: Story = { args: { isLoadingMore: true } };
+export const LoadMoreError: Story = { args: { loadMoreError: true, canLoadMore: true } };
 export const LastPage: Story = { args: { hasNextPage: false } };
 export const Paused: Story = { args: { canLoadMore: false } };

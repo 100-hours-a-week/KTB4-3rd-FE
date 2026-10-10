@@ -30,6 +30,7 @@ export const CarpoolItem = memo(
       <li className={cn('relative h-[72px] w-full', className)}>
         <button
           className="flex h-full w-full min-w-0 appearance-none items-center border-0 bg-transparent px-4 py-3 text-left transition-colors hover:bg-[var(--color-bg-transparent-pressed)] focus-visible:z-10 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--color-stroke-focus-ring)] active:bg-[var(--color-bg-transparent-selected)]"
+          data-carpool-id={carpool.id}
           onClick={() => onClick(carpool.id)}
           type="button"
         >

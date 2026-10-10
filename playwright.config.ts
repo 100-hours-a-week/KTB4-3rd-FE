@@ -21,6 +21,11 @@ const config = defineConfig({
   ],
   webServer: {
     command: `pnpm dev --hostname 127.0.0.1 --port ${webServerPort}`,
+    env: {
+      ...process.env,
+      NEXT_PUBLIC_KAKAO_MAP_APP_KEY:
+        process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? 'playwright-test-key',
+    },
     reuseExistingServer: !process.env.CI,
     url: `http://127.0.0.1:${webServerPort}`,
     timeout: 120_000,
