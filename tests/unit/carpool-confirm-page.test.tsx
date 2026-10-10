@@ -107,6 +107,41 @@ describe('CarpoolConfirmPage', () => {
     expect(useSnackbarStore.getState()).toMatchObject({ open: true, type: 'positive' });
   });
 
+  it('긴 출발지와 도착지 이름은 줄바꿈되고 요약 행 높이가 늘어난다', () => {
+    const longOrigin = '서울특별시 강남구 테헤란로 123 판교역 방면 출발 지점';
+    const longDestination = '경기도 성남시 분당구 판교역로 235 판교테크노밸리 도착 지점';
+    useCarpoolCreateStore.setState({
+      draft: {
+        ...completeDraft,
+        origin: {
+          name: longOrigin,
+          lat: completeDraft.origin?.lat ?? 0,
+          lng: completeDraft.origin?.lng ?? 0,
+        },
+        destination: {
+          name: longDestination,
+          lat: completeDraft.destination?.lat ?? 0,
+          lng: completeDraft.destination?.lng ?? 0,
+        },
+      },
+    });
+
+    renderPage();
+
+    for (const [label, value] of [
+      ['출발지', longOrigin],
+      ['도착지', longDestination],
+    ]) {
+      const valueElement = screen.getByText(value);
+      const row = screen.getByText(label).parentElement;
+
+      expect(valueElement).toHaveClass('min-h-12', 'whitespace-normal', 'break-words');
+      expect(valueElement).not.toHaveClass('truncate');
+      expect(row).toHaveClass('min-h-12');
+      expect(row).not.toHaveClass('overflow-hidden');
+    }
+  });
+
   it('등록 중에는 뒤로가기와 중복 제출을 막는다', async () => {
     let resolveResponse!: (response: Response) => void;
     const response = new Promise<Response>((resolve) => {

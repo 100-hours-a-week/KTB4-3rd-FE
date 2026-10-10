@@ -49,16 +49,16 @@ function ConfirmationSummaryCard({ summary }: { summary: CarpoolConfirmationSumm
       className="absolute top-[250px] left-5 flex w-[calc(100%-40px)] max-w-[353px] flex-col gap-2 rounded-[16px] bg-[var(--color-bg-layer-default)] p-6"
     >
       {rows.map(({ label, value }) => (
-        <div className="flex h-12 w-full items-center overflow-hidden" key={label}>
+        <div className="flex min-h-12 w-full items-center" key={label}>
           <Text
-            className="flex h-12 w-[108px] shrink-0 items-center"
+            className="flex min-h-12 w-[108px] shrink-0 items-center"
             color="fg.neutralMuted"
             variant="t6Regular"
           >
             {label}
           </Text>
           <Text
-            className="flex h-12 min-w-0 flex-1 items-center truncate"
+            className="flex min-h-12 min-w-0 flex-1 items-center py-3 break-words whitespace-normal"
             color="fg.neutral"
             variant="t7Bold"
           >
