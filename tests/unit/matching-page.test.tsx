@@ -1,9 +1,10 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { useEffect } from 'react';
 
 import type { MapProps, MapRef, MyLocationButtonProps } from '@/shared/ui/map';
-import { LoginRequiredProvider, SnackbarProvider } from '@/_app/providers';
+import { LoginRequiredProvider, QueryProvider, SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { MatchingPage } from '@/_pages/matching';
 
@@ -27,16 +28,64 @@ vi.mock('@/features/header-user', () => ({
   HeaderUser: () => null,
 }));
 
+vi.mock('@/shared/ui/bottom-sheet', async () => {
+  const { createElement, useEffect, useRef } = await import('react');
+
+  return {
+    BottomSheet: ({
+      children,
+      onScrollElementChange,
+      scrollContentKey,
+    }: {
+      children: React.ReactNode;
+      onScrollElementChange?: (element: HTMLElement | null) => void;
+      scrollContentKey?: string | number;
+    }) => {
+      const scrollRoot = useRef<HTMLDivElement>(null);
+      useEffect(() => {
+        onScrollElementChange?.(scrollRoot.current);
+        return () => onScrollElementChange?.(null);
+      }, [onScrollElementChange]);
+
+      return createElement(
+        'div',
+        {
+          'data-testid': 'bottom-sheet-content',
+          'data-scroll-content-key': scrollContentKey,
+          ref: scrollRoot,
+        },
+        children,
+      );
+    },
+  };
+});
+
 vi.mock('@/shared/ui/map', async () => {
   const { createElement, forwardRef, useImperativeHandle } = await import('react');
 
-  const MockMap = forwardRef<MapRef, MapProps>(({ className }, ref) => {
+  const MockMap = forwardRef<MapRef, MapProps>(({ className, markers, onViewportChange }, ref) => {
     useImperativeHandle(ref, () => ({
       requestCurrentLocation: mocks.currentLocation,
       requestLocationPermission: vi.fn<() => void>(),
     }));
 
-    return createElement('div', { className });
+    useEffect(() => {
+      onViewportChange?.(
+        {
+          northEast: { lat: 37.57, lng: 126.99 },
+          northWest: { lat: 37.57, lng: 126.96 },
+          southEast: { lat: 37.55, lng: 126.99 },
+          southWest: { lat: 37.55, lng: 126.96 },
+        },
+        'initial',
+      );
+    }, [onViewportChange]);
+
+    return createElement('div', {
+      className,
+      'data-testid': 'matching-map',
+      'data-markers': markers?.length ?? 0,
+    });
   });
 
   return {
@@ -49,16 +98,19 @@ vi.mock('@/shared/ui/map', async () => {
 
 function renderMatchingPage() {
   return render(
-    <SnackbarProvider>
-      <LoginRequiredProvider>
-        <MatchingPage />
-      </LoginRequiredProvider>
-    </SnackbarProvider>,
+    <QueryProvider>
+      <SnackbarProvider>
+        <LoginRequiredProvider>
+          <MatchingPage />
+        </LoginRequiredProvider>
+      </SnackbarProvider>
+    </QueryProvider>,
   );
 }
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   mocks.navigation.push.mockReset();
   mocks.currentLocation.mockReset();
   useAuthStore.getState().clearTokens();
@@ -71,6 +123,46 @@ describe('MatchingPage', () => {
     expect(screen.getByRole('region', { name: '매칭 지도' })).toBeInTheDocument();
     expect(screen.getByRole('navigation', { name: '주요 메뉴' })).toBeInTheDocument();
     expect(screen.queryByRole('dialog', { name: '로그인이 필요해요' })).not.toBeInTheDocument();
+  });
+
+  it('viewport 기반 카풀 목록과 지도 핀을 조회해 표시한다', async () => {
+    renderMatchingPage();
+
+    const carpoolList = await screen.findByLabelText('주변 카풀');
+    expect(carpoolList).toHaveTextContent('서울역 2번 출구 → 유스페이스1');
+    expect(screen.getByTestId('matching-map')).toHaveAttribute('data-markers', '2');
+    expect(screen.getByLabelText('주변 카풀')).toBeInTheDocument();
+  });
+
+  it('실제 BottomSheet scroll root에서 다음 카풀 페이지를 자동으로 요청한다', async () => {
+    const observerConfigs: IntersectionObserverInit[] = [];
+    const observerCallbacks: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        observe = vi.fn<(target: Element) => void>();
+        disconnect = vi.fn<() => void>();
+
+        constructor(callback: IntersectionObserverCallback, options?: IntersectionObserverInit) {
+          observerCallbacks.push(callback);
+          observerConfigs.push(options ?? {});
+        }
+      },
+    );
+
+    renderMatchingPage();
+    const list = await screen.findByLabelText('주변 카풀');
+    const scrollElement = screen.getByTestId('bottom-sheet-content');
+    await waitFor(() => expect(observerCallbacks.length).toBeGreaterThan(0));
+
+    expect(observerConfigs[0]?.root).toBe(scrollElement);
+    observerCallbacks[0]?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    );
+
+    expect(await screen.findByText('서울역 → 판교역')).toBeInTheDocument();
+    expect(list).toHaveTextContent('서울역 → 판교역');
   });
 
   it.each([

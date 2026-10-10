@@ -19,6 +19,7 @@ export type CarPoolListProps =
       items: CarPoolListItem[];
       hasNextPage: boolean;
       isLoadingMore: boolean;
+      loadMoreError?: boolean;
       canLoadMore: boolean;
       scrollRoot: HTMLElement | null;
       onCarpoolClick: (carpoolId: number) => void;
@@ -35,6 +36,7 @@ function CarpoolListContent({
   items,
   hasNextPage,
   isLoadingMore,
+  loadMoreError = false,
   canLoadMore,
   scrollRoot,
   onCarpoolClick,
@@ -54,6 +56,7 @@ function CarpoolListContent({
       !scrollRoot ||
       !sentinel ||
       !hasNextPage ||
+      loadMoreError ||
       !canLoadMore ||
       isLoadingMore
     ) {
@@ -75,7 +78,16 @@ function CarpoolListContent({
       active = false;
       observer.disconnect();
     };
-  }, [items, hasNextPage, canLoadMore, isLoadingMore, scrollRoot, onLoadMore, supportsObserver]);
+  }, [
+    items,
+    hasNextPage,
+    loadMoreError,
+    canLoadMore,
+    isLoadingMore,
+    scrollRoot,
+    onLoadMore,
+    supportsObserver,
+  ]);
 
   return (
     <div>
@@ -97,7 +109,7 @@ function CarpoolListContent({
           </Text>
         </div>
       ) : null}
-      {!supportsObserver && hasNextPage ? (
+      {hasNextPage && (loadMoreError || !supportsObserver) ? (
         <div className="px-4 py-3">
           <Button
             disabled={!canLoadMore || isLoadingMore}
@@ -106,7 +118,7 @@ function CarpoolListContent({
             variant="neutral-weak"
             width="fill"
           >
-            다음 페이지 불러오기
+            {loadMoreError ? '다시 불러오기' : '다음 페이지 불러오기'}
           </Button>
         </div>
       ) : null}
