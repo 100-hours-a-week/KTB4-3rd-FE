@@ -20,6 +20,7 @@ export type CarpoolCreateDraft = {
 
 export type CarpoolCreateState = {
   draft: CarpoolCreateDraft;
+  draftRevision: number;
   setOrigin: (origin: CarpoolCreateLocation | null) => void;
   setDestination: (destination: CarpoolCreateLocation | null) => void;
   setDepartureDate: (departureDate: string | null) => void;
@@ -40,12 +41,29 @@ function createInitialDraft(): CarpoolCreateDraft {
 
 export const useCarpoolCreateStore = create<CarpoolCreateState>()((set) => ({
   draft: createInitialDraft(),
-  setOrigin: (origin) => set((state) => ({ draft: { ...state.draft, origin } })),
-  setDestination: (destination) => set((state) => ({ draft: { ...state.draft, destination } })),
+  draftRevision: 0,
+  setOrigin: (origin) =>
+    set((state) => ({ draft: { ...state.draft, origin }, draftRevision: state.draftRevision + 1 })),
+  setDestination: (destination) =>
+    set((state) => ({
+      draft: { ...state.draft, destination },
+      draftRevision: state.draftRevision + 1,
+    })),
   setDepartureDate: (departureDate) =>
-    set((state) => ({ draft: { ...state.draft, departureDate } })),
+    set((state) => ({
+      draft: { ...state.draft, departureDate },
+      draftRevision: state.draftRevision + 1,
+    })),
   setDepartureTime: (departureTime) =>
-    set((state) => ({ draft: { ...state.draft, departureTime } })),
-  setRecruitCount: (recruitCount) => set((state) => ({ draft: { ...state.draft, recruitCount } })),
-  reset: () => set({ draft: createInitialDraft() }),
+    set((state) => ({
+      draft: { ...state.draft, departureTime },
+      draftRevision: state.draftRevision + 1,
+    })),
+  setRecruitCount: (recruitCount) =>
+    set((state) => ({
+      draft: { ...state.draft, recruitCount },
+      draftRevision: state.draftRevision + 1,
+    })),
+  reset: () =>
+    set((state) => ({ draft: createInitialDraft(), draftRevision: state.draftRevision + 1 })),
 }));
