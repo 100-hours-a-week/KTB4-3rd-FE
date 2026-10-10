@@ -9,6 +9,14 @@ import {
   type ChatListTabValue,
   type ChatRoomListItem,
 } from '@/entities/chat';
+import {
+  CarpoolRequestTabs,
+  ChatCarpoolTabs,
+  type CarpoolRequestDirection,
+  type ChatCarpoolTab,
+} from '@/entities/carpool';
+import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
+import { useCurrentUserQuery } from '@/features/user-profile';
 import { cn } from '@/shared/lib/cn';
 import { Icon } from '@/shared/ui/icon';
 import { ResultSection } from '@/shared/ui/result-section';
@@ -21,6 +29,7 @@ import {
 } from '@/_pages/chat-list/model/chat-list-state';
 import { useChatRoomListQuery } from '@/_pages/chat-list/api/chat-room-list';
 import { ChatListPageContentLoading } from './chat-list-page-loading';
+import { CarpoolRequestQueryContent } from './carpool-request-query-content';
 
 export type ChatListPageContentProps = {
   className?: string;
@@ -50,7 +59,7 @@ function toChatListPageState(query: ReturnType<typeof useChatRoomListQuery>): Ch
   };
 }
 
-export function ChatListPageContentWithQuery() {
+function ChatRoomListQueryContent() {
   const router = useRouter();
   const matchingQuery = useChatRoomListQuery('matching');
   const communityQuery = useChatRoomListQuery('community');
@@ -100,6 +109,34 @@ export function ChatListPageContentWithQuery() {
       }}
       states={states}
     />
+  );
+}
+
+export function ChatListPageContentWithQuery() {
+  const router = useRouter();
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const currentUserQuery = useCurrentUserQuery();
+  const viewerId = currentUserQuery.data?.data.id ?? null;
+  const [activeTab, setActiveTab] = useState<ChatCarpoolTab>('chat');
+  const [direction, setDirection] = useState<CarpoolRequestDirection>('SENT');
+
+  return (
+    <section aria-label="채팅과 카풀 요청" className="flex min-h-0 flex-1 flex-col">
+      <ChatCarpoolTabs onValueChange={setActiveTab} value={activeTab} />
+      {activeTab === 'chat' ? (
+        <ChatRoomListQueryContent />
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col" data-testid="carpool-request-panel">
+          <CarpoolRequestTabs className="mt-6" onValueChange={setDirection} value={direction} />
+          <CarpoolRequestQueryContent
+            direction={direction}
+            isAuthenticated={isAuthenticated}
+            onChatClick={(chatRoomId) => router.push(`/chatroom/${chatRoomId}`)}
+            viewerId={viewerId}
+          />
+        </div>
+      )}
+    </section>
   );
 }
 
