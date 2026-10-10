@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useState } from 'react';
 
 import { useAuthStore } from '@/entities/auth';
+import { CarPoolList, type CarPoolListItem } from '@/entities/carpool';
 
 import { MatchingPageView } from './matching-page-view';
 import { MatchingMapPreview } from './matching-map-preview';
@@ -12,6 +13,33 @@ const storyUser = {
   profile_image_url: null,
   has_bank_account: false,
 };
+const storyCarpool: CarPoolListItem = {
+  id: 51,
+  host: { name: '김우림', profile_image_url: null },
+  origin_name: '서울역',
+  dest_name: '판교역',
+  departure_at: '2026-10-10T09:40:00.000Z',
+  distance_m: 320,
+  current_count: 2,
+  capacity: 4,
+  is_full: false,
+  is_expired: false,
+};
+
+function NearbyCarpoolsPreview() {
+  return (
+    <CarPoolList
+      canLoadMore
+      hasNextPage
+      isLoadingMore={false}
+      items={[storyCarpool]}
+      onCarpoolClick={() => undefined}
+      onLoadMore={() => undefined}
+      scrollRoot={null}
+      status="content"
+    />
+  );
+}
 
 function setStoryAuthState(isAuthenticated: boolean) {
   const previousAccessToken = useAuthStore.getState().accessToken;
@@ -43,6 +71,7 @@ const meta = {
     onTaxipotClick: () => undefined,
     onCurrentLocationClick: () => undefined,
     map: <MatchingMapPreview />,
+    nearbyCarpools: <NearbyCarpoolsPreview />,
     user: storyUser,
   },
 } satisfies Meta<typeof MatchingPageView>;
@@ -77,6 +106,7 @@ function InteractivePreview() {
     <MatchingPageView
       isFabOpened={isFabOpened}
       map={<MatchingMapPreview />}
+      nearbyCarpools={<NearbyCarpoolsPreview />}
       onCarpoolClick={() => setIsFabOpened(false)}
       onCurrentLocationClick={() => undefined}
       onFabOpenChange={setIsFabOpened}
