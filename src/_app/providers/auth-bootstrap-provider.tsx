@@ -3,6 +3,8 @@
 import { refreshAccessToken, useAuthStore } from '@/entities/auth';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 
+import { CarpoolRegistrationDraftAuthSync } from './carpool-registration-draft-auth-sync';
+
 type AuthBootstrapProviderProps = {
   children: ReactNode;
 };
@@ -36,5 +38,10 @@ export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) 
     };
   }, []);
 
-  return isReady ? children : null;
+  return isReady ? (
+    <>
+      <CarpoolRegistrationDraftAuthSync />
+      {children}
+    </>
+  ) : null;
 }
