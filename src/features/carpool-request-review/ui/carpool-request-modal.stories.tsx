@@ -41,10 +41,6 @@ export const Loading: Story = {
   args: { open: true, status: 'loading', onClose: () => {} },
 };
 
-export const CheckingAfterUnknownResult: Story = {
-  args: { open: true, status: 'loading', lockDismissal: true, onClose: () => {} },
-};
-
 export const Error: Story = {
   args: {
     open: true,
@@ -57,11 +53,4 @@ export const Error: Story = {
 
 export const Accepting: Story = {
   args: { ...meta.args, processingAction: 'accept' },
-};
-
-export const ResultNeedsConfirmation: Story = {
-  args: {
-    ...meta.args,
-    notice: '요청 상태를 확인했어요. 다시 진행하려면 수락 또는 거절을 눌러주세요.',
-  },
 };

@@ -42,7 +42,15 @@ type SelectedRequest = {
   carpoolId: number;
   requestId: number;
   viewerId: number;
+  detailUpdateCountAtOpen: number;
 };
+
+const uncertainDecisionKeys = new Set<string>();
+const capacityBlockedAcceptKeys = new Set<string>();
+
+function decisionKey(viewerId: number, carpoolId: number, requestId: number) {
+  return `${viewerId}:${carpoolId}:${requestId}`;
+}
 
 function toDetailView(detail: {
   id: number;
@@ -80,6 +88,9 @@ function invalidateRelatedData(queryClient: ReturnType<typeof useQueryClient>, v
     queryClient.invalidateQueries({ queryKey: carpoolQueries.nearbyPrefix() }),
     queryClient.invalidateQueries({
       queryKey: chatRoomListQueries.list({ kind: 'TAXI_POT' }).queryKey,
+    }),
+    queryClient.invalidateQueries({
+      queryKey: chatRoomListQueries.list({ kind: 'CARPOOL' }).queryKey,
     }),
   ]);
 }
@@ -140,6 +151,22 @@ export function CarpoolRequestQueryContent({
     enabled: selected !== null && isAuthenticated,
   });
 
+  const currentDecisionKey = selected
+    ? decisionKey(selected.viewerId, selected.carpoolId, selected.requestId)
+    : null;
+  const detailUpdateCount = selected
+    ? (queryClient.getQueryState(
+        carpoolRequestQueryKeys.detail(selected.viewerId, selected.carpoolId, selected.requestId),
+      )?.dataUpdateCount ?? 0)
+    : 0;
+  const hasAuthoritativeDetail = Boolean(
+    selected &&
+    detailQuery.isSuccess &&
+    !detailQuery.isFetching &&
+    detailUpdateCount > selected.detailUpdateCountAtOpen,
+  );
+  const isAwaitingReconciliation = awaitingReconciliation && !hasAuthoritativeDetail;
+
   const mutation = useMutation({
     mutationFn: async ({ action, carpoolId, requestId }: DecisionVariables) => {
       if (viewerId === null) {
@@ -190,6 +217,8 @@ export function CarpoolRequestQueryContent({
         return;
       }
 
+      const key = decisionKey(viewerId, selected.carpoolId, selected.requestId);
+
       if (!isCurrentVerifiedViewer(viewerId)) {
         setSelected(null);
         useSnackbarStore
@@ -198,7 +227,9 @@ export function CarpoolRequestQueryContent({
         return;
       }
 
+      uncertainDecisionKeys.delete(key);
       if (result.data.data.status !== 'PENDING') {
+        capacityBlockedAcceptKeys.delete(key);
         setSelected(null);
         setAwaitingReconciliation(false);
         invalidateRelatedData(queryClient, viewerId);
@@ -219,7 +250,16 @@ export function CarpoolRequestQueryContent({
 
   const handleDecision = useCallback(
     async (action: Exclude<RequestProcessingAction, null>) => {
-      if (!selected || !viewerId || actionLock.current || awaitingReconciliation) {
+      if (
+        !selected ||
+        !viewerId ||
+        !hasAuthoritativeDetail ||
+        actionLock.current ||
+        isAwaitingReconciliation ||
+        (action === 'accept' &&
+          currentDecisionKey !== null &&
+          capacityBlockedAcceptKeys.has(currentDecisionKey))
+      ) {
         return;
       }
 
@@ -233,6 +273,8 @@ export function CarpoolRequestQueryContent({
           carpoolId: selected.carpoolId,
           requestId: selected.requestId,
         });
+        uncertainDecisionKeys.delete(currentDecisionKey!);
+        capacityBlockedAcceptKeys.delete(currentDecisionKey!);
         removeReceivedRequest(queryClient, viewerId, selected.carpoolId, selected.requestId);
         invalidateRelatedData(queryClient, viewerId);
         setSelected(null);
@@ -245,6 +287,8 @@ export function CarpoolRequestQueryContent({
           );
       } catch (error) {
         if (error instanceof AuthViewerMismatchError) {
+          uncertainDecisionKeys.delete(currentDecisionKey!);
+          capacityBlockedAcceptKeys.delete(currentDecisionKey!);
           setSelected(null);
           invalidateRelatedData(queryClient, viewerId);
           useSnackbarStore
@@ -254,6 +298,8 @@ export function CarpoolRequestQueryContent({
               'critical',
             );
         } else if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+          uncertainDecisionKeys.delete(currentDecisionKey!);
+          capacityBlockedAcceptKeys.delete(currentDecisionKey!);
           setSelected(null);
           invalidateRelatedData(queryClient, viewerId);
           useSnackbarStore
@@ -266,10 +312,13 @@ export function CarpoolRequestQueryContent({
             );
         } else if (error instanceof ApiError && error.status === 409) {
           if (error.code === 'CAPACITY_FULL') {
+            capacityBlockedAcceptKeys.add(currentDecisionKey!);
             useSnackbarStore
               .getState()
               .showSnackbar('모집 인원이 가득 차서 수락할 수 없어요.', 'critical');
           } else if (error.code === 'CARPOOL_CLOSED' || error.code === 'REQUEST_ALREADY_HANDLED') {
+            uncertainDecisionKeys.delete(currentDecisionKey!);
+            capacityBlockedAcceptKeys.delete(currentDecisionKey!);
             setSelected(null);
             invalidateRelatedData(queryClient, viewerId);
             useSnackbarStore
@@ -286,6 +335,8 @@ export function CarpoolRequestQueryContent({
               .showSnackbar('요청 상태가 바뀌었어요. 최신 상태를 확인해주세요.', 'critical');
           }
         } else if (isUncertainDecisionError(error)) {
+          uncertainDecisionKeys.add(currentDecisionKey!);
+          setAwaitingReconciliation(true);
           useSnackbarStore
             .getState()
             .showSnackbar(
@@ -294,6 +345,7 @@ export function CarpoolRequestQueryContent({
             );
           await reconcileRequest();
         } else {
+          uncertainDecisionKeys.delete(currentDecisionKey!);
           useSnackbarStore
             .getState()
             .showSnackbar(
@@ -308,8 +360,32 @@ export function CarpoolRequestQueryContent({
         setProcessingAction(null);
       }
     },
-    [awaitingReconciliation, mutation, queryClient, reconcileRequest, selected, viewerId],
+    [
+      currentDecisionKey,
+      hasAuthoritativeDetail,
+      isAwaitingReconciliation,
+      mutation,
+      queryClient,
+      reconcileRequest,
+      selected,
+      viewerId,
+    ],
   );
+
+  useEffect(() => {
+    if (!selected || !hasAuthoritativeDetail || !currentDecisionKey) {
+      return;
+    }
+
+    if (detailQuery.data?.data.status === 'PENDING') {
+      return;
+    }
+
+    uncertainDecisionKeys.delete(currentDecisionKey);
+    capacityBlockedAcceptKeys.delete(currentDecisionKey);
+    invalidateRelatedData(queryClient, selected.viewerId);
+    useSnackbarStore.getState().showSnackbar('요청이 이미 처리되었어요.', 'critical');
+  }, [currentDecisionKey, detailQuery.data, hasAuthoritativeDetail, queryClient, selected]);
 
   useEffect(() => {
     const error = detailQuery.error;
@@ -328,16 +404,6 @@ export function CarpoolRequestQueryContent({
       );
   }, [detailQuery.error, selected]);
 
-  useEffect(() => {
-    if (!selected || detailQuery.isFetching || detailQuery.data?.data.status === 'PENDING') {
-      return;
-    }
-    if (viewerId !== null) {
-      invalidateRelatedData(queryClient, viewerId);
-    }
-    useSnackbarStore.getState().showSnackbar('요청이 이미 처리되었어요.', 'critical');
-  }, [detailQuery.data, detailQuery.isFetching, queryClient, selected, viewerId]);
-
   const handleRequestClick = useCallback(
     (carpoolId: number, requestId: number) => {
       if (direction !== 'RECEIVED' || !query.data || viewerId === null) {
@@ -353,10 +419,13 @@ export function CarpoolRequestQueryContent({
 
       const queryKey = carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId);
       queryClient.setQueryData(queryKey, previewDetail(preview));
+      const detailUpdateCountAtOpen = queryClient.getQueryState(queryKey)?.dataUpdateCount ?? 0;
       setNotice(undefined);
-      setAwaitingReconciliation(false);
       setReconciliationFailed(false);
-      setSelected({ carpoolId, requestId, preview, viewerId });
+      setAwaitingReconciliation(
+        uncertainDecisionKeys.has(decisionKey(viewerId, carpoolId, requestId)),
+      );
+      setSelected({ carpoolId, requestId, preview, viewerId, detailUpdateCountAtOpen });
     },
     [direction, query.data, queryClient, viewerId],
   );
@@ -397,7 +466,7 @@ export function CarpoolRequestQueryContent({
           };
   }
 
-  const detail = detailQuery.data?.data;
+  const detail = detailQuery.isError ? undefined : detailQuery.data?.data;
   let modal = null;
   if (selectedRequest && selected?.viewerId === viewerId && isAuthenticated) {
     const detailUnavailable =
@@ -409,7 +478,7 @@ export function CarpoolRequestQueryContent({
       modal = null;
     } else if (isReconciling) {
       modal = <CarpoolRequestModal lockDismissal onClose={closeModal} open status="loading" />;
-    } else if (awaitingReconciliation && reconciliationFailed) {
+    } else if (isAwaitingReconciliation && reconciliationFailed) {
       modal = (
         <CarpoolRequestModal
           errorMessage="처리 결과를 확인하지 못했어요. 요청 상태를 다시 확인해주세요."
@@ -424,8 +493,15 @@ export function CarpoolRequestQueryContent({
     } else if (detail) {
       modal = (
         <CarpoolRequestModal
-          canAccept={detail.status === 'PENDING' && !awaitingReconciliation}
-          canReject={detail.status === 'PENDING' && !awaitingReconciliation}
+          canAccept={
+            hasAuthoritativeDetail &&
+            detail.status === 'PENDING' &&
+            !isAwaitingReconciliation &&
+            !capacityBlockedAcceptKeys.has(currentDecisionKey!)
+          }
+          canReject={
+            hasAuthoritativeDetail && detail.status === 'PENDING' && !isAwaitingReconciliation
+          }
           notice={notice}
           onAccept={() => void handleDecision('accept')}
           onClose={closeModal}

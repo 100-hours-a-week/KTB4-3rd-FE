@@ -79,18 +79,27 @@ function requestListHandler(getItems: () => (typeof receivedItem)[] = () => [rec
 function detailHandler(onRequest?: (request: Request) => void, body?: () => string) {
   return http.get('*/carpools/:carpoolId/join-requests/:requestId', ({ request, params }) => {
     onRequest?.(request.clone());
-    return HttpResponse.json({
-      message: '조회에 성공했습니다',
-      data: {
-        id: Number(params.requestId),
-        carpool_id: Number(params.carpoolId),
-        status: 'PENDING',
-        content: body?.() ?? '상세 조회에서 가져온 요청 메시지',
-        requester: { id: 9, name: '이루디 상세', profile_image_url: null },
-        created_at: '2026-10-10T08:10:00.000Z',
-      },
-    });
+    return HttpResponse.json(
+      detailResponse(params, body?.() ?? '상세 조회에서 가져온 요청 메시지'),
+    );
   });
+}
+
+function detailResponse(
+  params: Record<string, string | readonly string[] | undefined>,
+  content: string,
+) {
+  return {
+    message: '조회에 성공했습니다',
+    data: {
+      id: Number(params.requestId),
+      carpool_id: Number(params.carpoolId),
+      status: 'PENDING',
+      content,
+      requester: { id: 9, name: '이루디 상세', profile_image_url: null },
+      created_at: '2026-10-10T08:10:00.000Z',
+    },
+  };
 }
 
 beforeEach(() => {
@@ -122,6 +131,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       lng: 3,
     });
     const chatQuery = chatRoomListQueries.list({ kind: 'TAXI_POT' });
+    const carpoolChatQuery = chatRoomListQueries.list({ kind: 'CARPOOL' });
     const emptyPage: CarpoolRequestListResponse = {
       message: '조회에 성공했습니다',
       data: { direction: 'RECEIVED', items: [receivedItem], next_cursor: null },
@@ -139,6 +149,10 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       pageParams: [undefined],
     });
     queryClient.setQueryData<InfiniteData<ChatRoomListResponse>>(chatQuery.queryKey, {
+      pages: [{ message: '조회에 성공했습니다', data: { items: [], next_cursor: null } }],
+      pageParams: [undefined],
+    });
+    queryClient.setQueryData<InfiniteData<ChatRoomListResponse>>(carpoolChatQuery.queryKey, {
       pages: [{ message: '조회에 성공했습니다', data: { items: [], next_cursor: null } }],
       pageParams: [undefined],
     });
@@ -171,6 +185,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       expect(queryClient.getQueryState(pinsQuery.queryKey)?.isInvalidated).toBe(true);
       expect(queryClient.getQueryState(nearbyQuery.queryKey)?.isInvalidated).toBe(true);
       expect(queryClient.getQueryState(chatQuery.queryKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(carpoolChatQuery.queryKey)?.isInvalidated).toBe(true);
     });
   });
 
@@ -256,12 +271,9 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
   it('5xx 결과가 불확실하면 상세 상태만 다시 확인하고 자동 PATCH 재전송을 하지 않는다', async () => {
     const user = userEvent.setup();
     let patchCount = 0;
-    let detailCount = 0;
     const { Wrapper } = createWrapper();
     server.use(
-      detailHandler(() => {
-        detailCount += 1;
-      }),
+      detailHandler(),
       http.patch('*/carpools/53/join-requests/90', () => {
         patchCount += 1;
         return HttpResponse.json(
@@ -276,9 +288,73 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     await user.click(await screen.findByRole('button', { name: '수락' }));
 
     expect(await screen.findByText(/요청 상태를 확인했어요/)).toBeInTheDocument();
-    expect(detailCount).toBeGreaterThanOrEqual(2);
     expect(patchCount).toBe(1);
     expect(screen.getByRole('button', { name: '수락' })).toBeEnabled();
+  });
+
+  it('상세 확인 실패와 불명확한 PATCH 후 닫았다 다시 열어도 재조회 전에는 처리하지 않는다', async () => {
+    const user = userEvent.setup();
+    let detailCount = 0;
+    let patchCount = 0;
+    let releaseDetail: (() => void) | undefined;
+    let markDetailStarted: (() => void) | undefined;
+    const detailStarted = new Promise<void>((resolve) => (markDetailStarted = resolve));
+    server.use(
+      http.get('*/carpools/:carpoolId/join-requests/:requestId', async ({ params }) => {
+        detailCount += 1;
+        if (detailCount === 1) {
+          markDetailStarted?.();
+          await new Promise<void>((resolve) => (releaseDetail = resolve));
+        }
+        if ([1, 3, 4].includes(detailCount)) {
+          return HttpResponse.json(
+            { message: '조회 실패', error: { code: 'CONFLICT' } },
+            { status: 409 },
+          );
+        }
+        return HttpResponse.json(detailResponse(params, '재조회한 상세 내용'));
+      }),
+      http.patch('*/carpools/53/join-requests/90', () => {
+        patchCount += 1;
+        if (patchCount === 1) {
+          return HttpResponse.json(
+            { message: '서버 오류', error: { code: 'INTERNAL_SERVER_ERROR' } },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({ message: '거절했습니다', data: { id: 90, status: 'REJECTED' } });
+      }),
+    );
+
+    const { Wrapper } = createWrapper();
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await openReceivedRequests(user);
+    await detailStarted;
+
+    expect(screen.getByText(receivedItem.content)).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
+    releaseDetail?.();
+    await screen.findByRole('button', { name: '다시 불러오기' }, { timeout: 6000 });
+    expect(screen.queryByRole('button', { name: '수락' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '거절' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
+    expect(await screen.findByText('재조회한 상세 내용')).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByRole('button', { name: '수락' })).toBeEnabled());
+    await user.click(await screen.findByRole('button', { name: '수락' }));
+    await screen.findByRole('button', { name: '다시 불러오기' }, { timeout: 6000 });
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    await openReceivedRequests(user);
+    await screen.findByRole('button', { name: '다시 불러오기' }, { timeout: 6000 });
+    expect(screen.queryByRole('button', { name: '수락' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '거절' })).not.toBeInTheDocument();
+    expect(patchCount).toBe(1);
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
+    await waitFor(() => expect(screen.getByRole('button', { name: '수락' })).toBeEnabled());
+    expect(patchCount).toBe(1);
+    await user.click(screen.getByRole('button', { name: '거절' }));
+    await waitFor(() => expect(patchCount).toBe(2));
   });
 
   it.each([
@@ -291,9 +367,16 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     const user = userEvent.setup();
     const { Wrapper } = createWrapper();
     server.use(
-      http.patch('*/carpools/53/join-requests/90', () =>
-        HttpResponse.json({ message: '요청을 처리할 수 없습니다', error: { code } }, { status }),
-      ),
+      http.patch('*/carpools/53/join-requests/90', async ({ request }) => {
+        const { status: action } = (await request.json()) as { status: string };
+        if (code === 'CAPACITY_FULL' && action === 'REJECTED') {
+          return HttpResponse.json({ message: '거절했습니다', data: { id: 90, status: action } });
+        }
+        return HttpResponse.json(
+          { message: '요청을 처리할 수 없습니다', error: { code } },
+          { status },
+        );
+      }),
     );
 
     render(<ChatListPage />, { wrapper: Wrapper });
@@ -304,5 +387,14 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' }) !== null).toBe(remainsOpen),
     );
     expect(screen.queryByRole('button', { name: '거절' }) !== null).toBe(remainsOpen);
+    expect(Boolean(screen.queryByRole('button', { name: '수락' })?.hasAttribute('disabled'))).toBe(
+      code === 'CAPACITY_FULL',
+    );
+    if (code === 'CAPACITY_FULL') {
+      await user.click(screen.getByRole('button', { name: '거절' }));
+    }
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' }) !== null).toBe(false),
+    );
   });
 });
