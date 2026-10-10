@@ -147,14 +147,37 @@ describe('매칭 등록 진입', () => {
     const remove = vi.spyOn(document, 'removeEventListener');
     const { unmount } = renderEntry();
     const user = await openMenu();
-    const pointer = add.mock.calls.find(([type]) => type === 'pointerdown');
-    const key = add.mock.calls.find(([type]) => type === 'keydown');
+    const listeners = add.mock.calls.filter(
+      ([type]) => type === 'pointerdown' || type === 'keydown',
+    );
     await user.click(screen.getByRole('button', { name: '매칭 메뉴 닫기' }));
-    expect(remove).toHaveBeenCalledWith('pointerdown', pointer?.[1], true);
-    expect(remove).toHaveBeenCalledWith('keydown', key?.[1]);
+    for (const [type, listener, options] of listeners) {
+      expect(
+        remove.mock.calls.some(
+          (call) =>
+            call[0] === type &&
+            call[1] === listener &&
+            call.length === (options === undefined ? 2 : 3) &&
+            (options === undefined || call[2] === options),
+        ),
+      ).toBe(true);
+    }
+    const reopenStart = add.mock.calls.length;
     await user.click(screen.getByRole('button', { name: '매칭 메뉴 열기' }));
-    const lastPointer = add.mock.calls.filter(([type]) => type === 'pointerdown').at(-1);
+    const activeListeners = add.mock.calls
+      .slice(reopenStart)
+      .filter(([type]) => type === 'pointerdown' || type === 'keydown');
     unmount();
-    expect(remove).toHaveBeenCalledWith('pointerdown', lastPointer?.[1], true);
+    for (const [type, listener, options] of activeListeners) {
+      expect(
+        remove.mock.calls.some(
+          (call) =>
+            call[0] === type &&
+            call[1] === listener &&
+            call.length === (options === undefined ? 2 : 3) &&
+            (options === undefined || call[2] === options),
+        ),
+      ).toBe(true);
+    }
   });
 });
