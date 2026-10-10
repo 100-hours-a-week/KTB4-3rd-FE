@@ -1,13 +1,20 @@
 import { act, cleanup, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
-import { SnackbarProvider } from '@/_app/providers';
+import { SnackbarProvider, SnackbarRouteLifecycle } from '@/_app/providers';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
+
+const pathname = vi.hoisted(() => ({ value: '/matching' }));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => pathname.value,
+}));
 
 afterEach(() => {
   cleanup();
   useSnackbarStore.getState().reset();
+  pathname.value = '/matching';
   vi.useRealTimers();
 });
 
@@ -61,5 +68,35 @@ describe('SnackbarViewport', () => {
 
     act(() => vi.advanceTimersByTime(1000));
     expect(useSnackbarStore.getState().open).toBe(false);
+  });
+
+  it('페이지가 변경되면 토스트를 즉시 닫고 타이머를 정리한다', () => {
+    vi.useFakeTimers();
+
+    const { rerender } = render(
+      <SnackbarProvider>
+        <SnackbarRouteLifecycle>
+          <SnackbarViewport />
+        </SnackbarRouteLifecycle>
+      </SnackbarProvider>,
+    );
+
+    act(() => useSnackbarStore.getState().showSnackbar('가입이 완료되었어요', 'positive'));
+    expect(useSnackbarStore.getState().open).toBe(true);
+
+    pathname.value = '/';
+    rerender(
+      <SnackbarProvider>
+        <SnackbarRouteLifecycle>
+          <SnackbarViewport />
+        </SnackbarRouteLifecycle>
+      </SnackbarProvider>,
+    );
+
+    expect(useSnackbarStore.getState().open).toBe(false);
+
+    act(() => vi.advanceTimersByTime(3000));
+    expect(useSnackbarStore.getState().open).toBe(false);
+    expect(screen.queryByRole('status')).not.toBeInTheDocument();
   });
 });
