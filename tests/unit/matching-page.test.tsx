@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import type { MapProps, MapRef, MyLocationButtonProps } from '@/shared/ui/map';
-import { LoginRequiredProvider } from '@/_app/providers';
+import { LoginRequiredProvider, SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { MatchingPage } from '@/_pages/matching';
 
@@ -49,9 +49,11 @@ vi.mock('@/shared/ui/map', async () => {
 
 function renderMatchingPage() {
   return render(
-    <LoginRequiredProvider>
-      <MatchingPage />
-    </LoginRequiredProvider>,
+    <SnackbarProvider>
+      <LoginRequiredProvider>
+        <MatchingPage />
+      </LoginRequiredProvider>
+    </SnackbarProvider>,
   );
 }
 
