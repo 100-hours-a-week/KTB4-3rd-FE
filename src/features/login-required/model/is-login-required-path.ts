@@ -1,4 +1,5 @@
 const LOGIN_REQUIRED_PATH_PREFIXES = [
+  '/carpools/new',
   '/taxi-pots/new',
   '/chat',
   '/chatting',

@@ -6,6 +6,7 @@ import { LoginRequiredProvider } from '@/_app/providers';
 import { useMatchingEntry } from '@/_pages/matching/model/use-matching-entry';
 import { useAuthStore } from '@/entities/auth';
 import { MatchingFab } from '@/features/matching-entry';
+import { useCarpoolCreateStore } from '@/features/carpool-registration';
 
 const navigation = vi.hoisted(() => ({ push: vi.fn<(path: string) => void>() }));
 vi.mock('next/navigation', () => ({
@@ -41,11 +42,13 @@ function renderEntry() {
 
 beforeEach(() => {
   useAuthStore.getState().clearTokens();
+  useCarpoolCreateStore.getState().reset();
   navigation.push.mockReset();
 });
 afterEach(() => {
   cleanup();
   useAuthStore.getState().clearTokens();
+  useCarpoolCreateStore.getState().reset();
   vi.restoreAllMocks();
 });
 
@@ -106,6 +109,22 @@ describe('매칭 등록 진입', () => {
     expect(navigation.push).toHaveBeenCalledExactlyOnceWith(path);
     expect(screen.getByRole('button', { name: '매칭 메뉴 열기' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: '로그인이 필요해요' })).not.toBeInTheDocument();
+  });
+
+  it('카풀 등록을 새로 시작할 때 초안과 임시 위치를 초기화한다', async () => {
+    useAuthStore.getState().setAccessToken('test-token');
+    useCarpoolCreateStore.getState().setOrigin({ name: '서울역', lat: 37.55, lng: 126.97 });
+    useCarpoolCreateStore.getState().setPendingLocation({
+      field: 'departure',
+      location: { name: '강남역', lat: 37.49, lng: 127.02 },
+      roadAddress: '강남대로',
+    });
+    renderEntry();
+    const user = await openMenu();
+    await user.click(screen.getByRole('button', { name: '카풀 등록' }));
+
+    expect(useCarpoolCreateStore.getState().draft.origin).toBeNull();
+    expect(useCarpoolCreateStore.getState().pendingLocation).toBeNull();
   });
 
   it.each(['카풀 등록', '택시팟 찾기'])(

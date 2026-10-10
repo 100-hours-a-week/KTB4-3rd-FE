@@ -104,6 +104,9 @@ describe('useRequireAuth', () => {
   });
 
   it.each([
+    '/carpools/new',
+    '/carpools/new/location',
+    '/carpools/new/location/adjust',
     '/taxi-pots/new',
     '/taxi-pots/new/location',
     '/taxi-pots/new/location/adjust',
