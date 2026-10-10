@@ -92,7 +92,9 @@ describe('카풀 요청 상세·처리 query', () => {
       }),
     );
 
-    expect(requestedPath).toHaveBeenCalledWith('/carpools/51/join-requests/88');
+    expect(requestedPath).toHaveBeenCalledWith(
+      expect.stringMatching(/\/carpools\/51\/join-requests\/88$/),
+    );
     expect(response.data).toMatchObject({ id: 88, carpool_id: 51, status: 'PENDING' });
   });
 

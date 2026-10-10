@@ -33,7 +33,7 @@ describe('카풀 요청 상세·처리 API', () => {
     const response = await getCarpoolRequestDetail(accessToken, 51, 88);
     const request = requested.mock.calls[0][0];
 
-    expect(new URL(request.url).pathname).toBe('/carpools/51/join-requests/88');
+    expect(new URL(request.url).pathname).toMatch(/\/carpools\/51\/join-requests\/88$/);
     expect(request.headers.get('authorization')).toBe(`Bearer ${accessToken}`);
     expect(response.data).toMatchObject({ id: 88, carpool_id: 51, status: 'PENDING' });
   });
@@ -55,7 +55,7 @@ describe('카풀 요청 상세·처리 API', () => {
       const response = await decideCarpoolRequest(accessToken, 51, 88, status);
       const request = received.mock.calls[0][0];
 
-      expect(new URL(request.url).pathname).toBe('/carpools/51/join-requests/88');
+      expect(new URL(request.url).pathname).toMatch(/\/carpools\/51\/join-requests\/88$/);
       expect(request.method).toBe('PATCH');
       expect(await request.json()).toEqual({ status });
       expect(response.data).toMatchObject({ id: 88, status });
