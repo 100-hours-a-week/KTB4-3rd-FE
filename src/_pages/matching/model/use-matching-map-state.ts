@@ -21,8 +21,7 @@ export function useMatchingMapState() {
 
   const onViewportChange = useCallback((viewport: MapViewport, source?: string) => {
     setMapViewport((current) => {
-      const shouldUpdate =
-        source === 'drag' || source === 'locate' || (source === 'initial' && current === null);
+      const shouldUpdate = source === 'drag' || (source === 'initial' && current === null);
       if (!shouldUpdate || (current && isSameQueryArea(current, viewport))) {
         return current;
       }
