@@ -10,17 +10,3 @@ export type CarpoolRequestDetail = {
 };
 
 export type CarpoolRequestDetailResponse = ApiResponse<CarpoolRequestDetail>;
-
-export type CarpoolRequestDecision = 'ACCEPTED' | 'REJECTED';
-
-export type CarpoolRequestDecisionData =
-  | {
-      id: number;
-      status: 'ACCEPTED';
-      chat_room_id: number;
-      current_count: number;
-      capacity: number;
-    }
-  | { id: number; status: 'REJECTED' };
-
-export type CarpoolRequestDecisionResponse = ApiResponse<CarpoolRequestDecisionData>;
