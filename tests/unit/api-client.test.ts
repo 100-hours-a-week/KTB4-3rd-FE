@@ -163,4 +163,38 @@ describe('apiFetch 인증 토큰 재시도', () => {
     expect(refreshRequestCount).toBe(1);
     expect(useAuthStore.getState().accessToken).toBeNull();
   });
+
+  it('토큰 갱신 뒤 실패한 요청도 서버 validation details를 보존한다', async () => {
+    server.use(
+      http.post('*/protected-validation', ({ request }) =>
+        request.headers.get('authorization') === `Bearer ${REFRESHED_ACCESS_TOKEN}`
+          ? HttpResponse.json(
+              {
+                message: '요청 값을 확인해주세요',
+                error: {
+                  code: 'VALIDATION_ERROR',
+                  field: 'content',
+                  details: [{ field: 'content', reason: 'LENGTH_OUT_OF_RANGE' }],
+                },
+              },
+              { status: 422 },
+            )
+          : unauthorizedResponse(),
+      ),
+      http.post('*/auth/tokens', () =>
+        HttpResponse.json({ data: { access_token: REFRESHED_ACCESS_TOKEN } }),
+      ),
+    );
+
+    useAuthStore.getState().setAccessToken(EXPIRED_ACCESS_TOKEN);
+
+    await expect(
+      apiFetch('/protected-validation', { method: 'POST', token: EXPIRED_ACCESS_TOKEN }),
+    ).rejects.toMatchObject({
+      status: 422,
+      code: 'VALIDATION_ERROR',
+      field: 'content',
+      details: [{ field: 'content', reason: 'LENGTH_OUT_OF_RANGE' }],
+    });
+  });
 });
