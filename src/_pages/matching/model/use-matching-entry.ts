@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRequireAuth } from '@/features/login-required';
+import { resetCarpoolRegistrationDraft } from '@/features/carpool-registration';
 
 export function useMatchingEntry() {
   const router = useRouter();
@@ -42,7 +43,12 @@ export function useMatchingEntry() {
   const openRegistration = useCallback(
     (path: '/carpools/new' | '/taxi-pots/new') => {
       setIsFabOpen(false);
-      requireAuth(() => router.push(path));
+      requireAuth(() => {
+        if (path === '/carpools/new') {
+          resetCarpoolRegistrationDraft();
+        }
+        router.push(path);
+      });
     },
     [requireAuth, router],
   );

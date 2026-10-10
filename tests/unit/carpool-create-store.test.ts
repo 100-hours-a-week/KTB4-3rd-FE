@@ -40,6 +40,11 @@ describe('useCarpoolCreateStore', () => {
     store.setDepartureDate('2026-11-01');
     store.setDepartureTime({ period: '오후', hour: 12, minute: 30 });
     store.setRecruitCount(2);
+    store.setPendingLocation({
+      field: 'destination',
+      location: { name: '판교역', lat: 37.4, lng: 127.1 },
+      roadAddress: '판교역로',
+    });
     store.reset();
 
     expect(useCarpoolCreateStore.getState().draft).toEqual({
@@ -49,5 +54,6 @@ describe('useCarpoolCreateStore', () => {
       departureTime: null,
       recruitCount: null,
     });
+    expect(useCarpoolCreateStore.getState().pendingLocation).toBeNull();
   });
 });

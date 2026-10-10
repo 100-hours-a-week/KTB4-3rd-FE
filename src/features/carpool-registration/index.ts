@@ -11,6 +11,8 @@ export {
   type CarpoolCreateDraft,
   type CarpoolCreateLocation,
   type CarpoolCreateState,
+  type CarpoolLocationField,
+  type CarpoolPendingLocation,
   type CarpoolRecruitCount,
 } from './model/carpool-create-store';
 export { resetCarpoolRegistrationDraft } from './model/carpool-registration-draft-lifecycle';
