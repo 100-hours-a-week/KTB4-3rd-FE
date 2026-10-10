@@ -64,6 +64,53 @@ describe('CarpoolRequestModal', () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
+  it('closes through the header button while idle', () => {
+    const onClose = vi.fn<() => void>();
+
+    render(
+      <CarpoolRequestModal
+        canAccept
+        canReject
+        onAccept={vi.fn<() => void>()}
+        onClose={onClose}
+        onReject={vi.fn<() => void>()}
+        open
+        processingAction={null}
+        request={request}
+        status="content"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: '닫기' }));
+
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('blocks backdrop, Escape, and close-button dismissal while a decision is processing', () => {
+    const onClose = vi.fn<() => void>();
+
+    render(
+      <CarpoolRequestModal
+        canAccept
+        canReject
+        onAccept={vi.fn<() => void>()}
+        onClose={onClose}
+        onReject={vi.fn<() => void>()}
+        open
+        processingAction="reject"
+        request={request}
+        status="content"
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
+  });
+
   it('shows retry for detail errors and hides when closed', () => {
     const onRetry = vi.fn<() => void>();
     const { rerender } = render(
