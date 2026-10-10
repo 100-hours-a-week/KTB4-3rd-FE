@@ -39,6 +39,45 @@ describe('CarpoolRequestModal', () => {
     fireEvent.click(screen.getByRole('button', { name: '수락' }));
     expect(onReject).toHaveBeenCalledOnce();
     expect(onAccept).toHaveBeenCalledOnce();
+    expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
+  });
+
+  it('disables only the accept action when accepting is unavailable', () => {
+    render(
+      <CarpoolRequestModal
+        canAccept={false}
+        canReject
+        onAccept={vi.fn<() => void>()}
+        onClose={vi.fn<() => void>()}
+        onReject={vi.fn<() => void>()}
+        open
+        processingAction={null}
+        request={request}
+        status="content"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '거절' })).toBeEnabled();
+  });
+
+  it('disables only the reject action when rejecting is unavailable', () => {
+    render(
+      <CarpoolRequestModal
+        canAccept
+        canReject={false}
+        onAccept={vi.fn<() => void>()}
+        onClose={vi.fn<() => void>()}
+        onReject={vi.fn<() => void>()}
+        open
+        processingAction={null}
+        request={request}
+        status="content"
+      />,
+    );
+
+    expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '수락' })).toBeEnabled();
   });
 
   it('keeps the dialog open and disables actions while a decision is processing', () => {
