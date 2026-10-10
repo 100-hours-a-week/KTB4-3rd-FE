@@ -1,10 +1,14 @@
 import { http, HttpResponse } from 'msw';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryClientProvider, type InfiniteData } from '@tanstack/react-query';
+import { createElement, type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { renderHook, waitFor } from '@testing-library/react';
 
 import {
   carpoolRequestListQueries,
   getCarpoolRequestList,
+  useCarpoolRequestListQuery,
+  type CarpoolRequestListResponse,
 } from '@/_pages/chat-list/api/carpool-requests';
 import { useAuthStore } from '@/entities/auth';
 import { server } from '@/shared/api/mocks/server';
@@ -171,5 +175,66 @@ describe('carpool request list API', () => {
 
     releaseResponse?.();
     await fetchResultHandled;
+  });
+
+  it('잘못된 다음 cursor면 해당 사용자와 방향의 캐시만 첫 페이지부터 다시 조회한다', async () => {
+    const requestedCursors: (string | null)[] = [];
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const otherDirectionQuery = carpoolRequestListQueries.list(7, 'SENT');
+    const otherViewerQuery = carpoolRequestListQueries.list(8, 'RECEIVED');
+    const otherDirectionData: InfiniteData<CarpoolRequestListResponse> = {
+      pages: [{ message: 'sent-cache', data: { direction: 'SENT', items: [], next_cursor: null } }],
+      pageParams: [undefined],
+    };
+    const otherViewerData: InfiniteData<CarpoolRequestListResponse> = {
+      pages: [
+        {
+          message: 'other-viewer-cache',
+          data: { direction: 'RECEIVED', items: [], next_cursor: null },
+        },
+      ],
+      pageParams: [undefined],
+    };
+    queryClient.setQueryData(otherDirectionQuery.queryKey, otherDirectionData);
+    queryClient.setQueryData(otherViewerQuery.queryKey, otherViewerData);
+
+    server.use(
+      http.get('*/users/me/carpool-requests', ({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+        requestedCursors.push(searchParams.get('cursor'));
+
+        if (searchParams.get('cursor')) {
+          return HttpResponse.json(
+            { message: '잘못된 커서입니다', error: { code: 'INVALID_CURSOR' } },
+            { status: 400 },
+          );
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { direction: 'RECEIVED', items: [], next_cursor: 'expired-cursor' },
+        });
+      }),
+    );
+
+    function QueryWrapper({ children }: { children: ReactNode }) {
+      return createElement(QueryClientProvider, { client: queryClient }, children);
+    }
+
+    const { result } = renderHook(
+      () => useCarpoolRequestListQuery({ direction: 'RECEIVED', enabled: true, viewerId: 7 }),
+      { wrapper: QueryWrapper },
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    await result.current.fetchNextPage().catch(() => undefined);
+
+    await waitFor(() => {
+      expect(requestedCursors).toEqual([null, 'expired-cursor', null]);
+      expect(result.current.isSuccess).toBe(true);
+      expect(result.current.data?.pages).toHaveLength(1);
+    });
+    expect(queryClient.getQueryData(otherDirectionQuery.queryKey)).toEqual(otherDirectionData);
+    expect(queryClient.getQueryData(otherViewerQuery.queryKey)).toEqual(otherViewerData);
   });
 });
