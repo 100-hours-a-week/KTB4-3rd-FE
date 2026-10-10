@@ -1,5 +1,6 @@
-import type { Post } from '@/entities/post';
 import type { ApiResponse } from '@/shared/api/types';
+
+import type { Post } from '@/entities/post/model/post';
 
 export type NearbyPost = Post;
 

@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { getMapPinMarkerImage } from '@/entities/map-pin';
+import { getMapPinMarkerImage, type MapPinItem as MapPin } from '@/entities/map-pin';
 import {
   PostList,
   PostDetailSkeleton,
@@ -30,7 +30,7 @@ import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
 import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
 import { useCurrentUserQuery } from '@/features/user-profile';
-import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
+import { useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import {
   type CompanionPostDetailData,

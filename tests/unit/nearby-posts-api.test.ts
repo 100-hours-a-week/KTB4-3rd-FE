@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getNearbyPosts } from '@/_pages/home/api/nearby-posts';
+import { getNearbyPosts } from '@/entities/post';
 
 describe('nearby posts API', () => {
   it('사용자 위치와 지도 영역 좌표로 주변 게시글을 조회한다', async () => {
