@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { ChatListPage } from '@/_pages/chat-list';
 import { useAuthStore } from '@/entities/auth';
+import { carpoolDetailQueryKeys } from '@/entities/carpool';
+import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
 import { SnackbarProvider } from '@/_app/providers';
 import {
   carpoolQueries,
@@ -111,6 +113,64 @@ afterEach(() => {
 });
 
 describe('채팅 내 받은 카풀 요청 처리', () => {
+  it('첫 페이지가 비어 있어도 다음 커서가 있으면 항목을 찾을 때까지 조회한다', async () => {
+    const user = userEvent.setup();
+    let releaseNextPage: (() => void) | undefined;
+    let markNextPageStarted: (() => void) | undefined;
+    const nextPageStarted = new Promise<void>((resolve) => {
+      markNextPageStarted = resolve;
+    });
+    const cursors: (string | null)[] = [];
+    const { Wrapper } = createWrapper();
+
+    server.use(
+      http.get('*/users/me/carpool-requests', async ({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+        const cursor = searchParams.get('cursor');
+        if (searchParams.get('direction') === 'RECEIVED') {
+          cursors.push(cursor);
+        }
+
+        if (cursor === null) {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction: 'RECEIVED', items: [], next_cursor: 'after-empty-page' },
+          });
+        }
+
+        if (cursor === 'after-empty-page') {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: {
+              direction: 'RECEIVED',
+              items: [],
+              next_cursor: 'after-second-empty-page',
+            },
+          });
+        }
+
+        markNextPageStarted?.();
+        await new Promise<void>((resolve) => (releaseNextPage = resolve));
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { direction: 'RECEIVED', items: [receivedItem], next_cursor: null },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await user.click(screen.getByRole('tab', { name: '받은 요청' }));
+    await nextPageStarted;
+
+    expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
+    expect(cursors).toEqual([null, 'after-empty-page', 'after-second-empty-page']);
+
+    releaseNextPage?.();
+    expect(await screen.findByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
+  });
+
   it('수락 성공 후 요청을 받은 목록에서 제거하고 카풀·채팅 조회 캐시를 갱신한다', async () => {
     const user = userEvent.setup();
     let receivedItems = [receivedItem];
@@ -127,6 +187,25 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     });
     const chatQuery = chatRoomListQueries.list({ kind: 'TAXI_POT' });
     const carpoolChatQuery = chatRoomListQueries.list({ kind: 'CARPOOL' });
+    const detailKey = carpoolDetailQueryKeys.detail(53, 7);
+    const requestDetailKey = carpoolRequestQueryKeys.detail(7, 53, 90);
+    queryClient.setQueryData(detailKey, {
+      message: '조회에 성공했습니다',
+      data: {
+        id: 53,
+        status: 'RECRUITING',
+        host: { id: 7, name: '방장', profile_image_url: null },
+        origin_name: '서울역',
+        dest_name: '판교역',
+        departure_at: '2026-10-10T09:40:00',
+        car_model: '아반떼',
+        current_count: 2,
+        capacity: 4,
+        is_full: false,
+        participants: [],
+      },
+    });
+    queryClient.setQueryData(requestDetailKey, detailResponse('상세 캐시 메시지'));
     const emptyPage: CarpoolRequestListResponse = {
       message: '조회에 성공했습니다',
       data: { direction: 'RECEIVED', items: [receivedItem], next_cursor: null },
@@ -181,7 +260,74 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       expect(queryClient.getQueryState(nearbyQuery.queryKey)?.isInvalidated).toBe(true);
       expect(queryClient.getQueryState(chatQuery.queryKey)?.isInvalidated).toBe(true);
       expect(queryClient.getQueryState(carpoolChatQuery.queryKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(true);
     });
+    expect(
+      queryClient.getQueryData<{ data: { status: string } }>(requestDetailKey)?.data.status,
+    ).toBe('ACCEPTED');
+  });
+
+  it('거절 성공 시 받은 목록과 요청 상세만 갱신하고 카풀·채팅 데이터는 유지한다', async () => {
+    const user = userEvent.setup();
+    let receivedItems = [receivedItem];
+    const { Wrapper, queryClient } = createWrapper();
+    const receivedQuery = carpoolRequestListQueries.list(7, 'RECEIVED');
+    const sentQuery = carpoolRequestListQueries.list(7, 'SENT');
+    const pinsQuery = carpoolQueries.pins({ sw_lat: 1, sw_lng: 2, ne_lat: 3, ne_lng: 4 });
+    const nearbyQuery = carpoolQueries.nearby({
+      sw_lat: 1,
+      sw_lng: 2,
+      ne_lat: 3,
+      ne_lng: 4,
+      lat: 2,
+      lng: 3,
+    });
+    const detailKey = carpoolDetailQueryKeys.detail(53, 7);
+    const requestDetailKey = carpoolRequestQueryKeys.detail(7, 53, 90);
+    const taxiChatQuery = chatRoomListQueries.list({ kind: 'TAXI_POT' });
+    const carpoolChatQuery = chatRoomListQueries.list({ kind: 'CARPOOL' });
+    for (const key of [
+      sentQuery.queryKey,
+      pinsQuery.queryKey,
+      nearbyQuery.queryKey,
+      detailKey,
+      taxiChatQuery.queryKey,
+      carpoolChatQuery.queryKey,
+    ]) {
+      queryClient.setQueryData(key, { pages: [], pageParams: [] });
+    }
+    queryClient.setQueryData(requestDetailKey, detailResponse('요청 메시지'));
+    server.use(
+      requestListHandler(() => receivedItems),
+      http.patch('*/carpools/53/join-requests/90', () => {
+        receivedItems = [];
+        return HttpResponse.json({
+          message: '요청을 거절했습니다',
+          data: { id: 90, status: 'REJECTED' },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await openReceivedRequests(user);
+    await user.click(await screen.findByRole('button', { name: '거절' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    await waitFor(() =>
+      expect(
+        queryClient.getQueryData<InfiniteData<CarpoolRequestListResponse>>(receivedQuery.queryKey)
+          ?.pages[0].data.items,
+      ).toEqual([]),
+    );
+    expect(queryClient.getQueryState(sentQuery.queryKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(pinsQuery.queryKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(nearbyQuery.queryKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(detailKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(taxiChatQuery.queryKey)?.isInvalidated).toBe(false);
+    expect(queryClient.getQueryState(carpoolChatQuery.queryKey)?.isInvalidated).toBe(false);
+    expect(
+      queryClient.getQueryData<{ data: { status: string } }>(requestDetailKey)?.data.status,
+    ).toBe('REJECTED');
   });
 
   it('거절 오류에서는 모달과 내용을 유지하고 다시 시도할 수 있다', async () => {

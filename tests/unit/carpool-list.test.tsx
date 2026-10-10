@@ -97,6 +97,13 @@ describe('CarPoolList', () => {
     });
     expect(observers[0].observe).toHaveBeenCalledWith(expect.any(HTMLDivElement));
   });
+  it('추가 페이지 실패 뒤에는 자동 조회를 멈추고 수동 재시도를 제공한다', async () => {
+    const props = content({ loadMoreError: true, canLoadMore: true });
+    render(<CarPoolList {...props} />);
+    expect(observers).toHaveLength(0);
+    await userEvent.click(screen.getByRole('button', { name: '다시 불러오기' }));
+    expect(props.onLoadMore).toHaveBeenCalledOnce();
+  });
   it('감지 영역이 보일 때만 조회하고 같은 Observer의 중복 이벤트를 막는다', () => {
     const props = content();
     render(<CarPoolList {...props} />);
