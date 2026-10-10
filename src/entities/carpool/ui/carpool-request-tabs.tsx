@@ -21,6 +21,17 @@ export function CarpoolRequestTabs({
   onValueChange,
   className,
 }: CarpoolRequestTabsProps) {
+  const focusNextTab = (current: HTMLButtonElement, direction: 1 | -1) => {
+    const tabs = Array.from(
+      current.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]') ?? [],
+    );
+    const index = tabs.indexOf(current);
+    if (index < 0 || tabs.length < 2) {
+      return;
+    }
+    tabs[(index + direction + tabs.length) % tabs.length]?.focus();
+  };
+
   return (
     <div
       aria-label="카풀 요청 방향"
@@ -44,6 +55,15 @@ export function CarpoolRequestTabs({
             onClick={() => {
               if (!selected) {
                 onValueChange(option.value);
+              }
+            }}
+            onKeyDown={(event) => {
+              if (disabled) {
+                return;
+              }
+              if (event.key === 'ArrowRight' || event.key === 'ArrowLeft') {
+                event.preventDefault();
+                focusNextTab(event.currentTarget, event.key === 'ArrowRight' ? 1 : -1);
               }
             }}
             role="tab"
