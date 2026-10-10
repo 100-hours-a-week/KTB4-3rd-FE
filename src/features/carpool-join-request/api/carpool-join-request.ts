@@ -18,10 +18,12 @@ export function createCarpoolJoinRequest(
   accessToken: string,
   companionId: number,
   payload: CreateCarpoolJoinRequestPayload,
+  signal?: AbortSignal,
 ): Promise<CreateCarpoolJoinRequestResponse> {
   return apiFetch<CreateCarpoolJoinRequestResponse>(`/carpools/${companionId}/join-requests`, {
     method: 'POST',
     token: accessToken,
     body: JSON.stringify(payload),
+    signal,
   });
 }
