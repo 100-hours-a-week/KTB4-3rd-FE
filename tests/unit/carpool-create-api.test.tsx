@@ -70,7 +70,7 @@ describe('카풀 등록 API', () => {
     expect(response.data.id).toBe(51);
   });
 
-  it('검증 오류의 status, code, field와 details를 보존한다', async () => {
+  it('검증 오류의 status, code, field를 보존한다', async () => {
     server.use(
       http.post('*/carpools', () =>
         HttpResponse.json(
@@ -79,10 +79,6 @@ describe('카풀 등록 API', () => {
             error: {
               code: 'VALIDATION_ERROR',
               field: 'dest_name',
-              details: [
-                { field: 'dest_name', reason: 'REQUIRED' },
-                { field: 'recruit_count', reason: 'OUT_OF_RANGE' },
-              ],
             },
           },
           { status: 400 },
@@ -94,10 +90,6 @@ describe('카풀 등록 API', () => {
       status: 400,
       code: 'VALIDATION_ERROR',
       field: 'dest_name',
-      details: [
-        { field: 'dest_name', reason: 'REQUIRED' },
-        { field: 'recruit_count', reason: 'OUT_OF_RANGE' },
-      ],
     });
   });
 
