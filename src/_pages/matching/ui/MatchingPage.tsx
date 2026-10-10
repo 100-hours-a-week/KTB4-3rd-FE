@@ -5,6 +5,7 @@ import { useMatchingMapState } from '../model/use-matching-map-state';
 import { MatchingPageView } from './matching-page-view';
 import { useCurrentUserQuery } from '@/features/user-profile';
 import { Map } from '@/shared/ui/map';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
 export function MatchingPage() {
   const currentUserQuery = useCurrentUserQuery();
@@ -14,27 +15,35 @@ export function MatchingPage() {
     useMatchingMapState();
 
   return (
-    <MatchingPageView
-      fabContainerRef={fabContainerRef}
-      isFabOpened={isFabOpen}
-      map={
-        <div aria-label="매칭 지도" className="h-full" data-list-ready={isListReady} role="region">
-          <Map
+    <>
+      <MatchingPageView
+        fabContainerRef={fabContainerRef}
+        isFabOpened={isFabOpen}
+        map={
+          <div
+            aria-label="매칭 지도"
             className="h-full"
-            locateOnMount
-            onUserLocationChange={onUserLocationChange}
-            onViewportChange={onViewportChange}
-            ref={mapRef}
-            showCurrentLocationButton={false}
-            showZoomControls={false}
-          />
-        </div>
-      }
-      onCarpoolClick={onCarpoolClick}
-      onCurrentLocationClick={onCurrentLocationClick}
-      onFabOpenChange={onFabOpenChange}
-      onTaxipotClick={onTaxipotClick}
-      user={currentUserQuery.data?.data}
-    />
+            data-list-ready={isListReady}
+            role="region"
+          >
+            <Map
+              className="h-full"
+              locateOnMount
+              onUserLocationChange={onUserLocationChange}
+              onViewportChange={onViewportChange}
+              ref={mapRef}
+              showCurrentLocationButton={false}
+              showZoomControls={false}
+            />
+          </div>
+        }
+        onCarpoolClick={onCarpoolClick}
+        onCurrentLocationClick={onCurrentLocationClick}
+        onFabOpenChange={onFabOpenChange}
+        onTaxipotClick={onTaxipotClick}
+        user={currentUserQuery.data?.data}
+      />
+      <SnackbarViewport className="fixed inset-x-0 bottom-4 z-[2147483647] mx-auto max-w-[393px] px-5" />
+    </>
   );
 }
