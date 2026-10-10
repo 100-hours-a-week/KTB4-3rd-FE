@@ -8,6 +8,7 @@ import {
   getAccessTokenForViewer,
   isCurrentVerifiedViewer,
 } from '@/entities/auth';
+import { carpoolRequestQueryKeys } from '@/entities/carpool';
 import { ApiError } from '@/shared/api/client';
 import {
   carpoolMutationQueryKeys,
@@ -110,6 +111,14 @@ async function applyConfirmedRequestStatus(
   );
 
   const invalidations = [queryClient.invalidateQueries({ queryKey: detailKey, exact: true })];
+
+  if (status !== 'PENDING') {
+    invalidations.push(
+      queryClient.invalidateQueries({
+        queryKey: carpoolRequestQueryKeys.listPrefix(viewerId),
+      }),
+    );
+  }
 
   if (status === 'ACCEPTED') {
     invalidations.push(

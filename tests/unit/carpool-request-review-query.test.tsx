@@ -4,6 +4,7 @@ import { type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 
+import { carpoolRequestQueryKeys } from '@/entities/carpool';
 import {
   carpoolRequestDecisionMutationKeys,
   type CarpoolRequestDecisionConfirmedHandler,
@@ -26,7 +27,7 @@ function createWrapper(queryClient: QueryClient) {
   };
 }
 
-function requestDetail(status: 'PENDING' | 'ACCEPTED' = 'PENDING') {
+function requestDetail(status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' = 'PENDING') {
   return {
     message: '조회에 성공했습니다',
     data: {
@@ -38,6 +39,29 @@ function requestDetail(status: 'PENDING' | 'ACCEPTED' = 'PENDING') {
       created_at: '2026-10-10T08:10:00.000Z',
     },
   };
+}
+
+const decisionVariables = { viewerId: 7, carpoolId: 51, requestId: 88 } as const;
+const listKey = (direction: 'SENT' | 'RECEIVED', viewerId = 7) =>
+  [...carpoolRequestQueryKeys.listPrefix(viewerId), direction] as const;
+const detailKey = (viewerId = 7) =>
+  carpoolRequestReviewQueries.detail({ ...decisionVariables, viewerId, enabled: true }).queryKey;
+const decisionResponse = (status: 'ACCEPTED' | 'REJECTED') =>
+  HttpResponse.json({
+    message: '요청을 처리했습니다',
+    data:
+      status === 'ACCEPTED'
+        ? { id: 88, status, chat_room_id: 620, current_count: 2, capacity: 4 }
+        : { id: 88, status },
+  });
+function renderDecisionMutation(
+  queryClient: QueryClient,
+  viewerId = 7,
+  options: { onDecisionConfirmed?: CarpoolRequestDecisionConfirmedHandler } = {},
+) {
+  return renderHook(() => useCarpoolRequestDecisionMutation(viewerId, options), {
+    wrapper: createWrapper(queryClient),
+  });
 }
 
 beforeEach(() => {
@@ -128,14 +152,10 @@ describe('카풀 요청 상세·처리 query', () => {
       const queryClient = new QueryClient({
         defaultOptions: { mutations: { retry: true }, queries: { retry: false } },
       });
-      const receivedKey = ['carpools', 'requests', { viewerId: 7 }, 'list', 'RECEIVED'] as const;
-      const sentKey = ['carpools', 'requests', { viewerId: 7 }, 'list', 'SENT'] as const;
-      const detailKey = carpoolRequestReviewQueries.detail({
-        viewerId: 7,
-        carpoolId: 51,
-        requestId: 88,
-        enabled: true,
-      }).queryKey;
+      const receivedKey = listKey('RECEIVED');
+      const sentKey = listKey('SENT');
+      const otherViewerKey = listKey('RECEIVED', 8);
+      const requestKey = detailKey();
       queryClient.setQueryData(receivedKey, {
         pages: [
           {
@@ -152,9 +172,8 @@ describe('카풀 요청 상세·처리 query', () => {
         pages: [{ data: { direction: 'SENT', items: [{ id: 88 }], next_cursor: null } }],
         pageParams: [undefined],
       });
-      queryClient.setQueryData(detailKey, {
-        ...requestDetail(),
-      });
+      queryClient.setQueryData(otherViewerKey, { pages: [], pageParams: [] });
+      queryClient.setQueryData(requestKey, requestDetail());
       const relatedKeys = [
         carpoolMutationQueryKeys.detail(7, 51),
         carpoolMutationQueryKeys.pins(),
@@ -163,32 +182,17 @@ describe('카풀 요청 상세·처리 query', () => {
       ];
       relatedKeys.forEach((queryKey) => queryClient.setQueryData(queryKey, { value: 'stale' }));
       const requestCount = vi.fn<() => void>();
-      const onDecisionConfirmed = vi.fn<CarpoolRequestDecisionConfirmedHandler>(async () => {
-        await queryClient.invalidateQueries({ queryKey: receivedKey });
-      });
+      const onDecisionConfirmed = vi.fn<CarpoolRequestDecisionConfirmedHandler>();
       server.use(
         http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
           requestCount();
-          return HttpResponse.json({
-            message: '요청을 수락했습니다',
-            data:
-              status === 'ACCEPTED'
-                ? { id: 88, status, chat_room_id: 620, current_count: 2, capacity: 4 }
-                : { id: 88, status },
-          });
+          return decisionResponse(status);
         }),
       );
-      const { result } = renderHook(
-        () => useCarpoolRequestDecisionMutation(7, { onDecisionConfirmed }),
-        {
-          wrapper: createWrapper(queryClient),
-        },
-      );
+      const { result } = renderDecisionMutation(queryClient, 7, { onDecisionConfirmed });
 
       await result.current.mutateAsync({
-        viewerId: 7,
-        carpoolId: 51,
-        requestId: 88,
+        ...decisionVariables,
         status,
       });
 
@@ -199,8 +203,10 @@ describe('카풀 요청 상세·처리 query', () => {
       expect(queryClient.getQueryData(sentKey)).toMatchObject({
         pages: [{ data: { items: [{ id: 88 }] } }],
       });
-      expect(queryClient.getQueryData(detailKey)).toMatchObject({ data: { status } });
+      expect(queryClient.getQueryData(requestKey)).toMatchObject({ data: { status } });
       expect(queryClient.getQueryState(receivedKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(sentKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryState(otherViewerKey)?.isInvalidated).toBe(false);
       expect(onDecisionConfirmed).toHaveBeenCalledWith(
         { viewerId: 7, carpoolId: 51, requestId: 88 },
         status,
@@ -226,9 +232,7 @@ describe('카풀 요청 상세·처리 query', () => {
         );
       }),
     );
-    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(7), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderDecisionMutation(queryClient);
 
     await expect(
       result.current.mutateAsync({
@@ -248,15 +252,10 @@ describe('카풀 요청 상세·처리 query', () => {
     server.use(
       http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
         patchCount();
-        return HttpResponse.json({
-          message: '요청을 처리했습니다',
-          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
-        });
+        return decisionResponse('ACCEPTED');
       }),
     );
-    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(8), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderDecisionMutation(queryClient, 8);
 
     await expect(
       result.current.mutateAsync({
@@ -278,15 +277,10 @@ describe('카풀 요청 상세·처리 query', () => {
     server.use(
       http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
         patchCount();
-        return HttpResponse.json({
-          message: '요청을 처리했습니다',
-          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
-        });
+        return decisionResponse('ACCEPTED');
       }),
     );
-    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(7), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderDecisionMutation(queryClient);
 
     await expect(
       result.current.mutateAsync({
@@ -338,16 +332,10 @@ describe('카풀 요청 상세·처리 query', () => {
       http.patch('*/carpools/:carpoolId/join-requests/:requestId', async () => {
         requestCount();
         await patchGate;
-        return HttpResponse.json({
-          message: '요청을 수락했습니다',
-          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
-        });
+        return decisionResponse('ACCEPTED');
       }),
     );
-    const { result } = renderHook(
-      () => useCarpoolRequestDecisionMutation(7, { onDecisionConfirmed }),
-      { wrapper: createWrapper(queryClient) },
-    );
+    const { result } = renderDecisionMutation(queryClient, 7, { onDecisionConfirmed });
 
     const pendingDecision = result.current.mutateAsync({
       viewerId: 7,
@@ -382,10 +370,7 @@ describe('카풀 요청 상세·처리 query', () => {
         }),
       ),
     );
-    const { result } = renderHook(
-      () => useCarpoolRequestDecisionMutation(7, { onDecisionConfirmed }),
-      { wrapper: createWrapper(queryClient) },
-    );
+    const { result } = renderDecisionMutation(queryClient, 7, { onDecisionConfirmed });
 
     await expect(
       result.current.mutateAsync({
@@ -411,16 +396,11 @@ describe('카풀 요청 상세·처리 query', () => {
       http.patch('*/carpools/:carpoolId/join-requests/:requestId', async () => {
         patchCount();
         await patchGate;
-        return HttpResponse.json({
-          message: '요청을 수락했습니다',
-          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
-        });
+        return decisionResponse('ACCEPTED');
       }),
     );
     const variables = { viewerId: 7, carpoolId: 51, requestId: 88 };
-    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(7), {
-      wrapper: createWrapper(queryClient),
-    });
+    const { result } = renderDecisionMutation(queryClient);
 
     const firstRequest = result.current.mutateAsync({ ...variables, status: 'ACCEPTED' });
     await waitFor(() => expect(patchCount).toHaveBeenCalledTimes(1));
@@ -434,73 +414,68 @@ describe('카풀 요청 상세·처리 query', () => {
     expect(Object.values(useCarpoolRequestDecisionStore.getState().inFlight)).toEqual([]);
   });
 
-  it('결과 불명확 시 PENDING 동안 반대 PATCH를 막고 확정 조회 후 잠금을 푼다', async () => {
-    const queryClient = new QueryClient({
-      defaultOptions: { mutations: { retry: true }, queries: { retry: false } },
-    });
-    const patchCount = vi.fn<() => void>();
-    const detailCount = vi.fn<() => void>();
-    let detailStatus: 'PENDING' | 'ACCEPTED' = 'PENDING';
-    const variables = { viewerId: 7, carpoolId: 51, requestId: 88 };
-    const receivedKey = ['carpools', 'requests', { viewerId: 7 }, 'list', 'RECEIVED'] as const;
-    queryClient.setQueryData(receivedKey, {
-      pages: [{ data: { direction: 'RECEIVED', items: [{ id: 88 }], next_cursor: null } }],
-      pageParams: [undefined],
-    });
-    server.use(
-      http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
-        patchCount();
-        return HttpResponse.json(
-          { message: '서버 오류가 발생했습니다', error: { code: 'INTERNAL_SERVER_ERROR' } },
-          { status: 500 },
-        );
-      }),
-      http.get('*/carpools/:carpoolId/join-requests/:requestId', () => {
-        detailCount();
-        return HttpResponse.json(requestDetail(detailStatus));
-      }),
-    );
-    const onDecisionConfirmed = vi.fn<CarpoolRequestDecisionConfirmedHandler>(async () => {
-      await queryClient.invalidateQueries({ queryKey: receivedKey });
-    });
-    const { result } = renderHook(
-      () => ({
-        mutation: useCarpoolRequestDecisionMutation(7, { onDecisionConfirmed }),
-        outcome: useCarpoolRequestDecisionOutcome(variables, { onDecisionConfirmed }),
-      }),
-      { wrapper: createWrapper(queryClient) },
-    );
+  it.each(['ACCEPTED', 'REJECTED', 'EXPIRED'] as const)(
+    '결과 불명확 시 PENDING 동안 반대 PATCH를 막고 %s 확정 조회 후 잠금을 푼다',
+    async (terminalStatus) => {
+      const queryClient = new QueryClient({
+        defaultOptions: { mutations: { retry: true }, queries: { retry: false } },
+      });
+      const patchCount = vi.fn<() => void>();
+      const detailCount = vi.fn<() => void>();
+      let detailStatus: 'PENDING' | typeof terminalStatus = 'PENDING';
+      const variables = decisionVariables;
+      const receivedKey = listKey('RECEIVED');
+      queryClient.setQueryData(receivedKey, {
+        pages: [{ data: { direction: 'RECEIVED', items: [{ id: 88 }], next_cursor: null } }],
+        pageParams: [undefined],
+      });
+      server.use(
+        http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
+          patchCount();
+          return HttpResponse.json(
+            { message: '서버 오류가 발생했습니다', error: { code: 'INTERNAL_SERVER_ERROR' } },
+            { status: 500 },
+          );
+        }),
+        http.get('*/carpools/:carpoolId/join-requests/:requestId', () => {
+          detailCount();
+          return HttpResponse.json(requestDetail(detailStatus));
+        }),
+      );
+      const onDecisionConfirmed = vi.fn<CarpoolRequestDecisionConfirmedHandler>();
+      const { result } = renderHook(
+        () => ({
+          mutation: useCarpoolRequestDecisionMutation(7, { onDecisionConfirmed }),
+          outcome: useCarpoolRequestDecisionOutcome(variables, { onDecisionConfirmed }),
+        }),
+        { wrapper: createWrapper(queryClient) },
+      );
 
-    await expect(
-      result.current.mutation.mutateAsync({ ...variables, status: 'ACCEPTED' }),
-    ).rejects.toMatchObject({
-      status: 500,
-    });
+      await expect(
+        result.current.mutation.mutateAsync({ ...variables, status: 'ACCEPTED' }),
+      ).rejects.toMatchObject({
+        status: 500,
+      });
 
-    expect(detailCount).toHaveBeenCalledTimes(1);
-    expect(onDecisionConfirmed).not.toHaveBeenCalled();
-    await expect(
-      result.current.mutation.mutateAsync({ ...variables, status: 'REJECTED' }),
-    ).rejects.toThrow('처리 결과를 확인한 뒤 다시 시도할 수 있습니다.');
-    expect(patchCount).toHaveBeenCalledTimes(1);
-    detailStatus = 'ACCEPTED';
-    await expect(result.current.outcome.checkOutcome()).resolves.toBe('ACCEPTED');
-    expect(detailCount).toHaveBeenCalledTimes(2);
-    expect(onDecisionConfirmed).toHaveBeenCalledWith(variables, 'ACCEPTED');
-    expect(result.current.outcome.isOutcomeUncertain).toBe(false);
-    expect(queryClient.getQueryData(receivedKey)).toMatchObject({
-      pages: [{ data: { items: [{ id: 88 }], next_cursor: null } }],
-    });
-    expect(queryClient.getQueryState(receivedKey)?.isInvalidated).toBe(true);
-    expect(
-      queryClient.getQueryData(
-        carpoolRequestReviewQueries.detail({
-          viewerId: 7,
-          carpoolId: 51,
-          requestId: 88,
-          enabled: true,
-        }).queryKey,
-      ),
-    ).toMatchObject({ data: { status: 'ACCEPTED' } });
-  });
+      expect(detailCount).toHaveBeenCalledTimes(1);
+      expect(queryClient.getQueryState(receivedKey)?.isInvalidated).toBe(false);
+      expect(onDecisionConfirmed).not.toHaveBeenCalled();
+      await expect(
+        result.current.mutation.mutateAsync({ ...variables, status: 'REJECTED' }),
+      ).rejects.toThrow('처리 결과를 확인한 뒤 다시 시도할 수 있습니다.');
+      expect(patchCount).toHaveBeenCalledTimes(1);
+      detailStatus = terminalStatus;
+      await expect(result.current.outcome.checkOutcome()).resolves.toBe(terminalStatus);
+      expect(detailCount).toHaveBeenCalledTimes(2);
+      expect(onDecisionConfirmed).toHaveBeenCalledWith(variables, terminalStatus);
+      expect(result.current.outcome.isOutcomeUncertain).toBe(false);
+      expect(queryClient.getQueryData(receivedKey)).toMatchObject({
+        pages: [{ data: { items: [{ id: 88 }], next_cursor: null } }],
+      });
+      expect(queryClient.getQueryState(receivedKey)?.isInvalidated).toBe(true);
+      expect(queryClient.getQueryData(detailKey())).toMatchObject({
+        data: { status: terminalStatus },
+      });
+    },
+  );
 });

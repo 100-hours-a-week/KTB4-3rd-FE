@@ -1,5 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
+import { carpoolRequestQueryKeys } from '@/entities/carpool';
 import { ApiError } from '@/shared/api/client';
 import { getAccessTokenForViewer } from '@/entities/auth';
 
@@ -12,19 +13,13 @@ export type CarpoolRequestDetailQuery = {
   enabled: boolean;
 };
 
-const carpoolRequestReviewQueryKeys = {
-  all: () => ['carpools', 'requests'] as const,
-  detail: (viewerId: number, carpoolId: number, requestId: number) =>
-    [...carpoolRequestReviewQueryKeys.all(), { viewerId }, 'detail', carpoolId, requestId] as const,
-};
-
 export const carpoolRequestReviewQueries = {
   detail: ({ viewerId, carpoolId, requestId, enabled }: CarpoolRequestDetailQuery) =>
     queryOptions({
       queryKey:
         viewerId !== null && carpoolId !== null && requestId !== null
-          ? carpoolRequestReviewQueryKeys.detail(viewerId, carpoolId, requestId)
-          : [...carpoolRequestReviewQueryKeys.all(), 'detail', 'disabled'],
+          ? carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId)
+          : [...carpoolRequestQueryKeys.all(), 'detail', 'disabled'],
       queryFn: async ({ signal }) => {
         if (viewerId === null || carpoolId === null || requestId === null) {
           throw new Error('요청 대상 정보가 없어 상세를 조회할 수 없습니다.');
