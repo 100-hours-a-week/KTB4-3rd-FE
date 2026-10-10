@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { carpoolRequestReviewQueries } from '@/features/carpool-request-review';
 import { useAuthStore } from '@/entities/auth';
+import { ApiError } from '@/shared/api/client';
 import { userProfileQueries } from '@/features/user-profile';
 import { server } from '@/shared/api/mocks/server';
 
@@ -30,6 +31,38 @@ afterEach(() => {
 });
 
 describe('카풀 요청 상세 query', () => {
+  it('오프라인에서도 실행하며 창 포커스 복귀 시 최신 상세를 다시 확인한다', () => {
+    const query = carpoolRequestReviewQueries.detail({
+      viewerId: 7,
+      carpoolId: 51,
+      requestId: 88,
+      enabled: true,
+    });
+
+    expect(query.networkMode).toBe('always');
+    expect(query.refetchOnWindowFocus).toBe(true);
+  });
+
+  it('권한·대상 오류는 다시 요청하지 않고 서버·네트워크 오류는 한 번 재시도한다', () => {
+    const retry = carpoolRequestReviewQueries.detail({
+      viewerId: 7,
+      carpoolId: 51,
+      requestId: 88,
+      enabled: true,
+    }).retry;
+
+    expect(typeof retry).toBe('function');
+    if (typeof retry !== 'function') {
+      throw new Error('retry 정책이 함수여야 합니다.');
+    }
+
+    expect(retry(0, new ApiError(403, { error: { code: 'HOST_ONLY' } }))).toBe(false);
+    expect(retry(0, new ApiError(404, { error: { code: 'CARPOOL_NOT_FOUND' } }))).toBe(false);
+    expect(retry(0, new ApiError(500, { error: { code: 'INTERNAL_SERVER_ERROR' } }))).toBe(true);
+    expect(retry(1, new ApiError(500, { error: { code: 'INTERNAL_SERVER_ERROR' } }))).toBe(false);
+    expect(retry(0, new TypeError('network error'))).toBe(true);
+  });
+
   it('상세 캐시를 사용자, 카풀, 요청 ID 조합으로 나누고 대상 정보가 없으면 비활성화한다', () => {
     const key = (viewerId: number, carpoolId: number, requestId: number) =>
       carpoolRequestReviewQueries.detail({ viewerId, carpoolId, requestId, enabled: true })

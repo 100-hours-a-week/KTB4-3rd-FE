@@ -11,6 +11,46 @@ export const carpoolRequestReviewHandlers = [
       );
     }
 
+    if (String(params.carpoolId) === '403') {
+      return HttpResponse.json(
+        {
+          message: '카풀 등록자만 처리할 수 있습니다',
+          error: { code: 'HOST_ONLY', field: null },
+        },
+        { status: 403 },
+      );
+    }
+
+    if (String(params.carpoolId) === '404') {
+      return HttpResponse.json(
+        {
+          message: '존재하지 않는 카풀입니다',
+          error: { code: 'CARPOOL_NOT_FOUND', field: null },
+        },
+        { status: 404 },
+      );
+    }
+
+    if (String(params.requestId) === '404') {
+      return HttpResponse.json(
+        {
+          message: '존재하지 않는 카풀 요청입니다',
+          error: { code: 'CARPOOL_REQUEST_NOT_FOUND', field: null },
+        },
+        { status: 404 },
+      );
+    }
+
+    if (String(params.carpoolId) === '500') {
+      return HttpResponse.json(
+        {
+          message: '서버 오류가 발생했습니다',
+          error: { code: 'INTERNAL_SERVER_ERROR', field: null },
+        },
+        { status: 500 },
+      );
+    }
+
     return HttpResponse.json({
       message: '조회에 성공했습니다',
       data: {

@@ -43,8 +43,9 @@ export const carpoolRequestReviewQueries = {
         return error instanceof TypeError && failureCount < 1;
       },
       retryDelay: 1_000,
+      networkMode: 'always',
       refetchOnMount: true,
-      refetchOnWindowFocus: false,
+      refetchOnWindowFocus: true,
       refetchOnReconnect: true,
       refetchInterval: false,
       placeholderData: undefined,
