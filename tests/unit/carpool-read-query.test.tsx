@@ -11,6 +11,7 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { carpoolQueries } from '@/shared/api/carpool';
+import { carpoolDetailQueries } from '@/features/carpool-detail';
 import { ApiError } from '@/shared/api/client';
 import { server } from '@/shared/api/mocks/server';
 
@@ -35,6 +36,74 @@ afterEach(() => {
 });
 
 describe('카풀 조회 query factory', () => {
+  it('카풀 상세 key는 viewerId로 나뉘고 명세된 최신성 정책을 사용한다', () => {
+    const guest = carpoolDetailQueries.detail({
+      carpoolId: 51,
+      viewerId: null,
+      isAuthenticated: false,
+      authReady: true,
+      enabled: true,
+    });
+    const viewer = carpoolDetailQueries.detail({
+      carpoolId: 51,
+      viewerId: 7,
+      isAuthenticated: true,
+      authReady: true,
+      enabled: true,
+    });
+
+    expect(guest.queryKey).toEqual(['carpools', 'detail', 51, { viewerId: null }]);
+    expect(viewer.queryKey).toEqual(['carpools', 'detail', 51, { viewerId: 7 }]);
+    expect(viewer).toMatchObject({
+      staleTime: 0,
+      gcTime: 300_000,
+      refetchOnMount: 'always',
+      refetchOnWindowFocus: 'always',
+      refetchOnReconnect: true,
+      refetchInterval: false,
+      retryDelay: 1_000,
+      enabled: true,
+    });
+    expect(viewer.placeholderData).toBeUndefined();
+  });
+
+  it.each([
+    { carpoolId: 51, viewerId: null, isAuthenticated: false, authReady: false, enabled: true },
+    { carpoolId: null, viewerId: null, isAuthenticated: false, authReady: true, enabled: true },
+    { carpoolId: 51, viewerId: null, isAuthenticated: true, authReady: true, enabled: true },
+    { carpoolId: 51, viewerId: 7, isAuthenticated: true, authReady: true, enabled: false },
+  ])('인증 초기화·선택·계정 확인이 끝나지 않으면 상세 조회를 막는다: %j', async (params) => {
+    let requestCount = 0;
+    server.use(
+      http.get('*/carpools/:carpoolId', () => {
+        requestCount++;
+        return HttpResponse.json({ message: '조회', data: {} });
+      }),
+    );
+    const queryClient = client();
+    const options = carpoolDetailQueries.detail(params);
+    const { result } = renderHook(() => useQuery(options), { wrapper: wrapper(queryClient) });
+    await act(async () => {});
+
+    expect(result.current.fetchStatus).toBe('idle');
+    expect(requestCount).toBe(0);
+  });
+
+  it('선택한 카풀의 상세를 조회하고 같은 사용자 key의 응답에 보관한다', async () => {
+    const queryClient = client();
+    const options = carpoolDetailQueries.detail({
+      carpoolId: 51,
+      viewerId: null,
+      isAuthenticated: false,
+      authReady: true,
+      enabled: true,
+    });
+    const response = await queryClient.fetchQuery(options);
+
+    expect(response.data.id).toBe(51);
+    expect(queryClient.getQueryData(options.queryKey)).toEqual(response);
+  });
+
   it('지도 영역이 없으면 두 조회를 실행하지 않는다', async () => {
     let count = 0;
     server.use(

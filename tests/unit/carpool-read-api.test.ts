@@ -2,6 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { describe, expect, it, vi } from 'vitest';
 
 import {
+  getCarpoolDetail,
   getCarpoolPins,
   getNearbyCarpools,
   type CarpoolViewport,
@@ -14,6 +15,63 @@ const viewport: CarpoolViewport = { sw_lat: 37.55, sw_lng: 126.96, ne_lat: 37.57
 const query: NearbyCarpoolsQuery = { ...viewport, lat: 37.5547, lng: 126.9707 };
 
 describe('카풀 공개 조회 API', () => {
+  it('상세 조회는 공개 접근을 허용하고 비로그인 응답의 my_request 생략을 보존한다', async () => {
+    const response = await getCarpoolDetail(51);
+
+    expect(response.data).toMatchObject({
+      id: 51,
+      status: 'RECRUITING',
+      host: { id: 7, name: '김우림' },
+      origin_name: '서울역',
+      dest_name: '판교역',
+      departure_at: '2026-10-10T09:40:00',
+      car_model: '아반떼',
+      current_count: 2,
+      capacity: 4,
+      is_full: false,
+      participants: [{ id: 7, name: '김우림', profile_image_url: null }],
+    });
+    expect('my_request' in response.data).toBe(false);
+  });
+
+  it('로그인 상세 조회에는 bearer token을 전달하고 내 요청을 포함한다', async () => {
+    let received: Request | undefined;
+    server.use(
+      http.get('*/carpools/51', ({ request }) => {
+        received = request;
+        return HttpResponse.json({
+          message: '조회',
+          data: {
+            id: 51,
+            status: 'RECRUITING',
+            host: { id: 7, name: '김우림', profile_image_url: null },
+            origin_name: '서울역',
+            dest_name: '판교역',
+            departure_at: '2026-10-10T09:40:00',
+            car_model: '아반떼',
+            current_count: 2,
+            capacity: 4,
+            is_full: false,
+            participants: [],
+            my_request: { id: 108, status: 'PENDING' },
+          },
+        });
+      }),
+    );
+
+    const response = await getCarpoolDetail(51, 'viewer-token');
+
+    expect(received?.headers.get('authorization')).toBe('Bearer viewer-token');
+    expect(response.data.my_request).toEqual({ id: 108, status: 'PENDING' });
+  });
+
+  it('존재하지 않는 상세의 404와 CARPOOL_NOT_FOUND를 전달한다', async () => {
+    await expect(getCarpoolDetail(999)).rejects.toMatchObject({
+      status: 404,
+      code: 'CARPOOL_NOT_FOUND',
+    });
+  });
+
   it('핀 요청에 반올림 없는 지도 좌표만 전달하고 인증 헤더를 넣지 않는다', async () => {
     const coords = { sw_lat: -37.1234567, sw_lng: -127.2345678, ne_lat: 0, ne_lng: 0.000001 };
     let received: Request | undefined;
