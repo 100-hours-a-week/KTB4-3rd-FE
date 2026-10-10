@@ -150,6 +150,17 @@ describe('CarpoolRequestModal', () => {
     expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
   });
 
+  it('can lock dismissal while request status is being checked', () => {
+    const onClose = vi.fn<() => void>();
+
+    render(<CarpoolRequestModal lockDismissal onClose={onClose} open status="loading" />);
+
+    expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByTestId('dialog-backdrop'));
+    fireEvent.keyDown(document, { key: 'Escape' });
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
   it('shows retry for detail errors and hides when closed', () => {
     const onRetry = vi.fn<() => void>();
     const { rerender } = render(

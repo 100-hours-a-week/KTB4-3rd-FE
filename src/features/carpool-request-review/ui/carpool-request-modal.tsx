@@ -25,12 +25,13 @@ export type RequestProcessingAction = 'accept' | 'reject' | null;
 type CarpoolRequestModalProps =
   | { open: false }
   | ({ open: true; onClose: () => void } & (
-      | { status: 'loading' }
+      | { status: 'loading'; lockDismissal?: boolean }
       | { status: 'error'; errorMessage?: string; onRetry: () => void }
       | {
           status: 'content';
           request: CarpoolRequestDetailView;
           processingAction: RequestProcessingAction;
+          notice?: string;
           canAccept: boolean;
           canReject: boolean;
           onAccept: () => void;
@@ -44,6 +45,8 @@ export function CarpoolRequestModal(props: CarpoolRequestModalProps) {
   }
 
   const processingAction = props.status === 'content' ? props.processingAction : null;
+  const dismissalLocked =
+    processingAction !== null || (props.status === 'loading' && props.lockDismissal === true);
   let content;
 
   if (props.status === 'loading') {
@@ -65,6 +68,7 @@ export function CarpoolRequestModal(props: CarpoolRequestModalProps) {
       <RequestContent
         canAccept={props.canAccept}
         canReject={props.canReject}
+        notice={props.notice}
         onAccept={props.onAccept}
         onReject={props.onReject}
         processingAction={props.processingAction}
@@ -76,14 +80,14 @@ export function CarpoolRequestModal(props: CarpoolRequestModalProps) {
   return (
     <Dialog
       buttons="none"
-      disablePointerDismissal={processingAction !== null}
+      disablePointerDismissal={dismissalLocked}
       onOpenChange={(open) => {
-        if (!open && processingAction === null) {
+        if (!open && !dismissalLocked) {
           props.onClose();
         }
       }}
       open
-      showCloseButton={processingAction === null}
+      showCloseButton={!dismissalLocked}
       title="카풀 요청 확인"
     >
       {content}
@@ -107,6 +111,7 @@ function RequestLoadingState() {
 type RequestContentProps = {
   canAccept: boolean;
   canReject: boolean;
+  notice?: string;
   onAccept: () => void;
   onReject: () => void;
   processingAction: RequestProcessingAction;
@@ -116,6 +121,7 @@ type RequestContentProps = {
 function RequestContent({
   canAccept,
   canReject,
+  notice,
   onAccept,
   onReject,
   processingAction,
@@ -125,6 +131,11 @@ function RequestContent({
 
   return (
     <div className="flex flex-col gap-6">
+      {notice ? (
+        <p aria-live="polite" className="text-sm text-[var(--color-fg-critical)]">
+          {notice}
+        </p>
+      ) : null}
       <div className="flex min-w-0 items-center gap-3">
         <Avatar
           alt={`${request.requester.name} 프로필`}
