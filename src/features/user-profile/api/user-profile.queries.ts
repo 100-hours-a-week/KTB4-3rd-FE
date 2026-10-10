@@ -8,9 +8,9 @@ export const userProfileQueries = {
   current: () =>
     queryOptions({
       queryKey: [...userProfileQueries.all(), 'current'] as const,
-      queryFn: async () => {
+      queryFn: async ({ signal }) => {
         const accessToken = await getAccessToken();
-        const response = await getCurrentUser(accessToken);
+        const response = await getCurrentUser(accessToken, signal);
         useAuthStore.getState().setVerifiedViewerId(accessToken, response.data.id);
         return response;
       },

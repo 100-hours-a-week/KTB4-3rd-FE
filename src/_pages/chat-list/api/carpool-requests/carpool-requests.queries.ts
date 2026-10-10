@@ -1,6 +1,6 @@
 import { infiniteQueryOptions } from '@tanstack/react-query';
 
-import { ApiError } from '@/shared/api/client';
+import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
 import { getCarpoolRequestList } from './get-carpool-request-list';
 import type { CarpoolRequestDirection } from './carpool-requests.types';
@@ -28,13 +28,7 @@ export const carpoolRequestListQueries = {
       networkMode: 'always',
       placeholderData: undefined,
       throwOnError: false,
-      retry: (failureCount, error) => {
-        if (error instanceof ApiError) {
-          return error.status >= 500 && error.status < 600 && failureCount < 1;
-        }
-
-        return error instanceof TypeError && failureCount < 1;
-      },
-      retryDelay: 1_000,
+      retry: shouldRetryApiQuery,
+      retryDelay: API_QUERY_RETRY_DELAY,
     }),
 };

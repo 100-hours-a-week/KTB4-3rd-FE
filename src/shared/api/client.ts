@@ -5,13 +5,20 @@ export type ApiErrorBody = {
   error?: {
     code?: string;
     field?: string | null;
+    details?: ApiErrorDetail[];
   };
+};
+
+export type ApiErrorDetail = {
+  field: string;
+  reason: string;
 };
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly field?: string | null;
+  readonly details?: ApiErrorDetail[];
 
   constructor(status: number, body?: ApiErrorBody) {
     super(body?.message ?? `API request failed with status ${status}`);
@@ -19,6 +26,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = body?.error?.code;
     this.field = body?.error?.field;
+    this.details = body?.error?.details;
   }
 }
 
