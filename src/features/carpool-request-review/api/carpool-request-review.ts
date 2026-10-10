@@ -14,9 +14,11 @@ export function getCarpoolRequestDetail(
   accessToken: string,
   carpoolId: number,
   requestId: number,
+  signal?: AbortSignal,
 ): Promise<CarpoolRequestDetailResponse> {
   return apiFetch<CarpoolRequestDetailResponse>(getRequestPath(carpoolId, requestId), {
     token: accessToken,
+    signal,
   });
 }
 
