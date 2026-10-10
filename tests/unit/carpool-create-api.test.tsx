@@ -1,8 +1,13 @@
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import {
+  QueryClient,
+  QueryClientProvider,
+  useInfiniteQuery,
+  useQuery,
+} from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, renderHook } from '@testing-library/react';
+import { cleanup, renderHook, waitFor } from '@testing-library/react';
 
 import {
   createCarpool,
@@ -10,8 +15,7 @@ import {
   type CarpoolCreatePayload,
 } from '@/features/carpool-create';
 import { useAuthStore } from '@/entities/auth';
-import { mapPinsQueries } from '@/entities/map-pin';
-import { nearbyPostsQueries } from '@/entities/post';
+import { carpoolQueries } from '@/shared/api/carpool';
 import { server } from '@/shared/api/mocks/server';
 
 const payload: CarpoolCreatePayload = {
@@ -29,6 +33,46 @@ function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
     return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
+}
+
+function deferred<T>() {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((yes) => {
+    resolve = yes;
+  });
+  return { promise, resolve };
+}
+
+const viewport = {
+  sw_lat: 37.3,
+  sw_lng: 127,
+  ne_lat: 37.6,
+  ne_lng: 127.2,
+};
+const nearbyConditions = {
+  ...viewport,
+  lat: 37.3945,
+  lng: 127.1112,
+};
+
+const pinsResponse = {
+  message: '조회에 성공했습니다',
+  data: { items: [], limit: 500, limit_exceeded: false },
+};
+const nearbyResponse = {
+  message: '조회에 성공했습니다',
+  data: { items: [], next_cursor: null },
+};
+
+function renderActiveCarpoolQueries(queryClient: QueryClient) {
+  return renderHook(
+    () => ({
+      pins: useQuery(carpoolQueries.pins(viewport)),
+      nearby: useInfiniteQuery(carpoolQueries.nearby(nearbyConditions)),
+      mutation: useCarpoolCreateMutation(),
+    }),
+    { wrapper: createWrapper(queryClient) },
+  );
 }
 
 beforeEach(() => {
@@ -114,30 +158,19 @@ describe('카풀 등록 API', () => {
     });
   });
 
-  it('등록 mutation은 재전송하지 않고 성공 뒤 활성 핀·주변 목록 캐시를 무효화한다', async () => {
+  it('등록 mutation은 재전송하지 않고 카풀 핀·주변 카풀 캐시를 무효화한다', async () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: true } },
     });
-    const mapPinsQuery = {
-      sw_lat: 37.3,
-      sw_lng: 127,
-      ne_lat: 37.6,
-      ne_lng: 127.2,
-    };
-    const nearbyPostsQuery = {
-      lat: 37.3945,
-      lng: 127.1112,
-      ...mapPinsQuery,
-    };
-    const pinsKey = mapPinsQueries.list(mapPinsQuery).queryKey;
-    const nearbyKey = nearbyPostsQueries.list(nearbyPostsQuery).queryKey;
+    const pinsKey = carpoolQueries.pins(viewport).queryKey;
+    const nearbyKey = carpoolQueries.nearby(nearbyConditions).queryKey;
     queryClient.setQueryData(pinsKey, {
       message: '조회 성공',
-      data: { items: [], limit: 0, limit_exceeded: false },
+      data: { items: [], limit: 500, limit_exceeded: false },
     });
     queryClient.setQueryData(nearbyKey, {
-      pages: [],
-      pageParams: [],
+      pages: [nearbyResponse],
+      pageParams: [undefined],
     });
     const requestCount = vi.fn<() => void>();
     server.use(
@@ -167,6 +200,78 @@ describe('카풀 등록 API', () => {
     expect(requestCount).toHaveBeenCalledTimes(1);
     expect(queryClient.getQueryState(pinsKey)?.isInvalidated).toBe(true);
     expect(queryClient.getQueryState(nearbyKey)?.isInvalidated).toBe(true);
+  });
+
+  it('카풀 재조회가 끝나기 전에 POST 성공을 확정하고 재조회 오류를 등록 실패로 바꾸지 않는다', async () => {
+    const queryClient = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: true } },
+    });
+    server.use(
+      http.get('*/carpool-pins', () => HttpResponse.json(pinsResponse)),
+      http.get('*/carpools', () => HttpResponse.json(nearbyResponse)),
+    );
+
+    const { result } = renderActiveCarpoolQueries(queryClient);
+    await waitFor(() => {
+      expect(result.current.pins.isSuccess).toBe(true);
+      expect(result.current.nearby.isSuccess).toBe(true);
+    });
+
+    const refetchGate = deferred<void>();
+    const refetchStarted = deferred<void>();
+    let refetchCount = 0;
+    const failAfterGate = async () => {
+      refetchCount += 1;
+      if (refetchCount === 2) {
+        refetchStarted.resolve();
+      }
+      await refetchGate.promise;
+      return HttpResponse.json(
+        { message: '요청 값을 확인해주세요', error: { code: 'VALIDATION_ERROR' } },
+        { status: 422 },
+      );
+    };
+    server.use(
+      http.get('*/carpool-pins', failAfterGate),
+      http.get('*/carpools', failAfterGate),
+      http.post('*/carpools', () =>
+        HttpResponse.json(
+          {
+            message: '카풀 등록을 성공했습니다',
+            data: {
+              id: 51,
+              chat_room_id: 620,
+              capacity: 4,
+              current_count: 1,
+              status: 'RECRUITING',
+            },
+          },
+          { status: 201 },
+        ),
+      ),
+    );
+
+    const mutationPromise = result.current.mutation.mutateAsync(payload);
+    await refetchStarted.promise;
+
+    let mutationFinished = false;
+    void mutationPromise.finally(() => {
+      mutationFinished = true;
+    });
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    const completedBeforeGet = mutationFinished;
+
+    refetchGate.resolve();
+    const mutationResponse = await mutationPromise;
+    await waitFor(() => {
+      expect(result.current.pins.isError).toBe(true);
+      expect(result.current.nearby.isError).toBe(true);
+    });
+
+    expect(completedBeforeGet).toBe(true);
+    expect(mutationResponse.data.id).toBe(51);
+    expect(queryClient.getMutationCache().getAll()[0]?.state.status).toBe('success');
+    queryClient.clear();
   });
 
   it('서버 오류에서 등록 요청을 자동 재전송하지 않는다', async () => {
