@@ -110,6 +110,29 @@ function readViewport(params: URLSearchParams) {
   return viewport;
 }
 export const carpoolReadHandlers = [
+  http.get('*/carpools/:carpoolId', ({ params, request }) => {
+    const carpoolId = Number(params.carpoolId);
+    if (carpoolId !== 51) {
+      return errorResponse('카풀을 찾을 수 없습니다', 'CARPOOL_NOT_FOUND', null, 404);
+    }
+    const data = {
+      id: carpoolId,
+      status: 'RECRUITING' as const,
+      host: { id: 7, name: '김우림', profile_image_url: null },
+      origin_name: '서울역',
+      dest_name: '판교역',
+      departure_at: '2026-10-10T09:40:00',
+      car_model: '아반떼',
+      current_count: 2,
+      capacity: 4,
+      is_full: false,
+      participants: [{ id: 7, name: '김우림', profile_image_url: null }],
+      ...(request.headers.has('authorization')
+        ? { my_request: { id: 108, status: 'PENDING' as const } }
+        : {}),
+    };
+    return HttpResponse.json({ message: '조회에 성공했습니다', data });
+  }),
   http.get('*/carpool-pins', ({ request }) => {
     const viewport = readViewport(new URL(request.url).searchParams);
     if (viewport instanceof Response) {
