@@ -1,8 +1,8 @@
 import { queryOptions } from '@tanstack/react-query';
 
 import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
-import { ApiError } from '@/shared/api/client';
 import { getAccessTokenForViewer } from '@/entities/auth';
+import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
 import { getCarpoolRequestDetail } from './carpool-request-review';
 
@@ -35,14 +35,8 @@ export const carpoolRequestReviewQueries = {
       enabled: enabled && viewerId !== null && carpoolId !== null && requestId !== null,
       staleTime: 0,
       gcTime: 300_000,
-      retry: (failureCount, error) => {
-        if (error instanceof ApiError) {
-          return error.status >= 500 && error.status < 600 && failureCount < 1;
-        }
-
-        return error instanceof TypeError && failureCount < 1;
-      },
-      retryDelay: 1_000,
+      retry: shouldRetryApiQuery,
+      retryDelay: API_QUERY_RETRY_DELAY,
       networkMode: 'always',
       refetchOnMount: true,
       refetchOnWindowFocus: true,
