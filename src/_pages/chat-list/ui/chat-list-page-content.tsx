@@ -2,7 +2,6 @@
 
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query';
 
 import {
   ChatList,
@@ -10,40 +9,18 @@ import {
   type ChatListTabValue,
   type ChatRoomListItem,
 } from '@/entities/chat';
-import {
-  CarpoolRequestTabs,
-  ChatCarpoolTabs,
-  type CarpoolReceivedRequest,
-  type CarpoolSentRequest,
-  type ChatCarpoolTab,
-  type CarpoolRequestDirection,
-} from '@/entities/carpool';
-import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
-import { useCurrentUserQuery } from '@/features/user-profile';
-import { ApiError } from '@/shared/api/client';
-import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { cn } from '@/shared/lib/cn';
-import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 import { ResultSection } from '@/shared/ui/result-section';
 import { ScrollFog, useScrollFog } from '@/shared/ui/scroll-fog';
-import {
-  useCarpoolRequestListQuery,
-  carpoolRequestListQueries,
-} from '@/_pages/chat-list/api/carpool-requests';
-import { useChatRoomListQuery } from '@/_pages/chat-list/api/chat-room-list';
-import { Text } from '@/shared/ui/text';
 
 import {
   DEFAULT_CHAT_LIST_STATES,
   type ChatListPageState,
   type ChatListPageStates,
 } from '@/_pages/chat-list/model/chat-list-state';
+import { useChatRoomListQuery } from '@/_pages/chat-list/api/chat-room-list';
 import { ChatListPageContentLoading } from './chat-list-page-loading';
-import {
-  CarpoolRequestListContent,
-  type CarpoolRequestListState,
-} from './carpool-request-list-content';
 
 export type ChatListPageContentProps = {
   className?: string;
@@ -73,7 +50,7 @@ function toChatListPageState(query: ReturnType<typeof useChatRoomListQuery>): Ch
   };
 }
 
-function ChatRoomListQueryContent() {
+export function ChatListPageContentWithQuery() {
   const router = useRouter();
   const matchingQuery = useChatRoomListQuery('matching');
   const communityQuery = useChatRoomListQuery('community');
@@ -123,189 +100,6 @@ function ChatRoomListQueryContent() {
       }}
       states={states}
     />
-  );
-}
-
-function CarpoolRequestListQueryContent({
-  direction,
-  isAuthenticated,
-  viewerId,
-}: {
-  direction: CarpoolRequestDirection;
-  isAuthenticated: boolean;
-  viewerId: number | null;
-}) {
-  const router = useRouter();
-  const queryClient = useQueryClient();
-  const query = useCarpoolRequestListQuery({
-    direction,
-    enabled: isAuthenticated,
-    viewerId,
-  });
-  const handledFetchError = useRef<unknown>(null);
-
-  useEffect(() => {
-    if (!query.isFetchNextPageError || !(query.error instanceof ApiError)) {
-      return;
-    }
-
-    if (handledFetchError.current === query.error) {
-      return;
-    }
-
-    handledFetchError.current = query.error;
-
-    if (query.error.code === 'INVALID_CURSOR' && viewerId !== null) {
-      const queryKey = carpoolRequestListQueries.list(viewerId, direction).queryKey;
-      void queryClient.resetQueries({ queryKey, exact: true });
-      useSnackbarStore
-        .getState()
-        .showSnackbar('요청 목록이 변경되어 처음부터 다시 불러옵니다.', 'critical');
-      return;
-    }
-
-    useSnackbarStore.getState().showSnackbar('요청 목록을 더 불러오지 못했어요.', 'critical');
-  }, [direction, query.error, query.isFetchNextPageError, queryClient, viewerId]);
-
-  useEffect(() => {
-    if (
-      !query.isRefetchError ||
-      query.data === undefined ||
-      query.error === handledFetchError.current
-    ) {
-      return;
-    }
-
-    handledFetchError.current = query.error;
-    useSnackbarStore.getState().showSnackbar('요청 목록을 새로 불러오지 못했어요.', 'critical');
-  }, [query.data, query.error, query.isRefetchError]);
-
-  let state: CarpoolRequestListState<CarpoolSentRequest | CarpoolReceivedRequest>;
-
-  if (!isAuthenticated || viewerId === null || (query.isPending && !query.data)) {
-    state = { status: 'loading' as const };
-  } else if (query.data === undefined) {
-    state = { status: 'error' as const, onRetry: () => void query.refetch() };
-  } else {
-    const items = query.data.pages.flatMap((page) => page.data.items);
-    const uniqueItems = items.filter(
-      (request, index) => items.findIndex((candidate) => candidate.id === request.id) === index,
-    );
-
-    state =
-      uniqueItems.length === 0
-        ? { status: 'empty' as const }
-        : {
-            status: 'content' as const,
-            items:
-              direction === 'SENT'
-                ? (uniqueItems as CarpoolSentRequest[])
-                : (uniqueItems as CarpoolReceivedRequest[]),
-            hasNextPage: query.hasNextPage,
-            isLoadingMore: query.isFetchingNextPage,
-            hasLoadMoreError: query.isFetchNextPageError,
-            canLoadMore:
-              query.hasNextPage &&
-              !query.isFetching &&
-              !query.isError &&
-              !query.isFetchNextPageError &&
-              isAuthenticated,
-            onLoadMore: () => {
-              if (query.hasNextPage && !query.isFetching) {
-                void query.fetchNextPage();
-              }
-            },
-            onRetryLoadMore: () => {
-              if (query.hasNextPage && !query.isFetching && isAuthenticated) {
-                void query.fetchNextPage();
-              }
-            },
-          };
-  }
-
-  const [selectedRequest, setSelectedRequest] = useState<CarpoolReceivedRequest | null>(null);
-  const selectedRequestIsOpen = selectedRequest !== null;
-  const onRequestClick = (carpoolId: number, requestId: number) => {
-    if (direction !== 'RECEIVED' || !query.data) {
-      return;
-    }
-
-    const request = query.data.pages
-      .flatMap((page) => page.data.items)
-      .find((item) => item.carpool_id === carpoolId && item.id === requestId);
-
-    if (request) {
-      setSelectedRequest(request as CarpoolReceivedRequest);
-    }
-  };
-
-  return (
-    <>
-      <CarpoolRequestListContent
-        direction={direction}
-        onChatClick={(chatRoomId) => {
-          router.push(`/chatroom/${chatRoomId}`);
-        }}
-        onRequestClick={onRequestClick}
-        state={state}
-      />
-      <Dialog
-        buttons="none"
-        description={selectedRequest?.content}
-        onOpenChange={(open) => {
-          if (!open) {
-            setSelectedRequest(null);
-          }
-        }}
-        open={selectedRequestIsOpen}
-        title={`${selectedRequest?.counterpart.name ?? '카풀'} 요청`}
-      >
-        {selectedRequest ? (
-          <div className="flex flex-col gap-3">
-            <Text as="p" color="fg.neutral" variant="t5Regular">
-              {selectedRequest.origin_name} → {selectedRequest.dest_name}
-            </Text>
-            <Text as="p" color="fg.neutralMuted" variant="t7Regular">
-              출발 시간:{' '}
-              {new Intl.DateTimeFormat('ko-KR', {
-                month: 'numeric',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit',
-                hourCycle: 'h23',
-                timeZone: 'Asia/Seoul',
-              }).format(new Date(selectedRequest.departure_at))}
-            </Text>
-          </div>
-        ) : null}
-      </Dialog>
-    </>
-  );
-}
-
-export function ChatListPageContentWithQuery() {
-  const isAuthenticated = useAuthStore(selectIsAuthenticated);
-  const currentUserQuery = useCurrentUserQuery();
-  const viewerId = currentUserQuery.data?.data.id ?? null;
-  const [activeTab, setActiveTab] = useState<ChatCarpoolTab>('chat');
-  const [direction, setDirection] = useState<CarpoolRequestDirection>('SENT');
-
-  return (
-    <section aria-label="채팅과 카풀 요청" className="flex min-h-0 flex-1 flex-col">
-      <ChatCarpoolTabs onValueChange={setActiveTab} value={activeTab} />
-      {activeTab === 'chat' ? (
-        <ChatRoomListQueryContent />
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col" data-testid="carpool-request-panel">
-          <CarpoolRequestTabs className="mt-6" onValueChange={setDirection} value={direction} />
-          <CarpoolRequestListQueryContent
-            direction={direction}
-            isAuthenticated={isAuthenticated}
-            viewerId={viewerId}
-          />
-        </div>
-      )}
-    </section>
   );
 }
 

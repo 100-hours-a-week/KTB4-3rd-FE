@@ -1,17 +1,6 @@
 export { chatRoomListQueries, getChatRoomList, useChatRoomListQuery } from './api/chat-room-list';
 export type { ChatRoomListQuery, ChatRoomListResponse } from './api/chat-room-list';
 export {
-  carpoolRequestListQueries,
-  getCarpoolRequestList,
-  isCarpoolRequestDirection,
-  useCarpoolRequestListQuery,
-} from './api/carpool-requests';
-export type {
-  CarpoolRequestListItemResponse,
-  CarpoolRequestListQuery,
-  CarpoolRequestListResponse,
-} from './api/carpool-requests';
-export {
   DEFAULT_CHAT_LIST_STATES,
   type ChatListPageState,
   type ChatListPageStates,

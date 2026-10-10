@@ -6,7 +6,6 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ChatListPage } from '@/_pages/chat-list';
-import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { server } from '@/shared/api/mocks/server';
 
@@ -54,11 +53,7 @@ function createWrapper() {
   });
 
   return function QueryWrapper({ children }: { children: ReactNode }) {
-    return (
-      <SnackbarProvider>
-        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
-      </SnackbarProvider>
-    );
+    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
   };
 }
 
@@ -126,72 +121,6 @@ describe('ChatListPage API 연결', () => {
     await user.click(await screen.findByRole('button', { name: /8시 판교역/ }));
 
     expect(navigation.push).toHaveBeenCalledWith('/chatroom/501');
-  });
-
-  it('카풀 탭에서 선택한 요청 방향만 조회하고 보낸 요청의 채팅방으로 이동한다', async () => {
-    const requestedDirections: string[] = [];
-    const user = userEvent.setup();
-
-    server.use(
-      http.get('*/users/me/carpool-requests', ({ request }) => {
-        const direction = new URL(request.url).searchParams.get('direction') ?? '';
-        requestedDirections.push(direction);
-
-        return HttpResponse.json({
-          message: '조회에 성공했습니다',
-          data: {
-            direction,
-            items:
-              direction === 'SENT'
-                ? [
-                    {
-                      id: 88,
-                      carpool_id: 51,
-                      status: 'ACCEPTED',
-                      content: '판교역에서 같이 가고 싶습니다!',
-                      counterpart: { id: 7, name: '김우림', profile_image_url: null },
-                      origin_name: '판교역',
-                      dest_name: '강남역',
-                      departure_at: '2026-10-12T08:30:00.000Z',
-                      chat_room_id: 620,
-                      created_at: '2026-10-10T08:10:00.000Z',
-                    },
-                  ]
-                : [
-                    {
-                      id: 90,
-                      carpool_id: 53,
-                      status: 'PENDING',
-                      content: '판교역 2번 출구에서 기다릴게요',
-                      counterpart: { id: 9, name: '이루디', profile_image_url: null },
-                      origin_name: '판교역',
-                      dest_name: '강남역',
-                      departure_at: '2026-10-12T08:30:00.000Z',
-                      created_at: '2026-10-10T08:05:00.000Z',
-                    },
-                  ],
-            next_cursor: null,
-          },
-        });
-      }),
-    );
-
-    render(<ChatListPage />, { wrapper: createWrapper() });
-
-    await waitFor(() => expect(requestedDirections).toEqual([]));
-    await user.click(screen.getByRole('tab', { name: '카풀' }));
-
-    expect(await screen.findByRole('button', { name: '채팅하기' })).toBeInTheDocument();
-    expect(requestedDirections).toEqual(['SENT']);
-
-    await user.click(screen.getByRole('tab', { name: '받은 요청' }));
-    expect(await screen.findByRole('button', { name: '요청 확인' })).toBeInTheDocument();
-    expect(requestedDirections).toEqual(['SENT', 'RECEIVED']);
-
-    await user.click(screen.getByRole('tab', { name: '보낸 요청' }));
-    await user.click(await screen.findByRole('button', { name: '채팅하기' }));
-
-    expect(navigation.push).toHaveBeenCalledWith('/chatroom/620');
   });
 
   it('조회 실패 시 기존 오류 상태와 재시도 동작을 사용한다', async () => {
