@@ -541,13 +541,14 @@ export function CarpoolRequestQueryContent({
     ) {
       return;
     }
+    invalidateReceivedRequests(queryClient, selected.viewerId);
     useSnackbarStore
       .getState()
       .showSnackbar(
         error.status === 403 ? '요청 정보를 볼 권한이 없어요.' : '요청이 이미 사라졌어요.',
         'critical',
       );
-  }, [detailQuery.error, selected]);
+  }, [detailQuery.error, queryClient, selected]);
 
   const handleRequestClick = useCallback(
     (carpoolId: number, requestId: number) => {

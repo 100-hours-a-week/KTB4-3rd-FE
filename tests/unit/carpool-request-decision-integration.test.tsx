@@ -531,4 +531,59 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' }) !== null).toBe(false),
     );
   });
+
+  it.each([
+    [403, 'HOST_ONLY', '요청 정보를 볼 권한이 없어요.'],
+    [404, 'CARPOOL_REQUEST_NOT_FOUND', '요청이 이미 사라졌어요.'],
+  ])(
+    '%i %s 상세 조회 실패 시 모달을 닫고 받은 요청 목록을 새로 조회한다',
+    async (status, code, message) => {
+      const user = userEvent.setup();
+      let receivedListRequestCount = 0;
+      let listRequestCountAtDetailError = 0;
+      let detailErrorReturned = false;
+      let patchCount = 0;
+      const { Wrapper } = createWrapper();
+
+      server.use(
+        http.get('*/users/me/carpool-requests', ({ request }) => {
+          const direction = new URL(request.url).searchParams.get('direction');
+          if (direction === 'RECEIVED') {
+            receivedListRequestCount += 1;
+          }
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: {
+              direction,
+              items: direction === 'RECEIVED' && !detailErrorReturned ? [receivedItem] : [],
+              next_cursor: null,
+            },
+          });
+        }),
+        http.get('*/carpools/53/join-requests/90', () => {
+          listRequestCountAtDetailError = receivedListRequestCount;
+          detailErrorReturned = true;
+          return HttpResponse.json(
+            { message: '요청 상세 조회에 실패했습니다', error: { code } },
+            { status },
+          );
+        }),
+        http.patch('*/carpools/53/join-requests/90', () => {
+          patchCount += 1;
+          return HttpResponse.json({ message: '처리했습니다' });
+        }),
+      );
+
+      render(<ChatListPage />, { wrapper: Wrapper });
+      await openReceivedRequests(user);
+
+      expect(await screen.findByText(message)).toBeInTheDocument();
+      await waitFor(() =>
+        expect(receivedListRequestCount).toBeGreaterThan(listRequestCountAtDetailError),
+      );
+      expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' })).not.toBeInTheDocument();
+      expect(screen.getByTestId('carpool-request-list-empty')).toBeInTheDocument();
+      expect(patchCount).toBe(0);
+    },
+  );
 });
