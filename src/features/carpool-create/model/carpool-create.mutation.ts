@@ -8,7 +8,7 @@ import {
   type CarpoolCreatePayload,
   type CarpoolCreateResponse,
 } from '@/features/carpool-create/api';
-import { carpoolQueryKeys } from '@/shared/api/carpool/carpool-query-keys';
+import { carpoolQueries } from '@/shared/api/carpool';
 
 export const carpoolCreateMutationKeys = {
   create: () => ['carpools', 'create'] as const,
@@ -20,14 +20,14 @@ export function useCarpoolCreateMutation() {
   return useMutation<CarpoolCreateResponse, Error, CarpoolCreatePayload>({
     mutationKey: carpoolCreateMutationKeys.create(),
     mutationFn: async (payload) => createCarpool(await getAccessToken(), payload),
-    onSuccess: async () => {
-      await Promise.allSettled([
+    onSuccess: () => {
+      void Promise.allSettled([
         queryClient.invalidateQueries({
-          queryKey: carpoolQueryKeys.pins(),
+          queryKey: carpoolQueries.pinsPrefix(),
           refetchType: 'active',
         }),
         queryClient.invalidateQueries({
-          queryKey: carpoolQueryKeys.nearby(),
+          queryKey: carpoolQueries.nearbyPrefix(),
           refetchType: 'active',
         }),
       ]);

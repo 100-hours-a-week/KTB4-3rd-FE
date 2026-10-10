@@ -28,12 +28,14 @@ const readPolicy = {
 
 export const carpoolQueries = {
   all: () => ['carpools'] as const,
+  pinsPrefix: () => [...carpoolQueries.all(), 'pins'] as const,
+  nearbyPrefix: () => [...carpoolQueries.all(), 'nearby'] as const,
   pins: (viewport: CarpoolViewport | null) => {
     const conditions = viewport ? copyViewport(viewport) : null;
     return queryOptions({
       ...readPolicy,
       gcTime: 120_000,
-      queryKey: [...carpoolQueries.all(), 'pins', conditions] as const,
+      queryKey: [...carpoolQueries.pinsPrefix(), conditions] as const,
       enabled: conditions !== null,
       queryFn: ({ signal }) => {
         if (!conditions) {
@@ -48,7 +50,7 @@ export const carpoolQueries = {
     return infiniteQueryOptions({
       ...readPolicy,
       gcTime: 300_000,
-      queryKey: [...carpoolQueries.all(), 'nearby', conditions] as const,
+      queryKey: [...carpoolQueries.nearbyPrefix(), conditions] as const,
       enabled: conditions !== null,
       initialPageParam: undefined as string | undefined,
       queryFn: ({ signal, pageParam }) => {

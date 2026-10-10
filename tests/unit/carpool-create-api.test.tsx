@@ -10,7 +10,8 @@ import {
   type CarpoolCreatePayload,
 } from '@/features/carpool-create';
 import { useAuthStore } from '@/entities/auth';
-import { carpoolQueryKeys } from '@/shared/api/carpool/carpool-query-keys';
+import { mapPinsQueries } from '@/entities/map-pin';
+import { nearbyPostsQueries } from '@/entities/post';
 import { server } from '@/shared/api/mocks/server';
 
 const payload: CarpoolCreatePayload = {
@@ -117,10 +118,27 @@ describe('카풀 등록 API', () => {
     const queryClient = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: true } },
     });
-    const pinsKey = [...carpoolQueryKeys.pins(), { sw_lat: 37, sw_lng: 127 }];
-    const nearbyKey = [...carpoolQueryKeys.nearby(), { sw_lat: 37, sw_lng: 127 }];
-    queryClient.setQueryData(pinsKey, { items: [] });
-    queryClient.setQueryData(nearbyKey, { pages: [] });
+    const mapPinsQuery = {
+      sw_lat: 37.3,
+      sw_lng: 127,
+      ne_lat: 37.6,
+      ne_lng: 127.2,
+    };
+    const nearbyPostsQuery = {
+      lat: 37.3945,
+      lng: 127.1112,
+      ...mapPinsQuery,
+    };
+    const pinsKey = mapPinsQueries.list(mapPinsQuery).queryKey;
+    const nearbyKey = nearbyPostsQueries.list(nearbyPostsQuery).queryKey;
+    queryClient.setQueryData(pinsKey, {
+      message: '조회 성공',
+      data: { items: [], limit: 0, limit_exceeded: false },
+    });
+    queryClient.setQueryData(nearbyKey, {
+      pages: [],
+      pageParams: [],
+    });
     const requestCount = vi.fn<() => void>();
     server.use(
       http.post('*/carpools', () => {

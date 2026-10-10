@@ -2,7 +2,7 @@ import type { ApiResponse } from '@/shared/api/types';
 
 export type MapPinType = 'COMPANION' | 'COMMUNITY';
 
-export type MapPin = {
+export type MapPinItem = {
   type: MapPinType;
   id: number;
   lat: number;
@@ -17,7 +17,7 @@ export type MapPinsQuery = {
 };
 
 export type MapPinsData = {
-  items: MapPin[];
+  items: MapPinItem[];
   limit: number;
   limit_exceeded: boolean;
 };
