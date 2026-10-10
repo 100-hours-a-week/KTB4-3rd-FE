@@ -541,7 +541,7 @@ export function CarpoolRequestQueryContent({
     ) {
       return;
     }
-    invalidateRelatedData(queryClient, selected.viewerId);
+    invalidateReceivedRequests(queryClient, selected.viewerId);
     useSnackbarStore
       .getState()
       .showSnackbar(
