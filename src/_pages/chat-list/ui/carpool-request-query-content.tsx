@@ -3,6 +3,7 @@
 import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+import { carpoolDetailQueryKeys } from '@/entities/carpool';
 import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
 import {
   AuthViewerMismatchError,
@@ -13,6 +14,7 @@ import { decideCarpoolRequest } from '@/features/carpool-request-decision';
 import {
   CarpoolRequestModal,
   useCarpoolRequestDetailQuery,
+  type CarpoolRequestDetailResponse,
   type RequestProcessingAction,
 } from '@/features/carpool-request-review';
 import { ApiError } from '@/shared/api/client';
@@ -47,6 +49,13 @@ type SelectedRequest = {
 const uncertainDecisionKeys = new Set<string>();
 const capacityBlockedAcceptKeys = new Map<string, number>();
 
+class DecisionResponseMismatchError extends Error {
+  constructor() {
+    super('요청 처리 응답이 선택한 요청과 일치하지 않습니다.');
+    this.name = 'DecisionResponseMismatchError';
+  }
+}
+
 function decisionKey(viewerId: number, carpoolId: number, requestId: number) {
   return `${viewerId}:${carpoolId}:${requestId}`;
 }
@@ -66,21 +75,71 @@ function previewDetail(request: CarpoolRequestListItemResponse) {
 }
 
 function isUncertainDecisionError(error: unknown) {
-  return error instanceof TypeError || (error instanceof ApiError && error.status >= 500);
+  return (
+    error instanceof DecisionResponseMismatchError ||
+    error instanceof TypeError ||
+    (error instanceof ApiError && error.status >= 500)
+  );
 }
 
-function invalidateRelatedData(queryClient: ReturnType<typeof useQueryClient>, viewerId: number) {
+function invalidateReceivedRequests(
+  queryClient: ReturnType<typeof useQueryClient>,
+  viewerId: number,
+) {
+  void queryClient.invalidateQueries({
+    queryKey: carpoolRequestListQueries.list(viewerId, 'RECEIVED').queryKey,
+    refetchType: 'active',
+  });
+}
+
+function invalidateAcceptedCarpoolData(
+  queryClient: ReturnType<typeof useQueryClient>,
+  carpoolId: number,
+  viewerId: number,
+) {
   void Promise.allSettled([
-    queryClient.invalidateQueries({ queryKey: carpoolRequestQueryKeys.listPrefix(viewerId) }),
-    queryClient.invalidateQueries({ queryKey: carpoolQueries.pinsPrefix() }),
-    queryClient.invalidateQueries({ queryKey: carpoolQueries.nearbyPrefix() }),
+    queryClient.invalidateQueries({ queryKey: carpoolQueries.pinsPrefix(), refetchType: 'active' }),
     queryClient.invalidateQueries({
-      queryKey: chatRoomListQueries.list({ kind: 'TAXI_POT' }).queryKey,
+      queryKey: carpoolQueries.nearbyPrefix(),
+      refetchType: 'active',
     }),
     queryClient.invalidateQueries({
-      queryKey: chatRoomListQueries.list({ kind: 'CARPOOL' }).queryKey,
+      queryKey: carpoolDetailQueryKeys.detail(carpoolId, viewerId),
+      refetchType: 'active',
+    }),
+    queryClient.invalidateQueries({
+      queryKey: chatRoomListQueries.all(),
+      refetchType: 'active',
     }),
   ]);
+}
+
+async function cancelDecisionReads(
+  queryClient: ReturnType<typeof useQueryClient>,
+  viewerId: number,
+  carpoolId: number,
+  requestId: number,
+  accepted: boolean,
+) {
+  const cancelRequests = [
+    queryClient.cancelQueries({
+      queryKey: carpoolRequestListQueries.list(viewerId, 'RECEIVED').queryKey,
+    }),
+    queryClient.cancelQueries({
+      queryKey: carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId),
+    }),
+  ];
+
+  if (accepted) {
+    cancelRequests.push(
+      queryClient.cancelQueries({ queryKey: carpoolQueries.pinsPrefix() }),
+      queryClient.cancelQueries({ queryKey: carpoolQueries.nearbyPrefix() }),
+      queryClient.cancelQueries({ queryKey: carpoolDetailQueryKeys.detail(carpoolId, viewerId) }),
+      queryClient.cancelQueries({ queryKey: chatRoomListQueries.all() }),
+    );
+  }
+
+  await Promise.all(cancelRequests);
 }
 
 function removeReceivedRequest(
@@ -109,6 +168,19 @@ function removeReceivedRequest(
       })),
     };
   });
+}
+
+function updateRequestDetailStatus(
+  queryClient: ReturnType<typeof useQueryClient>,
+  viewerId: number,
+  carpoolId: number,
+  requestId: number,
+  status: 'ACCEPTED' | 'REJECTED',
+) {
+  const queryKey = carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId);
+  queryClient.setQueryData<CarpoolRequestDetailResponse>(queryKey, (current) =>
+    current ? { ...current, data: { ...current.data, status } } : current,
+  );
 }
 
 export function CarpoolRequestQueryContent({
@@ -227,9 +299,22 @@ export function CarpoolRequestQueryContent({
       uncertainDecisionKeys.delete(key);
       if (result.data.data.status !== 'PENDING') {
         capacityBlockedAcceptKeys.delete(key);
+        removeReceivedRequest(queryClient, viewerId, selected.carpoolId, selected.requestId);
+        if (result.data.data.status === 'ACCEPTED' || result.data.data.status === 'REJECTED') {
+          updateRequestDetailStatus(
+            queryClient,
+            viewerId,
+            selected.carpoolId,
+            selected.requestId,
+            result.data.data.status,
+          );
+        }
         setSelected(null);
         setAwaitingReconciliation(false);
-        invalidateRelatedData(queryClient, viewerId);
+        invalidateReceivedRequests(queryClient, viewerId);
+        if (result.data.data.status === 'ACCEPTED') {
+          invalidateAcceptedCarpoolData(queryClient, selected.carpoolId, viewerId);
+        }
         useSnackbarStore
           .getState()
           .showSnackbar('요청 상태가 바뀌어 목록을 새로 확인했어요.', 'critical');
@@ -264,15 +349,39 @@ export function CarpoolRequestQueryContent({
       setNotice(undefined);
 
       try {
-        await mutation.mutateAsync({
+        const result = await mutation.mutateAsync({
           action,
           carpoolId: selected.carpoolId,
           requestId: selected.requestId,
         });
+        const expectedStatus = action === 'accept' ? 'ACCEPTED' : 'REJECTED';
+        if (result.data.id !== selected.requestId || result.data.status !== expectedStatus) {
+          throw new DecisionResponseMismatchError();
+        }
+        await cancelDecisionReads(
+          queryClient,
+          viewerId,
+          selected.carpoolId,
+          selected.requestId,
+          action === 'accept',
+        );
+        if (!isCurrentVerifiedViewer(viewerId)) {
+          throw new AuthViewerMismatchError();
+        }
         uncertainDecisionKeys.delete(key);
         capacityBlockedAcceptKeys.delete(key);
         removeReceivedRequest(queryClient, viewerId, selected.carpoolId, selected.requestId);
-        invalidateRelatedData(queryClient, viewerId);
+        updateRequestDetailStatus(
+          queryClient,
+          viewerId,
+          selected.carpoolId,
+          selected.requestId,
+          expectedStatus,
+        );
+        invalidateReceivedRequests(queryClient, viewerId);
+        if (action === 'accept') {
+          invalidateAcceptedCarpoolData(queryClient, selected.carpoolId, viewerId);
+        }
         setSelected(null);
         setAwaitingReconciliation(false);
         useSnackbarStore
@@ -286,7 +395,7 @@ export function CarpoolRequestQueryContent({
           uncertainDecisionKeys.delete(key);
           capacityBlockedAcceptKeys.delete(key);
           setSelected(null);
-          invalidateRelatedData(queryClient, viewerId);
+          invalidateReceivedRequests(queryClient, viewerId);
           useSnackbarStore
             .getState()
             .showSnackbar(
@@ -297,7 +406,7 @@ export function CarpoolRequestQueryContent({
           uncertainDecisionKeys.delete(key);
           capacityBlockedAcceptKeys.delete(key);
           setSelected(null);
-          invalidateRelatedData(queryClient, viewerId);
+          invalidateReceivedRequests(queryClient, viewerId);
           useSnackbarStore
             .getState()
             .showSnackbar(
@@ -316,7 +425,7 @@ export function CarpoolRequestQueryContent({
             uncertainDecisionKeys.delete(key);
             capacityBlockedAcceptKeys.delete(key);
             setSelected(null);
-            invalidateRelatedData(queryClient, viewerId);
+            invalidateReceivedRequests(queryClient, viewerId);
             useSnackbarStore
               .getState()
               .showSnackbar(
@@ -380,7 +489,11 @@ export function CarpoolRequestQueryContent({
 
     uncertainDecisionKeys.delete(currentDecisionKey);
     capacityBlockedAcceptKeys.delete(currentDecisionKey);
-    invalidateRelatedData(queryClient, selected.viewerId);
+    removeReceivedRequest(queryClient, selected.viewerId, selected.carpoolId, selected.requestId);
+    if (detailQuery.data?.data.status === 'ACCEPTED') {
+      invalidateAcceptedCarpoolData(queryClient, selected.carpoolId, selected.viewerId);
+    }
+    invalidateReceivedRequests(queryClient, selected.viewerId);
     useSnackbarStore.getState().showSnackbar('요청이 이미 처리되었어요.', 'critical');
   }, [currentDecisionKey, detailQuery.data, hasAuthoritativeDetail, queryClient, selected]);
 
