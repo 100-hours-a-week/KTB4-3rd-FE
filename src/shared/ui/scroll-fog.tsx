@@ -21,6 +21,11 @@ const INITIAL_SCROLL_FOG_STATE: ScrollFogState = {
 
 export function useScrollFog(contentKey?: string | number) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [observedScrollElement, setObservedScrollElement] = useState<HTMLDivElement | null>(null);
+  const attachScrollRef = useCallback((element: HTMLDivElement | null) => {
+    scrollRef.current = element;
+    setObservedScrollElement(element);
+  }, []);
   const [scrollFogState, setScrollFogState] = useState(INITIAL_SCROLL_FOG_STATE);
 
   const updateScrollFogState = useCallback(() => {
@@ -66,9 +71,9 @@ export function useScrollFog(contentKey?: string | number) {
       scrollElement.removeEventListener('scroll', updateScrollFogState);
       resizeObserver?.disconnect();
     };
-  }, [contentKey, updateScrollFogState]);
+  }, [contentKey, updateScrollFogState, observedScrollElement]);
 
-  return { scrollRef, ...scrollFogState };
+  return { scrollRef, attachScrollRef, ...scrollFogState };
 }
 
 export function ScrollFog({ showBottom = true, showTop = true }: ScrollFogProps) {
