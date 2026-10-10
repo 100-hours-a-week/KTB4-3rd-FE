@@ -8,6 +8,10 @@ import { createCarpoolJoinRequest } from '@/features/carpool-join-request';
 describe('carpool join request API', () => {
   it('인증 토큰, 정확한 경로, 원문 content로 요청한다', async () => {
     const content = '  참여하고 싶습니다\n시간 맞춰 갈게요  ';
+    const apiBasePath = new URL(
+      process.env.NEXT_PUBLIC_API_BASE_URL || '/api',
+      'http://localhost',
+    ).pathname.replace(/\/$/, '');
     let captured: { authorization: string | null; url: string; body: unknown } | undefined;
 
     server.use(
@@ -26,7 +30,7 @@ describe('carpool join request API', () => {
 
     expect(captured).toEqual({
       authorization: 'Bearer test-token',
-      url: '/carpools/42/join-requests',
+      url: `${apiBasePath}/carpools/42/join-requests`,
       body: { content },
     });
   });
