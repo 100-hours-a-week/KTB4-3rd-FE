@@ -40,9 +40,12 @@ export function MatchingFab({
       }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') {
-        onOpenChange(false);
+      if (event.key !== 'Escape' || event.defaultPrevented) {
+        return;
       }
+
+      event.preventDefault();
+      onOpenChange(false);
     };
 
     document.addEventListener('pointerdown', handlePointerDown);

@@ -8,35 +8,32 @@ import { Map } from '@/shared/ui/map';
 
 export function MatchingPage() {
   const currentUserQuery = useCurrentUserQuery();
-  const matchingEntry = useMatchingEntry();
-  const matchingMapState = useMatchingMapState();
+  const { fabContainerRef, isFabOpen, onCarpoolClick, onFabOpenChange, onTaxipotClick } =
+    useMatchingEntry();
+  const { isListReady, mapRef, onCurrentLocationClick, onUserLocationChange, onViewportChange } =
+    useMatchingMapState();
 
   return (
     <MatchingPageView
-      fabContainerRef={matchingEntry.fabContainerRef}
-      isFabOpened={matchingEntry.isFabOpen}
+      fabContainerRef={fabContainerRef}
+      isFabOpened={isFabOpen}
       map={
-        <div
-          aria-label="매칭 지도"
-          className="h-full"
-          data-list-ready={matchingMapState.isListReady}
-          role="region"
-        >
+        <div aria-label="매칭 지도" className="h-full" data-list-ready={isListReady} role="region">
           <Map
             className="h-full"
             locateOnMount
-            onUserLocationChange={matchingMapState.onUserLocationChange}
-            onViewportChange={matchingMapState.onViewportChange}
-            ref={matchingMapState.mapRef}
+            onUserLocationChange={onUserLocationChange}
+            onViewportChange={onViewportChange}
+            ref={mapRef}
             showCurrentLocationButton={false}
             showZoomControls={false}
           />
         </div>
       }
-      onCarpoolClick={matchingEntry.onCarpoolClick}
-      onCurrentLocationClick={matchingMapState.onCurrentLocationClick}
-      onFabOpenChange={matchingEntry.onFabOpenChange}
-      onTaxipotClick={matchingEntry.onTaxipotClick}
+      onCarpoolClick={onCarpoolClick}
+      onCurrentLocationClick={onCurrentLocationClick}
+      onFabOpenChange={onFabOpenChange}
+      onTaxipotClick={onTaxipotClick}
       user={currentUserQuery.data?.data}
     />
   );
