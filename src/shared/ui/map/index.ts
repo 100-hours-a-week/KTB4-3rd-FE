@@ -20,3 +20,4 @@ export type {
   MapViewportChangeSource,
   MapViewport,
 } from './model/map.types';
+export { DEFAULT_MAP_CENTER } from './model/map.utils';
