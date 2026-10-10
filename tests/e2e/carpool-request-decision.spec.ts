@@ -120,3 +120,62 @@ test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에�
   await expect(page.getByTestId('carpool-request-list-empty')).toBeVisible();
   await expect(page.getByRole('dialog', { name: '카풀 요청 확인' })).toHaveCount(0);
 });
+
+test('긴 받은 요청 메시지는 모바일 상세에서 읽을 수 있고 키보드 초점이 모달 안에서 순환한다', async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await mockSession(page);
+  const longContent = '판교역에서 함께 이동하고 싶어요. '.repeat(8);
+  await page.route('**/api/users/me/carpool-requests**', async (route) => {
+    const direction = new URL(route.request().url()).searchParams.get('direction');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: '조회에 성공했습니다',
+        data: {
+          direction,
+          items: direction === 'RECEIVED' ? [{ ...receivedRequest, content: longContent }] : [],
+          next_cursor: null,
+        },
+      }),
+    });
+  });
+  await page.route('**/api/carpools/53/join-requests/90', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: '조회에 성공했습니다',
+        data: {
+          id: 90,
+          carpool_id: 53,
+          status: 'PENDING',
+          content: longContent,
+          requester: { id: 9, name: '이루디', profile_image_url: null },
+          created_at: '2026-10-10T08:10:00.000Z',
+        },
+      }),
+    });
+  });
+
+  await page.goto('/chat');
+  await openReceivedRequests(page);
+
+  const dialog = page.getByRole('dialog', { name: '카풀 요청 확인' });
+  const closeButton = dialog.getByRole('button', { name: '닫기' });
+  const rejectButton = dialog.getByRole('button', { name: '거절' });
+  const acceptButton = dialog.getByRole('button', { name: '수락' });
+  await expect(dialog.getByText(longContent)).toBeVisible();
+  await expect(rejectButton).toBeVisible();
+  await expect(acceptButton).toBeVisible();
+
+  await closeButton.focus();
+  await page.keyboard.press('Tab');
+  await expect(rejectButton).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(acceptButton).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(closeButton).toBeFocused();
+});
