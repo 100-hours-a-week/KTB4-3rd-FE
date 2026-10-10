@@ -4,6 +4,7 @@ import { chatRoomWebSocketHandlers } from './chat-room-websocket.handlers';
 import { chatFeedbackHandlers } from './chat-feedback.handlers';
 import { carpoolJoinRequestHandlers } from './carpool-join-request.handlers';
 import { communityCommentsHandlers } from './community-comments.handlers';
+import { carpoolRequestDecisionHandlers } from './carpool-request-decision.handlers';
 import { healthHandlers } from './health.handlers';
 import { homeHandlers } from './home.handlers';
 import { joinCompanionHandlers } from './join-companion.handlers';
@@ -21,6 +22,7 @@ export const handlers = [
   ...chatFeedbackHandlers,
   ...carpoolJoinRequestHandlers,
   ...communityCommentsHandlers,
+  ...carpoolRequestDecisionHandlers,
   ...kakaoLoginHandlers,
   ...signupHandlers,
   ...postCreateHandlers,
