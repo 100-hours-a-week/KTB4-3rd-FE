@@ -46,7 +46,7 @@ describe('매칭 지도 조회 조건', () => {
     expect(result.current.mapViewport).toBe(nextViewport);
   });
 
-  it.each(['zoom', 'selection', 'locate', 'programmatic', undefined, 'unknown'])(
+  it.each(['zoom', 'selection', 'programmatic', undefined, 'unknown'])(
     '%s 이동은 준비 전이나 준비 후의 조회 영역을 변경하지 않는다',
     (source) => {
       const { result } = renderHook(useMatchingMapState);
@@ -76,16 +76,24 @@ describe('매칭 지도 조회 조건', () => {
     expect(result.current.mapViewport).toBe(changed);
   });
 
-  it('현재 위치 성공은 거리 기준만 변경하고 조회 영역은 유지한다', () => {
+  it('현재 위치 이동은 거리 기준과 지도 조회 영역을 함께 갱신한다', () => {
     const { result } = renderHook(useMatchingMapState);
     act(() => result.current.onViewportChange(viewport, 'initial'));
     const coordinate = { lat: 37.51, lng: 127.02 };
     act(() => result.current.onUserLocationChange(coordinate));
+    act(() => result.current.onViewportChange(nextViewport, 'locate'));
     expect(result.current.userLocation).toBe(coordinate);
     expect(result.current.distanceOrigin).toBe(coordinate);
-    expect(result.current.mapViewport).toBe(viewport);
+    expect(result.current.mapViewport).toBe(nextViewport);
     act(() => result.current.onUserLocationChange({ ...coordinate }));
     expect(result.current.userLocation).toBe(coordinate);
+  });
+
+  it('최초 조회 영역 확보 전의 현재 위치 이동도 초기 영역으로 반영한다', () => {
+    const { result } = renderHook(useMatchingMapState);
+    act(() => result.current.onViewportChange(nextViewport, 'locate'));
+    act(() => result.current.onViewportChange(viewport, 'initial'));
+    expect(result.current.mapViewport).toBe(nextViewport);
   });
 
   it('지도 준비 전 위치 성공도 조회 영역 없이 목록을 활성화하지 않는다', () => {
