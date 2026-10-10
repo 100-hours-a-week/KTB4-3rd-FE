@@ -71,4 +71,25 @@ describe('carpool join request API', () => {
       createCarpoolJoinRequest('mock-access-token', 2, { content: '참여 요청' }),
     ).rejects.toMatchObject({ status: 409, code: 'REQUEST_ALREADY_PENDING', field: null });
   });
+
+  it('200자를 초과한 메시지는 문서화된 길이 오류로 응답한다', async () => {
+    await expect(
+      createCarpoolJoinRequest('mock-access-token', 1, { content: '가'.repeat(201) }),
+    ).rejects.toMatchObject({ status: 400, code: 'VALIDATION_ERROR', field: 'content' });
+
+    const response = await fetch('/api/carpools/1/join-requests', {
+      method: 'POST',
+      headers: {
+        Authorization: 'Bearer mock-access-token',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ content: '가'.repeat(201) }),
+    });
+
+    await expect(response.json()).resolves.toMatchObject({
+      error: {
+        details: [{ field: 'content', reason: 'LENGTH_OUT_OF_RANGE' }],
+      },
+    });
+  });
 });

@@ -24,9 +24,26 @@ export const carpoolJoinRequestHandlers = [
     if (!payload || typeof payload.content !== 'string' || payload.content.length === 0) {
       return HttpResponse.json(
         {
-          message: '참여 요청 내용을 확인해 주세요',
-          error: { code: 'VALIDATION_ERROR', field: 'content' },
-          details: { reason: 'REQUIRED' },
+          message: '요청 메시지를 확인해주세요',
+          error: {
+            code: 'VALIDATION_ERROR',
+            field: 'content',
+            details: [{ field: 'content', reason: 'REQUIRED' }],
+          },
+        },
+        { status: 400 },
+      );
+    }
+
+    if (payload.content.length > 200) {
+      return HttpResponse.json(
+        {
+          message: '요청 메시지를 확인해주세요',
+          error: {
+            code: 'VALIDATION_ERROR',
+            field: 'content',
+            details: [{ field: 'content', reason: 'LENGTH_OUT_OF_RANGE' }],
+          },
         },
         { status: 400 },
       );
