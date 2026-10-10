@@ -54,6 +54,62 @@ describe('카풀 요청 표시 컴포넌트', () => {
     expect(onValueChange).toHaveBeenCalledWith('RECEIVED');
   });
 
+  it('요청 방향 탭은 방향키로 포커스를 순환하고 Enter로 선택한다', async () => {
+    const user = userEvent.setup();
+    const onValueChange = vi.fn<(value: 'SENT' | 'RECEIVED') => void>();
+    render(<CarpoolRequestTabs value="SENT" onValueChange={onValueChange} />);
+    const sentTab = screen.getByRole('tab', { name: '보낸 요청' });
+    const receivedTab = screen.getByRole('tab', { name: '받은 요청' });
+
+    expect(sentTab).toHaveAttribute('tabindex', '0');
+    expect(receivedTab).toHaveAttribute('tabindex', '-1');
+    sentTab.focus();
+    await user.keyboard('{ArrowRight}');
+
+    expect(receivedTab).toHaveFocus();
+    expect(onValueChange).not.toHaveBeenCalled();
+    await user.keyboard('{Enter}');
+    expect(onValueChange).toHaveBeenCalledWith('RECEIVED');
+
+    await user.keyboard('{ArrowRight}');
+    expect(sentTab).toHaveFocus();
+    await user.keyboard('{ArrowLeft}');
+    expect(receivedTab).toHaveFocus();
+  });
+
+  it('비활성화된 요청 방향 탭은 방향키로 포커스를 이동하지 않는다', async () => {
+    const user = userEvent.setup();
+    render(<CarpoolRequestTabs disabled value="SENT" onValueChange={() => undefined} />);
+    const sentTab = screen.getByRole('tab', { name: '보낸 요청' });
+    const receivedTab = screen.getByRole('tab', { name: '받은 요청' });
+    sentTab.focus();
+
+    await user.keyboard('{ArrowRight}');
+
+    expect(sentTab).toHaveFocus();
+    expect(receivedTab).toBeDisabled();
+  });
+
+  it('Tab은 선택된 요청 방향 탭에 진입한 뒤 탭 목록을 빠져나간다', async () => {
+    const user = userEvent.setup();
+    render(
+      <>
+        <button type="button">앞 요소</button>
+        <CarpoolRequestTabs value="SENT" onValueChange={() => undefined} />
+        <button type="button">뒤 요소</button>
+      </>,
+    );
+    const before = screen.getByRole('button', { name: '앞 요소' });
+    const sentTab = screen.getByRole('tab', { name: '보낸 요청' });
+    const after = screen.getByRole('button', { name: '뒤 요소' });
+
+    before.focus();
+    await user.tab();
+    expect(sentTab).toHaveFocus();
+    await user.tab();
+    expect(after).toHaveFocus();
+  });
+
   it('수락되고 채팅방이 있는 보낸 요청에만 채팅 callback을 연결한다', async () => {
     const user = userEvent.setup();
     const onChatClick = vi.fn<(chatRoomId: number) => void>();
