@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { carpoolRequestQueryKeys } from '@/entities/carpool';
+import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
 import { ApiError } from '@/shared/api/client';
 import { getAccessTokenForViewer } from '@/entities/auth';
 

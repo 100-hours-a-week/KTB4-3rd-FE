@@ -4,7 +4,7 @@ import { type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, renderHook, waitFor } from '@testing-library/react';
 
-import { carpoolRequestQueryKeys } from '@/entities/carpool';
+import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
 import {
   carpoolRequestDecisionMutationKeys,
   type CarpoolRequestDecisionConfirmedHandler,
