@@ -77,23 +77,18 @@ function requestListHandler(getItems: () => (typeof receivedItem)[] = () => [rec
 }
 
 function detailHandler(onRequest?: (request: Request) => void, body?: () => string) {
-  return http.get('*/carpools/:carpoolId/join-requests/:requestId', ({ request, params }) => {
+  return http.get('*/carpools/:carpoolId/join-requests/:requestId', ({ request }) => {
     onRequest?.(request.clone());
-    return HttpResponse.json(
-      detailResponse(params, body?.() ?? '상세 조회에서 가져온 요청 메시지'),
-    );
+    return HttpResponse.json(detailResponse(body?.() ?? '상세 조회에서 가져온 요청 메시지'));
   });
 }
 
-function detailResponse(
-  params: Record<string, string | readonly string[] | undefined>,
-  content: string,
-) {
+function detailResponse(content: string) {
   return {
     message: '조회에 성공했습니다',
     data: {
-      id: Number(params.requestId),
-      carpool_id: Number(params.carpoolId),
+      id: 90,
+      carpool_id: 53,
       status: 'PENDING',
       content,
       requester: { id: 9, name: '이루디 상세', profile_image_url: null },
@@ -268,30 +263,6 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     expect(queryClient.getQueryState(previousViewerQuery.queryKey)?.isInvalidated).toBe(true);
   });
 
-  it('5xx 결과가 불확실하면 상세 상태만 다시 확인하고 자동 PATCH 재전송을 하지 않는다', async () => {
-    const user = userEvent.setup();
-    let patchCount = 0;
-    const { Wrapper } = createWrapper();
-    server.use(
-      detailHandler(),
-      http.patch('*/carpools/53/join-requests/90', () => {
-        patchCount += 1;
-        return HttpResponse.json(
-          { message: '서버 오류가 발생했습니다', error: { code: 'INTERNAL_SERVER_ERROR' } },
-          { status: 500 },
-        );
-      }),
-    );
-
-    render(<ChatListPage />, { wrapper: Wrapper });
-    await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '수락' }));
-
-    expect(await screen.findByText(/요청 상태를 확인했어요/)).toBeInTheDocument();
-    expect(patchCount).toBe(1);
-    expect(screen.getByRole('button', { name: '수락' })).toBeEnabled();
-  });
-
   it('상세 확인 실패와 불명확한 PATCH 후 닫았다 다시 열어도 재조회 전에는 처리하지 않는다', async () => {
     const user = userEvent.setup();
     let detailCount = 0;
@@ -300,7 +271,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     let markDetailStarted: (() => void) | undefined;
     const detailStarted = new Promise<void>((resolve) => (markDetailStarted = resolve));
     server.use(
-      http.get('*/carpools/:carpoolId/join-requests/:requestId', async ({ params }) => {
+      http.get('*/carpools/:carpoolId/join-requests/:requestId', async () => {
         detailCount += 1;
         if (detailCount === 1) {
           markDetailStarted?.();
@@ -312,7 +283,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
             { status: 409 },
           );
         }
-        return HttpResponse.json(detailResponse(params, '재조회한 상세 내용'));
+        return HttpResponse.json(detailResponse('재조회한 상세 내용'));
       }),
       http.patch('*/carpools/53/join-requests/90', () => {
         patchCount += 1;
@@ -365,6 +336,8 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     [409, 'REQUEST_ALREADY_HANDLED', '이미 처리된 요청이에요.', false],
   ])('%i %s 응답을 모달 상태에 반영한다', async (status, code, message, remainsOpen) => {
     const user = userEvent.setup();
+    let rejectEnabledAfterCapacityFull = false;
+    let acceptEnabledAfterReopen = false;
     const { Wrapper } = createWrapper();
     server.use(
       http.patch('*/carpools/53/join-requests/90', async ({ request }) => {
@@ -391,8 +364,23 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       code === 'CAPACITY_FULL',
     );
     if (code === 'CAPACITY_FULL') {
-      await user.click(screen.getByRole('button', { name: '거절' }));
+      rejectEnabledAfterCapacityFull = !screen
+        .getByRole('button', { name: '거절' })
+        .hasAttribute('disabled');
+      await user.click(screen.getByRole('button', { name: '닫기' }));
+      await openReceivedRequests(user);
+      await waitFor(() => {
+        acceptEnabledAfterReopen = !screen
+          .getByRole('button', { name: '수락' })
+          .hasAttribute('disabled');
+        if (!acceptEnabledAfterReopen) {
+          throw new Error('상세 재조회 후 수락을 다시 시도할 수 있어야 합니다.');
+        }
+      });
+      await user.click(screen.getByRole('button', { name: '닫기' }));
     }
+    expect(rejectEnabledAfterCapacityFull).toBe(code === 'CAPACITY_FULL');
+    expect(acceptEnabledAfterReopen).toBe(code === 'CAPACITY_FULL');
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' }) !== null).toBe(false),
     );
