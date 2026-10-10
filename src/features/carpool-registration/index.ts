@@ -14,7 +14,7 @@ export {
   type CarpoolRecruitCount,
 } from './model/carpool-create-store';
 export {
-  getCarpoolRegistrationDraftRevision,
+  getCarpoolRegistrationDraftSnapshot,
   resetCarpoolRegistrationDraft,
   resetCarpoolRegistrationDraftIfUnchanged,
 } from './model/carpool-registration-draft-lifecycle';

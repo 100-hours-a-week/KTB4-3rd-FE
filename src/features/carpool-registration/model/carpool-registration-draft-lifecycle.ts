@@ -1,17 +1,13 @@
-import { useCarpoolCreateStore } from './carpool-create-store';
+import { useCarpoolCreateStore, type CarpoolCreateDraft } from './carpool-create-store';
 
-export function resetCarpoolRegistrationDraft() {
-  useCarpoolCreateStore.getState().reset();
-}
+export const resetCarpoolRegistrationDraft = () => useCarpoolCreateStore.getState().reset();
 
-export function getCarpoolRegistrationDraftRevision() {
-  return useCarpoolCreateStore.getState().draftRevision;
-}
+export const getCarpoolRegistrationDraftSnapshot = () => useCarpoolCreateStore.getState().draft;
 
-export function resetCarpoolRegistrationDraftIfUnchanged(revision: number) {
+export function resetCarpoolRegistrationDraftIfUnchanged(snapshot: CarpoolCreateDraft) {
   const state = useCarpoolCreateStore.getState();
 
-  if (state.draftRevision !== revision) {
+  if (state.draft !== snapshot) {
     return false;
   }
 
