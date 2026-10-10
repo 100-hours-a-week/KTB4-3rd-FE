@@ -8,7 +8,7 @@ export const userProfileQueries = {
   current: () =>
     queryOptions({
       queryKey: [...userProfileQueries.all(), 'current'] as const,
-      queryFn: async () => getCurrentUser(await getAccessToken()),
+      queryFn: async ({ signal }) => getCurrentUser(await getAccessToken(), signal),
       refetchOnMount: 'always' as const,
     }),
 };
