@@ -17,6 +17,7 @@ export type BottomSheetProps = {
   open?: boolean;
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onOpenChangeComplete?: (open: boolean) => void;
 
   snapPoints?: BottomSheetSnapPoint[];
   defaultSnapPoint?: BottomSheetSnapPoint | null;
@@ -121,6 +122,7 @@ export function BottomSheet({
   open,
   defaultOpen,
   onOpenChange,
+  onOpenChangeComplete,
   snapPoints,
   defaultSnapPoint,
   snapPoint,
@@ -213,6 +215,7 @@ export function BottomSheet({
       defaultSnapPoint={resolvedDefaultSnapPoint}
       modal={modal}
       onOpenChange={handleOpenChange}
+      onOpenChangeComplete={onOpenChangeComplete}
       onSnapPointChange={handleSnapPointChange}
       open={open}
       snapPoint={activeSnapPoint}

@@ -16,6 +16,36 @@ describe('BottomSheet', () => {
     expect(screen.getByText('게시글 목록')).toBeInTheDocument();
   });
 
+  it('열기와 닫기가 완료될 때 현재 상태를 전달하고 다시 열어도 한 번씩 호출한다', async () => {
+    const onOpenChangeComplete = vi.fn<(open: boolean) => void>();
+    const sheet = (open: boolean) => (
+      <BottomSheet open={open} onOpenChangeComplete={onOpenChangeComplete} title="게시글">
+        <p>콘텐츠</p>
+      </BottomSheet>
+    );
+    const { rerender } = render(sheet(false));
+
+    expect(onOpenChangeComplete).not.toHaveBeenCalled();
+
+    rerender(sheet(true));
+    await waitFor(() => {
+      expect(onOpenChangeComplete.mock.calls).toEqual([[true]]);
+    });
+    expect(screen.getByRole('dialog', { name: '게시글' })).toBeInTheDocument();
+
+    rerender(sheet(false));
+    await waitFor(() => {
+      expect(onOpenChangeComplete.mock.calls).toEqual([[true], [false]]);
+    });
+    expect(screen.queryByRole('dialog', { name: '게시글' })).not.toBeInTheDocument();
+
+    rerender(sheet(true));
+    await waitFor(() => {
+      expect(onOpenChangeComplete.mock.calls).toEqual([[true], [false], [true]]);
+    });
+    expect(screen.getByRole('dialog', { name: '게시글' })).toBeInTheDocument();
+  });
+
   it('does not render a description when it is omitted', () => {
     render(
       <BottomSheet open title="제목">
