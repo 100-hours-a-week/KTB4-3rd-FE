@@ -15,7 +15,7 @@ export const carpoolRequestListQueries = {
           throw new Error('로그인 사용자 정보를 확인한 뒤 요청 목록을 조회할 수 있습니다.');
         }
 
-        return getCarpoolRequestList({ direction, cursor: pageParam, signal });
+        return getCarpoolRequestList({ direction, cursor: pageParam, signal, viewerId });
       },
       initialPageParam: undefined as string | undefined,
       getNextPageParam: (lastPage) => lastPage.data.next_cursor ?? undefined,

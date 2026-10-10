@@ -1,4 +1,8 @@
-import { getAccessToken } from '@/entities/auth';
+import {
+  AuthViewerMismatchError,
+  getAccessTokenForViewer,
+  isCurrentVerifiedViewer,
+} from '@/entities/auth';
 import { ApiError, apiFetch } from '@/shared/api/client';
 
 import type {
@@ -10,9 +14,10 @@ import type {
 export async function getCarpoolRequestList({
   direction,
   cursor,
+  viewerId,
   signal,
 }: CarpoolRequestListQuery) {
-  const accessToken = await getAccessToken();
+  const accessToken = await getAccessTokenForViewer(viewerId);
   const searchParams = new URLSearchParams({ direction });
 
   if (cursor) {
@@ -23,6 +28,10 @@ export async function getCarpoolRequestList({
     `/users/me/carpool-requests?${searchParams.toString()}`,
     { token: accessToken, signal },
   );
+
+  if (!isCurrentVerifiedViewer(viewerId)) {
+    throw new AuthViewerMismatchError();
+  }
 
   if (response.data.direction !== direction) {
     throw new ApiError(502, {

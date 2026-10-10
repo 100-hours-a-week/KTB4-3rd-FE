@@ -10,7 +10,9 @@ import { useAuthStore } from '@/entities/auth';
 import { server } from '@/shared/api/mocks/server';
 
 beforeEach(() => {
-  useAuthStore.getState().setAccessToken('mock-access-token');
+  const authStore = useAuthStore.getState();
+  authStore.setAccessToken('mock-access-token');
+  authStore.setVerifiedViewerId('mock-access-token', 7);
 });
 
 afterEach(() => {
@@ -37,7 +39,7 @@ describe('carpool request list API', () => {
       }),
     );
 
-    await getCarpoolRequestList({ direction: 'SENT' });
+    await getCarpoolRequestList({ viewerId: 7, direction: 'SENT' });
 
     expect(requestedQuery).toHaveBeenCalledWith({ direction: 'SENT', cursor: null });
   });
@@ -61,7 +63,7 @@ describe('carpool request list API', () => {
       }),
     );
 
-    await getCarpoolRequestList({ direction: 'RECEIVED', cursor: 'next-page' });
+    await getCarpoolRequestList({ viewerId: 7, direction: 'RECEIVED', cursor: 'next-page' });
 
     expect(requestedQuery).toHaveBeenCalledWith({ direction: 'RECEIVED', cursor: 'next-page' });
   });
@@ -76,7 +78,7 @@ describe('carpool request list API', () => {
       ),
     );
 
-    await expect(getCarpoolRequestList({ direction: 'SENT' })).rejects.toMatchObject({
+    await expect(getCarpoolRequestList({ viewerId: 7, direction: 'SENT' })).rejects.toMatchObject({
       status: 502,
       code: 'INVALID_RESPONSE_DIRECTION',
     });
@@ -89,6 +91,49 @@ describe('carpool request list API', () => {
     expect(carpoolRequestListQueries.list(7, 'SENT').queryKey).not.toEqual(
       carpoolRequestListQueries.list(7, 'RECEIVED').queryKey,
     );
+  });
+
+  it('현재 로그인 사용자와 viewerId가 일치하면 요청 목록을 조회한다', async () => {
+    await expect(getCarpoolRequestList({ viewerId: 7, direction: 'SENT' })).resolves.toMatchObject({
+      data: { direction: 'SENT' },
+    });
+  });
+
+  it('현재 로그인 사용자와 viewerId가 다르면 조회를 거부한다', async () => {
+    await expect(getCarpoolRequestList({ viewerId: 8, direction: 'SENT' })).rejects.toMatchObject({
+      name: 'AuthViewerMismatchError',
+    });
+  });
+
+  it('요청 중 계정이 바뀌면 이전 계정 응답을 반환하지 않는다', async () => {
+    let releaseResponse: (() => void) | undefined;
+    let markRequestStarted: (() => void) | undefined;
+    const responseGate = new Promise<void>((resolve) => {
+      releaseResponse = resolve;
+    });
+    const requestStarted = new Promise<void>((resolve) => {
+      markRequestStarted = resolve;
+    });
+
+    server.use(
+      http.get('*/users/me/carpool-requests', async () => {
+        markRequestStarted?.();
+        await responseGate;
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { direction: 'SENT', items: [], next_cursor: null },
+        });
+      }),
+    );
+
+    const request = getCarpoolRequestList({ viewerId: 7, direction: 'SENT' });
+    await requestStarted;
+    useAuthStore.getState().setAccessToken('next-access-token');
+    useAuthStore.getState().setVerifiedViewerId('next-access-token', 8);
+    releaseResponse?.();
+
+    await expect(request).rejects.toMatchObject({ name: 'AuthViewerMismatchError' });
   });
 
   it('query 취소 신호를 목록 fetch까지 전달한다', async () => {
