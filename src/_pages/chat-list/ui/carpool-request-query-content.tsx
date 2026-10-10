@@ -139,6 +139,29 @@ export function CarpoolRequestQueryContent({
     enabled: selected !== null && isAuthenticated,
   });
 
+  const {
+    data: requestListData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetching,
+  } = query;
+  const loadedItems = requestListData?.pages.flatMap((page) => page.data.items) ?? [];
+  const loadedPageCount = requestListData?.pages.length ?? 0;
+
+  useEffect(() => {
+    if (loadedItems.length === 0 && hasNextPage && !isFetching && !isFetchNextPageError) {
+      void fetchNextPage();
+    }
+  }, [
+    fetchNextPage,
+    loadedItems.length,
+    loadedPageCount,
+    hasNextPage,
+    isFetchNextPageError,
+    isFetching,
+  ]);
+
   const currentDecisionKey = selected
     ? decisionKey(selected.viewerId, selected.carpoolId, selected.requestId)
     : null;
@@ -445,7 +468,7 @@ export function CarpoolRequestQueryContent({
   } else if (query.data === undefined) {
     state = { status: 'error', onRetry: () => void query.refetch() };
   } else {
-    const allItems = query.data.pages.flatMap((page) => page.data.items);
+    const allItems = loadedItems;
     const items = allItems.filter(
       (request, index) =>
         allItems.findIndex(
@@ -453,26 +476,31 @@ export function CarpoolRequestQueryContent({
         ) === index,
     );
 
-    state =
-      items.length === 0
-        ? { status: 'empty' }
-        : {
-            status: 'content',
-            items,
-            hasNextPage: query.hasNextPage,
-            isLoadingMore: query.isFetchingNextPage,
-            hasLoadMoreError: query.isFetchNextPageError,
-            onLoadMore: () => {
-              if (query.hasNextPage && !query.isFetching) {
-                void query.fetchNextPage();
-              }
-            },
-            onRetryLoadMore: () => {
-              if (query.hasNextPage && !query.isFetching && query.isFetchNextPageError) {
-                void query.fetchNextPage();
-              }
-            },
-          };
+    if (items.length === 0 && query.hasNextPage && query.isFetchNextPageError) {
+      state = { status: 'error', onRetry: () => void query.fetchNextPage() };
+    } else if (items.length === 0 && query.hasNextPage) {
+      state = { status: 'loading' };
+    } else if (items.length === 0) {
+      state = { status: 'empty' };
+    } else {
+      state = {
+        status: 'content',
+        items,
+        hasNextPage: query.hasNextPage,
+        isLoadingMore: query.isFetchingNextPage,
+        hasLoadMoreError: query.isFetchNextPageError,
+        onLoadMore: () => {
+          if (query.hasNextPage && !query.isFetching) {
+            void query.fetchNextPage();
+          }
+        },
+        onRetryLoadMore: () => {
+          if (query.hasNextPage && !query.isFetching && query.isFetchNextPageError) {
+            void query.fetchNextPage();
+          }
+        },
+      };
+    }
   }
 
   const detail = detailQuery.isError ? undefined : detailQuery.data?.data;
