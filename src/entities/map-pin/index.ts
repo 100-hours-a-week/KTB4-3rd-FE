@@ -12,3 +12,4 @@ export {
   type RoutePinProps,
   type StandaloneMapPinProps,
 } from './ui/map-pin';
+export { CarpoolPin, getCarpoolPinMarkerImage, type CarpoolPinProps } from './ui/carpool-pin';
