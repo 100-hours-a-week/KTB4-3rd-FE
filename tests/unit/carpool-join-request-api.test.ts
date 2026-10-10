@@ -49,6 +49,20 @@ describe('carpool join request API', () => {
     });
   });
 
+  it('전달된 AbortSignal로 요청을 취소할 수 있다', async () => {
+    const controller = new AbortController();
+    controller.abort();
+
+    await expect(
+      createCarpoolJoinRequest(
+        'mock-access-token',
+        1,
+        { content: '같이 이동하고 싶어요' },
+        controller.signal,
+      ),
+    ).rejects.toMatchObject({ name: 'AbortError' });
+  });
+
   it('등록된 mock 응답은 Location 헤더에 새 요청 경로를 담는다', async () => {
     const response = await fetch('/api/carpools/1/join-requests', {
       method: 'POST',
