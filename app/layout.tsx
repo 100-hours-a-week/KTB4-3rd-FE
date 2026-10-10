@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 
 import {
   AuthBootstrapProvider,
+  CarpoolRequestAuthCacheSync,
   ClarityProvider,
   LoginRequiredProvider,
   MockApiProvider,
@@ -42,6 +43,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
           <ClarityProvider>
             <MockApiProvider>
               <QueryProvider>
+                <CarpoolRequestAuthCacheSync />
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
