@@ -113,6 +113,64 @@ afterEach(() => {
 });
 
 describe('채팅 내 받은 카풀 요청 처리', () => {
+  it('첫 페이지가 비어 있어도 다음 커서가 있으면 항목을 찾을 때까지 조회한다', async () => {
+    const user = userEvent.setup();
+    let releaseNextPage: (() => void) | undefined;
+    let markNextPageStarted: (() => void) | undefined;
+    const nextPageStarted = new Promise<void>((resolve) => {
+      markNextPageStarted = resolve;
+    });
+    const cursors: (string | null)[] = [];
+    const { Wrapper } = createWrapper();
+
+    server.use(
+      http.get('*/users/me/carpool-requests', async ({ request }) => {
+        const searchParams = new URL(request.url).searchParams;
+        const cursor = searchParams.get('cursor');
+        if (searchParams.get('direction') === 'RECEIVED') {
+          cursors.push(cursor);
+        }
+
+        if (cursor === null) {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction: 'RECEIVED', items: [], next_cursor: 'after-empty-page' },
+          });
+        }
+
+        if (cursor === 'after-empty-page') {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: {
+              direction: 'RECEIVED',
+              items: [],
+              next_cursor: 'after-second-empty-page',
+            },
+          });
+        }
+
+        markNextPageStarted?.();
+        await new Promise<void>((resolve) => (releaseNextPage = resolve));
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { direction: 'RECEIVED', items: [receivedItem], next_cursor: null },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await user.click(screen.getByRole('tab', { name: '받은 요청' }));
+    await nextPageStarted;
+
+    expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
+    expect(cursors).toEqual([null, 'after-empty-page', 'after-second-empty-page']);
+
+    releaseNextPage?.();
+    expect(await screen.findByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
+  });
+
   it('수락 성공 후 요청을 받은 목록에서 제거하고 카풀·채팅 조회 캐시를 갱신한다', async () => {
     const user = userEvent.setup();
     let receivedItems = [receivedItem];
