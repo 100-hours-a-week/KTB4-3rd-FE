@@ -18,6 +18,7 @@ import {
 } from '@/shared/api/carpool-mutation-query-keys';
 import { server } from '@/shared/api/mocks/server';
 import { useCarpoolRequestDecisionStore } from '@/features/carpool-request-review/model/carpool-request-decision-store';
+import { userProfileQueries } from '@/features/user-profile';
 
 function createWrapper(queryClient: QueryClient) {
   return function Wrapper({ children }: { children: ReactNode }) {
@@ -41,6 +42,7 @@ function requestDetail(status: 'PENDING' | 'ACCEPTED' = 'PENDING') {
 
 beforeEach(() => {
   useAuthStore.getState().setAccessToken('mock-access-token');
+  useAuthStore.getState().setVerifiedViewerId('mock-access-token', 7);
 });
 
 afterEach(() => {
@@ -98,6 +100,28 @@ describe('카풀 요청 상세·처리 query', () => {
     expect(response.data).toMatchObject({ id: 88, carpool_id: 51, status: 'PENDING' });
   });
 
+  it('현재 사용자 응답으로 access token에 연결된 viewerId를 검증한다', async () => {
+    useAuthStore.getState().setVerifiedViewerId('mock-access-token', 999);
+    server.use(
+      http.get('*/users/me', () =>
+        HttpResponse.json({
+          message: '내 정보 조회에 성공했습니다',
+          data: {
+            id: 7,
+            name: '이루디',
+            profile_image_url: null,
+            email: 'rudi@example.com',
+          },
+        }),
+      ),
+    );
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
+    await queryClient.fetchQuery(userProfileQueries.current());
+
+    expect(useAuthStore.getState().verifiedViewerId).toBe(7);
+  });
+
   it.each(['ACCEPTED', 'REJECTED'] as const)(
     '%s 성공 시 확정 callback을 호출하고 상세 상태를 반영한다',
     async (status) => {
@@ -132,7 +156,7 @@ describe('카풀 요청 상세·처리 query', () => {
         ...requestDetail(),
       });
       const relatedKeys = [
-        carpoolMutationQueryKeys.detail(51),
+        carpoolMutationQueryKeys.detail(7, 51),
         carpoolMutationQueryKeys.pins(),
         carpoolMutationQueryKeys.nearby(),
         chatRoomMutationQueryKeys.all(),
@@ -216,6 +240,133 @@ describe('카풀 요청 상세·처리 query', () => {
     ).rejects.toMatchObject({ status: 500 });
 
     await waitFor(() => expect(requestCount).toHaveBeenCalledTimes(1));
+  });
+
+  it('화면의 viewerId와 mutation 변수의 viewerId가 다르면 PATCH를 보내지 않는다', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const patchCount = vi.fn<() => void>();
+    server.use(
+      http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
+        patchCount();
+        return HttpResponse.json({
+          message: '요청을 처리했습니다',
+          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
+        });
+      }),
+    );
+    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(8), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await expect(
+      result.current.mutateAsync({
+        viewerId: 7,
+        carpoolId: 51,
+        requestId: 88,
+        status: 'ACCEPTED',
+      }),
+    ).rejects.toThrow('현재 로그인한 사용자 정보를 확인할 수 없습니다.');
+
+    expect(patchCount).not.toHaveBeenCalled();
+  });
+
+  it('access token에 검증된 viewerId가 다르면 mutation은 PATCH를 보내지 않는다', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const patchCount = vi.fn<() => void>();
+    useAuthStore.getState().setAccessToken('account-b-token');
+    useAuthStore.getState().setVerifiedViewerId('account-b-token', 8);
+    server.use(
+      http.patch('*/carpools/:carpoolId/join-requests/:requestId', () => {
+        patchCount();
+        return HttpResponse.json({
+          message: '요청을 처리했습니다',
+          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
+        });
+      }),
+    );
+    const { result } = renderHook(() => useCarpoolRequestDecisionMutation(7), {
+      wrapper: createWrapper(queryClient),
+    });
+
+    await expect(
+      result.current.mutateAsync({
+        viewerId: 7,
+        carpoolId: 51,
+        requestId: 88,
+        status: 'ACCEPTED',
+      }),
+    ).rejects.toThrow('현재 로그인한 사용자 정보를 확인할 수 없습니다.');
+
+    expect(patchCount).not.toHaveBeenCalled();
+  });
+
+  it('상세 query는 viewerId와 인증된 현재 사용자가 다르면 요청하지 않는다', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const requestCount = vi.fn<() => void>();
+    server.use(
+      http.get('*/carpools/:carpoolId/join-requests/:requestId', () => {
+        requestCount();
+        return HttpResponse.json(requestDetail());
+      }),
+    );
+
+    await expect(
+      queryClient.fetchQuery(
+        carpoolRequestReviewQueries.detail({
+          viewerId: 8,
+          carpoolId: 51,
+          requestId: 88,
+          enabled: true,
+        }),
+      ),
+    ).rejects.toThrow('현재 로그인한 사용자 정보를 확인할 수 없습니다.');
+
+    expect(requestCount).not.toHaveBeenCalled();
+  });
+
+  it('계정이 바뀐 뒤 이전 PATCH 응답은 새 사용자의 캐시나 화면 callback을 갱신하지 않는다', async () => {
+    const queryClient = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    const requestCount = vi.fn<() => void>();
+    const viewerBDetailKey = carpoolMutationQueryKeys.detail(8, 51);
+    queryClient.setQueryData(viewerBDetailKey, { data: { current_count: 4 } });
+    let releasePatch: (() => void) | undefined;
+    const patchGate = new Promise<void>((resolve) => {
+      releasePatch = resolve;
+    });
+    const onDecisionConfirmed = vi.fn<CarpoolRequestDecisionConfirmedHandler>();
+    server.use(
+      http.patch('*/carpools/:carpoolId/join-requests/:requestId', async () => {
+        requestCount();
+        await patchGate;
+        return HttpResponse.json({
+          message: '요청을 수락했습니다',
+          data: { id: 88, status: 'ACCEPTED', chat_room_id: 620, current_count: 2, capacity: 4 },
+        });
+      }),
+    );
+    const { result } = renderHook(
+      () => useCarpoolRequestDecisionMutation(7, { onDecisionConfirmed }),
+      { wrapper: createWrapper(queryClient) },
+    );
+
+    const pendingDecision = result.current.mutateAsync({
+      viewerId: 7,
+      carpoolId: 51,
+      requestId: 88,
+      status: 'ACCEPTED',
+    });
+    await waitFor(() => expect(requestCount).toHaveBeenCalledOnce());
+    useAuthStore.getState().setAccessToken('account-b-token');
+    useAuthStore.getState().setVerifiedViewerId('account-b-token', 8);
+    releasePatch?.();
+
+    await expect(pendingDecision).resolves.toMatchObject({ data: { status: 'ACCEPTED' } });
+
+    expect(onDecisionConfirmed).not.toHaveBeenCalled();
+    expect(queryClient.getQueryData(viewerBDetailKey)).toMatchObject({
+      data: { current_count: 4 },
+    });
+    expect(queryClient.getQueryState(viewerBDetailKey)?.isInvalidated).toBe(false);
   });
 
   it('확정 callback 실패가 서버 결정 결과를 불명확 상태로 바꾸지 않는다', async () => {

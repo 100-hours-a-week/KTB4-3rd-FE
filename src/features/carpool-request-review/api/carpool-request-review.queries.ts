@@ -1,7 +1,7 @@
 import { queryOptions } from '@tanstack/react-query';
 
 import { ApiError } from '@/shared/api/client';
-import { getAccessToken } from '@/entities/auth';
+import { getAccessTokenForViewer } from '@/entities/auth';
 
 import { getCarpoolRequestDetail } from './carpool-request-review';
 
@@ -26,11 +26,16 @@ export const carpoolRequestReviewQueries = {
           ? carpoolRequestReviewQueryKeys.detail(viewerId, carpoolId, requestId)
           : [...carpoolRequestReviewQueryKeys.all(), 'detail', 'disabled'],
       queryFn: async ({ signal }) => {
-        if (carpoolId === null || requestId === null) {
+        if (viewerId === null || carpoolId === null || requestId === null) {
           throw new Error('요청 대상 정보가 없어 상세를 조회할 수 없습니다.');
         }
 
-        return getCarpoolRequestDetail(await getAccessToken(), carpoolId, requestId, signal);
+        return getCarpoolRequestDetail(
+          await getAccessTokenForViewer(viewerId),
+          carpoolId,
+          requestId,
+          signal,
+        );
       },
       enabled: enabled && viewerId !== null && carpoolId !== null && requestId !== null,
       staleTime: 0,

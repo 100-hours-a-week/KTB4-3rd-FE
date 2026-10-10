@@ -3,7 +3,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
-import { getAccessToken } from '@/entities/auth';
+import {
+  AuthViewerMismatchError,
+  getAccessTokenForViewer,
+  isCurrentVerifiedViewer,
+} from '@/entities/auth';
 import { ApiError } from '@/shared/api/client';
 import {
   carpoolMutationQueryKeys,
@@ -84,6 +88,10 @@ async function applyConfirmedRequestStatus(
   onDecisionConfirmed?: CarpoolRequestDecisionConfirmedHandler,
 ) {
   const { viewerId, carpoolId, requestId } = variables;
+  if (!isCurrentVerifiedViewer(viewerId)) {
+    return;
+  }
+
   const detailKey = carpoolRequestReviewQueries.detail({
     viewerId,
     carpoolId,
@@ -93,6 +101,10 @@ async function applyConfirmedRequestStatus(
 
   await queryClient.cancelQueries({ queryKey: detailKey, exact: true });
 
+  if (!isCurrentVerifiedViewer(viewerId)) {
+    return;
+  }
+
   queryClient.setQueryData<CarpoolRequestDetailResponse>(detailKey, (previous) =>
     previous ? { ...previous, data: { ...previous.data, status } } : previous,
   );
@@ -101,7 +113,9 @@ async function applyConfirmedRequestStatus(
 
   if (status === 'ACCEPTED') {
     invalidations.push(
-      queryClient.invalidateQueries({ queryKey: carpoolMutationQueryKeys.detail(carpoolId) }),
+      queryClient.invalidateQueries({
+        queryKey: carpoolMutationQueryKeys.detail(viewerId, carpoolId),
+      }),
       queryClient.invalidateQueries({ queryKey: carpoolMutationQueryKeys.pins() }),
       queryClient.invalidateQueries({ queryKey: carpoolMutationQueryKeys.nearby() }),
       queryClient.invalidateQueries({ queryKey: chatRoomMutationQueryKeys.all() }),
@@ -109,7 +123,9 @@ async function applyConfirmedRequestStatus(
   }
 
   await Promise.allSettled(invalidations);
-  await notifyDecisionConfirmed(onDecisionConfirmed, { viewerId, carpoolId, requestId }, status);
+  if (isCurrentVerifiedViewer(viewerId)) {
+    await notifyDecisionConfirmed(onDecisionConfirmed, { viewerId, carpoolId, requestId }, status);
+  }
 }
 
 async function checkDecisionOutcome(
@@ -177,8 +193,12 @@ export function useCarpoolRequestDecisionMutation(
         throw new CarpoolRequestDecisionBlockedError('이미 이 요청을 처리하고 있습니다.');
       }
 
+      if (variables.viewerId !== viewerId) {
+        throw new AuthViewerMismatchError();
+      }
+
       return decideCarpoolRequest(
-        await getAccessToken(),
+        await getAccessTokenForViewer(variables.viewerId),
         variables.carpoolId,
         variables.requestId,
         variables.status,
