@@ -1,7 +1,10 @@
+import type { Ref } from 'react';
+
 import { MatchingFab } from '@/features/matching-entry';
 import { MyLocationButton } from '@/shared/ui/map';
 
 export type MatchingMapControlsProps = {
+  fabContainerRef?: Ref<HTMLDivElement>;
   isFabOpened: boolean;
   onFabOpenChange: (isOpened: boolean) => void;
   onCarpoolClick: () => void;
@@ -10,6 +13,7 @@ export type MatchingMapControlsProps = {
 };
 
 export function MatchingMapControls({
+  fabContainerRef,
   isFabOpened,
   onFabOpenChange,
   onCarpoolClick,
@@ -20,6 +24,7 @@ export function MatchingMapControls({
     <div
       className="pointer-events-none fixed inset-x-0 bottom-0 z-20 mx-auto h-dvh w-full max-w-[393px]"
       data-testid="matching-map-controls"
+      ref={fabContainerRef}
     >
       <MatchingFab
         className="pointer-events-auto absolute right-[10px] bottom-[calc(72px+env(safe-area-inset-bottom,0px)+190px)]"

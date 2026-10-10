@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useId } from 'react';
+import { useEffect, useId, useRef } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Fab } from '@/shared/ui/fab';
@@ -27,9 +27,35 @@ export function MatchingFab({
   className,
 }: MatchingFabProps) {
   const menuId = `matching-fab-menu-${useId()}`;
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!isOpened) {
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (event.target instanceof Node && !rootRef.current?.contains(event.target)) {
+        onOpenChange(false);
+      }
+    };
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onOpenChange(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isOpened, onOpenChange]);
 
   return (
-    <div className={cn('flex flex-col items-end', className)}>
+    <div ref={rootRef} className={cn('flex flex-col items-end', className)}>
       <div
         aria-label="매칭 등록 메뉴"
         className={cn('mb-2 flex flex-col items-end gap-3', !isOpened && 'hidden')}

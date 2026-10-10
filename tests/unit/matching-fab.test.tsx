@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,6 +50,43 @@ describe('MatchingFab', () => {
     expect(trigger).toHaveAttribute('aria-expanded', 'true');
     expect(screen.getByRole('button', { name: '카풀 등록' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '택시팟 찾기' })).toBeInTheDocument();
+  });
+
+  it('열린 상태에서 바깥 영역을 누르면 닫기를 요청한다', () => {
+    const onOpenChange = vi.fn<(isOpened: boolean) => void>();
+
+    render(
+      <>
+        <MatchingFab
+          isOpened
+          onCarpoolClick={vi.fn<() => void>()}
+          onOpenChange={onOpenChange}
+          onTaxipotClick={vi.fn<() => void>()}
+        />
+        <button type="button">다른 영역</button>
+      </>,
+    );
+
+    fireEvent.pointerDown(screen.getByRole('button', { name: '다른 영역' }));
+
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('열린 상태에서 Escape를 누르면 닫기를 요청한다', () => {
+    const onOpenChange = vi.fn<(isOpened: boolean) => void>();
+
+    render(
+      <MatchingFab
+        isOpened
+        onCarpoolClick={vi.fn<() => void>()}
+        onOpenChange={onOpenChange}
+        onTaxipotClick={vi.fn<() => void>()}
+      />,
+    );
+
+    fireEvent.keyDown(document, { key: 'Escape' });
+
+    expect(onOpenChange).toHaveBeenCalledExactlyOnceWith(false);
   });
 
   it('열린 상태에서 메인 버튼을 누르면 닫기 요청만 전달한다', async () => {
