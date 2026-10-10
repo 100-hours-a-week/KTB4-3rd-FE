@@ -1,6 +1,6 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { getAccessToken } from '@/entities/auth';
+import { getAccessToken, useAuthStore } from '@/entities/auth';
 import { getCurrentUser } from '@/entities/user';
 
 export const userProfileQueries = {
@@ -8,7 +8,12 @@ export const userProfileQueries = {
   current: () =>
     queryOptions({
       queryKey: [...userProfileQueries.all(), 'current'] as const,
-      queryFn: async ({ signal }) => getCurrentUser(await getAccessToken(), signal),
+      queryFn: async ({ signal }) => {
+        const accessToken = await getAccessToken();
+        const response = await getCurrentUser(accessToken, signal);
+        useAuthStore.getState().setVerifiedViewerId(accessToken, response.data.id);
+        return response;
+      },
       refetchOnMount: 'always' as const,
     }),
 };
