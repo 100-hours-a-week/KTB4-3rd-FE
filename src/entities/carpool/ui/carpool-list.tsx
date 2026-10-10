@@ -91,7 +91,7 @@ function CarpoolListContent({
 
   return (
     <div>
-      <ul aria-label="주변 카풀" className="m-0 list-none p-0">
+      <ul aria-label="주변 카풀" className="m-0 list-none p-0" tabIndex={-1}>
         {items.map((carpool, index) => (
           <CarpoolItem
             key={carpool.id}

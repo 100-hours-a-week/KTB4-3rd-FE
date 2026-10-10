@@ -5,6 +5,8 @@ import type { ReactNode } from 'react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import { useAuthStore } from '@/entities/auth';
+import { carpoolDetailQueryKeys } from '@/entities/carpool';
+import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
 import { useCarpoolJoinRequestMutation } from '@/features/carpool-join-request';
 import { server } from '@/shared/api/mocks/server';
 
@@ -34,10 +36,24 @@ afterEach(() => {
 });
 
 describe('useCarpoolJoinRequestMutation', () => {
-  it('검증된 계정으로 원문 메시지를 한 번 보내고 카풀 목록만 무효화한다', async () => {
+  it('검증된 계정으로 원문을 한 번 보내고 상세 요청과 보낸 요청 목록을 갱신한다', async () => {
     authenticateAs(viewerId);
     const queryClient = createQueryClient();
     const invalidateQueries = vi.spyOn(queryClient, 'invalidateQueries');
+    const detailKey = carpoolDetailQueryKeys.detail(carpoolId, viewerId);
+    const anotherViewerDetailKey = carpoolDetailQueryKeys.detail(carpoolId, viewerId + 1);
+    const anotherViewerDetail = {
+      message: '조회',
+      data: { id: carpoolId, my_request: undefined },
+    };
+    queryClient.setQueryData(detailKey, {
+      message: '조회',
+      data: {
+        id: carpoolId,
+        my_request: undefined,
+      },
+    });
+    queryClient.setQueryData(anotherViewerDetailKey, anotherViewerDetail);
     let captured: { token: string | null; body: unknown } | undefined;
     let requestCount = 0;
     server.use(
@@ -70,7 +86,7 @@ describe('useCarpoolJoinRequestMutation', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(captured).toEqual({ token: `Bearer ${token}`, body: payload });
     expect(requestCount).toBe(1);
-    expect(invalidateQueries).toHaveBeenCalledTimes(2);
+    expect(invalidateQueries).toHaveBeenCalledTimes(3);
     expect(invalidateQueries).toHaveBeenCalledWith({
       queryKey: ['carpools', 'pins'],
       refetchType: 'active',
@@ -79,6 +95,14 @@ describe('useCarpoolJoinRequestMutation', () => {
       queryKey: ['carpools', 'nearby'],
       refetchType: 'active',
     });
+    expect(invalidateQueries).toHaveBeenCalledWith({
+      queryKey: carpoolRequestQueryKeys.list(viewerId, 'SENT'),
+      refetchType: 'active',
+    });
+    expect(queryClient.getQueryData(detailKey)).toMatchObject({
+      data: { my_request: { id: 702, status: 'PENDING' } },
+    });
+    expect(queryClient.getQueryData(anotherViewerDetailKey)).toEqual(anotherViewerDetail);
   });
 
   it('네트워크 결과가 불명확해도 POST를 자동으로 재전송하지 않는다', async () => {
