@@ -120,3 +120,62 @@ test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에�
   await expect(page.getByTestId('carpool-request-list-empty')).toBeVisible();
   await expect(page.getByRole('dialog', { name: '카풀 요청 확인' })).toHaveCount(0);
 });
+
+test('받은 카풀 요청을 거절하고 목록에서 제거한다', async ({ page }) => {
+  await mockSession(page);
+  let remaining = [receivedRequest];
+
+  await page.route('**/api/users/me/carpool-requests**', async (route) => {
+    const direction = new URL(route.request().url()).searchParams.get('direction');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: '조회에 성공했습니다',
+        data: { direction, items: direction === 'RECEIVED' ? remaining : [], next_cursor: null },
+      }),
+    });
+  });
+  await page.route('**/api/carpools/53/join-requests/90', async (route) => {
+    if (route.request().method() === 'GET') {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 90,
+            carpool_id: 53,
+            status: 'PENDING',
+            content: '거절 확인용 요청 상세',
+            requester: { id: 9, name: '이루디 상세', profile_image_url: null },
+            created_at: '2026-10-10T08:10:00.000Z',
+          },
+        }),
+      });
+      return;
+    }
+
+    expect(route.request().method()).toBe('PATCH');
+    expect(route.request().headers()['authorization']).toBe('Bearer mock-access-token');
+    expect(route.request().postDataJSON()).toEqual({ status: 'REJECTED' });
+    remaining = [];
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: '요청을 거절했습니다',
+        data: { id: 90, status: 'REJECTED' },
+      }),
+    });
+  });
+
+  await page.goto('/chat');
+  await openReceivedRequests(page);
+  await expect(page.getByText('거절 확인용 요청 상세')).toBeVisible();
+  await page.getByRole('button', { name: '거절' }).click();
+
+  await expect(page.getByText('요청을 거절했어요.')).toBeVisible();
+  await expect(page.getByTestId('carpool-request-list-empty')).toBeVisible();
+  await expect(page.getByRole('dialog', { name: '카풀 요청 확인' })).toHaveCount(0);
+});
