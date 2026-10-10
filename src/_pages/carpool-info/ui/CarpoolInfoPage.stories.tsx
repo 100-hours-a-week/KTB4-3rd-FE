@@ -5,7 +5,6 @@ import {
   getCarpoolDepartureDateRange,
   useCarpoolCreateStore,
 } from '@/features/carpool-registration';
-import { SnackbarProvider } from '@/_app/providers';
 
 import { CarpoolInfoPage } from './CarpoolInfoPage';
 
@@ -41,11 +40,7 @@ function PageWithDraft({ complete }: { complete: boolean }) {
     return () => store.reset();
   }, [complete]);
 
-  return (
-    <SnackbarProvider>
-      <CarpoolInfoPage />
-    </SnackbarProvider>
-  );
+  return <CarpoolInfoPage />;
 }
 
 export const IncompleteDraft: Story = {

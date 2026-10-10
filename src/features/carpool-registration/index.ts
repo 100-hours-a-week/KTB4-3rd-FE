@@ -13,8 +13,4 @@ export {
   type CarpoolCreateState,
   type CarpoolRecruitCount,
 } from './model/carpool-create-store';
-export {
-  getCarpoolRegistrationDraftSnapshot,
-  resetCarpoolRegistrationDraft,
-  resetCarpoolRegistrationDraftIfUnchanged,
-} from './model/carpool-registration-draft-lifecycle';
+export { resetCarpoolRegistrationDraft } from './model/carpool-registration-draft-lifecycle';

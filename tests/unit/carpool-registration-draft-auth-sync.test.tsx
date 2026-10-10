@@ -47,7 +47,11 @@ describe('CarpoolRegistrationDraftAuthSync', () => {
   });
 
   it('같은 사용자 토큰 갱신은 유지하고 사용자 변경과 로그아웃은 비운다', async () => {
-    getCurrentUserMock.mockResolvedValueOnce(currentUser(1)).mockResolvedValueOnce(currentUser(1));
+    const userSwitch = deferred<ReturnType<typeof currentUser>>();
+    getCurrentUserMock
+      .mockResolvedValueOnce(currentUser(1))
+      .mockResolvedValueOnce(currentUser(1))
+      .mockReturnValueOnce(userSwitch.promise);
     startSession('session-a');
     render(<CarpoolRegistrationDraftAuthSync />);
     await resolveIdentity(0);
@@ -56,10 +60,12 @@ describe('CarpoolRegistrationDraftAuthSync', () => {
     await resolveIdentity(1);
     expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
 
-    getCurrentUserMock.mockResolvedValueOnce(currentUser(2));
     act(() => useAuthStore.getState().setAccessToken('session-b'));
+    useCarpoolCreateStore.getState().setDestination({ name: '강남역', lat: 37.49, lng: 127.02 });
+    userSwitch.resolve(currentUser(2));
     await resolveIdentity(2);
     await waitFor(() => expect(useCarpoolCreateStore.getState().draft.origin).toBeNull());
+    expect(useCarpoolCreateStore.getState().draft.destination).toBeNull();
 
     setDraft();
     act(() => useAuthStore.getState().clearTokens());

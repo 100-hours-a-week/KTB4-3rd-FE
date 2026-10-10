@@ -4,11 +4,7 @@ import { useEffect, useRef } from 'react';
 
 import { useAuthStore } from '@/entities/auth';
 import { getCurrentUser } from '@/entities/user';
-import {
-  getCarpoolRegistrationDraftSnapshot,
-  resetCarpoolRegistrationDraft,
-  resetCarpoolRegistrationDraftIfUnchanged,
-} from '@/features/carpool-registration';
+import { resetCarpoolRegistrationDraft } from '@/features/carpool-registration';
 
 export function CarpoolRegistrationDraftAuthSync() {
   const accessToken = useAuthStore((state) => state.accessToken);
@@ -20,7 +16,6 @@ export function CarpoolRegistrationDraftAuthSync() {
       return;
     }
 
-    const draftAtCheckStart = getCarpoolRegistrationDraftSnapshot();
     let isCurrentCheck = true;
 
     void getCurrentUser(accessToken)
@@ -33,7 +28,7 @@ export function CarpoolRegistrationDraftAuthSync() {
         currentUserIdRef.current = data.id;
 
         if (previousUserId !== null && previousUserId !== data.id) {
-          resetCarpoolRegistrationDraftIfUnchanged(draftAtCheckStart);
+          resetCarpoolRegistrationDraft();
         }
       })
       .catch(() => {
