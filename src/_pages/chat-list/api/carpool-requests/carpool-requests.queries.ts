@@ -1,5 +1,6 @@
 import { infiniteQueryOptions } from '@tanstack/react-query';
 
+import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
 import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
 import { getCarpoolRequestList } from './get-carpool-request-list';
@@ -9,7 +10,10 @@ export const carpoolRequestListQueries = {
   all: () => ['carpools', 'requests'] as const,
   list: (viewerId: number | null, direction: CarpoolRequestDirection) =>
     infiniteQueryOptions({
-      queryKey: [...carpoolRequestListQueries.all(), { viewerId }, 'list', direction] as const,
+      queryKey:
+        viewerId === null
+          ? ([...carpoolRequestListQueries.all(), { viewerId }, 'list', direction] as const)
+          : carpoolRequestQueryKeys.list(viewerId, direction),
       queryFn: ({ pageParam, signal }) => {
         if (viewerId === null) {
           throw new Error('로그인 사용자 정보를 확인한 뒤 요청 목록을 조회할 수 있습니다.');

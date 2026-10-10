@@ -33,3 +33,20 @@ export type NearbyCarpoolsResponse = ApiResponse<{
   items: CarpoolSummary[];
   next_cursor: string | null;
 }>;
+
+export type CarpoolDetail = {
+  id: number;
+  status: 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELED';
+  host: { id: number; name: string; profile_image_url: string | null };
+  origin_name: string;
+  dest_name: string;
+  departure_at: string;
+  car_model: string;
+  current_count: number;
+  capacity: number;
+  is_full: boolean;
+  participants: { id: number; name: string; profile_image_url: string | null }[];
+  my_request?: { id: number; status: 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED' };
+};
+
+export type CarpoolDetailResponse = ApiResponse<CarpoolDetail>;
