@@ -76,7 +76,7 @@ describe('매칭 지도 조회 조건', () => {
     expect(result.current.mapViewport).toBe(changed);
   });
 
-  it('현재 위치 이동은 거리 기준과 지도 조회 영역을 함께 갱신한다', () => {
+  it('현재 위치 이동은 거리 기준만 바꾸고 지도 조회 영역은 유지한다', () => {
     const { result } = renderHook(useMatchingMapState);
     act(() => result.current.onViewportChange(viewport, 'initial'));
     const coordinate = { lat: 37.51, lng: 127.02 };
@@ -84,16 +84,17 @@ describe('매칭 지도 조회 조건', () => {
     act(() => result.current.onViewportChange(nextViewport, 'locate'));
     expect(result.current.userLocation).toBe(coordinate);
     expect(result.current.distanceOrigin).toBe(coordinate);
-    expect(result.current.mapViewport).toBe(nextViewport);
+    expect(result.current.mapViewport).toBe(viewport);
     act(() => result.current.onUserLocationChange({ ...coordinate }));
     expect(result.current.userLocation).toBe(coordinate);
   });
 
-  it('최초 조회 영역 확보 전의 현재 위치 이동도 초기 영역으로 반영한다', () => {
+  it('최초 위치 이동은 조회 영역을 만들지 않고 최초 지도 영역을 기다린다', () => {
     const { result } = renderHook(useMatchingMapState);
     act(() => result.current.onViewportChange(nextViewport, 'locate'));
+    expect(result.current.mapViewport).toBeNull();
     act(() => result.current.onViewportChange(viewport, 'initial'));
-    expect(result.current.mapViewport).toBe(nextViewport);
+    expect(result.current.mapViewport).toBe(viewport);
   });
 
   it('지도 준비 전 위치 성공도 조회 영역 없이 목록을 활성화하지 않는다', () => {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { useMatchingEntry } from '../model/use-matching-entry';
 import { useMatchingMapState } from '../model/use-matching-map-state';
@@ -13,10 +13,20 @@ import { carpoolQueries } from '@/shared/api/carpool';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { Map } from '@/shared/ui/map';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
+import { CarpoolDetailModal, type CarpoolSelection } from './carpool-detail-modal';
+
+function setScrollTop(element: HTMLElement, scrollTop: number) {
+  element.scrollTop = scrollTop;
+}
 
 export function MatchingPage() {
   const currentUserQuery = useCurrentUserQuery();
   const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const [selection, setSelection] = useState<CarpoolSelection | null>(null);
+  const [isScrollRestoring, setIsScrollRestoring] = useState(false);
+  const selectionRequestRef = useRef<(next: CarpoolSelection | null) => void>(() => undefined);
+  const scrollSnapshotRef = useRef<{ queryKey: string; scrollTop: number } | null>(null);
+  const previousListQueryKeyRef = useRef<string | null>(null);
   const { fabContainerRef, isFabOpen, onCarpoolClick, onFabOpenChange, onTaxipotClick } =
     useMatchingEntry();
   const {
@@ -52,6 +62,10 @@ export function MatchingPage() {
     [nearbyQuery.data],
   );
   const pins = useMemo(() => pinsQuery.data?.data.items ?? [], [pinsQuery.data]);
+  const listQueryKey = useMemo(
+    () => JSON.stringify({ viewport: queryViewport, origin: distanceOrigin }),
+    [distanceOrigin, queryViewport],
+  );
   const markers = useMemo(
     () =>
       pins.map((pin) => ({
@@ -77,6 +91,73 @@ export function MatchingPage() {
     }
     void fetchNextPage();
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+
+  const applySelection = useCallback(
+    (nextSelection: CarpoolSelection | null) => {
+      if (nextSelection && selection === null && scrollRoot) {
+        scrollSnapshotRef.current = { queryKey: listQueryKey, scrollTop: scrollRoot.scrollTop };
+      }
+      setSelection(nextSelection);
+    },
+    [listQueryKey, scrollRoot, selection],
+  );
+
+  const requestSelection = useCallback((nextSelection: CarpoolSelection | null) => {
+    selectionRequestRef.current(nextSelection);
+  }, []);
+
+  const handlePinClick = useCallback(
+    (marker: { id: string | number }) => {
+      const pin = pins.find((candidate) => candidate.id === Number(marker.id));
+      requestSelection({
+        id: Number(marker.id),
+        position: pin ? { lat: pin.lat, lng: pin.lng } : null,
+      });
+    },
+    [pins, requestSelection],
+  );
+
+  const handleListCarpoolClick = useCallback(
+    (carpoolId: number) => {
+      const pin = pins.find((candidate) => candidate.id === carpoolId);
+      requestSelection({ id: carpoolId, position: pin ? { lat: pin.lat, lng: pin.lng } : null });
+    },
+    [pins, requestSelection],
+  );
+
+  useEffect(() => {
+    if (previousListQueryKeyRef.current === null) {
+      previousListQueryKeyRef.current = listQueryKey;
+      return;
+    }
+    if (previousListQueryKeyRef.current === listQueryKey) {
+      return;
+    }
+    previousListQueryKeyRef.current = listQueryKey;
+    scrollSnapshotRef.current = null;
+    if (scrollRoot) {
+      setScrollTop(scrollRoot, 0);
+    }
+  }, [listQueryKey, scrollRoot]);
+
+  useLayoutEffect(() => {
+    if (selection !== null || !scrollRoot) {
+      return;
+    }
+    const snapshot = scrollSnapshotRef.current;
+    if (!snapshot) {
+      return;
+    }
+    setIsScrollRestoring(true);
+    const frame = requestAnimationFrame(() => {
+      if (scrollSnapshotRef.current === snapshot && scrollRoot.isConnected) {
+        setScrollTop(scrollRoot, snapshot.queryKey === listQueryKey ? snapshot.scrollTop : 0);
+      }
+      scrollSnapshotRef.current = null;
+      setIsScrollRestoring(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [listQueryKey, nearbyQuery.data, scrollRoot, selection]);
 
   useEffect(() => {
     if (isFetchNextPageError) {
@@ -108,12 +189,12 @@ export function MatchingPage() {
   } else {
     listContent = (
       <CarPoolList
-        canLoadMore={!isFetchingNextPage && !isFetchNextPageError}
+        canLoadMore={!isFetchingNextPage && !isFetchNextPageError && !isScrollRestoring}
         hasNextPage={hasNextPage}
         isLoadingMore={isFetchingNextPage}
         items={carpools}
         loadMoreError={isFetchNextPageError}
-        onCarpoolClick={() => undefined}
+        onCarpoolClick={handleListCarpoolClick}
         onLoadMore={handleLoadMore}
         scrollRoot={scrollRoot}
         status="content"
@@ -134,9 +215,12 @@ export function MatchingPage() {
             role="region"
           >
             <Map
+              center={selection?.position ?? undefined}
+              centerChangeSource="selection"
               className="h-full"
               markers={markers}
               locateOnMount
+              onMarkerClick={handlePinClick}
               onUserLocationChange={onUserLocationChange}
               onViewportChange={onViewportChange}
               ref={mapRef}
@@ -150,9 +234,16 @@ export function MatchingPage() {
         onFabOpenChange={onFabOpenChange}
         nearbyCarpools={listContent}
         onScrollElementChange={setScrollRoot}
-        scrollContentKey={carpools.length}
+        scrollContentKey={listQueryKey}
         onTaxipotClick={onTaxipotClick}
         user={currentUserQuery.data?.data}
+      />
+      <CarpoolDetailModal
+        onSelectionChange={applySelection}
+        onSelectionRequest={(callback) => {
+          selectionRequestRef.current = callback;
+        }}
+        selection={selection}
       />
       <SnackbarViewport className="fixed inset-x-0 bottom-4 z-[2147483647] mx-auto max-w-[393px] px-5" />
     </>
