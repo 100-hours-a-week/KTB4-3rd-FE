@@ -1,6 +1,6 @@
 import { infiniteQueryOptions, queryOptions } from '@tanstack/react-query';
 
-import { ApiError } from '@/shared/api/client';
+import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
 import type { CarpoolViewport, NearbyCarpoolsQuery } from './carpool-read.types';
 import { getCarpoolPins } from './get-carpool-pins';
@@ -22,13 +22,8 @@ const readPolicy = {
   refetchOnReconnect: true,
   refetchInterval: false,
   placeholderData: undefined,
-  retryDelay: 1_000,
-  retry: (failureCount: number, error: Error) => {
-    if (error instanceof ApiError) {
-      return error.status >= 500 && error.status < 600 && failureCount < 1;
-    }
-    return error instanceof TypeError && failureCount < 1;
-  },
+  retryDelay: API_QUERY_RETRY_DELAY,
+  retry: shouldRetryApiQuery,
 } as const;
 
 export const carpoolQueries = {
