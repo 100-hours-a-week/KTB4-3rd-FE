@@ -1,10 +1,9 @@
 'use client';
 
-import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useCallback } from 'react';
 
 import { getAccessToken } from '@/entities/auth';
-import { carpoolRequestQueryKeys } from '@/shared/api/carpool-request-query-keys';
 import { ApiError } from '@/shared/api/client';
 import {
   carpoolMutationQueryKeys,
@@ -31,11 +30,14 @@ export type CarpoolRequestDecisionVariables = {
   status: CarpoolRequestDecision;
 };
 
-type CachedRequestPage = {
-  data: { items: { id: number }[]; next_cursor: string | null };
-};
+export type CarpoolRequestDecisionConfirmedHandler = (
+  variables: Omit<CarpoolRequestDecisionVariables, 'status'>,
+  status: CarpoolRequestDetail['status'],
+) => void | Promise<void>;
 
-type CachedRequestList = InfiniteData<CachedRequestPage, string | undefined>;
+type CarpoolRequestDecisionOptions = {
+  onDecisionConfirmed?: CarpoolRequestDecisionConfirmedHandler;
+};
 
 const getOutcomeKey = (variables: Omit<CarpoolRequestDecisionVariables, 'status'>) =>
   getCarpoolRequestDecisionOutcomeKey(variables.viewerId, variables.carpoolId, variables.requestId);
@@ -59,47 +61,43 @@ function isUncertainFailure(error: unknown) {
   );
 }
 
+async function notifyDecisionConfirmed(
+  onDecisionConfirmed: CarpoolRequestDecisionConfirmedHandler | undefined,
+  variables: Omit<CarpoolRequestDecisionVariables, 'status'>,
+  status: CarpoolRequestDetail['status'],
+) {
+  if (status === 'PENDING' || !onDecisionConfirmed) {
+    return;
+  }
+
+  try {
+    await onDecisionConfirmed(variables, status);
+  } catch {
+    // A cache refresh callback must not turn a confirmed server decision into an uncertain result.
+  }
+}
+
 async function applyConfirmedRequestStatus(
   queryClient: ReturnType<typeof useQueryClient>,
   variables: Omit<CarpoolRequestDecisionVariables, 'status'>,
   status: CarpoolRequestDetail['status'],
+  onDecisionConfirmed?: CarpoolRequestDecisionConfirmedHandler,
 ) {
   const { viewerId, carpoolId, requestId } = variables;
-  const detailKey = carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId);
-  const receivedListKey = [...carpoolRequestQueryKeys.lists(viewerId), 'RECEIVED'] as const;
+  const detailKey = carpoolRequestReviewQueries.detail({
+    viewerId,
+    carpoolId,
+    requestId,
+    enabled: true,
+  }).queryKey;
 
-  await Promise.all([
-    queryClient.cancelQueries({ queryKey: detailKey, exact: true }),
-    queryClient.cancelQueries({ queryKey: receivedListKey }),
-  ]);
-
-  if (status !== 'PENDING') {
-    queryClient.setQueriesData<CachedRequestList>({ queryKey: receivedListKey }, (previous) => {
-      if (!previous) {
-        return previous;
-      }
-
-      return {
-        ...previous,
-        pages: previous.pages.map((page) => ({
-          ...page,
-          data: {
-            ...page.data,
-            items: page.data.items.filter((item) => item.id !== requestId),
-          },
-        })),
-      };
-    });
-  }
+  await queryClient.cancelQueries({ queryKey: detailKey, exact: true });
 
   queryClient.setQueryData<CarpoolRequestDetailResponse>(detailKey, (previous) =>
     previous ? { ...previous, data: { ...previous.data, status } } : previous,
   );
 
-  const invalidations = [
-    queryClient.invalidateQueries({ queryKey: receivedListKey }),
-    queryClient.invalidateQueries({ queryKey: detailKey, exact: true }),
-  ];
+  const invalidations = [queryClient.invalidateQueries({ queryKey: detailKey, exact: true })];
 
   if (status === 'ACCEPTED') {
     invalidations.push(
@@ -111,12 +109,14 @@ async function applyConfirmedRequestStatus(
   }
 
   await Promise.allSettled(invalidations);
+  await notifyDecisionConfirmed(onDecisionConfirmed, { viewerId, carpoolId, requestId }, status);
 }
 
 async function checkDecisionOutcome(
   queryClient: ReturnType<typeof useQueryClient>,
   variables: Omit<CarpoolRequestDecisionVariables, 'status'>,
   outcome: CarpoolRequestDecisionOutcome,
+  onDecisionConfirmed?: CarpoolRequestDecisionConfirmedHandler,
 ) {
   const outcomeKey = getOutcomeKey(variables);
   const decisionStore = useCarpoolRequestDecisionStore.getState();
@@ -141,7 +141,12 @@ async function checkDecisionOutcome(
       return detail.data.status;
     }
 
-    await applyConfirmedRequestStatus(queryClient, variables, detail.data.status);
+    await applyConfirmedRequestStatus(
+      queryClient,
+      variables,
+      detail.data.status,
+      onDecisionConfirmed,
+    );
     decisionStore.clearOutcome(outcomeKey);
     return detail.data.status;
   } catch {
@@ -150,7 +155,10 @@ async function checkDecisionOutcome(
   }
 }
 
-export function useCarpoolRequestDecisionMutation(viewerId: number) {
+export function useCarpoolRequestDecisionMutation(
+  viewerId: number,
+  { onDecisionConfirmed }: CarpoolRequestDecisionOptions = {},
+) {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -179,7 +187,12 @@ export function useCarpoolRequestDecisionMutation(viewerId: number) {
     onSuccess: async (response, variables) => {
       const outcomeKey = getOutcomeKey(variables);
       try {
-        await applyConfirmedRequestStatus(queryClient, variables, response.data.status);
+        await applyConfirmedRequestStatus(
+          queryClient,
+          variables,
+          response.data.status,
+          onDecisionConfirmed,
+        );
         useCarpoolRequestDecisionStore.getState().clearOutcome(outcomeKey);
       } finally {
         useCarpoolRequestDecisionStore.getState().finishDecision(outcomeKey);
@@ -196,10 +209,15 @@ export function useCarpoolRequestDecisionMutation(viewerId: number) {
           return;
         }
 
-        await checkDecisionOutcome(queryClient, variables, {
-          requestedStatus: variables.status,
-          state: 'uncertain',
-        });
+        await checkDecisionOutcome(
+          queryClient,
+          variables,
+          {
+            requestedStatus: variables.status,
+            state: 'uncertain',
+          },
+          onDecisionConfirmed,
+        );
       } finally {
         useCarpoolRequestDecisionStore.getState().finishDecision(outcomeKey);
       }
@@ -213,6 +231,7 @@ export function useCarpoolRequestDecisionMutation(viewerId: number) {
 
 export function useCarpoolRequestDecisionOutcome(
   variables: Omit<CarpoolRequestDecisionVariables, 'status'>,
+  { onDecisionConfirmed }: CarpoolRequestDecisionOptions = {},
 ) {
   const queryClient = useQueryClient();
   const outcomeKey = getOutcomeKey(variables);
@@ -226,8 +245,8 @@ export function useCarpoolRequestDecisionOutcome(
       return null;
     }
 
-    return checkDecisionOutcome(queryClient, variables, outcome);
-  }, [outcome, queryClient, variables]);
+    return checkDecisionOutcome(queryClient, variables, outcome, onDecisionConfirmed);
+  }, [onDecisionConfirmed, outcome, queryClient, variables]);
 
   return {
     outcome,

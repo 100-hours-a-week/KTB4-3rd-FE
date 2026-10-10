@@ -5,6 +5,7 @@ export {
   carpoolRequestDecisionMutationKeys,
   useCarpoolRequestDecisionOutcome,
   useCarpoolRequestDecisionMutation,
+  type CarpoolRequestDecisionConfirmedHandler,
   type CarpoolRequestDecisionVariables,
 } from './model/use-carpool-request-decision-mutation';
 export { useCarpoolRequestDetailQuery } from './model/use-carpool-request-detail-query';
