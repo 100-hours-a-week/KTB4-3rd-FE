@@ -15,12 +15,16 @@ export type MatchingPageViewProps = MatchingMapControlsProps & {
   map: ReactNode;
   user?: User;
   nearbyCarpools?: ReactNode;
+  onScrollElementChange?: (element: HTMLElement | null) => void;
+  scrollContentKey?: string | number;
 };
 
 export function MatchingPageView({
   map,
   user,
   nearbyCarpools,
+  onScrollElementChange,
+  scrollContentKey,
   ...mapControlsProps
 }: MatchingPageViewProps) {
   return (
@@ -52,6 +56,8 @@ export function MatchingPageView({
         modal={false}
         open
         showBackdrop={false}
+        onScrollElementChange={onScrollElementChange}
+        scrollContentKey={scrollContentKey}
         snapPoints={['110px', 0.5, 0.7]}
         title="근처 카풀 게시글"
         description="가까운 순"
