@@ -165,6 +165,63 @@ test.describe('카풀 등록 확인 경로', () => {
     expect(requestCount).toBe(1);
   });
 
+  test('출발 시각 검증 오류는 안내를 보여주고 등록 초안과 확인 화면을 유지한다', async ({
+    page,
+  }) => {
+    await completeDraftThroughUi(page);
+    let requestCount = 0;
+    await page.route('**/api/carpools', async (route) => {
+      requestCount += 1;
+      await route.fulfill({
+        status: 422,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: '출발 시각을 확인해주세요',
+          error: {
+            code: 'DEPARTURE_TIME_PASSED',
+            field: 'departure_at',
+            details: [{ field: 'departure_at', reason: 'PAST' }],
+          },
+        }),
+      });
+    });
+
+    await page.getByRole('button', { name: '카풀 등록하기' }).click();
+
+    await expect(page.getByText('출발 시각은 현재 시각 이후로 선택해주세요.')).toBeVisible();
+    await expect(page).toHaveURL('/carpools/new/confirm');
+    await expect(page.getByText('판교역')).toBeVisible();
+    await expect(page.getByText('강남역')).toBeVisible();
+    expect(requestCount).toBe(1);
+  });
+
+  test('차량 등록이 필요한 오류는 차량 다이얼로그를 임의로 열지 않고 초안을 유지한다', async ({
+    page,
+  }) => {
+    await completeDraftThroughUi(page);
+    let requestCount = 0;
+    await page.route('**/api/carpools', async (route) => {
+      requestCount += 1;
+      await route.fulfill({
+        status: 409,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: '차량 등록이 필요합니다',
+          error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+        }),
+      });
+    });
+
+    await page.getByRole('button', { name: '카풀 등록하기' }).click();
+
+    await expect(page.getByText('차량 정보를 먼저 등록해주세요.')).toBeVisible();
+    await expect(page).toHaveURL('/carpools/new/confirm');
+    await expect(page.getByText('판교역')).toBeVisible();
+    await expect(page.getByText('강남역')).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /차량/ })).toHaveCount(0);
+    expect(requestCount).toBe(1);
+  });
+
   test('등록 정보가 없는 확인 경로 직접 진입은 위치 입력 단계로 돌아간다', async ({ page }) => {
     await mockSession(page);
     await page.goto('/carpools/new/confirm');
