@@ -18,5 +18,10 @@ export {
   type CarpoolRequestAvailabilityInput,
   type CarpoolRequestAvailabilityReason,
 } from './model/carpool-request-availability';
+export {
+  formatCarpoolDepartureAt,
+  parseCarpoolDepartureTimestamp,
+} from './model/carpool-departure-time';
+export { CarpoolDetail, type CarpoolDetailProps } from './ui/carpool-detail';
 export { CarpoolItem, type CarpoolItemProps } from './ui/carpool-item';
 export { CarPoolList, type CarPoolListProps } from './ui/carpool-list';
