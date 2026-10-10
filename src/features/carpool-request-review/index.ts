@@ -3,6 +3,7 @@ export { carpoolRequestReviewQueries } from './api';
 export type { CarpoolRequestDetailQuery } from './api';
 export {
   carpoolRequestDecisionMutationKeys,
+  useCarpoolRequestDecisionOutcome,
   useCarpoolRequestDecisionMutation,
   type CarpoolRequestDecisionVariables,
 } from './model/use-carpool-request-decision-mutation';
