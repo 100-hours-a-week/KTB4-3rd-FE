@@ -195,9 +195,7 @@ test.describe('카풀 등록 확인 경로', () => {
     expect(requestCount).toBe(1);
   });
 
-  test('차량 등록이 필요한 오류는 차량 정보를 묻고 확인 후 초안을 유지한다', async ({
-    page,
-  }) => {
+  test('차량 등록이 필요한 오류는 차량 정보를 묻고 확인 후 초안을 유지한다', async ({ page }) => {
     await completeDraftThroughUi(page);
     let requestCount = 0;
     await page.route('**/api/carpools', async (route) => {
