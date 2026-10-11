@@ -8,7 +8,7 @@ import { useCarpoolCreateStore, type CarpoolCreateLocation } from '@/features/ca
 import { reverseGeocodeLocation } from '@/features/post-location';
 import { BackButton } from '@/shared/ui/back-button';
 import { LocationInputButton } from '@/shared/ui/location-input-button';
-import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef, type MapViewportChangeSource } from '@/shared/ui/map';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 import { SEOUL_STATION_COORDINATE } from '../model/carpool-location'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
@@ -38,6 +38,7 @@ export function CarpoolCreatePage() {
   const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const geocodingRequestId = useRef(0);
+  const isMapDragUpdate = useRef(false);
   const origin = useCarpoolCreateStore((state) => state.draft.origin);
   const destination = useCarpoolCreateStore((state) => state.draft.destination);
   const setOrigin = useCarpoolCreateStore((state) => state.setOrigin);
@@ -49,10 +50,9 @@ export function CarpoolCreatePage() {
     [],
   );
 
-  const handleUserLocationChange = useCallback(
-    (coordinate: { lat: number; lng: number }) => {
+  const handleLocationChange = useCallback(
+    (coordinate: { lat: number; lng: number }, fallbackName: string) => {
       const requestId = ++geocodingRequestId.current;
-      const fallbackName = '현재 위치';
       setOrigin({ name: fallbackName, ...coordinate });
 
       void reverseGeocodeLocation(coordinate)
@@ -68,6 +68,32 @@ export function CarpoolCreatePage() {
         });
     },
     [setOrigin],
+  );
+
+  const handleUserLocationChange = useCallback(
+    (coordinate: { lat: number; lng: number }) => {
+      handleLocationChange(coordinate, '현재 위치');
+    },
+    [handleLocationChange],
+  );
+
+  const handleMapCenterChange = useCallback(
+    (coordinate: { lat: number; lng: number }) => {
+      if (!isMapDragUpdate.current) {
+        return;
+      }
+
+      isMapDragUpdate.current = false;
+      handleLocationChange(coordinate, '선택한 위치');
+    },
+    [handleLocationChange],
+  );
+
+  const handleViewportChange = useCallback(
+    (_viewport: unknown, source?: MapViewportChangeSource) => {
+      isMapDragUpdate.current = source === 'drag';
+    },
+    [],
   );
 
   const handleUserLocationError = useCallback(() => {
@@ -96,6 +122,8 @@ export function CarpoolCreatePage() {
           clusterMarkers={false}
           defaultCenter={mapCenter}
           locateOnMount={!isValidLocation(origin)}
+          onCenterChange={handleMapCenterChange}
+          onViewportChange={handleViewportChange}
           onUserLocationChange={handleUserLocationChange}
           onUserLocationError={handleUserLocationError}
           showCurrentLocationButton={false}
