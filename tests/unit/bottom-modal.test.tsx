@@ -24,7 +24,14 @@ describe('BottomModal', () => {
 
     const dialog = screen.getByRole('dialog', { name: '바텀모달' });
     const header = dialog.querySelector('header');
-    expect(dialog).toHaveClass('flex', 'flex-col', 'min-h-0', 'min-w-0');
+    expect(dialog).toHaveClass(
+      'flex',
+      'flex-col',
+      'min-h-0',
+      'min-w-0',
+      'w-[calc(100vw_-_32px)]',
+      'max-w-[361px]',
+    );
     expect(header).toHaveClass('flex', 'h-11', 'shrink-0', 'bg-[var(--color-bg-layer-default)]');
     expect(screen.getByTestId('bottom-modal-content')).toHaveClass(
       'min-h-0',

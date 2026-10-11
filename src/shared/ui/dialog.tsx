@@ -180,10 +180,10 @@ export function Dialog({
           className="fixed inset-0 z-40 min-h-dvh bg-[var(--color-bg-overlay)] transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0 supports-[-webkit-touch-callout:none]:absolute"
           data-testid="dialog-backdrop"
         />
-        <BaseDialog.Viewport className="fixed inset-0 z-50 flex min-h-dvh items-center justify-center py-[10dvh]">
+        <BaseDialog.Viewport className="fixed inset-0 z-50 mx-auto flex min-h-dvh w-full max-w-[393px] items-center justify-center py-[10dvh]">
           <BaseDialog.Popup
             className={cn(
-              'relative flex max-h-[80dvh] min-h-0 w-[90%] min-w-0 flex-col overflow-hidden rounded-[20px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_24px_rgba(0,0,0,0.18)] outline-none md:w-[480px]',
+              'relative flex max-h-[80dvh] min-h-0 w-[calc(100%-40px)] min-w-0 max-w-[353px] flex-col overflow-hidden rounded-[20px] bg-[var(--color-bg-layer-default)] text-[var(--color-fg-neutral)] shadow-[0_8px_24px_rgba(0,0,0,0.18)] outline-none',
               className,
             )}
             data-testid="dialog"
