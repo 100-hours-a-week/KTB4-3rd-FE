@@ -216,17 +216,41 @@ describe('CarpoolConfirmPage', () => {
     expect(requestCount).toBe(0);
   });
 
-  it('차량 등록 오류는 정보 Dialog를 열고 닫은 뒤에도 초안을 유지하며 자동 제출하지 않는다', async () => {
-    let requestCount = 0;
+  it('차량 정보를 저장하고 Dialog를 닫은 뒤에는 사용자가 카풀 등록을 다시 눌러야 한다', async () => {
+    let carpoolRequestCount = 0;
+    const carRequests: Request[] = [];
     server.use(
       http.post('*/carpools', () => {
-        requestCount += 1;
+        carpoolRequestCount += 1;
+        if (carRequests.length === 0) {
+          return HttpResponse.json(
+            {
+              message: '차량 정보를 먼저 등록해주세요',
+              error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+            },
+            { status: 409 },
+          );
+        }
+
         return HttpResponse.json(
           {
-            message: '차량 정보를 먼저 등록해주세요',
-            error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+            message: '카풀 등록 성공',
+            data: {
+              id: 51,
+              chat_room_id: 620,
+              capacity: 3,
+              current_count: 1,
+              status: 'RECRUITING',
+            },
           },
-          { status: 409 },
+          { status: 201 },
+        );
+      }),
+      http.post('*/users/me/cars', async ({ request }) => {
+        carRequests.push(request.clone());
+        return HttpResponse.json(
+          { message: '차량 등록 성공', data: { id: 12, createdAt: '2026-10-11T05:00:00' } },
+          { status: 201 },
         );
       }),
     );
@@ -241,13 +265,13 @@ describe('CarpoolConfirmPage', () => {
     expect(navigation.push).not.toHaveBeenCalled();
     expect(useCarpoolCreateStore.getState().draft).toEqual(completeDraft);
     expect(useSnackbarStore.getState().open).toBe(false);
-    expect(requestCount).toBe(1);
+    expect(carpoolRequestCount).toBe(1);
 
     fireEvent.click(screen.getByRole('button', { name: '취소' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
     expect(useCarpoolCreateStore.getState().draft).toEqual(completeDraft);
-    expect(requestCount).toBe(1);
+    expect(carpoolRequestCount).toBe(1);
 
     fireEvent.click(screen.getByRole('button', { name: '카풀 등록하기' }));
     const reopenedDialog = await screen.findByRole('dialog', { name: '카풀 등록이 처음이시군요!' });
@@ -260,7 +284,173 @@ describe('CarpoolConfirmPage', () => {
     fireEvent.click(screen.getByRole('button', { name: '확인' }));
 
     await waitFor(() => expect(reopenedDialog).not.toBeInTheDocument());
-    expect(requestCount).toBe(2);
+    expect(carRequests).toHaveLength(1);
+    expect(carRequests[0].headers.get('authorization')).toBe('Bearer mock-access-token');
+    expect(await carRequests[0].json()).toEqual({ number: '12가3456', model: '승용차' });
+    expect(carpoolRequestCount).toBe(2);
+    expect(useCarpoolCreateStore.getState().draft).toEqual(completeDraft);
+    expect(
+      screen.getByText('차량 정보가 저장되었어요. 카풀 등록을 다시 눌러주세요.'),
+    ).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '카풀 등록하기' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/matching'));
+    expect(carpoolRequestCount).toBe(3);
+    expect(useCarpoolCreateStore.getState().draft.origin).toBeNull();
+  });
+
+  it('차량 번호와 차종 누락 또는 글자 수 초과는 차량 API를 호출하지 않는다', async () => {
+    const registrationRequest = vi.fn<() => void>();
+    server.use(
+      http.post('*/carpools', () =>
+        HttpResponse.json(
+          {
+            message: '차량 정보를 먼저 등록해주세요',
+            error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+          },
+          { status: 409 },
+        ),
+      ),
+      http.post('*/users/me/cars', () => {
+        registrationRequest();
+        return HttpResponse.json({ message: 'unexpected' }, { status: 201 });
+      }),
+    );
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '카풀 등록하기' }));
+    const dialog = await screen.findByRole('dialog', { name: '카풀 등록이 처음이시군요!' });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+    expect(screen.getByText('차량 번호와 차종을 입력해주세요.')).toBeInTheDocument();
+    expect(registrationRequest).not.toHaveBeenCalled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: '차량 번호' }), {
+      target: { value: '12가345678901234567890' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '차종' }), {
+      target: { value: '승용차' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+    expect(
+      screen.getByText('차량 번호는 20자, 차종은 50자 이내로 입력해주세요.'),
+    ).toBeInTheDocument();
+    expect(registrationRequest).not.toHaveBeenCalled();
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.change(screen.getByRole('textbox', { name: '차량 번호' }), {
+      target: { value: '12가3456' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '차종' }), {
+      target: { value: '차'.repeat(51) },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+    expect(
+      screen.getByText('차량 번호는 20자, 차종은 50자 이내로 입력해주세요.'),
+    ).toBeInTheDocument();
+    expect(registrationRequest).not.toHaveBeenCalled();
+  });
+
+  it('차량 저장 실패는 입력을 유지하고 자동 재전송하지 않는다', async () => {
+    let carpoolRequestCount = 0;
+    let vehicleRequestCount = 0;
+    server.use(
+      http.post('*/carpools', () => {
+        carpoolRequestCount += 1;
+        return HttpResponse.json(
+          {
+            message: '차량 정보를 먼저 등록해주세요',
+            error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+          },
+          { status: 409 },
+        );
+      }),
+      http.post('*/users/me/cars', () => {
+        vehicleRequestCount += 1;
+        if (vehicleRequestCount === 1) {
+          return HttpResponse.json(
+            { message: '일시적으로 요청을 처리하지 못했습니다' },
+            { status: 500 },
+          );
+        }
+
+        return HttpResponse.json(
+          { message: '차량 등록 성공', data: { id: 12, createdAt: '2026-10-11T05:00:00' } },
+          { status: 201 },
+        );
+      }),
+    );
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '카풀 등록하기' }));
+    const dialog = await screen.findByRole('dialog', { name: '카풀 등록이 처음이시군요!' });
+    fireEvent.change(screen.getByRole('textbox', { name: '차량 번호' }), {
+      target: { value: '12가3456' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '차종' }), {
+      target: { value: '승용차' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    expect(
+      await screen.findByText(
+        '차량 정보를 저장하지 못했어요. 입력한 내용을 확인하고 다시 시도해주세요.',
+      ),
+    ).toBeInTheDocument();
+    expect(dialog).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '차량 번호' })).toHaveValue('12가3456');
+    expect(screen.getByRole('textbox', { name: '차종' })).toHaveValue('승용차');
+    expect(vehicleRequestCount).toBe(1);
+    expect(carpoolRequestCount).toBe(1);
+
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(vehicleRequestCount).toBe(2);
+    expect(carpoolRequestCount).toBe(1);
+    expect(useCarpoolCreateStore.getState().draft).toEqual(completeDraft);
+  });
+
+  it('이미 등록된 차량 오류는 카풀을 자동 재등록하지 않고 사용자의 재요청을 기다린다', async () => {
+    let carpoolRequestCount = 0;
+    server.use(
+      http.post('*/carpools', () => {
+        carpoolRequestCount += 1;
+        return HttpResponse.json(
+          {
+            message: '차량 정보를 먼저 등록해주세요',
+            error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+          },
+          { status: 409 },
+        );
+      }),
+      http.post('*/users/me/cars', () =>
+        HttpResponse.json(
+          {
+            message: '이미 등록한 차량이 있습니다',
+            error: { code: 'CAR_ALREADY_REGISTERED', field: null },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderPage();
+    fireEvent.click(screen.getByRole('button', { name: '카풀 등록하기' }));
+    const dialog = await screen.findByRole('dialog', { name: '카풀 등록이 처음이시군요!' });
+    fireEvent.change(screen.getByRole('textbox', { name: '차량 번호' }), {
+      target: { value: '12가3456' },
+    });
+    fireEvent.change(screen.getByRole('textbox', { name: '차종' }), {
+      target: { value: '승용차' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(dialog).not.toBeInTheDocument());
+    expect(
+      screen.getByText('이미 등록된 차량이 있어요. 카풀 등록을 다시 눌러주세요.'),
+    ).toBeInTheDocument();
+    expect(carpoolRequestCount).toBe(1);
     expect(useCarpoolCreateStore.getState().draft).toEqual(completeDraft);
   });
 
