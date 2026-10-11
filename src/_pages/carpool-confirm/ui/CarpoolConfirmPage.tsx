@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { useRequireAuth } from '@/features/login-required';
 import { useCarpoolCreateMutation } from '@/features/carpool-create';
+import { useOwnedCarRegistrationMutation } from '@/features/owned-car-registration';
 import {
   resetCarpoolRegistrationDraft,
   useCarpoolCreateStore,
@@ -77,7 +78,9 @@ export function CarpoolConfirmPage() {
   const { requireAuth, showLoginRequiredDialog } = useRequireAuth();
   const draft = useCarpoolCreateStore((state) => state.draft);
   const mutation = useCarpoolCreateMutation();
+  const ownedCarMutation = useOwnedCarRegistrationMutation();
   const [isVehicleDialogOpen, setIsVehicleDialogOpen] = useState(false);
+  const [vehicleRegistrationError, setVehicleRegistrationError] = useState<string | undefined>();
   const isSubmittingRef = useRef(false);
   const didSubmitSuccessfullyRef = useRef(false);
   const mountedRef = useRef(false);
@@ -170,6 +173,47 @@ export function CarpoolConfirmPage() {
     });
   }, [isVehicleDialogOpen, mutation, requireAuth, router, showLoginRequiredDialog]);
 
+  const handleVehicleRegistration = useCallback(
+    async (payload: { model: string; number: string }) => {
+      setVehicleRegistrationError(undefined);
+
+      try {
+        await ownedCarMutation.mutateAsync(payload);
+        setIsVehicleDialogOpen(false);
+        useSnackbarStore
+          .getState()
+          .showSnackbar('차량 정보가 저장되었어요. 카풀 등록을 다시 눌러주세요.', 'positive');
+      } catch (error) {
+        if (
+          error instanceof ApiError &&
+          error.status === 409 &&
+          error.code === 'CAR_ALREADY_REGISTERED'
+        ) {
+          setIsVehicleDialogOpen(false);
+          useSnackbarStore
+            .getState()
+            .showSnackbar('이미 등록된 차량이 있어요. 카풀 등록을 다시 눌러주세요.', 'positive');
+          return;
+        }
+
+        setVehicleRegistrationError(
+          error instanceof ApiError && error.code === 'VALIDATION_ERROR'
+            ? '차량 정보를 다시 확인해주세요.'
+            : '차량 정보를 저장하지 못했어요. 입력한 내용을 확인하고 다시 시도해주세요.',
+        );
+      }
+    },
+    [ownedCarMutation],
+  );
+
+  const handleVehicleDialogOpenChange = useCallback((open: boolean) => {
+    if (!open) {
+      setVehicleRegistrationError(undefined);
+    }
+
+    setIsVehicleDialogOpen(open);
+  }, []);
+
   if (!prepared.valid) {
     return null;
   }
@@ -230,8 +274,12 @@ export function CarpoolConfirmPage() {
         className={`fixed inset-x-0 z-[2147483647] mx-auto max-w-[393px] px-5 ${bottomActionSafeAreaOffsetClassName}`}
       />
       <CarpoolVehicleRegistrationDialog
+        errorMessage={vehicleRegistrationError}
+        isSubmitting={ownedCarMutation.isPending}
+        key={isVehicleDialogOpen ? 'open' : 'closed'}
         open={isVehicleDialogOpen}
-        onOpenChange={setIsVehicleDialogOpen}
+        onOpenChange={handleVehicleDialogOpenChange}
+        onSubmit={(payload) => void handleVehicleRegistration(payload)}
       />
     </div>
   );

@@ -195,17 +195,47 @@ test.describe('카풀 등록 확인 경로', () => {
     expect(requestCount).toBe(1);
   });
 
-  test('차량 등록이 필요한 오류는 차량 정보를 묻고 확인 후 초안을 유지한다', async ({ page }) => {
+  test('차량 등록 오류 뒤 차량을 저장하고 카풀 등록은 사용자가 다시 요청한다', async ({ page }) => {
     await completeDraftThroughUi(page);
-    let requestCount = 0;
+    let carpoolRequestCount = 0;
+    let vehicleRequestBody: unknown;
     await page.route('**/api/carpools', async (route) => {
-      requestCount += 1;
+      carpoolRequestCount += 1;
+      if (carpoolRequestCount === 1) {
+        await route.fulfill({
+          status: 409,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            message: '차량 등록이 필요합니다',
+            error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+          }),
+        });
+        return;
+      }
+
       await route.fulfill({
-        status: 409,
+        status: 201,
         contentType: 'application/json',
         body: JSON.stringify({
-          message: '차량 등록이 필요합니다',
-          error: { code: 'CAR_REGISTRATION_REQUIRED', field: null },
+          message: '카풀 등록 성공',
+          data: {
+            id: 51,
+            chat_room_id: 620,
+            capacity: 3,
+            current_count: 1,
+            status: 'RECRUITING',
+          },
+        }),
+      });
+    });
+    await page.route('**/api/users/me/cars', async (route) => {
+      vehicleRequestBody = route.request().postDataJSON();
+      await route.fulfill({
+        status: 201,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          message: '차량 등록 성공',
+          data: { id: 12, createdAt: '2026-10-11T05:00:00' },
         }),
       });
     });
@@ -219,11 +249,21 @@ test.describe('카풀 등록 확인 경로', () => {
     await expect(page).toHaveURL('/carpools/new/confirm');
     await expect(page.getByText('판교역')).toBeVisible();
     await expect(page.getByText('강남역')).toBeVisible();
+    await vehicleDialog.getByLabel('차량 번호').fill('12가3456');
+    await vehicleDialog.getByLabel('차종').fill('승용차');
     await vehicleDialog.getByRole('button', { name: '확인' }).click();
     await expect(vehicleDialog).toHaveCount(0);
     await expect(page.getByText('판교역')).toBeVisible();
     await expect(page.getByText('강남역')).toBeVisible();
-    expect(requestCount).toBe(1);
+    await expect(
+      page.getByText('차량 정보가 저장되었어요. 카풀 등록을 다시 눌러주세요.'),
+    ).toBeVisible();
+    expect(vehicleRequestBody).toEqual({ number: '12가3456', model: '승용차' });
+    expect(carpoolRequestCount).toBe(1);
+
+    await page.getByRole('button', { name: '카풀 등록하기' }).click();
+    await expect(page).toHaveURL('/matching');
+    expect(carpoolRequestCount).toBe(2);
   });
 
   test('등록 정보가 없는 확인 경로 직접 진입은 위치 입력 단계로 돌아간다', async ({ page }) => {
