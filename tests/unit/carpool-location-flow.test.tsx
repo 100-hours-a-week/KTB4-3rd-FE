@@ -52,16 +52,23 @@ vi.mock('@/features/post-location', () => ({ reverseGeocodeLocation }));
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
     children,
+    defaultCenter,
     onCenterChange,
     onUserLocationChange,
     onUserLocationError,
   }: {
     children?: ReactNode;
+    defaultCenter?: MapCoordinate;
     onCenterChange?: (coordinate: MapCoordinate) => void;
     onUserLocationChange?: (coordinate: MapCoordinate) => void;
     onUserLocationError?: () => void;
   }) => (
-    <div data-testid="map" role="application">
+    <div
+      data-center-lat={defaultCenter?.lat}
+      data-center-lng={defaultCenter?.lng}
+      data-testid="map"
+      role="application"
+    >
       <button type="button" onClick={() => onUserLocationChange?.({ lat: 37.5, lng: 127.0 })}>
         테스트 현재 위치 지정
       </button>
@@ -199,6 +206,27 @@ describe('CarpoolLocationPage', () => {
       roadAddress: '경기 성남시 분당구 대왕판교로 660',
     });
     expect(navigation.push).toHaveBeenCalledWith('/carpools/new/location/adjust?field=departure');
+  });
+
+  it('검색 결과 행의 버튼 밖을 눌러도 해당 장소 좌표를 지도의 중심으로 연다', async () => {
+    useKakaoPlaceSearch.mockReturnValue({ error: null, results: [result], status: 'success' });
+    const user = userEvent.setup();
+    renderPage(<CarpoolLocationPage />);
+
+    await user.click(screen.getByRole('listitem'));
+    expect(useCarpoolCreateStore.getState().pendingLocation).toEqual({
+      field: 'departure',
+      location: { name: '유스페이스1빌딩', lat: 37.402, lng: 127.108 },
+      roadAddress: '경기 성남시 분당구 대왕판교로 660',
+    });
+    expect(navigation.push).toHaveBeenCalledWith('/carpools/new/location/adjust?field=departure');
+
+    cleanup();
+    searchParams.set('field', 'departure');
+    renderPage(<CarpoolLocationAdjustPage />);
+
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lat', '37.402');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lng', '127.108');
   });
 });
 

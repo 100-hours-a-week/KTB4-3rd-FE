@@ -106,6 +106,23 @@ async function completeDraftThroughUi(page: Page) {
 }
 
 test.describe('카풀 등록 확인 경로', () => {
+  test('장소 검색 결과 행의 버튼 밖을 누르면 해당 장소를 중심으로 위치 조정 화면을 연다', async ({
+    page,
+  }) => {
+    await page.clock.install({ time: fixedNow });
+    await mockSession(page);
+    await page.goto('/carpools/new/location?field=departure');
+    await page.getByRole('textbox', { name: '출발지' }).fill('판교역');
+
+    const resultRow = page.getByRole('listitem').filter({ hasText: '판교역' });
+    await expect(resultRow).toBeVisible();
+    await resultRow.click({ position: { x: 8, y: 35 } });
+
+    await expect(page).toHaveURL('/carpools/new/location/adjust?field=departure');
+    await expect(page.getByRole('heading', { name: '판교역' })).toBeVisible();
+    await expect(page.getByLabel('출발 위치')).toBeVisible();
+  });
+
   test('위치부터 확인까지 입력하고 성공한 뒤 매칭으로 이동하며 등록 Snackbar를 보여준다', async ({
     page,
   }) => {

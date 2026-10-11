@@ -233,7 +233,18 @@ export function CarpoolLocationPage() {
             kakaoSearch.status !== 'error' &&
             kakaoSearch.status !== 'empty'
               ? kakaoSearch.results.map((result) => (
-                  <div className="flex flex-col" key={result.id} role="listitem">
+                  <div
+                    className="flex cursor-pointer flex-col"
+                    key={result.id}
+                    role="listitem"
+                    onClick={(event) => {
+                      if (event.target instanceof Element && event.target.closest('button')) {
+                        return;
+                      }
+
+                      handleDetailSelection(result);
+                    }}
+                  >
                     <div className="flex h-[71px] w-full items-center gap-3.5 overflow-hidden bg-[var(--color-bg-layer-default)] px-5">
                       <button
                         aria-label={`${result.placeName}, ${result.roadAddress} 상세 위치 조정`}
