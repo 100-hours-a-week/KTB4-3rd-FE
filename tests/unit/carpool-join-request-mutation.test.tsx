@@ -7,7 +7,10 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useAuthStore } from '@/entities/auth';
 import { carpoolDetailQueryKeys } from '@/entities/carpool';
 import { carpoolRequestQueryKeys } from '@/entities/carpool-request';
-import { useCarpoolJoinRequestMutation } from '@/features/carpool-join-request';
+import {
+  carpoolJoinRequestMutationKeys,
+  useCarpoolJoinRequestMutation,
+} from '@/features/carpool-join-request';
 import { server } from '@/shared/api/mocks/server';
 
 const viewerId = 27;
@@ -36,6 +39,14 @@ afterEach(() => {
 });
 
 describe('useCarpoolJoinRequestMutation', () => {
+  it('명세된 create mutation key를 사용한다', () => {
+    expect(carpoolJoinRequestMutationKeys.create()).toEqual([
+      'carpools',
+      'join-requests',
+      'create',
+    ]);
+  });
+
   it('검증된 계정으로 원문을 한 번 보내고 상세 요청과 보낸 요청 목록을 갱신한다', async () => {
     authenticateAs(viewerId);
     const queryClient = createQueryClient();

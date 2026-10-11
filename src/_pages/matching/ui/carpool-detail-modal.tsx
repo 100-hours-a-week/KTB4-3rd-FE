@@ -13,14 +13,26 @@ import {
 import { useRequireAuth } from '@/features/login-required';
 import { CarpoolRequestCard } from '@/features/carpool-request';
 import { carpoolDetailQueries, useCarpoolDetailQuery } from '@/features/carpool-detail';
-import { useCarpoolJoinRequestMutation } from '@/features/carpool-join-request';
+import {
+  isJoinRequestContentValid,
+  useCarpoolJoinRequestMutation,
+} from '@/features/carpool-join-request';
 import { ApiError } from '@/shared/api/client';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import { Button } from '@/shared/ui/button';
 import { BottomModal } from '@/shared/ui/bottom-modal';
 import { Dialog } from '@/shared/ui/dialog';
 import { Text } from '@/shared/ui/text';
 
 export type CarpoolSelection = { id: number; position: { lat: number; lng: number } | null };
+
+function isUncertainJoinRequestError(error: unknown) {
+  return !(error instanceof ApiError) || error.status >= 500;
+}
+
+function joinRequestOutcomeKey(carpoolId: number, viewerId: number) {
+  return `${viewerId}:${carpoolId}`;
+}
 
 export function CarpoolDetailModal({
   selection,
@@ -45,6 +57,9 @@ export function CarpoolDetailModal({
   const [isDiscardOpen, setIsDiscardOpen] = useState(false);
   const [pendingExit, setPendingExit] = useState<CarpoolSelection | null | undefined>(undefined);
   const [isCheckingLatest, setIsCheckingLatest] = useState(false);
+  const [isReconcilingJoinRequest, setIsReconcilingJoinRequest] = useState(false);
+  const [uncertainJoinRequestKey, setUncertainJoinRequestKey] = useState<string | null>(null);
+  const uncertainJoinRequestKeysRef = useRef(new Set<string>());
   const selectionRef = useRef<CarpoolSelection | null>(null);
   const lastSelectedIdRef = useRef<number | null>(null);
   const modalSessionRef = useRef(0);
@@ -227,6 +242,10 @@ export function CarpoolDetailModal({
             showSnackbar(availability.message ?? '현재 동행 요청을 보낼 수 없어요.', 'critical');
             return;
           }
+          const outcomeKey = joinRequestOutcomeKey(requestedSelection.id, activeViewerId);
+          setUncertainJoinRequestKey(
+            uncertainJoinRequestKeysRef.current.has(outcomeKey) ? outcomeKey : null,
+          );
           setStage('request');
           setIsDirty(false);
         })
@@ -260,13 +279,73 @@ export function CarpoolDetailModal({
   const handleSubmit = useCallback(
     (content: string) => {
       const activeViewerId = useAuthStore.getState().verifiedViewerId;
-      if (actionLockRef.current || !selectionRef.current || activeViewerId === null) {
+      if (
+        actionLockRef.current ||
+        !selectionRef.current ||
+        activeViewerId === null ||
+        !isJoinRequestContentValid(content)
+      ) {
         return;
       }
-      actionLockRef.current = true;
       const requestSelectionAtSubmit = selectionRef.current;
+      const outcomeKey = joinRequestOutcomeKey(requestSelectionAtSubmit.id, activeViewerId);
+      const needsReconciliation = uncertainJoinRequestKeysRef.current.has(outcomeKey);
+      actionLockRef.current = true;
       const session = modalSessionRef.current;
       const token = currentTokenRef.current;
+      let keepActionLockForReconciliation = false;
+
+      const reconcileOutcome = async () => {
+        setIsReconcilingJoinRequest(true);
+        try {
+          const response = await queryClient.fetchQuery({
+            ...carpoolDetailQueries.detail({
+              carpoolId: requestSelectionAtSubmit.id,
+              viewerId: activeViewerId,
+              isAuthenticated: true,
+              authReady: true,
+              enabled: true,
+            }),
+            staleTime: 0,
+          });
+          if (
+            selectionRef.current?.id !== requestSelectionAtSubmit.id ||
+            modalSessionRef.current !== session ||
+            currentTokenRef.current !== token
+          ) {
+            return;
+          }
+          queryClient.setQueryData(
+            carpoolDetailQueryKeys.detail(requestSelectionAtSubmit.id, activeViewerId),
+            response,
+          );
+          uncertainJoinRequestKeysRef.current.delete(outcomeKey);
+          setUncertainJoinRequestKey(null);
+          if (response.data.my_request) {
+            setStage('detail');
+            setIsDirty(false);
+            showSnackbar('이미 동행 요청이 확인되었어요.', 'default');
+          } else {
+            showSnackbar('요청 상태를 확인했어요. 다시 전송할 수 있어요.', 'default');
+          }
+        } catch {
+          if (
+            selectionRef.current?.id === requestSelectionAtSubmit.id &&
+            modalSessionRef.current === session
+          ) {
+            showSnackbar('요청 상태를 확인하지 못했어요. 확인 후 다시 시도해주세요.', 'critical');
+          }
+        } finally {
+          setIsReconcilingJoinRequest(false);
+          actionLockRef.current = false;
+        }
+      };
+
+      if (needsReconciliation) {
+        void reconcileOutcome();
+        return;
+      }
+
       void joinRequestMutation
         .mutateAsync({
           carpoolId: requestSelectionAtSubmit.id,
@@ -285,6 +364,14 @@ export function CarpoolDetailModal({
           }
         })
         .catch((error: unknown) => {
+          const hasUncertainOutcome = isUncertainJoinRequestError(error);
+          if (hasUncertainOutcome) {
+            uncertainJoinRequestKeysRef.current.add(outcomeKey);
+            setUncertainJoinRequestKey(outcomeKey);
+            keepActionLockForReconciliation = true;
+            void reconcileOutcome();
+            return;
+          }
           if (
             selectionRef.current?.id !== requestSelectionAtSubmit.id ||
             modalSessionRef.current !== session
@@ -315,7 +402,9 @@ export function CarpoolDetailModal({
           }
         })
         .finally(() => {
-          actionLockRef.current = false;
+          if (!keepActionLockForReconciliation) {
+            actionLockRef.current = false;
+          }
         });
     },
     [finishSelection, joinRequestMutation, queryClient, showSnackbar],
@@ -354,7 +443,9 @@ export function CarpoolDetailModal({
     <>
       <BottomModal
         bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
-        closeDisabled={joinRequestMutation.isPending || isCheckingLatest}
+        closeDisabled={
+          joinRequestMutation.isPending || isCheckingLatest || isReconcilingJoinRequest
+        }
         finalFocus={() => {
           const selectedId = selection?.id ?? lastSelectedIdRef.current;
           if (selectedId === null) {
@@ -388,9 +479,24 @@ export function CarpoolDetailModal({
               </Text>
             </div>
             <CarpoolRequestCard
-              isSubmitting={joinRequestMutation.isPending}
+              isSubmitting={joinRequestMutation.isPending || isReconcilingJoinRequest}
               onDirtyChange={setIsDirty}
               onSubmit={handleSubmit}
+              renderSubmitAction={(props) => (
+                <Button
+                  {...props}
+                  className="!h-11 !min-h-11 !rounded-[22px]"
+                  variant="brand-solid"
+                  width="fill"
+                >
+                  {uncertainJoinRequestKey ===
+                  (selection && viewerId !== null
+                    ? joinRequestOutcomeKey(selection.id, viewerId)
+                    : null)
+                    ? '요청 상태 확인'
+                    : '전송하기'}
+                </Button>
+              )}
             />
           </div>
         ) : (

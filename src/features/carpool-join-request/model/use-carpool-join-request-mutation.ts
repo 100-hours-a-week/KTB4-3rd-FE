@@ -12,6 +12,10 @@ import {
   type CreateCarpoolJoinRequestResponse,
 } from '@/features/carpool-join-request/api';
 
+export const carpoolJoinRequestMutationKeys = {
+  create: () => ['carpools', 'join-requests', 'create'] as const,
+};
+
 export type CreateCarpoolJoinRequestVariables = {
   viewerId: number;
   carpoolId: number;
@@ -23,7 +27,7 @@ export function useCarpoolJoinRequestMutation() {
   const queryClient = useQueryClient();
 
   return useMutation<CreateCarpoolJoinRequestResponse, Error, CreateCarpoolJoinRequestVariables>({
-    mutationKey: ['carpools', 'join-requests'] as const,
+    mutationKey: carpoolJoinRequestMutationKeys.create(),
     mutationFn: async ({ viewerId, carpoolId, payload, signal }) =>
       createCarpoolJoinRequest(await getAccessTokenForViewer(viewerId), carpoolId, payload, signal),
     onSuccess: (response, variables) => {
