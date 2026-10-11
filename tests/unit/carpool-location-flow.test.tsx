@@ -56,12 +56,14 @@ vi.mock('@/shared/ui/map', () => ({
     onCenterChange,
     onUserLocationChange,
     onUserLocationError,
+    onViewportChange,
   }: {
     children?: ReactNode;
     defaultCenter?: MapCoordinate;
     onCenterChange?: (coordinate: MapCoordinate) => void;
     onUserLocationChange?: (coordinate: MapCoordinate) => void;
     onUserLocationError?: () => void;
+    onViewportChange?: (_viewport: unknown, source?: 'initial' | 'drag') => void;
   }) => (
     <div
       data-center-lat={defaultCenter?.lat}
@@ -72,7 +74,22 @@ vi.mock('@/shared/ui/map', () => ({
       <button type="button" onClick={() => onUserLocationChange?.({ lat: 37.5, lng: 127.0 })}>
         테스트 현재 위치 지정
       </button>
-      <button type="button" onClick={() => onCenterChange?.({ lat: 37.49, lng: 127.02 })}>
+      <button
+        type="button"
+        onClick={() => {
+          onViewportChange?.({}, 'initial');
+          onCenterChange?.({ lat: 37.5547, lng: 126.9707 });
+        }}
+      >
+        초기 지도 상태
+      </button>
+      <button
+        type="button"
+        onClick={() => {
+          onViewportChange?.({}, 'drag');
+          onCenterChange?.({ lat: 37.49, lng: 127.02 });
+        }}
+      >
         지도 위치 변경
       </button>
       <button type="button" onClick={() => onUserLocationError?.()}>
@@ -126,6 +143,32 @@ describe('CarpoolCreatePage', () => {
         lng: 127,
       });
     });
+  });
+
+  it('지도를 이동하면 출발 좌표와 역지오코딩한 위치명을 갱신한다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({ placeName: '판교역', roadAddress: '판교역로' });
+    renderPage(<CarpoolCreatePage />);
+
+    await userEvent.click(screen.getByRole('button', { name: '지도 위치 변경' }));
+
+    await waitFor(() => {
+      expect(useCarpoolCreateStore.getState().draft.origin).toEqual({
+        name: '판교역',
+        lat: 37.49,
+        lng: 127.02,
+      });
+      expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('판교역');
+    });
+    expect(reverseGeocodeLocation).toHaveBeenCalledWith({ lat: 37.49, lng: 127.02 });
+  });
+
+  it('초기 지도 중심은 사용자가 선택한 출발지로 저장하지 않는다', async () => {
+    renderPage(<CarpoolCreatePage />);
+
+    await userEvent.click(screen.getByRole('button', { name: '초기 지도 상태' }));
+
+    expect(useCarpoolCreateStore.getState().draft.origin).toBeNull();
+    expect(reverseGeocodeLocation).not.toHaveBeenCalled();
   });
 
   it('현재 위치 조회 실패 시 기존 위치가 없으면 서울역을 유지한다', async () => {
