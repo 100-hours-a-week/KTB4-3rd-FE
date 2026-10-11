@@ -38,6 +38,13 @@ describe('카풀 요청 표시 컴포넌트', () => {
     expect(onValueChange).toHaveBeenCalledWith('carpool');
   });
 
+  it('상위 탭의 채팅과 카풀 텍스트에 t6Regular 서체를 사용한다', () => {
+    render(<ChatCarpoolTabs value="chat" onValueChange={() => undefined} />);
+
+    expect(screen.getByText('채팅').className).toContain('t6Regular');
+    expect(screen.getByText('카풀').className).toContain('t6Regular');
+  });
+
   it('상위 탭은 좌우 화살표로 탭에 포커스 이동을 지원한다', () => {
     render(<ChatCarpoolTabs value="chat" onValueChange={() => undefined} />);
     fireEvent.keyDown(screen.getByRole('tab', { name: '채팅' }), { key: 'ArrowRight' });

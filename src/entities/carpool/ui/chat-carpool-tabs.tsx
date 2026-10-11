@@ -65,7 +65,7 @@ export function ChatCarpoolTabs({
             tabIndex={selected ? 0 : -1}
             type="button"
           >
-            <Text as="span" color="fg.neutral" variant={selected ? 't1Bold' : 't1Regular'}>
+            <Text as="span" color="fg.neutral" variant="t6Regular">
               {option.label}
             </Text>
           </button>

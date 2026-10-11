@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ChatListPageLoading,
   ChatListPageContent,
   ChatListPageContentLoading,
   type ChatListPageStates,
@@ -167,5 +168,17 @@ describe('ChatListPageContentLoading', () => {
       'true',
     );
     expect(screen.getAllByRole('listitem', { hidden: true })).toHaveLength(6);
+  });
+
+  it('페이지 로딩 상태에서도 채팅/카풀 탭을 헤더 바로 아래에 붙여 표시한다', () => {
+    render(<ChatListPageLoading />);
+
+    const header = screen.getByRole('banner').parentElement;
+    const main = screen.getByRole('main');
+    const tabs = screen.getByRole('tablist', { name: '채팅 화면' });
+
+    expect(header?.nextElementSibling).toBe(main);
+    expect(main).not.toHaveClass('!pt-8');
+    expect(tabs.closest('section')).toBe(main.firstElementChild);
   });
 });
