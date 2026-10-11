@@ -195,7 +195,7 @@ test.describe('카풀 등록 확인 경로', () => {
     expect(requestCount).toBe(1);
   });
 
-  test('차량 등록이 필요한 오류는 차량 다이얼로그를 임의로 열지 않고 초안을 유지한다', async ({
+  test('차량 등록이 필요한 오류는 차량 정보를 묻고 확인 후 초안을 유지한다', async ({
     page,
   }) => {
     await completeDraftThroughUi(page);
@@ -214,11 +214,17 @@ test.describe('카풀 등록 확인 경로', () => {
 
     await page.getByRole('button', { name: '카풀 등록하기' }).click();
 
-    await expect(page.getByText('차량 정보를 먼저 등록해주세요.')).toBeVisible();
+    const vehicleDialog = page.getByRole('dialog', { name: '카풀 등록이 처음이시군요!' });
+    await expect(vehicleDialog).toBeVisible();
+    await expect(vehicleDialog.getByLabel('차량 번호')).toBeVisible();
+    await expect(vehicleDialog.getByLabel('차종')).toBeVisible();
     await expect(page).toHaveURL('/carpools/new/confirm');
     await expect(page.getByText('판교역')).toBeVisible();
     await expect(page.getByText('강남역')).toBeVisible();
-    await expect(page.getByRole('dialog', { name: /차량/ })).toHaveCount(0);
+    await vehicleDialog.getByRole('button', { name: '확인' }).click();
+    await expect(vehicleDialog).toHaveCount(0);
+    await expect(page.getByText('판교역')).toBeVisible();
+    await expect(page.getByText('강남역')).toBeVisible();
     expect(requestCount).toBe(1);
   });
 
