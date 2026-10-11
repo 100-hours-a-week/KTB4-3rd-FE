@@ -567,7 +567,12 @@ function MapComponent(
     if (center) {
       const centerPosition = new kakao.maps.LatLng(center.lat, center.lng);
       const focusOffset = markerFocusOffsetRef.current;
-      const targetLevel = Math.min(Math.max(markerFocusLevelRef.current ?? map.getLevel(), 1), 14);
+      const defaultTargetLevel =
+        centerChangeSource === 'selection' ? map.getLevel() - 1 : map.getLevel();
+      const targetLevel = Math.min(
+        Math.max(markerFocusLevelRef.current ?? defaultTargetLevel, 1),
+        14,
+      );
 
       const shouldChangeLevel = map.getLevel() !== targetLevel;
       const shouldChangeCenter = Boolean(
