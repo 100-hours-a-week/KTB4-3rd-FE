@@ -601,15 +601,21 @@ describe('MatchingPage', () => {
     expect(screen.queryByRole('textbox', { name: '요청 메시지' })).not.toBeInTheDocument();
   });
 
-  it('요청 API 실패 때 입력을 유지하고 POST를 자동으로 재전송하지 않는다', async () => {
+  it('불명확한 POST 뒤 상태 조회가 실패하면 재전송을 막고 안전 확인 뒤에만 허용한다', async () => {
     const user = userEvent.setup();
     const token = 'mock-access-token';
+    let detailRequestCount = 0;
     let joinRequestCount = 0;
+    let failReconciliation = true;
     useAuthStore.getState().setAccessToken(token);
     useAuthStore.getState().setVerifiedViewerId(token, 7);
     server.use(
-      http.get('*/carpools/51', () =>
-        HttpResponse.json({
+      http.get('*/carpools/51', () => {
+        detailRequestCount += 1;
+        if (detailRequestCount > 2 && failReconciliation) {
+          return HttpResponse.json({ message: '조회에 실패했습니다' }, { status: 503 });
+        }
+        return HttpResponse.json({
           message: '조회에 성공했습니다',
           data: {
             id: 51,
@@ -624,10 +630,19 @@ describe('MatchingPage', () => {
             is_full: false,
             participants: [],
           },
-        }),
-      ),
+        });
+      }),
       http.post('*/carpools/51/join-requests', () => {
         joinRequestCount += 1;
+        if (joinRequestCount > 1) {
+          return HttpResponse.json(
+            {
+              message: '요청이 등록되었습니다',
+              data: { id: 703, carpool_id: 51, status: 'PENDING', created_at: '2030-01-01' },
+            },
+            { status: 201 },
+          );
+        }
         return HttpResponse.json(
           { message: '요청을 저장하지 못했어요.', error: { code: 'INTERNAL_SERVER_ERROR' } },
           { status: 500 },
@@ -642,12 +657,24 @@ describe('MatchingPage', () => {
     await user.type(message, '잠시 뒤 다시 시도할게요.');
     await user.click(screen.getByRole('button', { name: '전송하기' }));
 
-    expect(await screen.findByText('요청을 저장하지 못했어요.')).toBeInTheDocument();
+    expect(
+      await screen.findByText('요청 상태를 확인하지 못했어요. 확인 후 다시 시도해주세요.'),
+    ).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '요청 메시지' })).toHaveValue(
       '잠시 뒤 다시 시도할게요.',
     );
-    expect(screen.getByRole('button', { name: '전송하기' })).toBeEnabled();
+    expect(screen.getByRole('button', { name: '요청 상태 확인' })).toBeEnabled();
     expect(joinRequestCount).toBe(1);
+
+    failReconciliation = false;
+    await user.click(screen.getByRole('button', { name: '요청 상태 확인' }));
+    expect(await screen.findByRole('button', { name: '전송하기' })).toBeEnabled();
+    expect(joinRequestCount).toBe(1);
+
+    await user.click(screen.getByRole('button', { name: '전송하기' }));
+    expect(await screen.findByText('동행 요청을 보낸 상태예요.')).toBeInTheDocument();
+    expect(joinRequestCount).toBe(2);
+    expect(detailRequestCount).toBeGreaterThanOrEqual(4);
   });
 
   it('요청 메시지를 쓴 뒤 나가기를 취소하면 입력을 유지하고 확정하면 비운다', async () => {
