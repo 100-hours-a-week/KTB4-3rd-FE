@@ -217,7 +217,7 @@ describe('Map', () => {
       },
       'initial',
     );
-    expect(onCenterChange).toHaveBeenCalledWith({ lat: 37.5665, lng: 126.978 });
+    expect(onCenterChange).toHaveBeenCalledWith({ lat: 37.5665, lng: 126.978 }, 'initial');
   });
 
   it('uses Seoul Station as the default initial center', async () => {
@@ -227,6 +227,17 @@ describe('Map', () => {
 
     expect(mapCreationOptions[0]?.center.getLat()).toBeCloseTo(37.5547);
     expect(mapCreationOptions[0]?.center.getLng()).toBeCloseTo(126.9707);
+  });
+
+  it('uses an explicit initial center before the stored current location', async () => {
+    useLocationStore.getState().setCoordinate({ lat: 37.5665, lng: 126.978 });
+
+    render(<Map apiKey="test-key" defaultCenter={{ lat: 37.39451234, lng: 127.11123456 }} />);
+
+    await waitFor(() => expect(mapCreationOptions).toHaveLength(1));
+
+    expect(mapCreationOptions[0]?.center.getLat()).toBeCloseTo(37.39451234);
+    expect(mapCreationOptions[0]?.center.getLng()).toBeCloseTo(127.11123456);
   });
 
   it('requests the current location on mount and renders MyLocation after success', async () => {
@@ -249,6 +260,33 @@ describe('Map', () => {
     await waitFor(() => expect(getCurrentPosition).toHaveBeenCalledOnce());
     expect(await screen.findByRole('img', { name: '현재 위치' })).toBeInTheDocument();
     expect(fakeMap.setCenter).toHaveBeenCalledOnce();
+  });
+
+  it('does not replace a dragged center when the initial location request finishes late', async () => {
+    let respondWithLocation: PositionCallback | undefined;
+    const getCurrentPosition = vi.fn<(success: PositionCallback) => void>((success) => {
+      respondWithLocation = success;
+    });
+    const onUserLocationChange = vi.fn<(coordinate: MapCoordinate) => void>();
+
+    Object.defineProperty(navigator, 'geolocation', {
+      configurable: true,
+      value: { getCurrentPosition },
+    });
+
+    render(<Map apiKey="test-key" locateOnMount onUserLocationChange={onUserLocationChange} />);
+
+    await waitFor(() => expect(getCurrentPosition).toHaveBeenCalledOnce());
+    act(() => {
+      mapEventHandlers.dragstart?.forEach((handler) => handler());
+      mapEventHandlers.dragend?.forEach((handler) => handler());
+      respondWithLocation?.({
+        coords: { latitude: 37.51, longitude: 127.02 } as GeolocationCoordinates,
+      } as GeolocationPosition);
+    });
+
+    expect(onUserLocationChange).not.toHaveBeenCalled();
+    expect(fakeMap.setCenter).not.toHaveBeenCalled();
   });
 
   it('reprojects MyLocation while the map is dragged or zoomed', async () => {
@@ -625,8 +663,11 @@ describe('Map', () => {
     });
 
     it('does not infer drag from bounds or idle and debounces completed SDK drags for 300ms', async () => {
-      const { onViewportChange } = await readyMap();
+      const onCenterChange =
+        vi.fn<(center: MapCoordinate, source: MapViewportChangeSource) => void>();
+      const { onViewportChange } = await readyMap({ onCenterChange });
       onViewportChange.mockClear();
+      onCenterChange.mockClear();
       emit('bounds_changed', 'idle');
       await advance(300);
       expect(onViewportChange.mock.calls.some(([, source]) => source === 'drag')).toBe(false);
@@ -640,6 +681,10 @@ describe('Map', () => {
       expect(onViewportChange).not.toHaveBeenCalled();
       await advance(1);
       expect(onViewportChange).toHaveBeenCalledExactlyOnceWith(expect.any(Object), 'drag');
+      expect(onCenterChange).toHaveBeenCalledExactlyOnceWith(
+        { lat: 37.5665, lng: 126.978 },
+        'drag',
+      );
     });
 
     it('reports resized map bounds as programmatic without requiring an SDK idle event', async () => {
