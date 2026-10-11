@@ -14,6 +14,7 @@ import { useCarpoolCreateStore } from '@/features/carpool-registration';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { ReverseGeocodedLocation } from '@/features/post-location';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import type { MapViewportChangeSource } from '@/shared/ui/map';
 
 const { navigation, searchParams, useKakaoPlaceSearch, reverseGeocodeLocation } = vi.hoisted(
   () => ({
@@ -60,7 +61,7 @@ vi.mock('@/shared/ui/map', () => ({
   }: {
     children?: ReactNode;
     defaultCenter?: MapCoordinate;
-    onCenterChange?: (coordinate: MapCoordinate) => void;
+    onCenterChange?: (coordinate: MapCoordinate, source: MapViewportChangeSource) => void;
     onUserLocationChange?: (coordinate: MapCoordinate) => void;
     onUserLocationError?: () => void;
     onViewportChange?: (_viewport: unknown, source?: 'initial' | 'drag') => void;
@@ -78,7 +79,7 @@ vi.mock('@/shared/ui/map', () => ({
         type="button"
         onClick={() => {
           onViewportChange?.({}, 'initial');
-          onCenterChange?.({ lat: 37.5547, lng: 126.9707 });
+          onCenterChange?.({ lat: 37.5547, lng: 126.9707 }, 'initial');
         }}
       >
         초기 지도 상태
@@ -87,7 +88,7 @@ vi.mock('@/shared/ui/map', () => ({
         type="button"
         onClick={() => {
           onViewportChange?.({}, 'drag');
-          onCenterChange?.({ lat: 37.49, lng: 127.02 });
+          onCenterChange?.({ lat: 37.49, lng: 127.02 }, 'drag');
         }}
       >
         지도 위치 변경
@@ -281,6 +282,25 @@ describe('CarpoolLocationAdjustPage', () => {
     await waitFor(() =>
       expect(navigation.replace).toHaveBeenCalledWith('/carpools/new/location?field=destination'),
     );
+  });
+
+  it('초기 지도 알림 뒤에도 검색 결과의 장소명과 도로명주소를 구분해 보여준다', async () => {
+    useCarpoolCreateStore.getState().setPendingLocation({
+      field: 'departure',
+      location: { name: '판교역 신분당선', lat: 37.394512, lng: 127.111235 },
+      roadAddress: '경기 성남시 분당구 판교역로 지하 160',
+    });
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: null,
+      roadAddress: '경기 성남시 분당구 판교역로 지하 160',
+    });
+
+    renderPage(<CarpoolLocationAdjustPage />);
+    fireEvent.click(screen.getByRole('button', { name: '초기 지도 상태' }));
+
+    expect(screen.getByRole('heading', { name: '판교역 신분당선' })).toBeInTheDocument();
+    expect(screen.getByText('경기 성남시 분당구 판교역로 지하 160')).toBeInTheDocument();
+    expect(reverseGeocodeLocation).not.toHaveBeenCalled();
   });
 
   it('조정한 도착 좌표와 역지오코딩 장소명을 확정하고 추가 정보로 이동한다', async () => {
