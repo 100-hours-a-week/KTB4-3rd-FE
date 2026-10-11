@@ -84,7 +84,7 @@ export type MapProps = {
   onUserLocationChange?: (coordinate: MapCoordinate) => void;
   onUserLocationError?: (error: MapLocationError) => void;
   onViewportChange?: (viewport: MapViewport, source?: MapViewportChangeSource) => void;
-  onCenterChange?: (center: MapCoordinate) => void;
+  onCenterChange?: (center: MapCoordinate, source: MapViewportChangeSource) => void;
   selectionMode?: boolean;
   selectionMarker?: MapMarkerImage;
   showCurrentLocationButton?: boolean;
@@ -172,7 +172,7 @@ function MapComponent(
     className,
     clusterMarkers = true,
     clusterMinLevel = 6,
-    defaultCenter = DEFAULT_MAP_CENTER,
+    defaultCenter,
     defaultLevel = DEFAULT_LEVEL,
     locateOnMount = false,
     markerFocusOffset,
@@ -203,6 +203,8 @@ function MapComponent(
   const viewportSourceRef = useRef<MapViewportChangeSource>('initial');
   const initialViewportEmittedRef = useRef(false);
   const activeDragSequenceRef = useRef<number | null>(null);
+  const completedDragCountRef = useRef(0);
+  const locationRequestIdRef = useRef(0);
   const activeZoomSequenceRef = useRef<number | null>(null);
   const pendingProgrammaticZoomSequenceRef = useRef<number | null>(null);
   const awaitingIdleSequenceRef = useRef<number | null>(null);
@@ -222,7 +224,7 @@ function MapComponent(
   const currentLocationRef = useRef<MapCoordinate | null>(currentLocation);
 
   const markerLocation = userLocation ?? currentLocation;
-  const initialCenterRef = useRef(center ?? markerLocation ?? defaultCenter);
+  const initialCenterRef = useRef(center ?? defaultCenter ?? markerLocation ?? DEFAULT_MAP_CENTER);
   const markerLocationRef = useRef<MapCoordinate | null>(markerLocation);
   const markerList = useMemo(() => [...markers], [markers]);
 
@@ -304,7 +306,7 @@ function MapComponent(
       }
 
       onViewportChangeRef.current?.(viewport, source);
-      onCenterChangeRef.current?.(mapCenter);
+      onCenterChangeRef.current?.(mapCenter, source);
     },
     [updateUserLocationPoint],
   );
@@ -434,6 +436,7 @@ function MapComponent(
 
           isDraggingRef.current = false;
           activeDragSequenceRef.current = null;
+          completedDragCountRef.current += 1;
 
           if (
             eventSequence !== null &&
@@ -766,7 +769,9 @@ function MapComponent(
   );
 
   const handleCurrentLocation = useCallback(
-    (maximumAge = 30_000) => {
+    (maximumAge = 30_000, isAutomatic = false) => {
+      const requestId = ++locationRequestIdRef.current;
+      const dragCount = completedDragCountRef.current;
       const knownLocation = currentLocationRef.current;
 
       if (knownLocation && maximumAge > 0) {
@@ -786,6 +791,10 @@ function MapComponent(
       setLocationError(null);
       navigator.geolocation.getCurrentPosition(
         ({ coords }) => {
+          if (requestId !== locationRequestIdRef.current) {
+            return;
+          }
+
           const coordinate = {
             lat: coords.latitude,
             lng: coords.longitude,
@@ -796,10 +805,17 @@ function MapComponent(
           setLoading(false);
           setLocationError(null);
           setIsLocationPermissionDialogOpen(false);
+          if (isAutomatic && dragCount !== completedDragCountRef.current) {
+            return;
+          }
           onUserLocationChangeRef.current?.(coordinate);
           centerMapOnLocation(coordinate);
         },
-        (positionError) => reportLocationError(getMapLocationError(positionError)),
+        (positionError) => {
+          if (requestId === locationRequestIdRef.current) {
+            reportLocationError(getMapLocationError(positionError));
+          }
+        },
         {
           enableHighAccuracy: true,
           maximumAge,
@@ -832,7 +848,7 @@ function MapComponent(
       return;
     }
 
-    const timer = window.setTimeout(handleCurrentLocation, 0);
+    const timer = window.setTimeout(() => handleCurrentLocation(30_000, true), 0);
 
     return () => window.clearTimeout(timer);
   }, [handleCurrentLocation, locateOnMount]);

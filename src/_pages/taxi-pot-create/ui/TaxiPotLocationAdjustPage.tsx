@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
 import { DestinationPin, StartPin } from '@/entities/map-pin';
@@ -15,7 +15,7 @@ import {
 } from '../model/matching-location-field'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
-import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef, type MapViewportChangeSource } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 import { Text } from '@/shared/ui/text';
 
@@ -34,13 +34,25 @@ export function TaxiPotLocationAdjustPage() {
   const setPendingLocation = useMatchingStore((state) => state.setPendingLocation);
   const setOrigin = useMatchingRegistrationStore((state) => state.setOrigin);
   const setDestination = useMatchingRegistrationStore((state) => state.setDestination);
-  const [center, setCenter] = useState<MapCoordinate>(() => ({
-    lat: pendingLocation?.latitude ?? SEOUL_STATION_COORDINATE.lat,
-    lng: pendingLocation?.longitude ?? SEOUL_STATION_COORDINATE.lng,
-  }));
-  const [selectedLocation, setSelectedLocation] = useState<LocationSearchResult | null>(
-    pendingLocation,
+  const selectedCenter = useMemo<MapCoordinate>(
+    () => ({
+      lat: pendingLocation?.latitude ?? SEOUL_STATION_COORDINATE.lat,
+      lng: pendingLocation?.longitude ?? SEOUL_STATION_COORDINATE.lng,
+    }),
+    [pendingLocation],
   );
+  const [adjustedCenter, setAdjustedCenter] = useState<{
+    location: LocationSearchResult;
+    coordinate: MapCoordinate;
+  } | null>(null);
+  const center =
+    adjustedCenter?.location === pendingLocation ? adjustedCenter.coordinate : selectedCenter;
+  const [resolvedLocation, setResolvedLocation] = useState<{
+    source: LocationSearchResult;
+    result: LocationSearchResult;
+  } | null>(null);
+  const selectedLocation =
+    resolvedLocation?.source === pendingLocation ? resolvedLocation.result : pendingLocation;
 
   useEffect(() => {
     if (!pendingLocation && !isConfirmingRef.current) {
@@ -49,7 +61,7 @@ export function TaxiPotLocationAdjustPage() {
   }, [field, pendingLocation, router]);
 
   useEffect(() => {
-    if (!pendingLocation) {
+    if (!pendingLocation || adjustedCenter?.location !== pendingLocation) {
       return;
     }
 
@@ -61,18 +73,15 @@ export function TaxiPotLocationAdjustPage() {
           return;
         }
 
-        setSelectedLocation((previousLocation) => {
-          if (!previousLocation) {
-            return previousLocation;
-          }
-
-          return {
-            ...previousLocation,
+        setResolvedLocation({
+          source: pendingLocation,
+          result: {
+            ...pendingLocation,
             latitude: center.lat,
             longitude: center.lng,
-            placeName: details.placeName || details.roadAddress || previousLocation.placeName,
-            roadAddress: details.roadAddress || previousLocation.roadAddress,
-          };
+            placeName: details.placeName || '선택한 위치',
+            roadAddress: details.roadAddress || '',
+          },
         });
       })
       .catch(() => {
@@ -82,11 +91,27 @@ export function TaxiPotLocationAdjustPage() {
     return () => {
       cancelled = true;
     };
-  }, [center, pendingLocation]);
+  }, [adjustedCenter, center, pendingLocation]);
 
-  const updateLocationDetails = useCallback((coordinate: MapCoordinate) => {
-    setCenter(coordinate);
-  }, []);
+  const updateLocationDetails = useCallback(
+    (coordinate: MapCoordinate, source: MapViewportChangeSource) => {
+      if (source === 'drag' || source === 'zoom' || source === 'locate') {
+        if (pendingLocation) {
+          setAdjustedCenter({ location: pendingLocation, coordinate });
+        }
+      }
+    },
+    [pendingLocation],
+  );
+
+  const handleUserLocationChange = useCallback(
+    (coordinate: MapCoordinate) => {
+      if (pendingLocation) {
+        setAdjustedCenter({ location: pendingLocation, coordinate });
+      }
+    },
+    [pendingLocation],
+  );
 
   if (!pendingLocation || !selectedLocation) {
     return null;
@@ -118,11 +143,11 @@ export function TaxiPotLocationAdjustPage() {
         <Map
           className="absolute inset-0 h-[780px]"
           clusterMarkers={false}
-          defaultCenter={center}
+          center={center}
           showCurrentLocationButton={false}
           showZoomControls={false}
           onCenterChange={updateLocationDetails}
-          onUserLocationChange={updateLocationDetails}
+          onUserLocationChange={handleUserLocationChange}
           ref={mapRef}
         >
           <div className="pointer-events-none absolute inset-0 z-30">

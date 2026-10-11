@@ -9,7 +9,7 @@ import { reverseGeocodeLocation } from '@/features/post-location';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { BackButton } from '@/shared/ui/back-button';
 import { Button } from '@/shared/ui/button';
-import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef, type MapViewportChangeSource } from '@/shared/ui/map';
 import type { MapCoordinate } from '@/shared/types/common';
 import { Text } from '@/shared/ui/text';
 
@@ -49,6 +49,8 @@ export function CarpoolLocationAdjustPage() {
 
   const updateCenter = useCallback((coordinate: MapCoordinate) => {
     setCenter(coordinate);
+    setPlaceName('선택한 위치');
+    setRoadAddress('');
     const requestId = ++geocodingRequestId.current;
 
     void reverseGeocodeLocation(coordinate)
@@ -57,13 +59,22 @@ export function CarpoolLocationAdjustPage() {
           return;
         }
 
-        setPlaceName(details.placeName || details.roadAddress || '선택한 위치');
+        setPlaceName(details.placeName || '선택한 위치');
         setRoadAddress(details.roadAddress || '');
       })
       .catch(() => {
         // 주소 조회에 실패해도 좌표 선택은 계속할 수 있습니다.
       });
   }, []);
+
+  const handleCenterChange = useCallback(
+    (coordinate: MapCoordinate, source: MapViewportChangeSource) => {
+      if (source === 'drag' || source === 'zoom' || source === 'locate') {
+        updateCenter(coordinate);
+      }
+    },
+    [updateCenter],
+  );
 
   const handleLocationError = useCallback(() => {
     useSnackbarStore.getState().showSnackbar('현재 위치를 확인할 수 없어요.', 'critical');
@@ -99,7 +110,7 @@ export function CarpoolLocationAdjustPage() {
           className="absolute inset-0 h-[780px]"
           clusterMarkers={false}
           defaultCenter={center}
-          onCenterChange={updateCenter}
+          onCenterChange={handleCenterChange}
           onUserLocationChange={updateCenter}
           onUserLocationError={handleLocationError}
           showCurrentLocationButton={false}

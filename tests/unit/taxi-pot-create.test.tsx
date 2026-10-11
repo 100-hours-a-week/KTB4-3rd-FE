@@ -25,6 +25,7 @@ import type * as LocationSearchModule from '@/features/location-search';
 import type { UseKakaoPlaceSearchResult } from '@/features/location-search';
 import type { ReverseGeocodedLocation } from '@/features/post-location';
 import type { MapCoordinate } from '@/shared/types/common';
+import type { MapViewportChangeSource } from '@/shared/ui/map';
 
 const { navigation, useKakaoPlaceSearch, reverseGeocodeLocation, searchParams } = vi.hoisted(
   () => ({
@@ -78,18 +79,32 @@ vi.mock('@/features/post-location', () => ({ reverseGeocodeLocation }));
 vi.mock('@/shared/ui/map', () => ({
   Map: ({
     children,
+    center,
     locateOnMount,
     onCenterChange,
     onUserLocationChange,
   }: {
     children?: ReactNode;
+    center?: MapCoordinate;
     locateOnMount?: boolean;
-    onCenterChange?: (coordinate: MapCoordinate) => void;
+    onCenterChange?: (coordinate: MapCoordinate, source: MapViewportChangeSource) => void;
     onUserLocationChange?: (coordinate: MapCoordinate) => void;
   }) => (
-    <div data-locate-on-mount={locateOnMount} data-testid="map" role="application">
-      <button type="button" onClick={() => onCenterChange?.({ lat: 37.402, lng: 127.108 })}>
+    <div
+      data-center-lat={center?.lat}
+      data-center-lng={center?.lng}
+      data-locate-on-mount={locateOnMount}
+      data-testid="map"
+      role="application"
+    >
+      <button type="button" onClick={() => onCenterChange?.({ lat: 37.402, lng: 127.108 }, 'drag')}>
         조정 지도 위치 변경
+      </button>
+      <button
+        type="button"
+        onClick={() => onCenterChange?.({ lat: 37.41, lng: 127.12 }, 'initial')}
+      >
+        초기 지도 위치 알림
       </button>
       <button type="button" onClick={() => onUserLocationChange?.({ lat: 37.5, lng: 127.0 })}>
         테스트 현재 위치 지정
@@ -174,12 +189,8 @@ describe('TaxiPotCreatePage', () => {
   it('출발지와 도착지 LocationInputButton을 표시하고 검색 화면으로 이동한다', () => {
     render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
 
-    expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('서울역');
-    expect(useMatchingRegistrationStore.getState()).toMatchObject({
-      origin_name: '서울역',
-      origin_lat: 37.5547,
-      origin_lng: 126.9707,
-    });
+    expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('출발지');
+    expect(useMatchingRegistrationStore.getState().origin_name).toBeNull();
     expect(screen.getByRole('button', { name: '도착지' })).toHaveTextContent('어디로 갈까요?');
     expect(screen.getByTestId('matching-location-panel')).toHaveClass(
       'fixed',
@@ -188,6 +199,10 @@ describe('TaxiPotCreatePage', () => {
       'pb-[env(safe-area-inset-bottom,0px)]',
     );
     expect(screen.getByTestId('map')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: '출발지' }));
+
+    expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/location?field=departure');
 
     fireEvent.click(screen.getByRole('button', { name: '도착지' }));
 
@@ -212,6 +227,39 @@ describe('TaxiPotCreatePage', () => {
         origin_lng: 127.0,
       });
     });
+  });
+
+  it('지도 드래그 후 핀 위치의 장소명을 접두어 없이 출발지로 설정한다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: '유스페이스1빌딩',
+      roadAddress: '경기 성남시 분당구 대왕판교로 660',
+    });
+
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
+
+    fireEvent.click(screen.getByRole('button', { name: '조정 지도 위치 변경' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('유스페이스1빌딩');
+      expect(screen.getByRole('button', { name: '출발지' })).not.toHaveTextContent('현위치:');
+      expect(useMatchingRegistrationStore.getState()).toMatchObject({
+        origin_name: '유스페이스1빌딩',
+        origin_lat: 37.402,
+        origin_lng: 127.108,
+      });
+    });
+  });
+
+  it('초기 지도 위치 알림은 선택한 출발지를 바꾸지 않는다', () => {
+    useMatchingStore.getState().setLocation('departure', searchResult);
+
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
+    fireEvent.click(screen.getByRole('button', { name: '초기 지도 위치 알림' }));
+
+    expect(reverseGeocodeLocation).not.toHaveBeenCalled();
+    expect(useMatchingStore.getState().departure).toEqual(searchResult);
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lat', '37.402');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lng', '127.108');
   });
 
   it('역지오코딩 결과가 없으면 현위치 fallback을 표시하지 않는다', async () => {
@@ -240,16 +288,17 @@ describe('TaxiPotCreatePage', () => {
 });
 
 describe('TaxiPotLocationPage', () => {
-  it('초기 출발지를 매칭 등록 상태에 반영한다', () => {
+  it('선택한 출발지를 매칭 등록 상태에 반영한다', () => {
     searchParams.set('field', 'destination');
+    useMatchingStore.getState().setLocation('departure', searchResult);
     useKakaoPlaceSearch.mockReturnValue({ error: null, results: [], status: 'idle' });
 
     render(<TaxiPotLocationPage />);
 
     expect(useMatchingRegistrationStore.getState()).toMatchObject({
-      origin_name: '서울역',
-      origin_lat: 37.5547,
-      origin_lng: 126.9707,
+      origin_name: '유스페이스1빌딩',
+      origin_lat: 37.402,
+      origin_lng: 127.108,
     });
   });
 
@@ -319,6 +368,27 @@ describe('TaxiPotLocationPage', () => {
     expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/time');
   });
 
+  it('검색 결과의 출발 버튼을 누르면 출발지를 지정하고 도착지 검색으로 전환한다', () => {
+    searchParams.set('field', 'departure');
+    useKakaoPlaceSearch.mockReturnValue({
+      error: null,
+      results: [searchResult],
+      status: 'success',
+    });
+
+    render(<TaxiPotLocationPage />);
+    fireEvent.click(screen.getByRole('button', { name: '출발 유스페이스1빌딩' }));
+
+    expect(useMatchingStore.getState().departure).toEqual(searchResult);
+    expect(useMatchingRegistrationStore.getState()).toMatchObject({
+      origin_name: '유스페이스1빌딩',
+      origin_lat: 37.402,
+      origin_lng: 127.108,
+    });
+    expect(screen.getByRole('textbox', { name: '도착지' })).toHaveFocus();
+    expect(navigation.push).not.toHaveBeenCalled();
+  });
+
   it('검색 결과 본문을 누르면 위치 세부 조정 화면으로 이동한다', () => {
     useKakaoPlaceSearch.mockReturnValue({
       error: null,
@@ -335,9 +405,39 @@ describe('TaxiPotLocationPage', () => {
       '/taxi-pots/new/location/adjust?field=destination',
     );
   });
+
+  it('출발지 검색 결과 본문을 누르면 출발지 조정 화면으로 이동한다', () => {
+    searchParams.set('field', 'departure');
+    useKakaoPlaceSearch.mockReturnValue({
+      error: null,
+      results: [searchResult],
+      status: 'success',
+    });
+
+    render(<TaxiPotLocationPage />);
+    fireEvent.click(screen.getByRole('button', { name: /유스페이스1빌딩.*상세 위치 조정/ }));
+
+    expect(useMatchingStore.getState().pendingLocation).toEqual(searchResult);
+    expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/location/adjust?field=departure');
+  });
 });
 
 describe('TaxiPotLocationAdjustPage', () => {
+  it('처음에는 검색한 장소명과 도로명주소를 그대로 표시한다', () => {
+    useMatchingStore.getState().setPendingLocation(searchResult);
+    reverseGeocodeLocation.mockResolvedValue({
+      placeName: null,
+      roadAddress: '경기 성남시 분당구 대왕판교로 660',
+    });
+
+    render(<TaxiPotLocationAdjustPage />);
+    fireEvent.click(screen.getByRole('button', { name: '초기 지도 위치 알림' }));
+
+    expect(screen.getByRole('heading', { name: '유스페이스1빌딩' })).toBeInTheDocument();
+    expect(screen.getByText('경기 성남시 분당구 대왕판교로 660')).toBeInTheDocument();
+    expect(reverseGeocodeLocation).not.toHaveBeenCalled();
+  });
+
   it('지도 위치를 조정하고 도착지로 설정한다', async () => {
     useMatchingStore.getState().setPendingLocation(searchResult);
     reverseGeocodeLocation.mockResolvedValue({
@@ -346,6 +446,12 @@ describe('TaxiPotLocationAdjustPage', () => {
     });
 
     render(<TaxiPotLocationAdjustPage />);
+
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lat', '37.402');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lng', '127.108');
+    fireEvent.click(screen.getByRole('button', { name: '초기 지도 위치 알림' }));
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lat', '37.402');
+    expect(screen.getByTestId('map')).toHaveAttribute('data-center-lng', '127.108');
 
     expect(screen.getByRole('region', { name: '선택한 도착지' })).toHaveClass(
       'h-[calc(215px+env(safe-area-inset-bottom,0px))]',
@@ -371,6 +477,26 @@ describe('TaxiPotLocationAdjustPage', () => {
     });
     expect(navigation.push).toHaveBeenCalledWith('/taxi-pots/new/time');
     expect(navigation.replace).not.toHaveBeenCalled();
+  });
+
+  it('다른 검색 결과를 선택하면 지도 중심을 새 장소의 좌표로 초기화한다', async () => {
+    useMatchingStore.getState().setPendingLocation(searchResult);
+    reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
+
+    render(<TaxiPotLocationAdjustPage />);
+
+    useMatchingStore.getState().setPendingLocation({
+      ...searchResult,
+      id: 'gangnam-station',
+      latitude: 37.4979,
+      longitude: 127.0276,
+      placeName: '강남역',
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('map')).toHaveAttribute('data-center-lat', '37.4979');
+      expect(screen.getByTestId('map')).toHaveAttribute('data-center-lng', '127.0276');
+    });
   });
 });
 

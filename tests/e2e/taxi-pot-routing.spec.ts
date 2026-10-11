@@ -84,6 +84,106 @@ test.describe('택시팟 등록 경로', () => {
     await expect(page.getByRole('dialog', { name: '로그인이 필요해요' })).toBeHidden();
   });
 
+  test('검색 결과를 누르면 선택한 장소의 좌표로 조정 지도를 생성한다', async ({ page }) => {
+    await mockSession(page, true);
+    await page.addInitScript(() => {
+      class FakeLatLng {
+        constructor(
+          private latitude: number,
+          private longitude: number,
+        ) {}
+
+        getLat() {
+          return this.latitude;
+        }
+
+        getLng() {
+          return this.longitude;
+        }
+      }
+
+      class FakeMap {
+        private center: FakeLatLng;
+
+        constructor(_container: HTMLElement, options: { center: FakeLatLng }) {
+          this.center = options.center;
+          document.documentElement.dataset.initialMapCenter = `${this.center.getLat()},${this.center.getLng()}`;
+        }
+
+        getCenter() {
+          return this.center;
+        }
+
+        getBounds() {
+          return { getSouthWest: () => this.center, getNorthEast: () => this.center };
+        }
+
+        getLevel() {
+          return 5;
+        }
+
+        relayout() {}
+
+        setCenter(center: FakeLatLng) {
+          this.center = center;
+        }
+      }
+
+      Object.assign(window, {
+        kakao: {
+          maps: {
+            LatLng: FakeLatLng,
+            Map: FakeMap,
+            event: { addListener() {}, removeListener() {} },
+            load: (callback: () => void) => callback(),
+            services: {
+              Places: class {
+                keywordSearch(
+                  _keyword: string,
+                  callback: (results: unknown[], status: string) => void,
+                ) {
+                  callback(
+                    [
+                      {
+                        id: 'pangyo-station',
+                        place_name: '판교역',
+                        address_name: '경기 성남시 분당구 백현동',
+                        road_address_name: '경기 성남시 분당구 판교역로',
+                        x: '127.11123456',
+                        y: '37.39451234',
+                      },
+                    ],
+                    'OK',
+                  );
+                }
+              },
+              Geocoder: class {
+                coord2Address(
+                  _x: number,
+                  _y: number,
+                  callback: (results: unknown[], status: string) => void,
+                ) {
+                  callback([], 'ZERO_RESULT');
+                }
+              },
+              Status: { OK: 'OK', ZERO_RESULT: 'ZERO_RESULT' },
+            },
+          },
+        },
+      });
+    });
+
+    await page.goto(`${TAXI_POT_CREATE_PATH}/location?field=departure`);
+    await page.getByRole('textbox', { name: '출발지' }).fill('판교역');
+    await page.getByRole('button', { name: /판교역.*상세 위치 조정/ }).click();
+
+    await expect(page).toHaveURL(`${TAXI_POT_CREATE_PATH}/location/adjust?field=departure`);
+    await expect(page.locator('html')).toHaveAttribute(
+      'data-initial-map-center',
+      '37.39451234,127.11123456',
+    );
+  });
+
   test('상세 위치가 없는 직접 접근은 선택 필드를 유지해 새 검색 경로로 돌아온다', async ({
     page,
   }) => {
