@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { useRequireAuth } from '@/features/login-required';
@@ -10,6 +10,7 @@ import {
   useCarpoolCreateStore,
 } from '@/features/carpool-registration';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import { ApiError } from '@/shared/api/client';
 import { BackButton } from '@/shared/ui/back-button';
 import { bottomActionSafeAreaOffsetClassName } from '@/shared/ui/bottom-action-button';
 import { Button } from '@/shared/ui/button';
@@ -17,6 +18,7 @@ import { Icon } from '@/shared/ui/icon';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 import { Text } from '@/shared/ui/text';
 
+import { CarpoolVehicleRegistrationDialog } from './carpool-vehicle-registration-dialog'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import {
   hasValidCarpoolLocation,
   prepareCarpoolConfirmation,
@@ -72,15 +74,25 @@ function ConfirmationSummaryCard({ summary }: { summary: CarpoolConfirmationSumm
 
 export function CarpoolConfirmPage() {
   const router = useRouter();
-  const { requireAuth } = useRequireAuth();
+  const { requireAuth, showLoginRequiredDialog } = useRequireAuth();
   const draft = useCarpoolCreateStore((state) => state.draft);
   const mutation = useCarpoolCreateMutation();
+  const [isVehicleDialogOpen, setIsVehicleDialogOpen] = useState(false);
   const isSubmittingRef = useRef(false);
   const didSubmitSuccessfullyRef = useRef(false);
+  const mountedRef = useRef(false);
   const prepared = prepareCarpoolConfirmation(draft, undefined, false);
   const hasLocations =
     hasValidCarpoolLocation(draft.origin) && hasValidCarpoolLocation(draft.destination);
   const hasInfo = prepared.valid || prepared.reason === 'PAST' || prepared.reason === 'TOO_FAR';
+
+  useEffect(() => {
+    mountedRef.current = true;
+
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     if (didSubmitSuccessfullyRef.current) {
@@ -95,20 +107,21 @@ export function CarpoolConfirmPage() {
   }, [hasInfo, hasLocations, router]);
 
   const handleBack = useCallback(() => {
-    if (isSubmittingRef.current || mutation.isPending) {
+    if (isSubmittingRef.current || mutation.isPending || isVehicleDialogOpen) {
       return;
     }
 
     router.push('/carpools/new/info');
-  }, [mutation.isPending, router]);
+  }, [isVehicleDialogOpen, mutation.isPending, router]);
 
   const handleSubmit = useCallback(() => {
     requireAuth(() => {
-      if (isSubmittingRef.current || mutation.isPending) {
+      if (isSubmittingRef.current || mutation.isPending || isVehicleDialogOpen) {
         return;
       }
 
       const currentDraft = useCarpoolCreateStore.getState().draft;
+      const submittedDraft = currentDraft;
       const result = prepareCarpoolConfirmation(currentDraft, Date.now());
       if (!result.valid) {
         useSnackbarStore.getState().showSnackbar(confirmationMessages[result.reason], 'critical');
@@ -119,19 +132,43 @@ export function CarpoolConfirmPage() {
       void mutation
         .mutateAsync(result.value.payload)
         .then(() => {
+          if (useCarpoolCreateStore.getState().draft !== submittedDraft) {
+            return;
+          }
+
           didSubmitSuccessfullyRef.current = true;
           resetCarpoolRegistrationDraft();
           useSnackbarStore.getState().showSnackbar('카풀이 등록되었어요.', 'positive');
-          router.push('/matching');
+          if (mountedRef.current) {
+            router.push('/matching');
+          }
         })
         .catch((error: unknown) => {
+          if (useCarpoolCreateStore.getState().draft !== submittedDraft) {
+            return;
+          }
+
+          if (error instanceof ApiError && error.status === 401 && error.code === 'UNAUTHORIZED') {
+            showLoginRequiredDialog();
+            return;
+          }
+
+          if (
+            error instanceof ApiError &&
+            error.status === 409 &&
+            error.code === 'CAR_REGISTRATION_REQUIRED'
+          ) {
+            setIsVehicleDialogOpen(true);
+            return;
+          }
+
           useSnackbarStore.getState().showSnackbar(mapCarpoolCreateError(error), 'critical');
         })
         .finally(() => {
           isSubmittingRef.current = false;
         });
     });
-  }, [mutation, requireAuth, router]);
+  }, [isVehicleDialogOpen, mutation, requireAuth, router, showLoginRequiredDialog]);
 
   if (!prepared.valid) {
     return null;
@@ -181,6 +218,7 @@ export function CarpoolConfirmPage() {
       <Button
         className={`fixed left-1/2 z-30 !h-[52px] !min-h-[52px] !w-[calc(100%-40px)] !max-w-[353px] -translate-x-1/2 !rounded-[8px] !px-4 !py-3 ${bottomActionSafeAreaOffsetClassName}`}
         loading={mutation.isPending}
+        disabled={mutation.isPending || isVehicleDialogOpen}
         type="button"
         variant="brand-solid"
         width="fill"
@@ -190,6 +228,10 @@ export function CarpoolConfirmPage() {
       </Button>
       <SnackbarViewport
         className={`fixed inset-x-0 z-[2147483647] mx-auto max-w-[393px] px-5 ${bottomActionSafeAreaOffsetClassName}`}
+      />
+      <CarpoolVehicleRegistrationDialog
+        open={isVehicleDialogOpen}
+        onOpenChange={setIsVehicleDialogOpen}
       />
     </div>
   );

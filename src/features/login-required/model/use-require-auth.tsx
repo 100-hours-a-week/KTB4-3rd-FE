@@ -6,6 +6,7 @@ export type AuthenticatedAction = () => void;
 
 export type RequireAuthContextValue = {
   requireAuth: (action: AuthenticatedAction) => void;
+  showLoginRequiredDialog: () => void;
 };
 
 const RequireAuthContext = createContext<RequireAuthContextValue | null>(null);
