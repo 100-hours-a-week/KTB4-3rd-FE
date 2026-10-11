@@ -12,15 +12,6 @@ export const SEOUL_STATION_COORDINATE: MapCoordinate = {
   lng: 126.9707,
 };
 
-export const SEOUL_STATION_LOCATION: LocationSearchResult = {
-  id: 'seoul-station',
-  latitude: SEOUL_STATION_COORDINATE.lat,
-  longitude: SEOUL_STATION_COORDINATE.lng,
-  placeName: '서울역',
-  distance: '',
-  roadAddress: '서울특별시 중구 한강대로 405',
-};
-
 export function createCurrentLocation(
   coordinate: MapCoordinate,
   details: {
@@ -49,7 +40,7 @@ export type MatchingState = {
 
 function createInitialState() {
   return {
-    departure: SEOUL_STATION_LOCATION,
+    departure: null,
     destination: null,
     pendingLocation: null,
   };

@@ -13,14 +13,14 @@ import {
   createCurrentLocation,
   CURRENT_LOCATION_ID,
   SEOUL_STATION_COORDINATE,
-  SEOUL_STATION_LOCATION,
   useMatchingStore,
 } from '../model/matching-store'; // oxlint-disable-line import/no-relative-parent-imports -- 동일 slice 내부 참조
 import { BackButton } from '@/shared/ui/back-button';
 import { LocationInputButton } from '@/shared/ui/location-input-button';
-import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef, type MapViewportChangeSource } from '@/shared/ui/map';
 
 const TAXI_POT_LOCATION_ROUTE = '/taxi-pots/new/location';
+const MAP_SELECTED_LOCATION_ID = 'map-selected-location';
 
 function getLocationRoute(field: 'departure' | 'destination') {
   return `${TAXI_POT_LOCATION_ROUTE}?field=${field}`;
@@ -50,6 +50,7 @@ export function TaxiPotCreatePage() {
   const router = useRouter();
   const mapRef = useRef<MapRef>(null);
   const geocodingRequestIdRef = useRef(0);
+  const isActiveRef = useRef(true);
   const [isBankAccountDialogDismissed, setIsBankAccountDialogDismissed] = useState(false);
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const currentUserQuery = useCurrentUserQuery();
@@ -65,7 +66,16 @@ export function TaxiPotCreatePage() {
   const canLocateOnMount =
     !isAuthenticated || (currentUserQuery.isFetched && !currentUserQuery.isFetching);
   const shouldLocateOnMount =
-    departure?.id === SEOUL_STATION_LOCATION.id && canLocateOnMount && !shouldShowBankAccountDialog;
+    departure === null && canLocateOnMount && !shouldShowBankAccountDialog;
+
+  useEffect(() => {
+    isActiveRef.current = true;
+
+    return () => {
+      isActiveRef.current = false;
+      geocodingRequestIdRef.current += 1;
+    };
+  }, []);
 
   useEffect(() => {
     setOrigin(
@@ -95,6 +105,10 @@ export function TaxiPotCreatePage() {
 
   const handleUserLocationChange = useCallback(
     (coordinate: { lat: number; lng: number }) => {
+      if (!isActiveRef.current) {
+        return;
+      }
+
       const requestId = ++geocodingRequestIdRef.current;
       const provisionalLocation = createCurrentLocation(coordinate, {
         placeName: null,
@@ -106,7 +120,7 @@ export function TaxiPotCreatePage() {
 
       reverseGeocodeLocation(coordinate)
         .then((details) => {
-          if (requestId !== geocodingRequestIdRef.current) {
+          if (!isActiveRef.current || requestId !== geocodingRequestIdRef.current) {
             return;
           }
 
@@ -122,13 +136,46 @@ export function TaxiPotCreatePage() {
     [setLocation, setOrigin],
   );
 
-  const handleUserLocationError = useCallback(() => {
-    const currentDeparture = useMatchingStore.getState().departure;
+  const handleMapCenterChange = useCallback(
+    (coordinate: { lat: number; lng: number }, source: MapViewportChangeSource) => {
+      if (!isActiveRef.current || source !== 'drag') {
+        return;
+      }
 
-    if (!currentDeparture || currentDeparture.id === SEOUL_STATION_LOCATION.id) {
-      setLocation('departure', SEOUL_STATION_LOCATION);
-    }
-  }, [setLocation]);
+      const requestId = ++geocodingRequestIdRef.current;
+      const provisionalLocation: LocationSearchResult = {
+        id: MAP_SELECTED_LOCATION_ID,
+        latitude: coordinate.lat,
+        longitude: coordinate.lng,
+        placeName: '',
+        distance: '',
+        roadAddress: '',
+      };
+
+      setLocation('departure', provisionalLocation);
+      setOrigin(toRegistrationLocation(provisionalLocation));
+
+      reverseGeocodeLocation(coordinate)
+        .then((details) => {
+          if (!isActiveRef.current || requestId !== geocodingRequestIdRef.current) {
+            return;
+          }
+
+          const resolvedLocation = {
+            ...provisionalLocation,
+            placeName: details.placeName || details.roadAddress || '',
+            roadAddress: details.roadAddress || '',
+          };
+
+          setLocation('departure', resolvedLocation);
+          setOrigin(toRegistrationLocation(resolvedLocation));
+        })
+        .catch(() => {
+          // 주소 조회에 실패해도 핀이 가리키는 좌표는 유지합니다.
+        });
+    },
+    [setLocation, setOrigin],
+  );
 
   const departureValue = getDepartureValue(departure);
 
@@ -141,10 +188,10 @@ export function TaxiPotCreatePage() {
         <Map
           className="absolute inset-0 h-[780px]"
           clusterMarkers={false}
-          defaultCenter={mapCenter}
+          center={mapCenter}
           locateOnMount={shouldLocateOnMount}
+          onCenterChange={handleMapCenterChange}
           onUserLocationChange={handleUserLocationChange}
-          onUserLocationError={handleUserLocationError}
           showCurrentLocationButton={false}
           showZoomControls={false}
           ref={mapRef}
