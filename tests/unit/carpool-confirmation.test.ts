@@ -40,7 +40,7 @@ describe('prepareCarpoolConfirmation', () => {
           destination: '강남역',
           departureDate: expect.stringContaining('10월 12일'),
           departureTime: expect.stringContaining('5:30'),
-          recruitCount: '2명 모집 (+운전자)',
+          recruitCount: '2명 모집',
         },
       },
     });

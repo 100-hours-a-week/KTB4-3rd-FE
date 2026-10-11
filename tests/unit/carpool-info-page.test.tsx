@@ -64,6 +64,16 @@ function renderPage() {
 }
 
 describe('CarpoolInfoPage', () => {
+  it('필드에 필수 입력 표시를 보여주지 않는다', () => {
+    setValidLocations();
+    renderPage();
+
+    expect(screen.getByText('출발 날짜')).toBeInTheDocument();
+    expect(screen.getByText('출발 시간')).toBeInTheDocument();
+    expect(screen.getByText('모집 인원')).toBeInTheDocument();
+    expect(screen.queryByText('*')).not.toBeInTheDocument();
+  });
+
   it('입력한 초안 값을 복원하고 필수 입력이 없으면 다음 버튼을 비활성화한다', () => {
     setValidLocations();
     useCarpoolCreateStore.getState().setDepartureDate('2026-10-12');
