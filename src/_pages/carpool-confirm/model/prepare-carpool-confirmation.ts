@@ -119,7 +119,7 @@ export function prepareCarpoolConfirmation(
         destination: draft.destination.name.trim(),
         departureDate: formatDepartureDate(departureAt),
         departureTime: formatDepartureTime(departureAt),
-        recruitCount: `${draft.recruitCount}명 모집 (+운전자)`,
+        recruitCount: `${draft.recruitCount}명 모집`,
       },
     },
   };

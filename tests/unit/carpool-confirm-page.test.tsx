@@ -112,7 +112,7 @@ describe('CarpoolConfirmPage', () => {
     expect(screen.getByRole('heading', { name: '이 정보가 맞나요?' })).toBeInTheDocument();
     expect(screen.getByText('판교역')).toBeInTheDocument();
     expect(screen.getByText('강남역')).toBeInTheDocument();
-    expect(screen.getByText('2명 모집 (+운전자)')).toBeInTheDocument();
+    expect(screen.getByText('2명 모집')).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: '카풀 등록하기' }));
     await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/matching'));

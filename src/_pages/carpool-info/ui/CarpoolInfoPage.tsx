@@ -162,7 +162,6 @@ export function CarpoolInfoPage() {
                 출발 날짜
               </Text>
             }
-            required
           />
 
           <Field
@@ -179,7 +178,6 @@ export function CarpoolInfoPage() {
                 출발 시간
               </Text>
             }
-            required
           />
 
           <Field
@@ -200,7 +198,6 @@ export function CarpoolInfoPage() {
                 모집 인원
               </Text>
             }
-            required
           />
         </div>
       </main>
