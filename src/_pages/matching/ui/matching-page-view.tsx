@@ -15,6 +15,7 @@ export type MatchingPageViewProps = MatchingMapControlsProps & {
   map: ReactNode;
   user?: User;
   nearbyCarpools?: ReactNode;
+  isListOpen?: boolean;
   onScrollElementChange?: (element: HTMLElement | null) => void;
   scrollContentKey?: string | number;
 };
@@ -23,6 +24,7 @@ export function MatchingPageView({
   map,
   user,
   nearbyCarpools,
+  isListOpen = true,
   onScrollElementChange,
   scrollContentKey,
   ...mapControlsProps
@@ -54,7 +56,7 @@ export function MatchingPageView({
         defaultSnapPoint="110px"
         minHeight="calc(100dvh - 72px - env(safe-area-inset-bottom, 0px))"
         modal={false}
-        open
+        open={isListOpen}
         showBackdrop={false}
         onScrollElementChange={onScrollElementChange}
         scrollContentKey={scrollContentKey}

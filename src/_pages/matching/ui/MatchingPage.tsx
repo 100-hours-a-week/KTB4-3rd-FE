@@ -1,6 +1,6 @@
 'use client';
 
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { useMatchingEntry } from '../model/use-matching-entry';
@@ -9,10 +9,12 @@ import { MatchingPageView } from './matching-page-view';
 import { CarPoolList, type CarPoolListItem } from '@/entities/carpool';
 import { getCarpoolPinMarkerImage } from '@/entities/map-pin';
 import { useCurrentUserQuery } from '@/features/user-profile';
+import { ApiError } from '@/shared/api/client';
 import { carpoolQueries } from '@/shared/api/carpool';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { Map } from '@/shared/ui/map';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
+import { Text } from '@/shared/ui/text';
 import { CarpoolDetailModal, type CarpoolSelection } from './carpool-detail-modal';
 
 function setScrollTop(element: HTMLElement, scrollTop: number) {
@@ -20,12 +22,14 @@ function setScrollTop(element: HTMLElement, scrollTop: number) {
 }
 
 export function MatchingPage() {
+  const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
   const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
   const [selection, setSelection] = useState<CarpoolSelection | null>(null);
   const [isScrollRestoring, setIsScrollRestoring] = useState(false);
   const selectionRequestRef = useRef<(next: CarpoolSelection | null) => void>(() => undefined);
   const scrollSnapshotRef = useRef<{ queryKey: string; scrollTop: number } | null>(null);
+  const pendingFocusIdRef = useRef<number | null>(null);
   const previousListQueryKeyRef = useRef<string | null>(null);
   const { fabContainerRef, isFabOpen, onCarpoolClick, onFabOpenChange, onTaxipotClick } =
     useMatchingEntry();
@@ -51,12 +55,18 @@ export function MatchingPage() {
         : null,
     [mapViewport],
   );
-  const nearbyQuery = useInfiniteQuery(
-    carpoolQueries.nearby(
-      queryViewport ? { ...queryViewport, lat: distanceOrigin.lat, lng: distanceOrigin.lng } : null,
-    ),
+  const nearbyQueryOptions = useMemo(
+    () =>
+      carpoolQueries.nearby(
+        queryViewport
+          ? { ...queryViewport, lat: distanceOrigin.lat, lng: distanceOrigin.lng }
+          : null,
+      ),
+    [distanceOrigin, queryViewport],
   );
+  const nearbyQuery = useInfiniteQuery(nearbyQueryOptions);
   const pinsQuery = useQuery(carpoolQueries.pins(queryViewport));
+  const refetchPins = pinsQuery.refetch;
   const carpools = useMemo<CarPoolListItem[]>(
     () => nearbyQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
     [nearbyQuery.data],
@@ -71,31 +81,40 @@ export function MatchingPage() {
       pins.map((pin) => ({
         id: pin.id,
         image: getCarpoolPinMarkerImage(),
+        isSelected: selection?.id === pin.id,
         position: { lat: pin.lat, lng: pin.lng },
         title: `카풀 게시글 ${pin.id}`,
       })),
-    [pins],
+    [pins, selection?.id],
   );
   const {
     fetchNextPage,
     hasNextPage,
+    isFetching,
     isFetchingNextPage,
     isFetchNextPageError,
     isError: isNearbyError,
-    isPending: isNearbyPending,
+    fetchStatus: nearbyFetchStatus,
+    isFetching: isNearbyFetching,
+    error: nearbyError,
+    errorUpdatedAt: nearbyErrorUpdatedAt,
+    data: nearbyData,
     refetch: refetchNearby,
   } = nearbyQuery;
   const handleLoadMore = useCallback(() => {
-    if (!hasNextPage || isFetchingNextPage) {
+    if (selection !== null || !hasNextPage || isFetching) {
       return;
     }
     void fetchNextPage();
-  }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  }, [fetchNextPage, hasNextPage, isFetching, selection]);
 
   const applySelection = useCallback(
     (nextSelection: CarpoolSelection | null) => {
       if (nextSelection && selection === null && scrollRoot) {
         scrollSnapshotRef.current = { queryKey: listQueryKey, scrollTop: scrollRoot.scrollTop };
+      }
+      if (nextSelection === null && selection !== null) {
+        pendingFocusIdRef.current = selection.id;
       }
       setSelection(nextSelection);
     },
@@ -153,17 +172,53 @@ export function MatchingPage() {
       if (scrollSnapshotRef.current === snapshot && scrollRoot.isConnected) {
         setScrollTop(scrollRoot, snapshot.queryKey === listQueryKey ? snapshot.scrollTop : 0);
       }
+      const pendingFocusId = pendingFocusIdRef.current;
+      if (pendingFocusId !== null && scrollRoot.isConnected) {
+        scrollRoot
+          .querySelector<HTMLButtonElement>(`button[data-carpool-id="${pendingFocusId}"]`)
+          ?.focus();
+        pendingFocusIdRef.current = null;
+      }
       scrollSnapshotRef.current = null;
       setIsScrollRestoring(false);
     });
     return () => cancelAnimationFrame(frame);
   }, [listQueryKey, nearbyQuery.data, scrollRoot, selection]);
 
+  const handledCursorErrorRef = useRef<number | null>(null);
   useEffect(() => {
-    if (isFetchNextPageError) {
-      showSnackbar('카풀 목록을 더 불러오지 못했어요. 다시 시도해주세요.', 'critical');
+    if (!isFetchNextPageError || !nearbyError) {
+      return;
     }
-  }, [isFetchNextPageError, showSnackbar]);
+    if (nearbyError instanceof ApiError && nearbyError.code === 'INVALID_CURSOR') {
+      if (handledCursorErrorRef.current === nearbyErrorUpdatedAt) {
+        return;
+      }
+      handledCursorErrorRef.current = nearbyErrorUpdatedAt;
+      void queryClient.resetQueries({ queryKey: nearbyQueryOptions.queryKey, exact: true });
+      showSnackbar('카풀 목록을 처음부터 다시 불러오고 있어요.', 'critical');
+      return;
+    }
+    showSnackbar('카풀 목록을 더 불러오지 못했어요. 다시 시도해주세요.', 'critical', {
+      children: '다시 시도',
+      onClick: () => {
+        if (selection === null && !isFetching && hasNextPage) {
+          void fetchNextPage();
+        }
+      },
+    });
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchNextPageError,
+    nearbyError,
+    nearbyErrorUpdatedAt,
+    nearbyQueryOptions.queryKey,
+    queryClient,
+    selection,
+    showSnackbar,
+  ]);
 
   useEffect(() => {
     if (isNearbyError && carpools.length > 0) {
@@ -173,23 +228,62 @@ export function MatchingPage() {
 
   useEffect(() => {
     if (pinsQuery.isError) {
-      showSnackbar('지도 카풀 핀을 불러오지 못했어요.', 'critical');
+      showSnackbar('지도 카풀 핀을 불러오지 못했어요.', 'critical', {
+        children: '다시 시도',
+        onClick: () => void refetchPins(),
+      });
     } else if (pinsQuery.data?.data.limit_exceeded) {
       showSnackbar('표시 가능한 핀 수를 초과해 일부 카풀이 보이지 않을 수 있어요.', 'default');
     }
-  }, [pinsQuery.data?.data.limit_exceeded, pinsQuery.isError, showSnackbar]);
+  }, [
+    pinsQuery.data?.data.limit_exceeded,
+    pinsQuery.errorUpdatedAt,
+    pinsQuery.isError,
+    refetchPins,
+    showSnackbar,
+  ]);
 
   let listContent;
-  if (!isListReady || isNearbyPending) {
+  if (!isListReady) {
+    listContent = (
+      <div className="px-4 py-6 text-center">
+        <Text color="fg.neutralSubtle" variant="t3Regular">
+          지도를 준비하고 있어요.
+        </Text>
+      </div>
+    );
+  } else if (nearbyData === undefined && nearbyFetchStatus === 'paused') {
+    listContent = (
+      <div className="px-4 py-6 text-center" role="status">
+        <Text color="fg.neutralSubtle" variant="t3Regular">
+          인터넷 연결을 기다리고 있어요.
+        </Text>
+      </div>
+    );
+  } else if (nearbyData === undefined && isNearbyFetching) {
     listContent = <CarPoolList status="loading" />;
-  } else if (isNearbyError && carpools.length === 0) {
+  } else if (nearbyData === undefined && isNearbyError) {
     listContent = <CarPoolList status="error" onRetry={() => void refetchNearby()} />;
-  } else if (carpools.length === 0) {
+  } else if (nearbyData !== undefined && carpools.length === 0) {
     listContent = <CarPoolList status="empty" />;
+  } else if (nearbyData === undefined) {
+    listContent = (
+      <div className="px-4 py-6 text-center">
+        <Text color="fg.neutralSubtle" variant="t3Regular">
+          주변 카풀을 확인할 준비가 되었어요.
+        </Text>
+      </div>
+    );
   } else {
     listContent = (
       <CarPoolList
-        canLoadMore={!isFetchingNextPage && !isFetchNextPageError && !isScrollRestoring}
+        canLoadMore={
+          selection === null &&
+          hasNextPage &&
+          !isFetching &&
+          !isFetchNextPageError &&
+          !isScrollRestoring
+        }
         hasNextPage={hasNextPage}
         isLoadingMore={isFetchingNextPage}
         items={carpools}
@@ -233,6 +327,7 @@ export function MatchingPage() {
         onCurrentLocationClick={onCurrentLocationClick}
         onFabOpenChange={onFabOpenChange}
         nearbyCarpools={listContent}
+        isListOpen={selection === null}
         onScrollElementChange={setScrollRoot}
         scrollContentKey={listQueryKey}
         onTaxipotClick={onTaxipotClick}
