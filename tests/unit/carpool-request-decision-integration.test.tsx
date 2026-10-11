@@ -22,6 +22,7 @@ import {
   type CarpoolRequestListResponse,
 } from '@/_pages/chat-list/api/carpool-requests';
 import { server } from '@/shared/api/mocks/server';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 const navigation = vi.hoisted(() => ({ push: vi.fn<(path: string) => void>() }));
 
@@ -107,8 +108,10 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.unstubAllGlobals();
   navigation.push.mockReset();
   useAuthStore.getState().clearTokens();
+  useSnackbarStore.getState().reset();
   server.resetHandlers();
 });
 
@@ -330,6 +333,189 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     ).toBe('REJECTED');
   });
 
+  it('수락 후 목록 재조회가 실패해도 남은 요청을 유지하고 알린다', async () => {
+    const user = userEvent.setup();
+    const remainingItem = { ...receivedItem, id: 91, content: '목록에 남아 있어야 하는 요청' };
+    let receivedListRequestCount = 0;
+    let decisionSucceeded = false;
+    const { Wrapper } = createWrapper();
+    server.use(
+      http.get('*/users/me/carpool-requests', ({ request }) => {
+        const direction = new URL(request.url).searchParams.get('direction');
+        if (direction !== 'RECEIVED') {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction, items: [], next_cursor: null },
+          });
+        }
+        receivedListRequestCount += 1;
+        if (!decisionSucceeded) {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction, items: [receivedItem, remainingItem], next_cursor: null },
+          });
+        }
+        return HttpResponse.json(
+          { message: '목록 조회 실패', error: { code: 'INTERNAL_SERVER_ERROR' } },
+          { status: 500 },
+        );
+      }),
+      http.patch('*/carpools/53/join-requests/90', () => {
+        decisionSucceeded = true;
+        return HttpResponse.json({
+          message: '요청을 수락했습니다',
+          data: { id: 90, status: 'ACCEPTED', chat_room_id: 301, current_count: 3, capacity: 4 },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await user.click(screen.getByRole('tab', { name: '받은 요청' }));
+    const requestButtons = await screen.findAllByRole('button', { name: '요청 확인' });
+    await user.click(requestButtons[0]);
+    await user.click(await screen.findByRole('button', { name: '수락' }));
+
+    await waitFor(
+      () => {
+        expect(useSnackbarStore.getState().description).toBe(
+          '카풀 요청 목록을 새로 불러오지 못했어요. 다시 확인해주세요.',
+        );
+      },
+      { timeout: 5_000 },
+    );
+    expect(screen.getAllByRole('button', { name: '요청 확인' })).toHaveLength(1);
+    expect(receivedListRequestCount).toBeGreaterThan(2);
+  });
+
+  it('첫 페이지의 마지막 요청을 제거해도 다음 페이지 요청을 이어서 표시한다', async () => {
+    const user = userEvent.setup();
+    const nextPageItem = { ...receivedItem, id: 92, content: '다음 페이지의 요청' };
+    let receivedListRequestCount = 0;
+    const cursors: (string | null)[] = [];
+    const observerCallbacks: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class TestIntersectionObserver {
+        constructor(private readonly callback: IntersectionObserverCallback) {
+          observerCallbacks.push(callback);
+        }
+        observe() {}
+        disconnect() {}
+        unobserve() {}
+        takeRecords() {
+          return [];
+        }
+        root = null;
+        rootMargin = '';
+        thresholds = [0];
+      },
+    );
+    const { Wrapper } = createWrapper();
+    server.use(
+      http.get('*/users/me/carpool-requests', ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        const direction = params.get('direction');
+        if (direction !== 'RECEIVED') {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction, items: [], next_cursor: null },
+          });
+        }
+        const cursor = params.get('cursor');
+        cursors.push(cursor);
+        receivedListRequestCount += 1;
+        if (cursor === null && receivedListRequestCount === 1) {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction, items: [receivedItem], next_cursor: 'after-first-page' },
+          });
+        }
+        if (cursor === null) {
+          return HttpResponse.json({
+            message: '조회에 성공했습니다',
+            data: { direction, items: [], next_cursor: 'after-first-page' },
+          });
+        }
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { direction, items: [nextPageItem], next_cursor: null },
+        });
+      }),
+      http.patch('*/carpools/53/join-requests/90', () =>
+        HttpResponse.json({
+          message: '요청을 수락했습니다',
+          data: { id: 90, status: 'ACCEPTED', chat_room_id: 301, current_count: 3, capacity: 4 },
+        }),
+      ),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await openReceivedRequests(user);
+    await user.click(await screen.findByRole('button', { name: '수락' }));
+
+    await waitFor(
+      () => {
+        for (const callback of observerCallbacks) {
+          callback(
+            [{ isIntersecting: true } as IntersectionObserverEntry],
+            {} as IntersectionObserver,
+          );
+        }
+        expect(cursors).toContain('after-first-page');
+      },
+      { timeout: 5_000 },
+    );
+    expect(screen.getByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(cursors).toContain('after-first-page');
+    expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
+  });
+
+  it('추가 페이지 조회가 실패하면 기존 항목을 유지하고 목록 오류를 알린다', async () => {
+    const user = userEvent.setup();
+    let receivedListRequestCount = 0;
+    const { Wrapper } = createWrapper();
+    vi.stubGlobal('IntersectionObserver', undefined);
+    server.use(
+      http.get('*/users/me/carpool-requests', ({ request }) => {
+        const params = new URL(request.url).searchParams;
+        const direction = params.get('direction');
+        receivedListRequestCount += Number(direction === 'RECEIVED');
+        if (direction === 'RECEIVED' && params.get('cursor') !== null) {
+          return HttpResponse.json(
+            { message: '추가 페이지 조회 실패', error: { code: 'INTERNAL_SERVER_ERROR' } },
+            { status: 500 },
+          );
+        }
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            direction,
+            items: direction === 'RECEIVED' ? [receivedItem] : [],
+            next_cursor: direction === 'RECEIVED' ? 'after-first-page' : null,
+          },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await user.click(screen.getByRole('tab', { name: '받은 요청' }));
+    await user.click(await screen.findByRole('button', { name: '요청 더 보기' }));
+
+    await waitFor(
+      () => {
+        expect(useSnackbarStore.getState().description).toBe(
+          '카풀 요청 목록을 새로 불러오지 못했어요. 다시 확인해주세요.',
+        );
+      },
+      { timeout: 5_000 },
+    );
+    expect(screen.getByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '더 불러오기' })).toBeInTheDocument();
+    expect(receivedListRequestCount).toBeGreaterThan(1);
+  });
+
   it('거절 오류에서는 모달과 내용을 유지하고 다시 시도할 수 있다', async () => {
     const user = userEvent.setup();
     let attempt = 0;
@@ -356,7 +542,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     expect(await screen.findByText('입력값을 확인해주세요')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
-    expect(screen.getByText('상세 조회에서 가져온 요청 메시지')).toBeInTheDocument();
+    expect(screen.getByText(receivedItem.content)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '거절' })).toBeEnabled();
 
     await user.click(screen.getByRole('button', { name: '거절' }));
@@ -405,31 +591,23 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' })).not.toBeInTheDocument(),
     );
-    expect(await screen.findByText(/로그인 계정이 바뀌어 요청을 닫았어요/)).toBeInTheDocument();
     expect(queryClient.getQueryState(previousViewerQuery.queryKey)?.isInvalidated).toBe(true);
   });
 
-  it('상세 확인 실패와 불명확한 PATCH 후 닫았다 다시 열어도 재조회 전에는 처리하지 않는다', async () => {
+  it('불명확한 PATCH 뒤 단일 PENDING 조회로 액션을 풀지 않고 상태를 다시 확인한다', async () => {
     const user = userEvent.setup();
     let detailCount = 0;
     let patchCount = 0;
-    let releaseDetail: (() => void) | undefined;
-    let markDetailStarted: (() => void) | undefined;
-    const detailStarted = new Promise<void>((resolve) => (markDetailStarted = resolve));
     server.use(
-      http.get('*/carpools/:carpoolId/join-requests/:requestId', async () => {
+      http.get('*/carpools/:carpoolId/join-requests/:requestId', () => {
         detailCount += 1;
-        if (detailCount === 1) {
-          markDetailStarted?.();
-          await new Promise<void>((resolve) => (releaseDetail = resolve));
+        if (detailCount < 3) {
+          return HttpResponse.json(detailResponse('서버에서 확인한 대기 상태'));
         }
-        if ([1, 3, 4].includes(detailCount)) {
-          return HttpResponse.json(
-            { message: '조회 실패', error: { code: 'CONFLICT' } },
-            { status: 409 },
-          );
-        }
-        return HttpResponse.json(detailResponse('재조회한 상세 내용'));
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { ...detailResponse('최종 처리 상태').data, status: 'ACCEPTED' },
+        });
       }),
       http.patch('*/carpools/53/join-requests/90', () => {
         patchCount += 1;
@@ -446,32 +624,31 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     const { Wrapper } = createWrapper();
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await detailStarted;
-
     expect(screen.getByText(receivedItem.content)).toBeInTheDocument();
+    expect(detailCount).toBe(0);
+    await user.click(screen.getByRole('button', { name: '수락' }));
+    expect(
+      await screen.findByText(
+        '요청이 아직 대기 중으로 보여요. 처리 결과가 확인될 때까지 수락과 거절은 잠겨 있어요.',
+      ),
+    ).toBeInTheDocument();
+    expect(detailCount).toBe(1);
     expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
-    releaseDetail?.();
-    await screen.findByRole('button', { name: '다시 불러오기' }, { timeout: 6000 });
-    expect(screen.queryByRole('button', { name: '수락' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '거절' })).not.toBeInTheDocument();
+    expect(patchCount).toBe(1);
 
-    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
-    expect(await screen.findByText('재조회한 상세 내용')).toBeInTheDocument();
-    await waitFor(() => expect(screen.getByRole('button', { name: '수락' })).toBeEnabled());
-    await user.click(await screen.findByRole('button', { name: '수락' }));
-    await screen.findByRole('button', { name: '다시 불러오기' }, { timeout: 6000 });
-    await user.click(screen.getByRole('button', { name: '닫기' }));
-    await openReceivedRequests(user);
-    await screen.findByRole('button', { name: '다시 불러오기' }, { timeout: 6000 });
-    expect(screen.queryByRole('button', { name: '수락' })).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: '거절' })).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '요청 상태 다시 확인' }));
+    await waitFor(() => expect(detailCount).toBe(2));
+    expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
     expect(patchCount).toBe(1);
-    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
-    await waitFor(() => expect(screen.getByRole('button', { name: '수락' })).toBeEnabled());
+
+    await user.click(screen.getByRole('button', { name: '요청 상태 다시 확인' }));
+    await waitFor(() =>
+      expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' })).not.toBeInTheDocument(),
+    );
+    expect(detailCount).toBe(3);
     expect(patchCount).toBe(1);
-    await user.click(screen.getByRole('button', { name: '거절' }));
-    await waitFor(() => expect(patchCount).toBe(2));
   });
 
   it.each([
@@ -501,7 +678,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
     await user.click(await screen.findByRole('button', { name: '수락' }));
-    expect(await screen.findByText(message)).toBeInTheDocument();
+    await waitFor(() => expect(useSnackbarStore.getState().description).toBe(message));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' }) !== null).toBe(remainsOpen),
     );
@@ -536,9 +713,11 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     [403, 'HOST_ONLY', '요청 정보를 볼 권한이 없어요.'],
     [404, 'CARPOOL_REQUEST_NOT_FOUND', '요청이 이미 사라졌어요.'],
   ])(
-    '%i %s 상세 조회 실패 시 모달을 닫고 받은 요청 목록을 새로 조회한다',
+    '%i %s 처리 결과 확인 실패 시 모달을 닫고 받은 요청 목록을 새로 조회한다',
     async (status, code, message) => {
       const user = userEvent.setup();
+      const requestId = status === 403 ? 901 : 902;
+      const testItem = { ...receivedItem, id: requestId };
       let receivedListRequestCount = 0;
       let listRequestCountAtDetailError = 0;
       let detailErrorReturned = false;
@@ -555,12 +734,12 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
             message: '조회에 성공했습니다',
             data: {
               direction,
-              items: direction === 'RECEIVED' && !detailErrorReturned ? [receivedItem] : [],
+              items: direction === 'RECEIVED' && !detailErrorReturned ? [testItem] : [],
               next_cursor: null,
             },
           });
         }),
-        http.get('*/carpools/53/join-requests/90', () => {
+        http.get(`*/carpools/53/join-requests/${requestId}`, () => {
           listRequestCountAtDetailError = receivedListRequestCount;
           detailErrorReturned = true;
           return HttpResponse.json(
@@ -568,22 +747,26 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
             { status },
           );
         }),
-        http.patch('*/carpools/53/join-requests/90', () => {
+        http.patch(`*/carpools/53/join-requests/${requestId}`, () => {
           patchCount += 1;
-          return HttpResponse.json({ message: '처리했습니다' });
+          return HttpResponse.json(
+            { message: '결과를 확인할 수 없습니다', error: { code: 'INTERNAL_SERVER_ERROR' } },
+            { status: 500 },
+          );
         }),
       );
 
       render(<ChatListPage />, { wrapper: Wrapper });
       await openReceivedRequests(user);
+      await user.click(screen.getByRole('button', { name: '수락' }));
 
-      expect(await screen.findByText(message)).toBeInTheDocument();
+      await waitFor(() => expect(useSnackbarStore.getState().description).toBe(message));
       await waitFor(() =>
         expect(receivedListRequestCount).toBeGreaterThan(listRequestCountAtDetailError),
       );
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' })).not.toBeInTheDocument();
       expect(screen.getByTestId('carpool-request-list-empty')).toBeInTheDocument();
-      expect(patchCount).toBe(0);
+      expect(patchCount).toBe(1);
     },
   );
 });
