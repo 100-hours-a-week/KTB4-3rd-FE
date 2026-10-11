@@ -51,14 +51,10 @@ async function openReceivedRequests(page: Page) {
   await page.getByRole('button', { name: '요청 확인' }).click();
 }
 
-test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에서 제거한다', async ({ page }) => {
+test('받은 요청 목록 미리보기로 상세 요청 없이 수락하고 목록에서 제거한다', async ({ page }) => {
   await mockSession(page);
   let remaining = [receivedRequest];
-  let releaseDetail: (() => void) | undefined;
-  let markDetailStarted: (() => void) | undefined;
-  const detailStarted = new Promise<void>((resolve) => {
-    markDetailStarted = resolve;
-  });
+  let detailGetCount = 0;
   await page.route('**/api/users/me/carpool-requests**', async (route) => {
     const direction = new URL(route.request().url()).searchParams.get('direction');
     await route.fulfill({
@@ -72,10 +68,7 @@ test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에�
   });
   await page.route('**/api/carpools/53/join-requests/90', async (route) => {
     if (route.request().method() === 'GET') {
-      markDetailStarted?.();
-      await new Promise<void>((resolve) => {
-        releaseDetail = resolve;
-      });
+      detailGetCount += 1;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -111,9 +104,7 @@ test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에�
   await page.goto('/chat');
   await openReceivedRequests(page);
   await expect(page.getByText(receivedRequest.content)).toBeVisible();
-  await detailStarted;
-  releaseDetail?.();
-  await expect(page.getByText('상세에서 다시 확인한 메시지')).toBeVisible();
+  await expect.poll(() => detailGetCount).toBe(0);
   await page.getByRole('button', { name: '수락' }).click();
 
   await expect(page.getByText('요청을 수락했어요.')).toBeVisible();
@@ -124,6 +115,7 @@ test('받은 카풀 요청의 상세를 새로 확인해 수락하고 목록에�
 test('받은 카풀 요청을 거절하고 목록에서 제거한다', async ({ page }) => {
   await mockSession(page);
   let remaining = [receivedRequest];
+  let detailGetCount = 0;
 
   await page.route('**/api/users/me/carpool-requests**', async (route) => {
     const direction = new URL(route.request().url()).searchParams.get('direction');
@@ -138,6 +130,7 @@ test('받은 카풀 요청을 거절하고 목록에서 제거한다', async ({ 
   });
   await page.route('**/api/carpools/53/join-requests/90', async (route) => {
     if (route.request().method() === 'GET') {
+      detailGetCount += 1;
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -172,7 +165,8 @@ test('받은 카풀 요청을 거절하고 목록에서 제거한다', async ({ 
 
   await page.goto('/chat');
   await openReceivedRequests(page);
-  await expect(page.getByText('거절 확인용 요청 상세')).toBeVisible();
+  await expect(page.getByText(receivedRequest.content)).toBeVisible();
+  await expect.poll(() => detailGetCount).toBe(0);
   await page.getByRole('button', { name: '거절' }).click();
 
   await expect(page.getByText('요청을 거절했어요.')).toBeVisible();
