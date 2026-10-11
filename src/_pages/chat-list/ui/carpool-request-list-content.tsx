@@ -1,5 +1,7 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+
 import {
   CarpoolReceivedItem,
   CarpoolRequestItem,
@@ -21,6 +23,7 @@ export type CarpoolRequestListState =
       hasNextPage: boolean;
       isLoadingMore: boolean;
       hasLoadMoreError: boolean;
+      canLoadMore: boolean;
       onLoadMore: () => void;
       onRetryLoadMore: () => void;
     };
@@ -36,6 +39,38 @@ export function CarpoolRequestListContent({
   onRequestClick: (carpoolId: number, requestId: number) => void;
   state: CarpoolRequestListState;
 }) {
+  const scrollRootRef = useRef<HTMLDivElement>(null);
+  const loadMoreTargetRef = useRef<HTMLDivElement>(null);
+  const contentState = state.status === 'content' ? state : null;
+  const onLoadMore = contentState?.onLoadMore;
+  const shouldObserve = Boolean(
+    contentState?.hasNextPage && contentState.canLoadMore && !contentState.hasLoadMoreError,
+  );
+
+  useEffect(() => {
+    if (!onLoadMore || !shouldObserve || typeof IntersectionObserver === 'undefined') {
+      return;
+    }
+
+    const root = scrollRootRef.current;
+    const target = loadMoreTargetRef.current;
+    if (!root || !target) {
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          onLoadMore();
+        }
+      },
+      { root, rootMargin: '0px 0px 160px 0px', threshold: 0 },
+    );
+    observer.observe(target);
+
+    return () => observer.disconnect();
+  }, [onLoadMore, shouldObserve]);
+
   if (state.status === 'loading') {
     return (
       <ul aria-label="카풀 요청 목록을 불러오는 중" className="mt-4" role="status">
@@ -99,7 +134,11 @@ export function CarpoolRequestListContent({
   }
 
   return (
-    <div className="mt-4 min-h-0 w-full flex-1 overflow-y-auto">
+    <div
+      className="mt-4 min-h-0 w-full flex-1 overflow-y-auto"
+      data-testid="carpool-request-scroll-root"
+      ref={scrollRootRef}
+    >
       <ul className="m-0 w-full list-none p-0">
         {state.items.map((request) =>
           direction === 'SENT' ? (
@@ -118,6 +157,15 @@ export function CarpoolRequestListContent({
         )}
       </ul>
       {state.hasNextPage ? (
+        <div
+          aria-hidden="true"
+          className="h-px w-full"
+          data-testid="request-list-load-more-target"
+          ref={loadMoreTargetRef}
+        />
+      ) : null}
+      {state.hasNextPage &&
+      (typeof IntersectionObserver === 'undefined' || state.hasLoadMoreError) ? (
         <button
           className="my-3 w-full cursor-pointer py-3 text-sm text-[var(--color-fg-brand)]"
           disabled={state.isLoadingMore}

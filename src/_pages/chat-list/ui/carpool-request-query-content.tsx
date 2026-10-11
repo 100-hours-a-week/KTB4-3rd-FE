@@ -44,6 +44,7 @@ type SelectedRequest = {
   requestId: number;
   viewerId: number;
   detailUpdateCountAtOpen: number;
+  needsServerDetail: boolean;
 };
 
 const uncertainDecisionKeys = new Set<string>();
@@ -203,12 +204,13 @@ export function CarpoolRequestQueryContent({
   const [reconciliationFailed, setReconciliationFailed] = useState(false);
   const [notice, setNotice] = useState<string | undefined>();
   const actionLock = useRef(false);
+  const lastNotifiedListError = useRef<unknown>(null);
 
   const detailQuery = useCarpoolRequestDetailQuery({
     viewerId,
     carpoolId: selected?.carpoolId ?? null,
     requestId: selected?.requestId ?? null,
-    enabled: selected !== null && isAuthenticated,
+    enabled: selected?.needsServerDetail === true && isAuthenticated,
   });
 
   const {
@@ -234,6 +236,24 @@ export function CarpoolRequestQueryContent({
     isFetching,
   ]);
 
+  useEffect(() => {
+    const hasCachedList = query.data !== undefined;
+    const shouldNotify = query.isRefetchError || query.isFetchNextPageError;
+    if (
+      !hasCachedList ||
+      !shouldNotify ||
+      !query.error ||
+      query.error === lastNotifiedListError.current
+    ) {
+      return;
+    }
+
+    lastNotifiedListError.current = query.error;
+    useSnackbarStore
+      .getState()
+      .showSnackbar('카풀 요청 목록을 새로 불러오지 못했어요. 다시 확인해주세요.', 'critical');
+  }, [query.data, query.error, query.isFetchNextPageError, query.isRefetchError]);
+
   const currentDecisionKey = selected
     ? decisionKey(selected.viewerId, selected.carpoolId, selected.requestId)
     : null;
@@ -248,7 +268,7 @@ export function CarpoolRequestQueryContent({
     !detailQuery.isFetching &&
     detailUpdateCount > selected.detailUpdateCountAtOpen,
   );
-  const isAwaitingReconciliation = awaitingReconciliation && !hasAuthoritativeDetail;
+  const isAwaitingReconciliation = awaitingReconciliation;
   const capacityBlockedAtUpdateCount = currentDecisionKey
     ? capacityBlockedAcceptKeys.get(currentDecisionKey)
     : undefined;
@@ -319,8 +339,8 @@ export function CarpoolRequestQueryContent({
         return;
       }
 
-      uncertainDecisionKeys.delete(key);
       if (result.data.data.status !== 'PENDING') {
+        uncertainDecisionKeys.delete(key);
         capacityBlockedAcceptKeys.delete(key);
         removeReceivedRequest(queryClient, viewerId, selected.carpoolId, selected.requestId);
         if (result.data.data.status === 'ACCEPTED' || result.data.data.status === 'REJECTED') {
@@ -344,8 +364,10 @@ export function CarpoolRequestQueryContent({
         return;
       }
 
-      setAwaitingReconciliation(false);
-      setNotice('요청 상태를 확인했어요. 다시 진행하려면 수락 또는 거절을 눌러주세요.');
+      setAwaitingReconciliation(true);
+      setNotice(
+        '요청이 아직 대기 중으로 보여요. 처리 결과가 확인될 때까지 수락과 거절은 잠겨 있어요.',
+      );
     } catch {
       setReconciliationFailed(true);
     } finally {
@@ -358,7 +380,6 @@ export function CarpoolRequestQueryContent({
       if (
         !selected ||
         !viewerId ||
-        !hasAuthoritativeDetail ||
         actionLock.current ||
         isAwaitingReconciliation ||
         (action === 'accept' && isAcceptBlockedByCapacity)
@@ -465,6 +486,7 @@ export function CarpoolRequestQueryContent({
         } else if (isUncertainDecisionError(error)) {
           uncertainDecisionKeys.add(key);
           setAwaitingReconciliation(true);
+          setSelected((current) => (current ? { ...current, needsServerDetail: true } : current));
           useSnackbarStore
             .getState()
             .showSnackbar(
@@ -489,7 +511,6 @@ export function CarpoolRequestQueryContent({
       }
     },
     [
-      hasAuthoritativeDetail,
       isAcceptBlockedByCapacity,
       isAwaitingReconciliation,
       detailUpdateCount,
@@ -564,14 +585,26 @@ export function CarpoolRequestQueryContent({
       }
 
       const queryKey = carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId);
-      queryClient.setQueryData(queryKey, previewDetail(preview));
       const detailUpdateCountAtOpen = queryClient.getQueryState(queryKey)?.dataUpdateCount ?? 0;
+      const key = decisionKey(viewerId, carpoolId, requestId);
+      const isUncertain = uncertainDecisionKeys.has(key);
+      const needsServerDetail = isUncertain || capacityBlockedAcceptKeys.has(key);
       setNotice(undefined);
       setReconciliationFailed(false);
-      setAwaitingReconciliation(
-        uncertainDecisionKeys.has(decisionKey(viewerId, carpoolId, requestId)),
+      setAwaitingReconciliation(isUncertain);
+      setSelected({
+        carpoolId,
+        requestId,
+        preview,
+        viewerId,
+        detailUpdateCountAtOpen,
+        needsServerDetail,
+      });
+      setNotice(
+        isUncertain
+          ? '이전 요청의 처리 결과를 확인하고 있어요. 확인이 끝날 때까지 수락과 거절은 잠겨 있어요.'
+          : undefined,
       );
-      setSelected({ carpoolId, requestId, preview, viewerId, detailUpdateCountAtOpen });
     },
     [direction, query.data, queryClient, viewerId],
   );
@@ -603,8 +636,9 @@ export function CarpoolRequestQueryContent({
         hasNextPage: query.hasNextPage,
         isLoadingMore: query.isFetchingNextPage,
         hasLoadMoreError: query.isFetchNextPageError,
+        canLoadMore: query.hasNextPage && !query.isFetching && !query.isError,
         onLoadMore: () => {
-          if (query.hasNextPage && !query.isFetching) {
+          if (query.hasNextPage && !query.isFetching && !query.isError) {
             void query.fetchNextPage();
           }
         },
@@ -617,13 +651,20 @@ export function CarpoolRequestQueryContent({
     }
   }
 
-  const detail = detailQuery.isError ? undefined : detailQuery.data?.data;
+  let detail: CarpoolRequestDetailResponse['data'] | undefined;
+  if (hasAuthoritativeDetail) {
+    detail = detailQuery.data?.data;
+  } else if (selected) {
+    detail = previewDetail(selected.preview).data;
+  }
   let modal = null;
   if (selectedRequest && selected?.viewerId === viewerId && isAuthenticated) {
     const detailUnavailable =
+      selected.needsServerDetail &&
       detailQuery.error instanceof ApiError &&
       (detailQuery.error.status === 403 || detailQuery.error.status === 404);
-    const requestAlreadyHandled = detail && detail.status !== 'PENDING' && !detailQuery.isFetching;
+    const requestAlreadyHandled =
+      hasAuthoritativeDetail && detail && detail.status !== 'PENDING' && !detailQuery.isFetching;
 
     if (detailUnavailable || requestAlreadyHandled) {
       modal = null;
@@ -645,16 +686,13 @@ export function CarpoolRequestQueryContent({
       modal = (
         <CarpoolRequestModal
           canAccept={
-            hasAuthoritativeDetail &&
-            detail.status === 'PENDING' &&
-            !isAwaitingReconciliation &&
-            !isAcceptBlockedByCapacity
+            detail.status === 'PENDING' && !isAwaitingReconciliation && !isAcceptBlockedByCapacity
           }
-          canReject={
-            hasAuthoritativeDetail && detail.status === 'PENDING' && !isAwaitingReconciliation
-          }
+          canReject={detail.status === 'PENDING' && !isAwaitingReconciliation}
+          isCheckingStatus={isReconciling}
           notice={notice}
           onAccept={() => void handleDecision('accept')}
+          onCheckStatus={isAwaitingReconciliation ? () => void reconcileRequest() : undefined}
           onClose={closeModal}
           onReject={() => void handleDecision('reject')}
           open

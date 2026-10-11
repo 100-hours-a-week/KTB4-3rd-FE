@@ -29,12 +29,14 @@ export type CarpoolCreateDraft = {
 export type CarpoolCreateState = {
   draft: CarpoolCreateDraft;
   pendingLocation: CarpoolPendingLocation | null;
+  searchQuery: string;
   setOrigin: (origin: CarpoolCreateLocation | null) => void;
   setDestination: (destination: CarpoolCreateLocation | null) => void;
   setDepartureDate: (departureDate: string | null) => void;
   setDepartureTime: (departureTime: TimePickerValue | null) => void;
   setRecruitCount: (recruitCount: CarpoolRecruitCount | null) => void;
   setPendingLocation: (pendingLocation: CarpoolPendingLocation | null) => void;
+  setSearchQuery: (searchQuery: string) => void;
   reset: () => void;
 };
 
@@ -51,6 +53,7 @@ function createInitialDraft(): CarpoolCreateDraft {
 export const useCarpoolCreateStore = create<CarpoolCreateState>()((set) => ({
   draft: createInitialDraft(),
   pendingLocation: null,
+  searchQuery: '',
   setOrigin: (origin) => set((state) => ({ draft: { ...state.draft, origin } })),
   setDestination: (destination) => set((state) => ({ draft: { ...state.draft, destination } })),
   setDepartureDate: (departureDate) =>
@@ -59,5 +62,6 @@ export const useCarpoolCreateStore = create<CarpoolCreateState>()((set) => ({
     set((state) => ({ draft: { ...state.draft, departureTime } })),
   setRecruitCount: (recruitCount) => set((state) => ({ draft: { ...state.draft, recruitCount } })),
   setPendingLocation: (pendingLocation) => set({ pendingLocation }),
-  reset: () => set({ draft: createInitialDraft(), pendingLocation: null }),
+  setSearchQuery: (searchQuery) => set({ searchQuery }),
+  reset: () => set({ draft: createInitialDraft(), pendingLocation: null, searchQuery: '' }),
 }));

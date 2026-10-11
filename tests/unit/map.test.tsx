@@ -723,6 +723,30 @@ describe('Map', () => {
       },
     );
 
+    it('zooms one level when a selected map marker is focused through a controlled center', async () => {
+      const { rerender, onViewportChange } = await readyMap();
+      fakeMap.setLevel.mockClear();
+      onViewportChange.mockClear();
+
+      rerender(
+        <Map
+          apiKey="test-key"
+          center={marker.position}
+          centerChangeSource="selection"
+          onViewportChange={onViewportChange}
+        />,
+      );
+
+      await advance(0);
+      expect(fakeMap.setLevel).toHaveBeenCalledExactlyOnceWith(4, {
+        anchor: expect.any(FakeLatLng),
+        animate: true,
+      });
+      emit('bounds_changed', 'idle');
+      await advance(300);
+      expect(onViewportChange).toHaveBeenCalledExactlyOnceWith(expect.any(Object), 'selection');
+    });
+
     it.each(['button', 'sdk', 'cluster'] as const)('classifies %s zoom as zoom', async (kind) => {
       const { onViewportChange } = await readyMap({ markers: [marker] });
       onViewportChange.mockClear();

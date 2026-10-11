@@ -32,6 +32,8 @@ type CarpoolRequestModalProps =
           request: CarpoolRequestDetailView;
           processingAction: RequestProcessingAction;
           notice?: string;
+          onCheckStatus?: () => void;
+          isCheckingStatus?: boolean;
           canAccept: boolean;
           canReject: boolean;
           onAccept: () => void;
@@ -68,8 +70,10 @@ export function CarpoolRequestModal(props: CarpoolRequestModalProps) {
       <RequestContent
         canAccept={props.canAccept}
         canReject={props.canReject}
+        isCheckingStatus={props.isCheckingStatus ?? false}
         notice={props.notice}
         onAccept={props.onAccept}
+        onCheckStatus={props.onCheckStatus}
         onReject={props.onReject}
         processingAction={props.processingAction}
         request={props.request}
@@ -111,8 +115,10 @@ function RequestLoadingState() {
 type RequestContentProps = {
   canAccept: boolean;
   canReject: boolean;
+  isCheckingStatus: boolean;
   notice?: string;
   onAccept: () => void;
+  onCheckStatus?: () => void;
   onReject: () => void;
   processingAction: RequestProcessingAction;
   request: CarpoolRequestDetailView;
@@ -121,8 +127,10 @@ type RequestContentProps = {
 function RequestContent({
   canAccept,
   canReject,
+  isCheckingStatus,
   notice,
   onAccept,
+  onCheckStatus,
   onReject,
   processingAction,
   request,
@@ -135,6 +143,18 @@ function RequestContent({
         <p aria-live="polite" className="text-sm text-[var(--color-fg-critical)]">
           {notice}
         </p>
+      ) : null}
+      {onCheckStatus ? (
+        <Button
+          disabled={isProcessing || isCheckingStatus}
+          loading={isCheckingStatus}
+          onClick={onCheckStatus}
+          size="small"
+          variant="neutral-outline"
+          width="fill"
+        >
+          요청 상태 다시 확인
+        </Button>
       ) : null}
       <div className="flex min-w-0 items-center gap-3">
         <Avatar

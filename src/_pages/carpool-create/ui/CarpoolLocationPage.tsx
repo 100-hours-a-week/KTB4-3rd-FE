@@ -75,7 +75,8 @@ export function CarpoolLocationPage() {
   const selectedDestination = toSearchResult(destination, 'destination');
   const currentLocation = field === 'departure' ? departure : selectedDestination;
   const [activeField, setActiveField] = useState<CarpoolLocationField>(field);
-  const [searchQuery, setSearchQuery] = useState(() => currentLocation?.placeName ?? '');
+  const searchQuery = useCarpoolCreateStore((state) => state.searchQuery);
+  const setSearchQuery = useCarpoolCreateStore((state) => state.setSearchQuery);
   const departureInputRef = useRef<ComponentRef<typeof Input>>(null);
   const destinationInputRef = useRef<ComponentRef<typeof Input>>(null);
   const kakaoSearch = useKakaoPlaceSearch(searchQuery);
@@ -85,6 +86,12 @@ export function CarpoolLocationPage() {
       router.replace('/carpools/new/location?field=departure');
     }
   }, [isValidField, router]);
+
+  useEffect(() => {
+    if (!searchQuery && currentLocation?.placeName) {
+      setSearchQuery(currentLocation.placeName);
+    }
+  }, [currentLocation?.placeName, searchQuery, setSearchQuery]);
 
   useEffect(() => {
     if (!isValidField) {

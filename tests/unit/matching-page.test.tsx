@@ -1,5 +1,6 @@
 import { http, HttpResponse } from 'msw';
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { QueryClient, QueryClientProvider, onlineManager } from '@tanstack/react-query';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { useEffect } from 'react';
@@ -38,16 +39,26 @@ vi.mock('@/shared/ui/bottom-sheet', async () => {
       children,
       onScrollElementChange,
       scrollContentKey,
+      open = true,
     }: {
       children: React.ReactNode;
       onScrollElementChange?: (element: HTMLElement | null) => void;
+      open?: boolean;
       scrollContentKey?: string | number;
     }) => {
       const scrollRoot = useRef<HTMLDivElement>(null);
       useEffect(() => {
+        if (!open) {
+          onScrollElementChange?.(null);
+          return;
+        }
         onScrollElementChange?.(scrollRoot.current);
         return () => onScrollElementChange?.(null);
-      }, [onScrollElementChange]);
+      }, [onScrollElementChange, open]);
+
+      if (!open) {
+        return null;
+      }
 
       return createElement(
         'div',
@@ -66,7 +77,7 @@ vi.mock('@/shared/ui/map', async () => {
   const { createElement, forwardRef, useImperativeHandle } = await import('react');
 
   const MockMap = forwardRef<MapRef, MapProps>(
-    ({ className, markers, onMarkerClick, onViewportChange }, ref) => {
+    ({ className, center, markers, onMarkerClick, onViewportChange }, ref) => {
       useImperativeHandle(ref, () => ({
         requestCurrentLocation: mocks.currentLocation,
         requestLocationPermission: vi.fn<() => void>(),
@@ -86,7 +97,17 @@ vi.mock('@/shared/ui/map', async () => {
 
       return createElement(
         'div',
-        { className, 'data-testid': 'matching-map', 'data-markers': markers?.length ?? 0 },
+        {
+          className,
+          'data-testid': 'matching-map',
+          'data-markers': markers?.length ?? 0,
+          'data-selected-markers':
+            markers
+              ?.filter((marker) => marker.isSelected)
+              .map((marker) => marker.id)
+              .join(',') ?? '',
+          'data-center': center ? `${center.lat},${center.lng}` : '',
+        },
         ...(markers ?? []).map((marker) =>
           createElement(
             'button',
@@ -106,15 +127,25 @@ vi.mock('@/shared/ui/map', async () => {
   };
 });
 
-function renderMatchingPage() {
+function renderMatchingPage(queryClient?: QueryClient) {
   return render(
-    <QueryProvider>
-      <SnackbarProvider>
-        <LoginRequiredProvider>
-          <MatchingPage />
-        </LoginRequiredProvider>
-      </SnackbarProvider>
-    </QueryProvider>,
+    queryClient ? (
+      <QueryClientProvider client={queryClient}>
+        <SnackbarProvider>
+          <LoginRequiredProvider>
+            <MatchingPage />
+          </LoginRequiredProvider>
+        </SnackbarProvider>
+      </QueryClientProvider>
+    ) : (
+      <QueryProvider>
+        <SnackbarProvider>
+          <LoginRequiredProvider>
+            <MatchingPage />
+          </LoginRequiredProvider>
+        </SnackbarProvider>
+      </QueryProvider>
+    ),
   );
 }
 
@@ -125,6 +156,7 @@ afterEach(() => {
   mocks.navigation.push.mockReset();
   mocks.currentLocation.mockReset();
   useAuthStore.getState().clearTokens();
+  onlineManager.setOnline(true);
 });
 
 describe('MatchingPage', () => {
@@ -143,6 +175,161 @@ describe('MatchingPage', () => {
     expect(carpoolList).toHaveTextContent('서울역 2번 출구 → 유스페이스1');
     expect(screen.getByTestId('matching-map')).toHaveAttribute('data-markers', '2');
     expect(screen.getByLabelText('주변 카풀')).toBeInTheDocument();
+  });
+
+  it('초기 목록 조회가 오프라인으로 대기하면 로딩 skeleton 대신 연결 안내를 표시한다', async () => {
+    onlineManager.setOnline(false);
+    renderMatchingPage();
+
+    expect(await screen.findByText('인터넷 연결을 기다리고 있어요.')).toBeInTheDocument();
+    expect(screen.queryByLabelText('주변 카풀을 불러오는 중')).not.toBeInTheDocument();
+  });
+
+  it('오류 후 수동 재시도 중에는 조회 로딩 상태를 표시한다', async () => {
+    const user = userEvent.setup();
+    let requestCount = 0;
+    let releaseRequest: () => void = () => undefined;
+    const retryGate = new Promise<void>((resolve) => {
+      releaseRequest = resolve;
+    });
+    server.use(
+      http.get('*/carpools', async () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return HttpResponse.json(
+            { message: '조회 실패', error: { code: 'VALIDATION_ERROR' } },
+            { status: 400 },
+          );
+        }
+        await retryGate;
+        return HttpResponse.json({ message: '조회', data: { items: [], next_cursor: null } });
+      }),
+    );
+
+    renderMatchingPage();
+    await user.click(await screen.findByRole('button', { name: '다시 불러오기' }));
+    expect(await screen.findByLabelText('주변 카풀을 불러오는 중')).toBeInTheDocument();
+    releaseRequest();
+    expect(
+      await screen.findByRole('heading', { name: '주변에 카풀이 없어요' }),
+    ).toBeInTheDocument();
+  });
+
+  it('성공한 빈 목록 캐시는 재조회 실패 후에도 빈 상태로 유지한다', async () => {
+    const queryClient = new QueryClient();
+    const viewport = { sw_lat: 37.55, sw_lng: 126.96, ne_lat: 37.57, ne_lng: 126.99 };
+    const conditions = { ...viewport, lat: 37.5665, lng: 126.978 };
+    const options = (await import('@/shared/api/carpool')).carpoolQueries.nearby(conditions);
+    queryClient.setQueryData(
+      options.queryKey,
+      {
+        pages: [{ message: '조회', data: { items: [], next_cursor: null } }],
+        pageParams: [undefined],
+      },
+      { updatedAt: Date.now() - 31_000 },
+    );
+    await queryClient.invalidateQueries({ queryKey: options.queryKey });
+    server.use(
+      http.get('*/carpools', () =>
+        HttpResponse.json(
+          { message: '조회 실패', error: { code: 'INTERNAL_SERVER_ERROR' } },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    renderMatchingPage(queryClient);
+    expect(
+      await screen.findByRole('heading', { name: '주변에 카풀이 없어요' }),
+    ).toBeInTheDocument();
+    await waitFor(() => expect(queryClient.getQueryState(options.queryKey)?.status).toBe('error'), {
+      timeout: 5_000,
+    });
+    expect(
+      screen.queryByRole('heading', { name: '카풀을 불러오지 못했어요' }),
+    ).not.toBeInTheDocument();
+    queryClient.clear();
+  });
+
+  it('잘못된 다음 페이지 커서는 목록을 첫 페이지부터 다시 조회한다', async () => {
+    const observerCallbacks: IntersectionObserverCallback[] = [];
+    vi.stubGlobal(
+      'IntersectionObserver',
+      class {
+        observe = vi.fn<(target: Element) => void>();
+        disconnect = vi.fn<() => void>();
+        constructor(callback: IntersectionObserverCallback) {
+          observerCallbacks.push(callback);
+        }
+      },
+    );
+    const cursors: (string | null)[] = [];
+    server.use(
+      http.get('*/carpools', ({ request }) => {
+        const cursor = new URL(request.url).searchParams.get('cursor');
+        cursors.push(cursor);
+        if (cursor === 'expired-cursor') {
+          return HttpResponse.json(
+            { message: '잘못된 커서', error: { code: 'INVALID_CURSOR' } },
+            { status: 400 },
+          );
+        }
+        return HttpResponse.json({
+          message: '조회',
+          data: {
+            items: [
+              {
+                id: 51,
+                host: { name: '호스트', profile_image_url: null },
+                origin_name: '서울역',
+                dest_name: '판교역',
+                departure_at: '2030-10-10T09:40:00.000Z',
+                distance_m: 10,
+                current_count: 1,
+                capacity: 3,
+                is_full: false,
+                is_expired: false,
+              },
+            ],
+            next_cursor: cursor === null && cursors.length === 1 ? 'expired-cursor' : null,
+          },
+        });
+      }),
+    );
+
+    renderMatchingPage();
+    expect(await screen.findByRole('button', { name: /서울역 → 판교역/ })).toBeInTheDocument();
+    await waitFor(() => expect(observerCallbacks.length).toBeGreaterThan(0));
+    observerCallbacks[0]?.(
+      [{ isIntersecting: true } as IntersectionObserverEntry],
+      {} as IntersectionObserver,
+    );
+    await waitFor(() => expect(cursors).toEqual([null, 'expired-cursor', null]));
+    expect(cursors.filter((cursor) => cursor === 'expired-cursor')).toHaveLength(1);
+  });
+
+  it('핀 조회 오류 Snackbar에서 현재 지도 영역 조회를 다시 시도한다', async () => {
+    const user = userEvent.setup();
+    let pinRequests = 0;
+    server.use(
+      http.get('*/carpool-pins', () => {
+        pinRequests += 1;
+        if (pinRequests === 1) {
+          return HttpResponse.json(
+            { message: '조회 실패', error: { code: 'VIEWPORT_OUT_OF_RANGE' } },
+            { status: 400 },
+          );
+        }
+        return HttpResponse.json({
+          message: '조회',
+          data: { items: [], limit: 500, limit_exceeded: false },
+        });
+      }),
+    );
+
+    renderMatchingPage();
+    await user.click(await screen.findByRole('button', { name: '다시 시도' }));
+    await waitFor(() => expect(pinRequests).toBe(2));
   });
 
   it('실제 BottomSheet scroll root에서 다음 카풀 페이지를 자동으로 요청한다', async () => {
@@ -224,7 +411,7 @@ describe('MatchingPage', () => {
     expect(mocks.currentLocation).toHaveBeenCalledOnce();
   });
 
-  it('핀 없는 주변 카풀을 선택해도 지도와 목록을 유지하며 상세를 연다', async () => {
+  it('핀 없는 주변 카풀을 선택해도 지도 핀과 상세를 표시하고 목록을 닫는다', async () => {
     const user = userEvent.setup();
     server.use(
       http.get('*/carpools/88', () =>
@@ -252,7 +439,7 @@ describe('MatchingPage', () => {
 
     expect(await screen.findByText('참여자')).toBeInTheDocument();
     expect(screen.getByTestId('matching-map')).toHaveAttribute('data-markers', '2');
-    expect(screen.getByLabelText('주변 카풀')).toBeInTheDocument();
+    expect(screen.queryByLabelText('주변 카풀')).not.toBeInTheDocument();
   });
 
   it('상세 조회가 404면 선택된 카풀만 닫고 주변 목록으로 돌아간다', async () => {
@@ -274,6 +461,52 @@ describe('MatchingPage', () => {
 
     expect(await screen.findByText('참여자')).toBeInTheDocument();
     expect(screen.getByTestId('matching-map')).toHaveAttribute('data-markers', '2');
+    expect(screen.getByTestId('matching-map')).toHaveAttribute('data-selected-markers', '51');
+    expect(screen.queryByTestId('bottom-sheet-content')).not.toBeInTheDocument();
+  });
+
+  it('목록에서 핀 있는 카풀을 선택하면 지도 중심과 선택 핀 표시를 갱신하고 검색 영역은 유지한다', async () => {
+    const user = userEvent.setup();
+    server.use(
+      http.get('*/carpools', () =>
+        HttpResponse.json({
+          message: '조회',
+          data: {
+            items: [
+              {
+                id: 51,
+                host: { name: '김우림', profile_image_url: null },
+                origin_name: '서울역',
+                dest_name: '판교역',
+                departure_at: '2030-10-10T09:40:00.000Z',
+                distance_m: 320,
+                current_count: 2,
+                capacity: 4,
+                is_full: false,
+                is_expired: false,
+              },
+            ],
+            next_cursor: null,
+          },
+        }),
+      ),
+    );
+    renderMatchingPage();
+    const list = await screen.findByLabelText('주변 카풀');
+    const scrollRoot = screen.getByTestId('bottom-sheet-content');
+    const queryKey = scrollRoot.getAttribute('data-scroll-content-key');
+
+    await user.click(within(list).getByRole('button', { name: /서울역.*판교역/ }));
+
+    expect(await screen.findByText('참여자')).toBeInTheDocument();
+    expect(screen.getByTestId('matching-map')).toHaveAttribute('data-center', '37.5547,126.9707');
+    expect(screen.getByTestId('matching-map')).toHaveAttribute('data-selected-markers', '51');
+    expect(screen.queryByTestId('bottom-sheet-content')).not.toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '닫기' }));
+    expect(screen.getByTestId('bottom-sheet-content')).toHaveAttribute(
+      'data-scroll-content-key',
+      queryKey,
+    );
   });
 
   it('상세를 닫으면 같은 조회 조건에서 주변 카풀 목록 위치를 복원한다', async () => {
@@ -308,7 +541,11 @@ describe('MatchingPage', () => {
     expect(await screen.findByText('참여자')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: '닫기' }));
     await waitFor(() => expect(scrollRoot.scrollTop).toBe(180));
-    await waitFor(() => expect(item).toHaveFocus());
+    await waitFor(() =>
+      expect(
+        within(screen.getByLabelText('주변 카풀')).getByRole('button', { name: /유스페이스1/ }),
+      ).toHaveFocus(),
+    );
   });
 
   it('동행 요청 전에 최신 상세를 다시 확인하고 요청 성공 후 상세로 돌아간다', async () => {

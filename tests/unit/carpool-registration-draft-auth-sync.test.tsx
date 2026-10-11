@@ -11,8 +11,15 @@ const { getCurrentUserMock } = vi.hoisted(() => ({
 vi.mock('@/entities/user', () => ({ getCurrentUser: getCurrentUserMock }));
 
 const currentUser = (id: number) => ({ data: { id } });
-const setDraft = () =>
+const setDraft = () => {
   useCarpoolCreateStore.getState().setOrigin({ name: '서울역', lat: 37.55, lng: 126.97 });
+  useCarpoolCreateStore.getState().setPendingLocation({
+    field: 'departure',
+    location: { name: '임시 장소', lat: 37.55, lng: 126.97 },
+    roadAddress: null,
+  });
+  useCarpoolCreateStore.getState().setSearchQuery('서울역');
+};
 const startSession = (token: string) => {
   useAuthStore.getState().setAccessToken(token);
   setDraft();
@@ -41,9 +48,12 @@ describe('CarpoolRegistrationDraftAuthSync', () => {
     render(<CarpoolRegistrationDraftAuthSync />);
 
     expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+    expect(useCarpoolCreateStore.getState().searchQuery).toBe('서울역');
     request.reject(new Error('network unavailable'));
     await act(async () => request.promise.catch(() => undefined));
     expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+    expect(useCarpoolCreateStore.getState().pendingLocation?.location.name).toBe('임시 장소');
+    expect(useCarpoolCreateStore.getState().searchQuery).toBe('서울역');
   });
 
   it('같은 사용자 토큰 갱신은 유지하고 사용자 변경과 로그아웃은 비운다', async () => {
@@ -66,10 +76,14 @@ describe('CarpoolRegistrationDraftAuthSync', () => {
     await resolveIdentity(2);
     await waitFor(() => expect(useCarpoolCreateStore.getState().draft.origin).toBeNull());
     expect(useCarpoolCreateStore.getState().draft.destination).toBeNull();
+    expect(useCarpoolCreateStore.getState().pendingLocation).toBeNull();
+    expect(useCarpoolCreateStore.getState().searchQuery).toBe('');
 
     setDraft();
     act(() => useAuthStore.getState().clearTokens());
     expect(useCarpoolCreateStore.getState().draft.origin).toBeNull();
+    expect(useCarpoolCreateStore.getState().pendingLocation).toBeNull();
+    expect(useCarpoolCreateStore.getState().searchQuery).toBe('');
   });
 
   it('오래된 identity 응답은 새 세션에서 작성한 draft를 지우지 않는다', async () => {
