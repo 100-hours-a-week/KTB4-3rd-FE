@@ -230,7 +230,7 @@ export function BottomSheet({
         />
         <Drawer.Viewport
           className={cn(
-            'fixed inset-x-0 top-0 bottom-0 z-30 flex touch-none items-end justify-center overflow-hidden',
+            'fixed inset-x-0 top-0 bottom-0 z-30 mx-auto flex w-full max-w-[393px] touch-none items-end justify-center overflow-hidden',
             modal !== true && 'pointer-events-none',
           )}
           data-testid="bottom-sheet-viewport"

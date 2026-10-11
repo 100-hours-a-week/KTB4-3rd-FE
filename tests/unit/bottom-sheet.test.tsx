@@ -14,6 +14,7 @@ describe('BottomSheet', () => {
     expect(screen.getByRole('heading', { name: '근처 핀 게시글' })).toBeInTheDocument();
     expect(screen.getByText('가까운 순')).toBeInTheDocument();
     expect(screen.getByText('게시글 목록')).toBeInTheDocument();
+    expect(screen.getByTestId('bottom-sheet-viewport')).toHaveClass('max-w-[393px]', 'w-full');
   });
 
   it('열기와 닫기가 완료될 때 현재 상태를 전달하고 다시 열어도 한 번씩 호출한다', async () => {
