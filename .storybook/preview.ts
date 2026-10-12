@@ -1,11 +1,18 @@
 import type { Preview } from '@storybook/nextjs-vite';
 import { createElement } from 'react';
 
-import { SnackbarProvider } from '@/_app/providers';
+import { QueryProvider, SnackbarProvider } from '@/_app/providers';
 import '../app/globals.css';
 
 const preview: Preview = {
-  decorators: [(Story) => createElement(SnackbarProvider, null, createElement(Story))],
+  decorators: [
+    (Story) =>
+      createElement(
+        QueryProvider,
+        null,
+        createElement(SnackbarProvider, null, createElement(Story)),
+      ),
+  ],
   parameters: {
     controls: {
       matchers: {
