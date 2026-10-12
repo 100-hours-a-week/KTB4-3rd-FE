@@ -20,7 +20,7 @@ type HeaderUserProps = {
 };
 
 const accountActionDialogClassName =
-  '[&_[data-testid=dialog-body]]:!pt-4 [&_[data-testid=dialog-body]]:!pb-0 [&_[data-testid=dialog-footer]]:!pt-3';
+  '[&_[data-testid=dialog-body]]:!pt-4 [&_[data-testid=dialog-body]]:!pb-0 [&_[data-testid=dialog-footer]]:!pt-2';
 
 function AccountActionError({ message }: { message: string | null }) {
   return (
