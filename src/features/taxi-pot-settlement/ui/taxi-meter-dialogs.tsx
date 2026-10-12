@@ -1,0 +1,111 @@
+'use client';
+
+import Image from 'next/image';
+
+import { cn } from '@/shared/lib/cn';
+import { Dialog } from '@/shared/ui/dialog';
+import { Input } from '@/shared/ui/input';
+
+const dialogSurfaceClassName =
+  '!w-[333px] !max-w-[calc(100%-40px)] !bg-[var(--color-bg-brand-weak)] !text-black !shadow-none';
+
+export type TaxiMeterAnalysisDialogProps = {
+  open: boolean;
+  delayed?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+/** The meter photo remains in analysis; the parent controls when this dialog ends. */
+export function TaxiMeterAnalysisDialog({
+  open,
+  delayed = false,
+  onOpenChange,
+}: TaxiMeterAnalysisDialogProps) {
+  return (
+    <Dialog
+      buttons="none"
+      className={cn(
+        dialogSurfaceClassName,
+        delayed ? '!h-[219px]' : '!h-[151px]',
+        '[&_[data-testid=dialog-header]]:!px-6 [&_[data-testid=dialog-header]]:!pt-7',
+        '[&_[data-testid=dialog-header]_p]:!mt-4',
+      )}
+      description={
+        delayed ? (
+          <>
+            AI 분석이 지연되고있어요.
+            <br />
+            잠시만 기다려주세요.
+          </>
+        ) : (
+          <>
+            분석이 완료되면 자동으로
+            <br />
+            동승자에게 금액이 청구돼요.
+          </>
+        )
+      }
+      disablePointerDismissal
+      onOpenChange={onOpenChange}
+      open={open}
+      showCloseButton={false}
+      title={
+        <span className="inline-flex items-center gap-3">
+          이미지를 분석하고있어요
+          {delayed ? null : (
+            <Image
+              alt=""
+              aria-hidden="true"
+              height={11}
+              src="/icons/taxi-meter-analysis-dots.svg"
+              width={43}
+            />
+          )}
+        </span>
+      }
+    />
+  );
+}
+
+export type TaxiMeterAmountDialogProps = {
+  open: boolean;
+  value: string;
+  onValueChange: (value: string) => void;
+  recognitionFailed?: boolean;
+  onOpenChange?: (open: boolean) => void;
+};
+
+/** The parent submits the entered fare as part of the settlement flow. */
+export function TaxiMeterAmountDialog({
+  open,
+  value,
+  onValueChange,
+  recognitionFailed = false,
+  onOpenChange,
+}: TaxiMeterAmountDialogProps) {
+  return (
+    <Dialog
+      buttons="none"
+      className={cn(
+        dialogSurfaceClassName,
+        recognitionFailed ? '!h-[290px]' : '!h-[232px]',
+        '[&_[data-testid=dialog-body]]:!px-[22px] [&_[data-testid=dialog-body]]:!pt-5 [&_[data-testid=dialog-body]]:!pb-0',
+      )}
+      description={recognitionFailed ? '결제 금액을 직접 입력해주세요' : undefined}
+      onOpenChange={onOpenChange}
+      open={open}
+      showCloseButton={false}
+      title={recognitionFailed ? '사진 인식을 실패했어요' : '결제 금액을 직접 입력해주세요'}
+    >
+      <Input
+        aria-label="결제 금액"
+        disableFocusBorder
+        inputClassName="focus-visible:rounded-sm focus-visible:outline-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
+        inputMode="numeric"
+        onValueChange={(nextValue) => onValueChange(nextValue.replace(/\D/g, ''))}
+        placeholder="금액을 입력해주세요"
+        value={value}
+      />
+    </Dialog>
+  );
+}
