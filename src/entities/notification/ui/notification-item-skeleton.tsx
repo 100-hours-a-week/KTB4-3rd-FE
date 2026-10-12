@@ -10,7 +10,7 @@ export function NotificationItemSkeleton({ className }: NotificationItemSkeleton
     <li
       aria-hidden="true"
       className={cn(
-        'relative h-[84px] w-full list-none rounded-2xl border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-layer-default)]',
+        'relative h-[84px] w-full shrink-0 list-none rounded-2xl border border-[var(--color-stroke-neutral-weak)] bg-[var(--color-bg-layer-default)]',
         className,
       )}
     >
