@@ -9,6 +9,7 @@ import { Icon, type IconName } from './icon';
 import { Text } from './text';
 
 export type BottomNavProps = {
+  activeItem?: BottomNavItem['key'] | null;
   className?: string;
 };
 
@@ -63,7 +64,7 @@ function isActivePathname(pathname: string | null, href: string) {
   );
 }
 
-export function BottomNav({ className }: BottomNavProps) {
+export function BottomNav({ activeItem, className }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
@@ -76,7 +77,10 @@ export function BottomNav({ className }: BottomNavProps) {
     >
       <ul className="flex h-[72px] w-full">
         {BOTTOM_NAV_ITEMS.map((item) => {
-          const isActive = isActivePathname(pathname, item.href);
+          const isActive =
+            activeItem === undefined
+              ? isActivePathname(pathname, item.href)
+              : activeItem === item.key;
 
           return (
             <li className="min-w-0 flex-1" key={item.key}>

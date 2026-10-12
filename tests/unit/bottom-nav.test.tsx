@@ -40,6 +40,16 @@ describe('BottomNav', () => {
     expect(screen.getByRole('link', { name: '매칭' })).not.toHaveAttribute('aria-current');
   });
 
+  it('activeItem이 전달되면 현재 경로 대신 지정된 메뉴를 활성화한다', () => {
+    render(<BottomNav activeItem="chatting" />);
+
+    expect(screen.getByRole('link', { name: '채팅・요청' })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(screen.getByRole('link', { name: '홈' })).not.toHaveAttribute('aria-current');
+  });
+
   it('활성 메뉴에 fill 아이콘과 bold 라벨을 사용한다', () => {
     mockUsePathname.mockReturnValue('/matching');
     render(<BottomNav />);
