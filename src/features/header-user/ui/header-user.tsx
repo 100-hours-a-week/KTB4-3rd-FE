@@ -19,6 +19,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
   const router = useRouter();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
+  const [isWithdrawalDialogOpen, setIsWithdrawalDialogOpen] = useState(false);
 
   if (!isAuthenticated) {
     return (
@@ -44,6 +45,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
       id: 'delete-account',
       icon: <Icon name="userRoundX" size={24} />,
       content: '회원 탈퇴',
+      onClick: () => setIsWithdrawalDialogOpen(true),
     },
   ];
 
@@ -67,6 +69,16 @@ export function HeaderUser({ user }: HeaderUserProps) {
         primaryVariant="neutral-solid"
         showCloseButton={false}
         title="로그아웃하시겠어요?"
+      />
+      <Dialog
+        buttons="primarySecondary"
+        description="탈퇴하더라도 작성한 글과 채팅 내역은 다른사람들에게 보여요."
+        onOpenChange={setIsWithdrawalDialogOpen}
+        open={isWithdrawalDialogOpen}
+        primaryLabel="탈퇴하기"
+        primaryVariant="critical-solid"
+        showCloseButton={false}
+        title="정말 탈퇴하시겠어요?"
       />
     </>
   );

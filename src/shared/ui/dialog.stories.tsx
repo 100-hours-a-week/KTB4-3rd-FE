@@ -58,6 +58,17 @@ export const NeutralConfirmation: Story = {
   },
 };
 
+export const CriticalConfirmation: Story = {
+  args: {
+    buttons: 'primarySecondary',
+    children: undefined,
+    description: '탈퇴하더라도 작성한 글과 채팅 내역은 다른사람들에게 보여요.',
+    primaryLabel: '탈퇴하기',
+    primaryVariant: 'critical-solid',
+    title: '정말 탈퇴하시겠어요?',
+  },
+};
+
 export const NoChildren: Story = {
   args: {
     children: undefined,

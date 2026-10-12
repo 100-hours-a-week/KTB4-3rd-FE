@@ -48,4 +48,26 @@ describe('HeaderUser', () => {
 
     expect(screen.queryByRole('dialog', { name: '로그아웃하시겠어요?' })).not.toBeInTheDocument();
   });
+
+  it('회원 탈퇴 메뉴를 누르면 경고 Dialog를 열고 취소로 닫는다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    render(<HeaderUser />);
+
+    await user.click(screen.getByRole('button', { name: '프로필 메뉴 열기' }));
+    await user.click(screen.getByRole('menuitem', { name: '회원 탈퇴' }));
+
+    expect(screen.getByRole('dialog', { name: '정말 탈퇴하시겠어요?' })).toBeInTheDocument();
+    expect(
+      screen.getByText('탈퇴하더라도 작성한 글과 채팅 내역은 다른사람들에게 보여요.'),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('dialog-footer')).toHaveClass('flex-row');
+    expect(screen.getByRole('button', { name: '탈퇴하기' })).toHaveClass(
+      'bg-[var(--color-bg-critical-solid)]',
+    );
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog', { name: '정말 탈퇴하시겠어요?' })).not.toBeInTheDocument();
+  });
 });

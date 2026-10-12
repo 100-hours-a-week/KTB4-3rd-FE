@@ -20,7 +20,7 @@ export type DialogProps = {
 
   buttons?: DialogButtons;
   primaryLabel?: ReactNode;
-  primaryVariant?: 'brand-solid' | 'neutral-solid';
+  primaryVariant?: 'brand-solid' | 'neutral-solid' | 'critical-solid';
   secondaryLabel?: ReactNode;
   primaryButtonProps?: DialogButtonProps;
   secondaryButtonProps?: DialogButtonProps;
@@ -64,7 +64,7 @@ function DialogActionButton({
   actionProps?: DialogButtonProps;
   label: ReactNode;
   onClose: () => void;
-  variant: 'brand-solid' | 'neutral-solid' | 'neutral-weak';
+  variant: 'brand-solid' | 'neutral-solid' | 'critical-solid' | 'neutral-weak';
 }) {
   const handleClick: NonNullable<DialogButtonProps['onClick']> = (event) => {
     actionProps?.onClick?.(event);
