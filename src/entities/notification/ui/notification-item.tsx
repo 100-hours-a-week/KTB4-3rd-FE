@@ -25,7 +25,7 @@ export function NotificationItem({
   const isClicked = state === 'clicked';
 
   return (
-    <li className={cn('h-[84px] w-full list-none', className)}>
+    <li className={cn('h-[84px] w-full shrink-0 list-none', className)}>
       <button
         className={cn(
           'relative block h-full w-full min-w-0 appearance-none rounded-2xl p-0 text-left',
