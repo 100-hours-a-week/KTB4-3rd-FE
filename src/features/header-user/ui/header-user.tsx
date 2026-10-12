@@ -15,11 +15,6 @@ type HeaderUserProps = {
 
 const userMenuItems = [
   {
-    id: 'edit-profile',
-    icon: <Icon name="info" size={24} />,
-    content: '정보수정하기',
-  },
-  {
     id: 'logout',
     icon: <Icon name="logOut" size={24} />,
     content: '로그아웃',
@@ -49,7 +44,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
   }
 
   return (
-    <Menu aria-label="사용자 메뉴" disabled items={userMenuItems}>
+    <Menu aria-label="사용자 메뉴" items={userMenuItems}>
       <button
         aria-label="프로필 메뉴 열기"
         className="inline-flex size-[42px] items-center justify-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
