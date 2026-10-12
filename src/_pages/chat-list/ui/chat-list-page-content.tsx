@@ -331,7 +331,7 @@ export function ChatListPageContent({
 
   return (
     <section aria-label="채팅 목록" className={cn('flex min-h-0 flex-1 flex-col', className)}>
-      <ChatListTabs onValueChange={handleTabChange} value={selectedTab} />
+      <ChatListTabs className="mt-6" onValueChange={handleTabChange} value={selectedTab} />
       <ChatListPageStateView
         onChatRoomClick={onChatRoomClick}
         onExplore={onExplore}

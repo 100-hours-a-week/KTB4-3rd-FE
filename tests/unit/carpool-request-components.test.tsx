@@ -45,6 +45,14 @@ describe('카풀 요청 표시 컴포넌트', () => {
     expect(screen.getByText('카풀').className).toContain('t6Regular');
   });
 
+  it('선택한 상위 탭의 표시 바에 neutral 색상을 사용한다', () => {
+    render(<ChatCarpoolTabs value="chat" onValueChange={() => undefined} />);
+
+    expect(screen.getByRole('tab', { name: '채팅' })).toHaveClass(
+      'after:bg-[var(--color-bg-neutral-solid)]',
+    );
+  });
+
   it('상위 탭은 좌우 화살표로 탭에 포커스 이동을 지원한다', () => {
     render(<ChatCarpoolTabs value="chat" onValueChange={() => undefined} />);
     fireEvent.keyDown(screen.getByRole('tab', { name: '채팅' }), { key: 'ArrowRight' });

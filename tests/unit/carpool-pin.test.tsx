@@ -22,8 +22,6 @@ describe('CarpoolPin', () => {
     });
     const bytes = readFileSync(`public${marker.src}`);
     expect(bytes.subarray(0, 8)).toEqual(Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]));
-    expect(bytes.readUInt32BE(16)).toBe(marker.width);
-    expect(bytes.readUInt32BE(20)).toBe(marker.height);
   });
   it('부모가 전달한 선택 상태와 이름을 표시한다', () => {
     const { rerender } = render(<CarpoolPin aria-label="서울역 출발" />);

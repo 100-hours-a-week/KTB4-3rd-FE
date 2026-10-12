@@ -36,6 +36,7 @@ describe('ChatListPageContent', () => {
     expect(screen.getByRole('button', { name: /8시 판교역/ })).toBeInTheDocument();
     expect(screen.queryByTestId('chat-list-empty')).not.toBeInTheDocument();
     expect(screen.getByTestId('chat-list-scroll-region')).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: '채팅 목록 필터' })).toHaveClass('mt-6');
     expect(screen.getByTestId('chat-list-scroll-region')).toHaveClass(
       'flex-1',
       '-mx-5',
@@ -180,5 +181,6 @@ describe('ChatListPageContentLoading', () => {
     expect(header?.nextElementSibling).toBe(main);
     expect(main).not.toHaveClass('!pt-8');
     expect(tabs.closest('section')).toBe(main.firstElementChild);
+    expect(screen.queryByRole('heading', { name: '채팅' })).not.toBeInTheDocument();
   });
 });

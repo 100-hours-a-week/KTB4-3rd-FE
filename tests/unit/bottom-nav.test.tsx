@@ -19,18 +19,18 @@ describe('BottomNav', () => {
     mockUsePathname.mockReturnValue('/');
   });
 
-  it('메뉴를 매칭, 홈, 채팅 순서로 렌더링한다', () => {
+  it('메뉴를 매칭, 홈, 채팅·요청 순서로 렌더링한다', () => {
     render(<BottomNav />);
 
     expect(screen.getByRole('navigation', { name: '주요 메뉴' })).toBeInTheDocument();
     expect(screen.getAllByRole('link').map((link) => link.textContent)).toEqual([
       '매칭',
       '홈',
-      '채팅',
+      '채팅・요청',
     ]);
     expect(screen.getByRole('link', { name: '매칭' })).toHaveAttribute('href', '/matching');
     expect(screen.getByRole('link', { name: '홈' })).toHaveAttribute('href', '/');
-    expect(screen.getByRole('link', { name: '채팅' })).toHaveAttribute('href', '/chat');
+    expect(screen.getByRole('link', { name: '채팅・요청' })).toHaveAttribute('href', '/chat');
   });
 
   it('현재 pathname에 해당하는 홈 메뉴를 활성화한다', () => {
@@ -55,7 +55,7 @@ describe('BottomNav', () => {
   it.each([
     ['/matching/', '매칭'],
     ['/matching/detail', '매칭'],
-    ['/chat/request/', '채팅'],
+    ['/chat/request/', '채팅・요청'],
   ])('하위 pathname과 trailing slash를 처리한다: %s', (pathname, activeLabel) => {
     mockUsePathname.mockReturnValue(pathname);
     render(<BottomNav />);

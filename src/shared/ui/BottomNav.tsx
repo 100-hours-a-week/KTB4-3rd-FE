@@ -37,7 +37,7 @@ const BOTTOM_NAV_ITEMS: readonly BottomNavItem[] = [
   },
   {
     key: 'chatting',
-    label: '채팅',
+    label: '채팅・요청',
     href: '/chat',
     inactiveIcon: 'chatbubbleLine',
     activeIcon: 'chatbubbleFill',

@@ -257,7 +257,10 @@ export function CarpoolDetail(props: CarpoolDetailProps) {
         </ul>
       </section>
 
-      <div className="mt-auto pt-4 pb-0">
+      <div
+        className="sticky bottom-0 z-10 -mx-6 mt-auto bg-[var(--color-bg-layer-default)] px-6 pt-4 pb-0"
+        data-testid="carpool-detail-action"
+      >
         {availabilityNotice}
         <Button
           className="!h-11 !min-h-11 !rounded-[22px]"
