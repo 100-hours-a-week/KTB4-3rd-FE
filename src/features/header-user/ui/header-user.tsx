@@ -1,5 +1,6 @@
 'use client';
 
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
@@ -10,6 +11,9 @@ import { Button } from '@/shared/ui/button';
 import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 import { Menu } from '@/shared/ui/menu';
+import { Text } from '@/shared/ui/text';
+
+import { logout, withdrawAccount } from '../api/account-actions';
 
 type HeaderUserProps = {
   user?: User;
@@ -17,9 +21,46 @@ type HeaderUserProps = {
 
 export function HeaderUser({ user }: HeaderUserProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
   const [isWithdrawalDialogOpen, setIsWithdrawalDialogOpen] = useState(false);
+  const [logoutError, setLogoutError] = useState<string | null>(null);
+  const [withdrawalError, setWithdrawalError] = useState<string | null>(null);
+  const logoutMutation = useMutation({ mutationFn: logout });
+  const withdrawalMutation = useMutation({ mutationFn: withdrawAccount });
+
+  const finishAccountAction = () => {
+    queryClient.clear();
+    useAuthStore.getState().clearTokens();
+    setIsLogoutDialogOpen(false);
+    setIsWithdrawalDialogOpen(false);
+    router.replace('/');
+  };
+
+  const handleLogout = () => {
+    if (logoutMutation.isPending) {
+      return;
+    }
+    setLogoutError(null);
+    logoutMutation.mutate(undefined, {
+      onSuccess: finishAccountAction,
+      onError: (error) =>
+        setLogoutError(error.message || '로그아웃하지 못했어요. 다시 시도해주세요.'),
+    });
+  };
+
+  const handleWithdrawal = () => {
+    if (withdrawalMutation.isPending) {
+      return;
+    }
+    setWithdrawalError(null);
+    withdrawalMutation.mutate(undefined, {
+      onSuccess: finishAccountAction,
+      onError: (error) =>
+        setWithdrawalError(error.message || '탈퇴하지 못했어요. 다시 시도해주세요.'),
+    });
+  };
 
   if (!isAuthenticated) {
     return (
@@ -39,13 +80,19 @@ export function HeaderUser({ user }: HeaderUserProps) {
       id: 'logout',
       icon: <Icon name="logOut" size={24} />,
       content: '로그아웃',
-      onClick: () => setIsLogoutDialogOpen(true),
+      onClick: () => {
+        setLogoutError(null);
+        setIsLogoutDialogOpen(true);
+      },
     },
     {
       id: 'delete-account',
       icon: <Icon name="userRoundX" size={24} />,
       content: '회원 탈퇴',
-      onClick: () => setIsWithdrawalDialogOpen(true),
+      onClick: () => {
+        setWithdrawalError(null);
+        setIsWithdrawalDialogOpen(true);
+      },
     },
   ];
 
@@ -63,23 +110,51 @@ export function HeaderUser({ user }: HeaderUserProps) {
       </Menu>
       <Dialog
         buttons="primarySecondary"
-        onOpenChange={setIsLogoutDialogOpen}
+        onOpenChange={(open) => {
+          if (!logoutMutation.isPending) {
+            setIsLogoutDialogOpen(open);
+          }
+        }}
         open={isLogoutDialogOpen}
+        primaryButtonProps={{
+          loading: logoutMutation.isPending,
+          onClick: (event) => {
+            event.preventDefault();
+            handleLogout();
+          },
+        }}
         primaryLabel="로그아웃하기"
         primaryVariant="neutral-solid"
+        secondaryButtonProps={{ disabled: logoutMutation.isPending }}
         showCloseButton={false}
         title="로그아웃하시겠어요?"
-      />
+      >
+        {logoutError ? <Text color="fg.critical">{logoutError}</Text> : null}
+      </Dialog>
       <Dialog
         buttons="primarySecondary"
         description="탈퇴하더라도 작성한 글과 채팅 내역은 다른사람들에게 보여요."
-        onOpenChange={setIsWithdrawalDialogOpen}
+        onOpenChange={(open) => {
+          if (!withdrawalMutation.isPending) {
+            setIsWithdrawalDialogOpen(open);
+          }
+        }}
         open={isWithdrawalDialogOpen}
+        primaryButtonProps={{
+          loading: withdrawalMutation.isPending,
+          onClick: (event) => {
+            event.preventDefault();
+            handleWithdrawal();
+          },
+        }}
         primaryLabel="탈퇴하기"
         primaryVariant="critical-solid"
+        secondaryButtonProps={{ disabled: withdrawalMutation.isPending }}
         showCloseButton={false}
         title="정말 탈퇴하시겠어요?"
-      />
+      >
+        {withdrawalError ? <Text color="fg.critical">{withdrawalError}</Text> : null}
+      </Dialog>
     </>
   );
 }
