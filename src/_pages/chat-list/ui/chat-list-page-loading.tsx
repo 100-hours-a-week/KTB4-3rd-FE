@@ -52,7 +52,7 @@ export function ChatListPageLoading() {
     <PageLayout
       className="relative h-dvh min-h-0 overflow-hidden"
       contentClassName="relative !overflow-hidden !px-5 !pb-[calc(72px+env(safe-area-inset-bottom,0px))]"
-      header={<Header leftSlot={<BackButton href="/" />} title="채팅" />}
+      header={<Header leftSlot={<BackButton href="/" />} />}
     >
       <ChatListPageContentLoading />
       <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />

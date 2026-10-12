@@ -42,7 +42,7 @@ export function ChatCarpoolTabs({
             className={cn(
               'relative flex h-[56px] flex-1 items-center justify-center border-0 bg-transparent px-4 outline-none focus-visible:outline-2 focus-visible:outline-[var(--color-stroke-focus-ring)] disabled:cursor-not-allowed disabled:opacity-50',
               selected &&
-                'after:absolute after:right-0 after:bottom-[-1px] after:left-0 after:h-1 after:bg-[var(--color-bg-brand-solid)]',
+                'after:absolute after:right-0 after:bottom-[-1px] after:left-0 after:h-1 after:bg-[var(--color-bg-neutral-solid)]',
             )}
             disabled={disabled}
             id={`chat-carpool-tab-${option.value}`}
