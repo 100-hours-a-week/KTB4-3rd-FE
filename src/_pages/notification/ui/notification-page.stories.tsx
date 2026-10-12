@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 
 import type { Notification } from '@/entities/notification';
 
-import { NotificationPage, NotificationPageLoading } from './NotificationPage';
+import { NotificationPageLoading, NotificationPageView } from './NotificationPage';
 
 const now = new Date().toISOString();
 
@@ -41,18 +41,22 @@ const unreadNotifications: Notification[] = [
 
 const meta = {
   title: 'Pages/Notification',
-  component: NotificationPage,
+  component: NotificationPageView,
   parameters: { layout: 'fullscreen' },
-} satisfies Meta<typeof NotificationPage>;
+} satisfies Meta<typeof NotificationPageView>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const All: Story = {};
+export const All: Story = {
+  args: {
+    notifications: unreadNotifications,
+  },
+};
 
 export const Unread: Story = {
   args: {
-    initialTab: 'unread',
+    activeTab: 'unread',
     notifications: unreadNotifications,
   },
 };
