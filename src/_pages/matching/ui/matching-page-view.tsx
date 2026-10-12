@@ -1,9 +1,12 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import type { ReactNode } from 'react';
 
-import { HeaderUser } from '@/features/header-user';
+import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
+import { NotificationButton } from '@/entities/notification';
 import type { User } from '@/entities/user';
+import { HeaderUser } from '@/features/header-user';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Header } from '@/shared/ui/header';
@@ -29,6 +32,9 @@ export function MatchingPageView({
   scrollContentKey,
   ...mapControlsProps
 }: MatchingPageViewProps) {
+  const router = useRouter();
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+
   return (
     <div className="relative mx-auto h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
       <Header
@@ -39,7 +45,10 @@ export function MatchingPageView({
           </span>
         }
         rightSlot={
-          <span className="pt-3 pr-1.5">
+          <span className="flex items-center gap-1.5 pt-3 pr-1.5">
+            {isAuthenticated ? (
+              <NotificationButton onClick={() => router.push('/notification')} />
+            ) : null}
             <HeaderUser user={user} />
           </span>
         }
