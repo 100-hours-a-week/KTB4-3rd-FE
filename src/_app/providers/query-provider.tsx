@@ -5,6 +5,7 @@ import { useEffect, useState, type ReactNode } from 'react';
 
 import { carpoolDetailQueryKeys } from '@/entities/carpool';
 import { useAuthStore } from '@/entities/auth';
+import { notificationQueries } from '@/features/notification-center';
 import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
 type QueryProviderProps = {
@@ -36,6 +37,7 @@ export function QueryProvider({ children }: QueryProviderProps) {
 
       previousIdentity = nextIdentity;
       void queryClient.removeQueries({ queryKey: carpoolDetailQueryKeys.all() });
+      void queryClient.removeQueries({ queryKey: notificationQueries.all() });
     });
   }, [queryClient]);
 
