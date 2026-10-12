@@ -221,7 +221,6 @@ export const signupHandlers = [
       },
     );
   }),
-  http.delete('*/users/me', () => new HttpResponse(null, { status: 204 })),
 ];
 
 export function resetSignupMockState() {
