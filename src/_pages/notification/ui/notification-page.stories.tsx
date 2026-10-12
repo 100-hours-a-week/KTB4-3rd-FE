@@ -64,3 +64,10 @@ export const Unread: Story = {
 export const Loading: Story = {
   render: () => <NotificationPageLoading />,
 };
+
+export const Error: Story = {
+  args: {
+    isError: true,
+    onRetry: () => undefined,
+  },
+};
