@@ -31,6 +31,8 @@ const completeDraft: CarpoolCreateDraft = {
   recruitCount: 2,
 };
 
+const FIXED_NOW = new Date('2026-10-12T08:00:00.000Z');
+
 function createWrapper() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
@@ -71,6 +73,8 @@ function renderPage() {
 }
 
 beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(FIXED_NOW);
   navigation.pathname = '/carpools/new/confirm';
   navigation.push.mockReset();
   navigation.replace.mockReset();
@@ -81,6 +85,7 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
+  vi.useRealTimers();
   useCarpoolCreateStore.getState().reset();
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();

@@ -108,6 +108,33 @@ describe('NotificationPage', () => {
     expect(screen.getByRole('button', { name: '모두 읽기' })).toBeInTheDocument();
   });
 
+  it('조회 오류 시 오류 안내 ResultSection과 다시 불러오기 동작을 표시한다', async () => {
+    const user = userEvent.setup();
+    const onRetry = vi.fn<() => void>();
+    mockUseNotificationListQuery.mockReturnValue({
+      data: undefined,
+      fetchNextPage: vi.fn<() => void>(),
+      hasNextPage: false,
+      isError: true,
+      isFetchingNextPage: false,
+      isLoading: false,
+      refetch: onRetry,
+    } as unknown as ReturnType<typeof useNotificationListQuery>);
+    render(<NotificationPage />);
+
+    expect(screen.getByRole('heading', { name: '알림을 불러올 수 없어요' })).toBeInTheDocument();
+    const errorDescription = screen.getByText(/불러오는 중 오류가 발생했어요\./);
+    expect(errorDescription).toBeInTheDocument();
+    expect(errorDescription.textContent).toBe(
+      '불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.',
+    );
+    expect(screen.queryByRole('button', { name: '모두 읽기' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '다시 불러오기' }));
+
+    expect(onRetry).toHaveBeenCalledOnce();
+  });
+
   it('알림이 없으면 빈 상태 안내를 표시한다', () => {
     render(<NotificationPageView />);
 

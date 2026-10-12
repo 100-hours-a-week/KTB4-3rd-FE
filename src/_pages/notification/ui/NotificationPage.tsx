@@ -103,12 +103,14 @@ export function NotificationPageView({
         <ResultSection
           buttons="primary"
           className="shrink-0"
-          description="잠시 후 다시 시도해주세요."
-          icon={<Icon color="var(--color-fg-neutral-muted)" name="notificationEmpty" size={66} />}
+          description={'불러오는 중 오류가 발생했어요.\n잠시 후 다시 시도해주세요.'}
+          icon={
+            <Icon color="var(--color-fg-critical)" name="exclamationmarkCircleFill" size={66} />
+          }
           primaryButtonProps={{ onClick: onRetry }}
-          primaryLabel="다시 시도"
+          primaryLabel="다시 불러오기"
           size="medium"
-          title="알림을 불러오지 못했어요"
+          title="알림을 불러올 수 없어요"
         />
       </div>
     );
@@ -167,7 +169,7 @@ export function NotificationPageView({
           value={activeTab}
         />
 
-        {isLoading || visibleNotifications.length > 0 ? (
+        {!isError && (isLoading || visibleNotifications.length > 0) ? (
           <div className="mt-5 flex justify-end pr-3">
             <Button
               onClick={onMarkAllRead}

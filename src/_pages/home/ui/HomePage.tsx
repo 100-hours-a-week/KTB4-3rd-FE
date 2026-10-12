@@ -7,6 +7,8 @@ import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { getMapPinMarkerImage, type MapPinItem as MapPin } from '@/entities/map-pin';
+import { NotificationButton } from '@/entities/notification';
+import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
 import {
   PostList,
   PostDetailSkeleton,
@@ -178,6 +180,7 @@ function toCommunityPostDetail(
 
 export function HomePage() {
   const router = useRouter();
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
@@ -455,7 +458,10 @@ export function HomePage() {
             </span>
           }
           rightSlot={
-            <span className="pt-3 pr-1.5">
+            <span className="flex items-center gap-1.5 pt-3 pr-1.5">
+              {isAuthenticated ? (
+                <NotificationButton onClick={() => router.push('/notification')} />
+              ) : null}
               <HeaderUser user={currentUserQuery.data?.data} />
             </span>
           }
