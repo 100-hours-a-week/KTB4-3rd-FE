@@ -19,6 +19,18 @@ type HeaderUserProps = {
   user?: User;
 };
 
+function AccountActionError({ message }: { message: string | null }) {
+  return (
+    <div aria-live="polite" className="h-[38px] overflow-y-auto" data-testid="account-action-error">
+      {message ? (
+        <Text as="p" color="fg.critical" variant="t4Regular">
+          {message}
+        </Text>
+      ) : null}
+    </div>
+  );
+}
+
 export function HeaderUser({ user }: HeaderUserProps) {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -110,6 +122,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
       </Menu>
       <Dialog
         buttons="primarySecondary"
+        className="[&_[data-testid=dialog-body]]:!pt-4 [&_[data-testid=dialog-body]]:!pb-0"
         onOpenChange={(open) => {
           if (!logoutMutation.isPending) {
             setIsLogoutDialogOpen(open);
@@ -129,10 +142,11 @@ export function HeaderUser({ user }: HeaderUserProps) {
         showCloseButton={false}
         title="로그아웃하시겠어요?"
       >
-        {logoutError ? <Text color="fg.critical">{logoutError}</Text> : null}
+        <AccountActionError message={logoutError} />
       </Dialog>
       <Dialog
         buttons="primarySecondary"
+        className="[&_[data-testid=dialog-body]]:!pt-4 [&_[data-testid=dialog-body]]:!pb-0"
         description="탈퇴하더라도 작성한 글과 채팅 내역은 다른사람들에게 보여요."
         onOpenChange={(open) => {
           if (!withdrawalMutation.isPending) {
@@ -153,7 +167,7 @@ export function HeaderUser({ user }: HeaderUserProps) {
         showCloseButton={false}
         title="정말 탈퇴하시겠어요?"
       >
-        {withdrawalError ? <Text color="fg.critical">{withdrawalError}</Text> : null}
+        <AccountActionError message={withdrawalError} />
       </Dialog>
     </>
   );
