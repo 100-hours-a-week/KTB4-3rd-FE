@@ -310,8 +310,9 @@ export function MatchingPage() {
           >
             <Map
               center={selection?.position ?? undefined}
-              centerChangeSource="selection"
               className="h-full"
+              markerFocusLevel={2}
+              markerFocusOffset={{ y: 160 }}
               markers={markers}
               locateOnMount
               onMarkerClick={handlePinClick}
