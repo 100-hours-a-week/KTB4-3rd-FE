@@ -12,7 +12,9 @@ import { BottomNav } from '@/shared/ui/BottomNav';
 import { Button } from '@/shared/ui/button';
 import { ChipTabs, type ChipTabOption } from '@/shared/ui/chip-tabs';
 import { Header } from '@/shared/ui/header';
+import { Icon } from '@/shared/ui/icon';
 import { PageLayout } from '@/shared/ui/page-layout';
+import { ResultSection } from '@/shared/ui/result-section';
 
 export type NotificationTabValue = 'all' | 'unread';
 
@@ -55,6 +57,18 @@ export function NotificationPage({
         items={visibleNotifications}
       />
     );
+  } else {
+    listContent = (
+      <div className="mt-5 flex min-h-0 flex-1 items-center justify-center overflow-y-auto">
+        <ResultSection
+          className="shrink-0"
+          description="알림이 오면 알려드릴게요"
+          icon={<Icon color="var(--color-fg-neutral-muted)" name="notificationEmpty" size={66} />}
+          size="medium"
+          title="새로운 알림이 없어요"
+        />
+      </div>
+    );
   }
 
   return (
@@ -72,11 +86,18 @@ export function NotificationPage({
           value={activeTab}
         />
 
-        <div className="mt-5 flex justify-end pr-3">
-          <Button onClick={onMarkAllRead} size="xsmall" textVariant="t2Bold" variant="brand-solid">
-            모두 읽기
-          </Button>
-        </div>
+        {isLoading || visibleNotifications.length > 0 ? (
+          <div className="mt-5 flex justify-end pr-3">
+            <Button
+              onClick={onMarkAllRead}
+              size="xsmall"
+              textVariant="t2Bold"
+              variant="brand-solid"
+            >
+              모두 읽기
+            </Button>
+          </div>
+        ) : null}
 
         {listContent}
       </section>

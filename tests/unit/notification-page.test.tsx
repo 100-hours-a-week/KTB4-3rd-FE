@@ -78,4 +78,22 @@ describe('NotificationPage', () => {
     expect(screen.queryByText(notifications[0].content)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: '모두 읽기' })).toBeInTheDocument();
   });
+
+  it('알림이 없으면 빈 상태 안내를 표시한다', () => {
+    render(<NotificationPage />);
+
+    expect(screen.getByRole('heading', { name: '새로운 알림이 없어요' })).toBeInTheDocument();
+    expect(screen.getByText('알림이 오면 알려드릴게요')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '모두 읽기' })).not.toBeInTheDocument();
+  });
+
+  it('안읽음 탭에 표시할 알림이 없으면 빈 상태 안내를 표시한다', async () => {
+    const user = userEvent.setup();
+    render(<NotificationPage notifications={[notifications[1]]} />);
+
+    await user.click(screen.getByRole('tab', { name: '안읽음' }));
+
+    expect(screen.getByRole('heading', { name: '새로운 알림이 없어요' })).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '모두 읽기' })).not.toBeInTheDocument();
+  });
 });
