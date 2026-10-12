@@ -1,10 +1,9 @@
 'use client';
 
-import Image from 'next/image';
-
 import { cn } from '@/shared/lib/cn';
 import { Dialog } from '@/shared/ui/dialog';
 import { Input } from '@/shared/ui/input';
+import { LoadingDots } from '@/shared/ui/loading-dots';
 
 const dialogSurfaceClassName =
   '!w-[333px] !max-w-[calc(100%-40px)] !bg-[var(--color-bg-brand-weak)] !text-black !shadow-none';
@@ -52,15 +51,7 @@ export function TaxiMeterAnalysisDialog({
       title={
         <span className="inline-flex items-center gap-3">
           이미지를 분석하고있어요
-          {delayed ? null : (
-            <Image
-              alt=""
-              aria-hidden="true"
-              height={11}
-              src="/icons/taxi-meter-analysis-dots.svg"
-              width={43}
-            />
-          )}
+          {delayed ? null : <LoadingDots />}
         </span>
       }
     />

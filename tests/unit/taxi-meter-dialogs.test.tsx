@@ -13,10 +13,9 @@ describe('TaxiMeterAnalysisDialog', () => {
 
     expect(screen.getByRole('dialog', { name: '이미지를 분석하고있어요' })).toBeInTheDocument();
     expect(screen.getByText(/동승자에게 금액이 청구돼요/)).toBeInTheDocument();
-    expect(screen.getByRole('dialog').querySelector('img')).toHaveAttribute(
-      'src',
-      '/icons/taxi-meter-analysis-dots.svg',
-    );
+    expect(
+      screen.getByRole('dialog').querySelector('[data-component=loading-dots]'),
+    ).toBeInTheDocument();
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
@@ -25,7 +24,9 @@ describe('TaxiMeterAnalysisDialog', () => {
 
     expect(screen.getByText(/AI 분석이 지연되고있어요/)).toBeInTheDocument();
     expect(screen.getByText(/잠시만 기다려주세요/)).toBeInTheDocument();
-    expect(screen.getByRole('dialog').querySelector('img')).not.toBeInTheDocument();
+    expect(
+      screen.getByRole('dialog').querySelector('[data-component=loading-dots]'),
+    ).not.toBeInTheDocument();
   });
 });
 
