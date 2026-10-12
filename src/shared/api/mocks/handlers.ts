@@ -13,7 +13,9 @@ import { healthHandlers } from './health.handlers';
 import { homeHandlers } from './home.handlers';
 import { joinCompanionHandlers } from './join-companion.handlers';
 import { kakaoLoginHandlers } from './kakao-login.handlers';
+import { notificationHandlers } from './notifications.handlers';
 import { postCreateHandlers } from './post-create.handlers';
+import { pushTokenHandlers } from './push-tokens.handlers';
 import { signupHandlers } from './signup.handlers';
 import { taxiPotsHandlers } from './taxi-pots.handlers';
 import { userHandlers } from './user.handlers';
@@ -29,6 +31,8 @@ export const handlers = [
   ...carpoolJoinRequestHandlers,
   ...carpoolCreateHandlers,
   ...communityCommentsHandlers,
+  ...notificationHandlers,
+  ...pushTokenHandlers,
   ...carpoolRequestDecisionHandlers,
   ...kakaoLoginHandlers,
   ...signupHandlers,
