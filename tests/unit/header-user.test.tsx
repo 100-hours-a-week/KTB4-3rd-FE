@@ -54,7 +54,7 @@ describe('HeaderUser', () => {
     await user.click(screen.getByRole('menuitem', { name: '로그아웃' }));
 
     expect(screen.getByRole('dialog', { name: '로그아웃하시겠어요?' })).toBeInTheDocument();
-    expect(screen.getByTestId('account-action-error')).toHaveClass('h-[38px]');
+    expect(screen.getByTestId('account-action-error')).toHaveClass('h-[20px]');
     expect(screen.getByTestId('account-action-error')).toBeEmptyDOMElement();
     expect(screen.getByTestId('dialog-footer')).toHaveClass('flex-row');
     expect(screen.getByRole('button', { name: '로그아웃하기' })).toHaveClass(
@@ -78,7 +78,7 @@ describe('HeaderUser', () => {
     expect(
       screen.getByText('탈퇴하더라도 작성한 글과 채팅 내역은 다른사람들에게 보여요.'),
     ).toBeInTheDocument();
-    expect(screen.getByTestId('account-action-error')).toHaveClass('h-[38px]');
+    expect(screen.getByTestId('account-action-error')).toHaveClass('h-[20px]');
     expect(screen.getByTestId('dialog-footer')).toHaveClass('flex-row');
     expect(screen.getByRole('button', { name: '탈퇴하기' })).toHaveClass(
       'bg-[var(--color-bg-critical-solid)]',
@@ -162,7 +162,7 @@ describe('HeaderUser', () => {
       await screen.findByText('참여 중인 택시팟이 있어 탈퇴할 수 없습니다'),
     ).toBeInTheDocument();
     expect(screen.getByTestId('account-action-error')).toBe(errorSlot);
-    expect(errorSlot).toHaveClass('h-[38px]');
+    expect(errorSlot).toHaveClass('h-[20px]');
     expect(screen.getByText('참여 중인 택시팟이 있어 탈퇴할 수 없습니다')).toHaveClass(/t4Regular/);
     expect(useAuthStore.getState().accessToken).toBe('mock-access-token');
     expect(replace).not.toHaveBeenCalled();
@@ -191,7 +191,7 @@ describe('HeaderUser', () => {
 
     expect(await screen.findByText('서버 오류가 발생했습니다')).toBeInTheDocument();
     expect(screen.getByTestId('account-action-error')).toBe(errorSlot);
-    expect(errorSlot).toHaveClass('h-[38px]');
+    expect(errorSlot).toHaveClass('h-[20px]');
     expect(screen.getByText('서버 오류가 발생했습니다')).toHaveClass(/t4Regular/);
     expect(useAuthStore.getState().accessToken).toBe('mock-access-token');
     expect(replace).not.toHaveBeenCalled();

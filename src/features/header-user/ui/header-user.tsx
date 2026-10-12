@@ -26,7 +26,7 @@ function AccountActionError({ message }: { message: string | null }) {
   return (
     <div
       aria-live="polite"
-      className="grid h-[38px] content-end overflow-y-auto"
+      className="grid h-[20px] content-end overflow-y-auto"
       data-testid="account-action-error"
     >
       {message ? (
