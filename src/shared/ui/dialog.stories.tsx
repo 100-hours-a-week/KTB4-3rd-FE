@@ -47,6 +47,17 @@ export const PrimaryAndSecondary: Story = {
   },
 };
 
+export const NeutralConfirmation: Story = {
+  args: {
+    buttons: 'primarySecondary',
+    children: undefined,
+    description: undefined,
+    primaryLabel: '로그아웃하기',
+    primaryVariant: 'neutral-solid',
+    title: '로그아웃하시겠어요?',
+  },
+};
+
 export const NoChildren: Story = {
   args: {
     children: undefined,

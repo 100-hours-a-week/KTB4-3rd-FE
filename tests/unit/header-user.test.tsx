@@ -28,4 +28,24 @@ describe('HeaderUser', () => {
     expect(screen.getByRole('menuitem', { name: '로그아웃' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: '회원 탈퇴' })).toBeInTheDocument();
   });
+
+  it('로그아웃 메뉴를 누르면 본문 없는 neutral 확인 Dialog를 열고 취소로 닫는다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    render(<HeaderUser />);
+
+    await user.click(screen.getByRole('button', { name: '프로필 메뉴 열기' }));
+    await user.click(screen.getByRole('menuitem', { name: '로그아웃' }));
+
+    expect(screen.getByRole('dialog', { name: '로그아웃하시겠어요?' })).toBeInTheDocument();
+    expect(screen.queryByTestId('dialog-body')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dialog-footer')).toHaveClass('flex-row');
+    expect(screen.getByRole('button', { name: '로그아웃하기' })).toHaveClass(
+      'bg-[var(--color-bg-neutral-inverted)]',
+    );
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(screen.queryByRole('dialog', { name: '로그아웃하시겠어요?' })).not.toBeInTheDocument();
+  });
 });

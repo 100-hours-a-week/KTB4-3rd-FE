@@ -1,11 +1,13 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
+import { useState } from 'react';
 
 import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
 import type { User } from '@/entities/user';
 import { Avatar } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
+import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 import { Menu } from '@/shared/ui/menu';
 
@@ -13,22 +15,10 @@ type HeaderUserProps = {
   user?: User;
 };
 
-const userMenuItems = [
-  {
-    id: 'logout',
-    icon: <Icon name="logOut" size={24} />,
-    content: '로그아웃',
-  },
-  {
-    id: 'delete-account',
-    icon: <Icon name="userRoundX" size={24} />,
-    content: '회원 탈퇴',
-  },
-];
-
 export function HeaderUser({ user }: HeaderUserProps) {
   const router = useRouter();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const [isLogoutDialogOpen, setIsLogoutDialogOpen] = useState(false);
 
   if (!isAuthenticated) {
     return (
@@ -43,16 +33,41 @@ export function HeaderUser({ user }: HeaderUserProps) {
     );
   }
 
+  const userMenuItems = [
+    {
+      id: 'logout',
+      icon: <Icon name="logOut" size={24} />,
+      content: '로그아웃',
+      onClick: () => setIsLogoutDialogOpen(true),
+    },
+    {
+      id: 'delete-account',
+      icon: <Icon name="userRoundX" size={24} />,
+      content: '회원 탈퇴',
+    },
+  ];
+
   return (
-    <Menu aria-label="사용자 메뉴" items={userMenuItems}>
-      <button
-        aria-label="프로필 메뉴 열기"
-        className="inline-flex size-[42px] items-center justify-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
-        data-clarity-mask="true"
-        type="button"
-      >
-        <Avatar alt="프로필" size="md" src={user?.profile_image_url} />
-      </button>
-    </Menu>
+    <>
+      <Menu aria-label="사용자 메뉴" items={userMenuItems}>
+        <button
+          aria-label="프로필 메뉴 열기"
+          className="inline-flex size-[42px] items-center justify-center rounded-full p-0 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
+          data-clarity-mask="true"
+          type="button"
+        >
+          <Avatar alt="프로필" size="md" src={user?.profile_image_url} />
+        </button>
+      </Menu>
+      <Dialog
+        buttons="primarySecondary"
+        onOpenChange={setIsLogoutDialogOpen}
+        open={isLogoutDialogOpen}
+        primaryLabel="로그아웃하기"
+        primaryVariant="neutral-solid"
+        showCloseButton={false}
+        title="로그아웃하시겠어요?"
+      />
+    </>
   );
 }
