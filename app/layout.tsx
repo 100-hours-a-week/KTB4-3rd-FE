@@ -20,6 +20,10 @@ export const metadata: Metadata = {
     template: '모여타 | %s',
   },
   description: '이동을 모아, 일상을 잇다',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export const viewport: Viewport = {
