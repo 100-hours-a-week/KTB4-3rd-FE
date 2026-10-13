@@ -24,6 +24,7 @@ export type TaxiMeterPhotoConfirmationProps = {
   sending?: boolean;
   photoAlt?: string;
   screenLabel?: string;
+  retakeLabel?: string;
 };
 
 /** The photo confirmation screen is shown after the native picker returns an image. */
@@ -35,6 +36,7 @@ export function TaxiMeterPhotoConfirmation({
   sending = false,
   photoAlt = '선택한 택시 미터기 사진',
   screenLabel = '미터기 사진 확인 화면',
+  retakeLabel = '재촬영',
 }: TaxiMeterPhotoConfirmationProps) {
   const [pendingAction, setPendingAction] = useState<'back' | 'retake' | null>(null);
 
@@ -113,7 +115,7 @@ export function TaxiMeterPhotoConfirmation({
             variant="neutral-weak"
             width="fill"
           >
-            재촬영
+            {retakeLabel}
           </Button>
         </div>
       </section>
@@ -364,6 +366,7 @@ export function TransferPhotoRequest({
           onSend={() => onSend(photo.file)}
           photoAlt="선택한 송금 사진"
           previewUrl={photo.previewUrl}
+          retakeLabel="다시 선택하기"
           screenLabel="송금 사진 확인 화면"
           sending={sending}
         />
