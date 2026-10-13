@@ -17,8 +17,10 @@ export {
 export {
   TaxiMeterPhotoRequest,
   TaxiMeterPhotoConfirmation,
+  TransferPhotoRequest,
   type TaxiMeterPhotoRequestProps,
   type TaxiMeterPhotoConfirmationProps,
+  type TransferPhotoRequestProps,
 } from './ui/taxi-meter-photo-request';
 
 export {

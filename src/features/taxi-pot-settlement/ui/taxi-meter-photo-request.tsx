@@ -22,6 +22,8 @@ export type TaxiMeterPhotoConfirmationProps = {
   onRetake: () => void;
   onSend: () => void;
   sending?: boolean;
+  photoAlt?: string;
+  screenLabel?: string;
 };
 
 /** The photo confirmation screen is shown after the native picker returns an image. */
@@ -31,6 +33,8 @@ export function TaxiMeterPhotoConfirmation({
   onRetake,
   onSend,
   sending = false,
+  photoAlt = '선택한 택시 미터기 사진',
+  screenLabel = '미터기 사진 확인 화면',
 }: TaxiMeterPhotoConfirmationProps) {
   const [pendingAction, setPendingAction] = useState<'back' | 'retake' | null>(null);
 
@@ -64,7 +68,7 @@ export function TaxiMeterPhotoConfirmation({
   return (
     <>
       <section
-        aria-label="미터기 사진 확인 화면"
+        aria-label={screenLabel}
         className="fixed inset-y-0 left-1/2 z-30 flex w-full max-w-[393px] -translate-x-1/2 flex-col bg-[var(--color-bg-layer-default)]"
       >
         <Header
@@ -82,7 +86,7 @@ export function TaxiMeterPhotoConfirmation({
         />
         <div className="relative mx-5 mt-[72px] min-h-0 flex-1">
           <Image
-            alt="선택한 택시 미터기 사진"
+            alt={photoAlt}
             className="object-contain"
             fill
             sizes="(max-width: 393px) calc(100vw - 40px), 353px"
@@ -250,6 +254,117 @@ export function TaxiMeterPhotoRequest({
           onRetake={retakePhoto}
           onSend={() => onSend(photo.file)}
           previewUrl={photo.previewUrl}
+          sending={sending}
+        />
+      ) : null}
+    </>
+  );
+}
+
+export type TransferPhotoRequestProps = {
+  onSend: (file: File) => void;
+  sending?: boolean;
+  className?: string;
+};
+
+/** A passenger settlement message that opens the native image picker and previews the selected transfer proof. */
+export function TransferPhotoRequest({
+  onSend,
+  sending = false,
+  className,
+}: TransferPhotoRequestProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const previewUrlRef = useRef<string | null>(null);
+  const [photo, setPhoto] = useState<{ file: File; previewUrl: string } | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrlRef.current) {
+        URL.revokeObjectURL(previewUrlRef.current);
+      }
+    };
+  }, []);
+
+  function openPhotoPicker() {
+    if (!inputRef.current || sending) {
+      return;
+    }
+
+    inputRef.current.value = '';
+    inputRef.current.click();
+  }
+
+  function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.currentTarget.files?.[0];
+
+    if (!file || !file.type.startsWith('image/')) {
+      return;
+    }
+
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+    }
+
+    const previewUrl = URL.createObjectURL(file);
+    previewUrlRef.current = previewUrl;
+    setPhoto({ file, previewUrl });
+  }
+
+  function closeConfirmation() {
+    if (previewUrlRef.current) {
+      URL.revokeObjectURL(previewUrlRef.current);
+      previewUrlRef.current = null;
+    }
+
+    setPhoto(null);
+  }
+
+  function retakePhoto() {
+    closeConfirmation();
+    openPhotoPicker();
+  }
+
+  return (
+    <>
+      <div
+        className={cn(
+          'flex w-[240px] max-w-full flex-col gap-[15px] rounded-[12px] bg-[var(--color-bg-brand-weak)] px-4 pt-4 pb-3',
+          className,
+        )}
+        data-component="transfer-photo-request"
+      >
+        <Text as="p" className="m-0 break-words" color="fg.neutral" variant="t5Bold">
+          송금한 화면을 첨부해주세요
+        </Text>
+        <div className="-mx-1 w-[calc(100%+8px)]">
+          <Button
+            className="h-[44px] !rounded-[10px]"
+            disabled={sending}
+            onClick={openPhotoPicker}
+            size="medium"
+            variant="brand-solid"
+            width="fill"
+          >
+            사진 첨부하기
+          </Button>
+        </div>
+      </div>
+      <input
+        ref={inputRef}
+        accept="image/*"
+        aria-label="송금 사진 선택"
+        className="sr-only"
+        onChange={handlePhotoChange}
+        type="file"
+      />
+      {photo ? (
+        <TaxiMeterPhotoConfirmation
+          onBack={closeConfirmation}
+          onRetake={retakePhoto}
+          onSend={() => onSend(photo.file)}
+          photoAlt="선택한 송금 사진"
+          previewUrl={photo.previewUrl}
+          screenLabel="송금 사진 확인 화면"
           sending={sending}
         />
       ) : null}
