@@ -13,3 +13,10 @@ export {
   type TransferConfirmationRecognitionFailedDialogProps,
   type UnsettledSettlementDialogProps,
 } from './ui/transfer-confirmation-dialogs';
+
+export {
+  TaxiMeterPhotoRequest,
+  TaxiMeterPhotoConfirmation,
+  type TaxiMeterPhotoRequestProps,
+  type TaxiMeterPhotoConfirmationProps,
+} from './ui/taxi-meter-photo-request';
