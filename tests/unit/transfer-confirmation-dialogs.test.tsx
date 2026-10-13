@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  TransferConfirmationAnalysisDialog,
   TransferConfirmationRecognitionFailedDialog,
   UnsettledSettlementDialog,
 } from '@/features/taxi-pot-settlement';
@@ -30,5 +31,17 @@ describe('UnsettledSettlementDialog', () => {
     expect(screen.getByText('정산을 진행해주세요')).toBeInTheDocument();
     await userEvent.click(screen.getByRole('button', { name: '정산 하러가기' }));
     expect(onGoToSettlement).toHaveBeenCalledOnce();
+  });
+});
+
+describe('TransferConfirmationAnalysisDialog', () => {
+  it('송금 확인 사진 분석과 채팅 공지 안내를 표시한다', () => {
+    render(<TransferConfirmationAnalysisDialog open />);
+
+    const dialog = screen.getByRole('dialog', { name: '이미지를 분석하고있어요' });
+    expect(screen.getByText(/분석이 완료되면 자동으로/)).toBeInTheDocument();
+    expect(screen.getByText(/채팅방에 공지돼요/)).toBeInTheDocument();
+    expect(dialog.querySelector('[data-component=loading-dots]')).toBeInTheDocument();
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 });

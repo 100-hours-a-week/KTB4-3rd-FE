@@ -3,10 +3,21 @@
 import { cn } from '@/shared/lib/cn';
 import { Dialog } from '@/shared/ui/dialog';
 
+import { TaxiMeterAnalysisDialog, type TaxiMeterAnalysisDialogProps } from './taxi-meter-dialogs';
+
 type SettlementNoticeDialogProps = {
   open: boolean;
   onOpenChange?: (open: boolean) => void;
 };
+
+export type TransferConfirmationAnalysisDialogProps = Pick<
+  TaxiMeterAnalysisDialogProps,
+  'open' | 'onOpenChange'
+>;
+
+export function TransferConfirmationAnalysisDialog(props: TransferConfirmationAnalysisDialogProps) {
+  return <TaxiMeterAnalysisDialog {...props} completionMessage="채팅방에 공지돼요" />;
+}
 
 export type TransferConfirmationRecognitionFailedDialogProps = SettlementNoticeDialogProps & {
   onReselectPhoto?: () => void;

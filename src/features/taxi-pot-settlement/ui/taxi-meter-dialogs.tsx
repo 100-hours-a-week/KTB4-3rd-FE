@@ -15,6 +15,7 @@ const actionButtonClassName =
 export type TaxiMeterAnalysisDialogProps = {
   open: boolean;
   delayed?: boolean;
+  completionMessage?: string;
   onManualEntry?: () => void;
   onOpenChange?: (open: boolean) => void;
 };
@@ -23,6 +24,7 @@ export type TaxiMeterAnalysisDialogProps = {
 export function TaxiMeterAnalysisDialog({
   open,
   delayed = false,
+  completionMessage = '동승자에게 금액이 청구돼요.',
   onManualEntry,
   onOpenChange,
 }: TaxiMeterAnalysisDialogProps) {
@@ -48,7 +50,7 @@ export function TaxiMeterAnalysisDialog({
           <>
             분석이 완료되면 자동으로
             <br />
-            동승자에게 금액이 청구돼요.
+            {completionMessage}
           </>
         )
       }
