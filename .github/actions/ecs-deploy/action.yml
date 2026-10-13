@@ -1,0 +1,181 @@
+name: ECS deploy
+description: >-
+  스테이지 클러스터의 ECS Service에 digest로 고정된 이미지를 반영한다.
+  서비스가 쓰는 Task Definition family의 최신 revision에서 이미지만 교체해 새 revision을 등록하고,
+  update-service 후 PRIMARY deployment가 COMPLETED가 될 때까지 기다린다.
+  Circuit Breaker 롤백·FAILED·시간 초과는 모두 실패로 끝낸다.
+  배포 방식(Rolling / Blue-Green)은 ECS Service 설정(Terraform)이 결정하므로 이 액션은 스테이지와 무관하게 같다.
+
+inputs:
+  cluster:
+    description: ECS 클러스터 이름 (예 moyeota-v2-dev)
+    required: true
+  service:
+    description: ECS 서비스 이름 (rest / websocket / frontend / fastapi)
+    required: true
+  container-name:
+    description: 이미지를 바꿀 컨테이너 이름. 비우면 서비스 이름과 같다고 본다 (ecs-service 모듈 규칙)
+    required: false
+    default: ''
+  image:
+    description: digest로 고정된 이미지 (<registry>/<repository>@sha256:<digest>)
+    required: true
+  release-id:
+    description: 로그·요약에 남길 릴리스 식별자 (이미지 태그)
+    required: false
+    default: ''
+  timeout-seconds:
+    description: 배포 완료 대기 시간(초)
+    required: false
+    default: '1200'
+
+outputs:
+  task-definition-arn:
+    description: 서비스에 반영된 Task Definition revision ARN
+    value: ${{ steps.deploy.outputs.task_definition_arn }}
+
+runs:
+  using: composite
+  steps:
+    - name: Register task definition and update service
+      id: deploy
+      shell: bash
+      env:
+        CLUSTER: ${{ inputs.cluster }}
+        SERVICE: ${{ inputs.service }}
+        CONTAINER_NAME: ${{ inputs.container-name }}
+        IMAGE: ${{ inputs.image }}
+        RELEASE_ID: ${{ inputs.release-id }}
+        TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+      run: |
+        set -Eeuo pipefail
+
+        container="${CONTAINER_NAME:-$SERVICE}"
+
+        if [[ "$IMAGE" != *@sha256:* ]]; then
+          echo "::error::Image must be pinned by digest: ${IMAGE}"
+          exit 1
+        fi
+
+        print_events() {
+          echo "Recent service events (${CLUSTER}/${SERVICE}):"
+          aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services "$SERVICE" \
+            --query 'services[0].events[:10].[createdAt,message]' \
+            --output text || true
+        }
+
+        service_json="$(aws ecs describe-services \
+          --cluster "$CLUSTER" \
+          --services "$SERVICE" \
+          --output json)"
+
+        if [[ "$(jq -r '.services[0].status // empty' <<<"$service_json")" != ACTIVE ]]; then
+          echo "::error::ECS service not found or not ACTIVE: ${CLUSTER}/${SERVICE}"
+          jq '.failures' <<<"$service_json" >&2
+          exit 1
+        fi
+
+        current_td_arn="$(jq -r '.services[0].taskDefinition' <<<"$service_json")"
+        current_td="$(aws ecs describe-task-definition \
+          --task-definition "$current_td_arn" \
+          --query 'taskDefinition' \
+          --output json)"
+        family="$(jq -r '.family' <<<"$current_td")"
+        current_image="$(jq -r --arg c "$container" \
+          '[.containerDefinitions[] | select(.name == $c) | .image][0] // empty' <<<"$current_td")"
+
+        if [[ "$current_image" == "$IMAGE" ]]; then
+          # 재실행(re-run) 시 같은 이미지로 revision을 또 만들지 않는다. 진행 중인 배포라면 아래에서 완료만 기다린다.
+          echo "Service already targets ${IMAGE} (${current_td_arn}); skipping registration."
+          target_td_arn="$current_td_arn"
+        else
+          # family의 최신 ACTIVE revision을 기준으로 한다. Terraform이 바꾼 CPU·메모리·환경 변수 등을 그대로 이어받는다.
+          latest_td="$(aws ecs describe-task-definition \
+            --task-definition "$family" \
+            --query 'taskDefinition' \
+            --output json)"
+
+          if ! jq -e --arg c "$container" 'any(.containerDefinitions[]; .name == $c)' <<<"$latest_td" >/dev/null; then
+            echo "::error::Container '${container}' not found in task definition family ${family}"
+            exit 1
+          fi
+
+          taskdef_file="${RUNNER_TEMP}/taskdef-${SERVICE}.json"
+          jq --arg c "$container" --arg img "$IMAGE" '
+            .containerDefinitions |= map(if .name == $c then .image = $img else . end)
+            | del(
+                .taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities,
+                .registeredAt, .registeredBy, .deregisteredAt, .deleteRequestedAt
+              )
+          ' <<<"$latest_td" > "$taskdef_file"
+
+          target_td_arn="$(aws ecs register-task-definition \
+            --cli-input-json "file://${taskdef_file}" \
+            --query 'taskDefinition.taskDefinitionArn' \
+            --output text)"
+          echo "Registered ${target_td_arn}"
+
+          aws ecs update-service \
+            --cluster "$CLUSTER" \
+            --service "$SERVICE" \
+            --task-definition "$target_td_arn" \
+            --query 'service.serviceName' \
+            --output text >/dev/null
+          echo "Deployment started: ${CLUSTER}/${SERVICE} -> ${target_td_arn}"
+        fi
+
+        echo "task_definition_arn=${target_td_arn}" >> "$GITHUB_OUTPUT"
+
+        # services-stable 대기는 Circuit Breaker가 이전 revision으로 롤백해도 "stable"로 끝나므로 쓰지 않는다.
+        # PRIMARY deployment가 이번 revision인지, rolloutState가 COMPLETED인지 직접 확인한다.
+        deadline=$((SECONDS + TIMEOUT_SECONDS))
+        while true; do
+          primary="$(aws ecs describe-services \
+            --cluster "$CLUSTER" \
+            --services "$SERVICE" \
+            --query 'services[0].deployments[?status==`PRIMARY`] | [0]' \
+            --output json)"
+
+          primary_td="$(jq -r '.taskDefinition // empty' <<<"$primary")"
+          state="$(jq -r '.rolloutState // "UNKNOWN"' <<<"$primary")"
+          reason="$(jq -r '.rolloutStateReason // ""' <<<"$primary")"
+          running="$(jq -r '.runningCount // 0' <<<"$primary")"
+          desired="$(jq -r '.desiredCount // 0' <<<"$primary")"
+
+          echo "[${SERVICE}] rollout=${state} running=${running}/${desired}"
+
+          if [[ "$primary_td" != "$target_td_arn" ]]; then
+            echo "::error::${CLUSTER}/${SERVICE} was rolled back to ${primary_td} (deployment circuit breaker). ${reason}"
+            print_events
+            exit 1
+          fi
+
+          case "$state" in
+            COMPLETED)
+              echo "Deployment completed: ${CLUSTER}/${SERVICE}"
+              break
+              ;;
+            FAILED)
+              echo "::error::Deployment failed: ${CLUSTER}/${SERVICE}. ${reason}"
+              print_events
+              exit 1
+              ;;
+          esac
+
+          if (( SECONDS >= deadline )); then
+            echo "::error::Timed out after ${TIMEOUT_SECONDS}s waiting for ${CLUSTER}/${SERVICE}"
+            print_events
+            exit 1
+          fi
+
+          sleep 15
+        done
+
+        {
+          echo "### ${CLUSTER}/${SERVICE}"
+          echo "- release: \`${RELEASE_ID:-n/a}\`"
+          echo "- image: \`${IMAGE}\`"
+          echo "- task definition: \`${target_td_arn}\`"
+        } >> "$GITHUB_STEP_SUMMARY"
