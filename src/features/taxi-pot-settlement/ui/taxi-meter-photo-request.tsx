@@ -5,6 +5,7 @@ import { useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/button';
+import { Dialog } from '@/shared/ui/dialog';
 import { Header } from '@/shared/ui/header';
 import { Icon } from '@/shared/ui/icon';
 import { Text } from '@/shared/ui/text';
@@ -31,57 +32,125 @@ export function TaxiMeterPhotoConfirmation({
   onSend,
   sending = false,
 }: TaxiMeterPhotoConfirmationProps) {
+  const [pendingAction, setPendingAction] = useState<'back' | 'retake' | null>(null);
+
+  useEffect(() => {
+    if (!pendingAction) {
+      return;
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Backspace') {
+        event.preventDefault();
+        setPendingAction(null);
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pendingAction]);
+
+  function confirmExit() {
+    const action = pendingAction;
+    setPendingAction(null);
+
+    if (action === 'back') {
+      onBack();
+    } else if (action === 'retake') {
+      onRetake();
+    }
+  }
+
   return (
-    <section
-      aria-label="미터기 사진 확인 화면"
-      className="fixed inset-y-0 left-1/2 z-50 flex w-full max-w-[393px] -translate-x-1/2 flex-col bg-[var(--color-bg-layer-default)]"
-    >
-      <Header
-        leftSlot={
-          <button
-            aria-label="사진 확인 닫기"
-            className="inline-flex size-11 items-center justify-center"
-            onClick={onBack}
-            type="button"
-          >
-            <Icon name="chevronLeft" size={24} />
-          </button>
-        }
-        title="사진 확인"
-      />
-      <div className="relative mx-5 mt-[72px] min-h-0 flex-1">
-        <Image
-          alt="선택한 택시 미터기 사진"
-          className="object-contain"
-          fill
-          sizes="(max-width: 393px) calc(100vw - 40px), 353px"
-          src={previewUrl}
-          unoptimized
+    <>
+      <section
+        aria-label="미터기 사진 확인 화면"
+        className="fixed inset-y-0 left-1/2 z-30 flex w-full max-w-[393px] -translate-x-1/2 flex-col bg-[var(--color-bg-layer-default)]"
+      >
+        <Header
+          leftSlot={
+            <button
+              aria-label="사진 확인 닫기"
+              className="inline-flex size-11 items-center justify-center"
+              onClick={() => setPendingAction('back')}
+              type="button"
+            >
+              <Icon name="chevronLeft" size={24} />
+            </button>
+          }
+          title="사진 확인"
         />
-      </div>
-      <div className="flex flex-col gap-2 px-5 pt-4 pb-[calc(40px+env(safe-area-inset-bottom,0px))]">
-        <Button
-          className="h-[52px] !rounded-[8px]"
-          loading={sending}
-          onClick={onSend}
-          size="large"
-          variant="brand-solid"
-          width="fill"
-        >
-          전송
-        </Button>
-        <Button
-          className="h-[52px] !rounded-[8px]"
-          disabled={sending}
-          onClick={onRetake}
-          size="large"
-          variant="neutral-weak"
-          width="fill"
-        >
-          재촬영
-        </Button>
-      </div>
-    </section>
+        <div className="relative mx-5 mt-[72px] min-h-0 flex-1">
+          <Image
+            alt="선택한 택시 미터기 사진"
+            className="object-contain"
+            fill
+            sizes="(max-width: 393px) calc(100vw - 40px), 353px"
+            src={previewUrl}
+            unoptimized
+          />
+        </div>
+        <div className="flex flex-col gap-2 px-5 pt-4 pb-[calc(40px+env(safe-area-inset-bottom,0px))]">
+          <Button
+            className="h-[52px] !rounded-[8px]"
+            loading={sending}
+            onClick={onSend}
+            size="large"
+            variant="brand-solid"
+            width="fill"
+          >
+            전송
+          </Button>
+          <Button
+            className="h-[52px] !rounded-[8px]"
+            disabled={sending}
+            onClick={() => setPendingAction('retake')}
+            size="large"
+            variant="neutral-weak"
+            width="fill"
+          >
+            재촬영
+          </Button>
+        </div>
+      </section>
+      <Dialog
+        buttons="primarySecondary"
+        className={cn(
+          '!h-[256px] !w-[333px] !max-w-[calc(100%-40px)] !shadow-none',
+          '[&_[data-testid=dialog-header]]:!px-6 [&_[data-testid=dialog-header]]:!pt-7',
+          '[&_[data-testid=dialog-header]_p]:!mt-4',
+          '[&_[data-testid=dialog-footer]]:!absolute [&_[data-testid=dialog-footer]]:!right-6 [&_[data-testid=dialog-footer]]:!bottom-[19px] [&_[data-testid=dialog-footer]]:!left-6 [&_[data-testid=dialog-footer]]:!flex-col [&_[data-testid=dialog-footer]]:!gap-[6px] [&_[data-testid=dialog-footer]]:!p-0',
+        )}
+        description={
+          <>
+            이 페이지를 나가면 이미지가 사라져요.
+            <br />
+            그래도 나가시겠어요?
+          </>
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingAction(null);
+          }
+        }}
+        open={pendingAction !== null}
+        primaryButtonProps={{
+          className:
+            '!h-[46px] !min-h-[46px] !rounded-[8px] [&>span]:!text-[var(--font-size-t5)] [&>span]:!leading-[var(--line-height-t5)]',
+          onClick: confirmExit,
+        }}
+        primaryLabel="나갈게요"
+        primaryVariant="critical-solid"
+        secondaryButtonProps={{
+          className:
+            '!h-[46px] !min-h-[46px] !rounded-[8px] [&>span]:!text-[var(--font-size-t5)] [&>span]:!leading-[var(--line-height-t5)]',
+          onClick: () => setPendingAction(null),
+        }}
+        secondaryLabel="취소"
+        showCloseButton={false}
+        title="정말 나가시겠어요?"
+      />
+    </>
   );
 }
 
@@ -138,6 +207,11 @@ export function TaxiMeterPhotoRequest({
     setPhoto(null);
   }
 
+  function retakePhoto() {
+    closeConfirmation();
+    openPhotoPicker();
+  }
+
   return (
     <>
       <div
@@ -173,7 +247,7 @@ export function TaxiMeterPhotoRequest({
       {photo ? (
         <TaxiMeterPhotoConfirmation
           onBack={closeConfirmation}
-          onRetake={openPhotoPicker}
+          onRetake={retakePhoto}
           onSend={() => onSend(photo.file)}
           previewUrl={photo.previewUrl}
           sending={sending}

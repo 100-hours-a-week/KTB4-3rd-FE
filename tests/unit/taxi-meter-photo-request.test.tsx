@@ -49,7 +49,41 @@ describe('TaxiMeterPhotoRequest', () => {
     expect(onSend).toHaveBeenCalledWith(file);
   });
 
-  it('reopens the picker for retake and keeps the preview if selection is cancelled', async () => {
+  it('keeps the photo when exit confirmation is cancelled or dismissed', async () => {
+    const user = userEvent.setup();
+    const inputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
+    const file = new File(['meter'], 'meter.png', { type: 'image/png' });
+
+    render(<TaxiMeterPhotoRequest onSend={() => {}} />);
+    await user.upload(screen.getByLabelText('택시 미터기 사진 선택'), file);
+    await user.click(screen.getByRole('button', { name: '사진 확인 닫기' }));
+
+    expect(screen.getByRole('dialog')).toHaveTextContent('정말 나가시겠어요?');
+    expect(inputClick).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '선택한 택시 미터기 사진' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '재촬영' }));
+    await user.keyboard('{Backspace}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '선택한 택시 미터기 사진' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '재촬영' }));
+    await user.click(screen.getByTestId('dialog-backdrop'));
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '선택한 택시 미터기 사진' })).toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '사진 확인 닫기' }));
+    await user.keyboard('{Escape}');
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+    expect(screen.getByRole('img', { name: '선택한 택시 미터기 사진' })).toBeInTheDocument();
+
+    expect(inputClick).not.toHaveBeenCalled();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+  });
+
+  it('discards the photo only after confirming back or retake', async () => {
     const user = userEvent.setup();
     const inputClick = vi.spyOn(HTMLInputElement.prototype, 'click');
     const file = new File(['meter'], 'meter.png', { type: 'image/png' });
@@ -58,13 +92,18 @@ describe('TaxiMeterPhotoRequest', () => {
     await user.upload(screen.getByLabelText('택시 미터기 사진 선택'), file);
     await user.click(screen.getByRole('button', { name: '재촬영' }));
 
-    expect(inputClick).toHaveBeenCalledOnce();
-    expect(screen.getByRole('heading', { name: '사진 확인' })).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '선택한 택시 미터기 사진' })).toBeInTheDocument();
+    expect(inputClick).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: '나갈게요' }));
 
-    await user.click(screen.getByRole('button', { name: '사진 확인 닫기' }));
+    expect(inputClick).toHaveBeenCalledOnce();
     expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:meter-preview');
+
+    await user.upload(screen.getByLabelText('택시 미터기 사진 선택'), file);
+    await user.click(screen.getByRole('button', { name: '사진 확인 닫기' }));
+    await user.click(screen.getByRole('button', { name: '나갈게요' }));
+    expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
+    expect(inputClick).toHaveBeenCalledOnce();
   });
 
   it('ignores non-image files', async () => {
