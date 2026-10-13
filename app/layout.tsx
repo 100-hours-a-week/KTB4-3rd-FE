@@ -18,7 +18,12 @@ export const metadata: Metadata = {
     default: '모여타',
     template: '모여타 | %s',
   },
-  description: '이동을 모아, 일상을 잇다',
+  description:
+    '같은 방향의 동행을 지도에서 찾아 카풀·택시팟을 매칭하고, 출퇴근 정보를 나누는 모여타.',
+  robots: {
+    index: false,
+    follow: false,
+  },
 };
 
 export const viewport: Viewport = {
