@@ -19,7 +19,8 @@ export const metadata: Metadata = {
     default: '모여타',
     template: '모여타 | %s',
   },
-  description: '모여타는 카풀과 택시 동행을 찾고, 지역의 이동 정보를 나누는 커뮤니티 서비스입니다.',
+  description:
+    '같은 방향의 동행을 지도에서 찾아 카풀·택시팟을 매칭하고, 출퇴근 정보를 나누는 모여타.',
   robots: {
     index: false,
     follow: false,
