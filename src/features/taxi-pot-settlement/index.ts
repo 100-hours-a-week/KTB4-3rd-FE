@@ -20,3 +20,8 @@ export {
   type TaxiMeterPhotoRequestProps,
   type TaxiMeterPhotoConfirmationProps,
 } from './ui/taxi-meter-photo-request';
+
+export {
+  TaxiPotSettlementRequestSystemMessage,
+  type TaxiPotSettlementRequestSystemMessageProps,
+} from './ui/settlement-request-system-message';
