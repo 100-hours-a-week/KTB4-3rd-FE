@@ -1,7 +1,7 @@
 {
   "name": "모여타",
   "short_name": "모여타",
-  "description": "이동을 모아, 일상을 잇다",
+  "description": "같은 방향의 동행을 지도에서 찾아 카풀·택시팟을 매칭하고, 출퇴근 정보를 나누는 모여타.",
   "lang": "ko",
   "start_url": "/",
   "display": "standalone",
