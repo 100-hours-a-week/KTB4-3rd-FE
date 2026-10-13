@@ -10,11 +10,13 @@ function AmountDialogStory({
   recognitionFailed,
 }: Pick<TaxiMeterAmountDialogProps, 'recognitionFailed'>) {
   const [value, setValue] = useState('');
+  const [open, setOpen] = useState(true);
 
   return (
     <TaxiMeterAmountDialog
       onValueChange={setValue}
-      open
+      onOpenChange={setOpen}
+      open={open}
       recognitionFailed={recognitionFailed}
       value={value}
     />
