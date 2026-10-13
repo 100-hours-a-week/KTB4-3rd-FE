@@ -1,0 +1,93 @@
+name: FE V2 Dev CD
+
+# develop 브랜치 → Dev ECS 클러스터(moyeota-v2-dev) 자동 배포
+#   - FE CI가 develop push에서 만든 dev-<sha> 이미지를 빌드 산출물 그대로(digest) 반영한다.
+#   - frontend(Next.js) 서비스에 반영한다.
+#   - 배포 방식은 Dev 서비스 설정(Rolling, min 0% / max 100% + Circuit Breaker 자동 롤백)을 따른다.
+#   - V1 병행 기간: 앱 레포의 V1 dev-cd.yaml(FE Dev CD, EC2)과 함께 둔다. 같은 FE CI 산출물을 V1 EC2·V2 ECS에 각각 배포한다.
+#     워크플로 이름·concurrency group을 V1과 다르게 둬서 서로 기다리지 않는다.
+#     Dev ECS frontend 서비스는 v2/terraform.tfvars ecs_container_images.dev.frontend에 최초 이미지를 넣고 apply해야 생긴다.
+#     dev.moyeota.com DNS가 Non-Prod ALB로 넘어가면 V1 dev-cd.yaml을 지우고 environment.url을 다시 넣는다.
+
+on:
+  workflow_run:
+    workflows:
+      - FE CI
+    types:
+      - completed
+    branches:
+      - develop
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frontend-v2-cd-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy frontend (dev)
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: dev
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'moyeota-v2-dev' }}
+      ECS_SERVICE: frontend
+
+    steps:
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Resolve immutable image
+        id: release
+        run: |
+          set -Eeuo pipefail
+
+          manifest="release-manifest/release-manifest.json"
+          image_tag="$(jq -r '.image_tag' "$manifest")"
+          image_digest="$(jq -r '.image_digest' "$manifest")"
+
+          [[ "$image_tag" == dev-* ]]
+          [[ "$image_digest" == sha256:* ]]
+
+          {
+            echo "image_ref=${ECR_REGISTRY}/${ECR_REPOSITORY}@${image_digest}"
+            echo "image_tag=$image_tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.ECS_DEPLOY_ROLE_ARN }}
+          role-session-name: frontend-dev-cd-${{ github.run_id }}
+
+      - name: Checkout deploy action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: Deploy to ECS
+        uses: ./.github/actions/ecs-deploy
+        with:
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          image: ${{ steps.release.outputs.image_ref }}
+          release-id: ${{ steps.release.outputs.image_tag }}
+          timeout-seconds: '1200'
