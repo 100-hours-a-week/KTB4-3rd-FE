@@ -5,6 +5,7 @@ export { submitTransferProof } from './submit-transfer-proof';
 export { getMySettlementParticipant } from './get-my-settlement-participant';
 export { getSettlementTransferProof } from './get-settlement-transfer-proof';
 export { completeSettlement } from './complete-settlement';
+export { getSettlementStatus } from './get-settlement-status';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,

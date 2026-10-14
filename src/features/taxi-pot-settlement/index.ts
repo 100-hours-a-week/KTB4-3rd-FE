@@ -1,11 +1,12 @@
 export {
-  createSettlement,
-  getSettlementAnalysisStatus,
-  updateSettlementAmount,
-  submitTransferProof,
-  getMySettlementParticipant,
-  getSettlementTransferProof,
   completeSettlement,
+  createSettlement,
+  getMySettlementParticipant,
+  getSettlementAnalysisStatus,
+  getSettlementStatus,
+  getSettlementTransferProof,
+  submitTransferProof,
+  updateSettlementAmount,
 } from './api';
 export type {
   CreateSettlementRequest,
@@ -24,6 +25,7 @@ export type {
   UpdateSettlementAmountRequest,
   UpdateSettlementAmountResponse,
 } from './api';
+
 export {
   TaxiMeterAnalysisDialog,
   TaxiMeterAmountDialog,
