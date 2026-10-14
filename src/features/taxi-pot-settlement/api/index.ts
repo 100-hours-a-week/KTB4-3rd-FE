@@ -2,6 +2,7 @@ export { createSettlement } from './create-settlement';
 export { getSettlementAnalysisStatus } from './get-settlement-analysis-status';
 export { updateSettlementAmount } from './update-settlement-amount';
 export { submitTransferProof } from './submit-transfer-proof';
+export { getMySettlementParticipant } from './get-my-settlement-participant';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,
