@@ -1,4 +1,6 @@
 allowBuilds:
+  '@firebase/util': false
   '@sentry/cli': true
   esbuild: true
   msw: true
+  protobufjs: false

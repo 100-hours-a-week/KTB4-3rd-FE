@@ -12,6 +12,7 @@ import {
   QueryProvider,
   SnackbarProvider,
 } from '@/_app/providers';
+import { PushTokenRegistrationSync } from '@/features/push-token';
 
 import './globals.css';
 
@@ -52,6 +53,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <CarpoolRequestAuthCacheSync />
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
+                    <PushTokenRegistrationSync />
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
                   </AuthBootstrapProvider>
                 </SnackbarProvider>
