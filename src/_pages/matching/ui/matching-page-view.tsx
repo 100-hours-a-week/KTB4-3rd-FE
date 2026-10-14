@@ -7,6 +7,7 @@ import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
 import { NotificationButton } from '@/entities/notification';
 import type { User } from '@/entities/user';
 import { HeaderUser } from '@/features/header-user';
+import { PushNotificationPermissionDialog, useNotificationEntry } from '@/features/push-token';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { BottomSheet } from '@/shared/ui/bottom-sheet';
 import { Header } from '@/shared/ui/header';
@@ -33,50 +34,61 @@ export function MatchingPageView({
   ...mapControlsProps
 }: MatchingPageViewProps) {
   const router = useRouter();
+  const notificationEntry = useNotificationEntry({
+    onOpenNotifications: () => router.push('/notification'),
+  });
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
 
   return (
-    <div className="relative mx-auto h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
-      <Header
-        className="z-30 bg-transparent"
-        leftSlot={
-          <span className="pt-2 pl-1.5">
-            <Logo alt="모여타" size={27} variant="text" />
-          </span>
-        }
-        rightSlot={
-          <span className="flex items-center gap-1.5 pt-3 pr-1.5">
-            {isAuthenticated ? (
-              <NotificationButton onClick={() => router.push('/notification')} />
-            ) : null}
-            <HeaderUser user={user} />
-          </span>
-        }
+    <>
+      <PushNotificationPermissionDialog
+        onDefer={notificationEntry.onDefer}
+        onEnable={notificationEntry.onEnable}
+        onOpenChange={notificationEntry.onPermissionDialogOpenChange}
+        open={notificationEntry.isPermissionDialogOpen}
       />
+      <div className="relative mx-auto h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
+        <Header
+          className="z-30 bg-transparent"
+          leftSlot={
+            <span className="pt-2 pl-1.5">
+              <Logo alt="모여타" size={27} variant="text" />
+            </span>
+          }
+          rightSlot={
+            <span className="flex items-center gap-1.5 pt-3 pr-1.5">
+              {isAuthenticated ? (
+                <NotificationButton onClick={notificationEntry.onNotificationClick} />
+              ) : null}
+              <HeaderUser user={user} />
+            </span>
+          }
+        />
 
-      <main className="relative h-[calc(100dvh-72px-env(safe-area-inset-bottom,0px))] min-h-0">
-        {map}
-        <MatchingMapControls {...mapControlsProps} />
-      </main>
+        <main className="relative h-[calc(100dvh-72px-env(safe-area-inset-bottom,0px))] min-h-0">
+          {map}
+          <MatchingMapControls {...mapControlsProps} />
+        </main>
 
-      <BottomSheet
-        bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
-        className="mx-auto w-full max-w-[393px]"
-        defaultSnapPoint="110px"
-        minHeight="calc(100dvh - 72px - env(safe-area-inset-bottom, 0px))"
-        modal={false}
-        open={isListOpen}
-        showBackdrop={false}
-        onScrollElementChange={onScrollElementChange}
-        scrollContentKey={scrollContentKey}
-        snapPoints={['110px', 0.5, 0.7]}
-        title="근처 카풀 게시글"
-        description="가까운 순"
-      >
-        {nearbyCarpools ?? null}
-      </BottomSheet>
+        <BottomSheet
+          bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
+          className="mx-auto w-full max-w-[393px]"
+          defaultSnapPoint="110px"
+          minHeight="calc(100dvh - 72px - env(safe-area-inset-bottom, 0px))"
+          modal={false}
+          open={isListOpen}
+          showBackdrop={false}
+          onScrollElementChange={onScrollElementChange}
+          scrollContentKey={scrollContentKey}
+          snapPoints={['110px', 0.5, 0.7]}
+          title="근처 카풀 게시글"
+          description="가까운 순"
+        >
+          {nearbyCarpools ?? null}
+        </BottomSheet>
 
-      <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
-    </div>
+        <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
+      </div>
+    </>
   );
 }

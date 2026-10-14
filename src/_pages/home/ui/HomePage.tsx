@@ -31,6 +31,7 @@ import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
 import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
+import { PushNotificationPermissionDialog, useNotificationEntry } from '@/features/push-token';
 import { useCurrentUserQuery } from '@/features/user-profile';
 import { useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
@@ -180,6 +181,9 @@ function toCommunityPostDetail(
 
 export function HomePage() {
   const router = useRouter();
+  const notificationEntry = useNotificationEntry({
+    onOpenNotifications: () => router.push('/notification'),
+  });
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
@@ -449,6 +453,12 @@ export function HomePage() {
 
   return (
     <>
+      <PushNotificationPermissionDialog
+        onDefer={notificationEntry.onDefer}
+        onEnable={notificationEntry.onEnable}
+        onOpenChange={notificationEntry.onPermissionDialogOpenChange}
+        open={notificationEntry.isPermissionDialogOpen}
+      />
       <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
         <Header
           className="z-30 bg-transparent"
@@ -460,7 +470,7 @@ export function HomePage() {
           rightSlot={
             <span className="flex items-center gap-1.5 pt-3 pr-1.5">
               {isAuthenticated ? (
-                <NotificationButton onClick={() => router.push('/notification')} />
+                <NotificationButton onClick={notificationEntry.onNotificationClick} />
               ) : null}
               <HeaderUser user={currentUserQuery.data?.data} />
             </span>
