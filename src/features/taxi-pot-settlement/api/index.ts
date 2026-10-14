@@ -4,6 +4,7 @@ export { updateSettlementAmount } from './update-settlement-amount';
 export { submitTransferProof } from './submit-transfer-proof';
 export { getMySettlementParticipant } from './get-my-settlement-participant';
 export { getSettlementTransferProof } from './get-settlement-transfer-proof';
+export { completeSettlement } from './complete-settlement';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,
