@@ -73,6 +73,17 @@ export function ChatMessageList({
   liveMessageCount = 0,
   bottomContent,
 }: ChatMessageListProps) {
+  let transferAmount = 0;
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+
+    if (message?.kind === 'notice' && message.systemType === 'SYSTEM_TRANSFER_REQUESTED') {
+      transferAmount = message.settlement.amount_per_person;
+      break;
+    }
+  }
+
   const messagesRef = useRef<HTMLDivElement>(null);
   const previousMessagesRef = useRef<HTMLDivElement>(null);
   const nextMessagesRef = useRef<HTMLDivElement>(null);
@@ -316,7 +327,13 @@ export function ChatMessageList({
           </div>
         ) : null}
         {messages.map((message, index) => (
-          <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
+          <ChatMessageItem
+            index={index}
+            key={message.id}
+            message={message}
+            onReport={onReport}
+            transferAmount={transferAmount}
+          />
         ))}
         {hasNewerMessages && onLoadNewerMessages ? (
           <div
