@@ -60,3 +60,8 @@ export {
   TransferCompletionSystemMessage,
   type TransferCompletionSystemMessageProps,
 } from './ui/transfer-completion-system-message';
+
+export {
+  TransferCompletionConfirmationSystemMessage,
+  type TransferCompletionConfirmationSystemMessageProps,
+} from './ui/transfer-completion-confirmation-system-message';
