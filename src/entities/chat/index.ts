@@ -19,4 +19,5 @@ export {
   type ChatWebSocketClientOptions,
   type ChatWebSocketMessage,
   type ChatWebSocketStatus,
+  type ChatSettlementSnapshot,
 } from './api/chat-websocket-client';

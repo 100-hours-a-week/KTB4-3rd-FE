@@ -8,16 +8,8 @@ type StompFrame = {
   body: string;
 };
 
-export type MockChatMessage = {
+type MockChatMessageBase = {
   id: number;
-  type:
-    | 'TEXT'
-    | 'SYSTEM_JOIN'
-    | 'SYSTEM_LEAVE'
-    | 'SYSTEM_RIDE_START_REQUESTED'
-    | 'SYSTEM_RIDE_STARTED'
-    | 'SYSTEM_RIDE_END_REQUESTED'
-    | 'SYSTEM_RIDE_ENDED';
   sender?: {
     id: number;
     nickname?: string;
@@ -29,6 +21,45 @@ export type MockChatMessage = {
   content?: string | null;
   created_at: string;
 };
+
+type MockChatMessage =
+  | (MockChatMessageBase & {
+      type:
+        | 'TEXT'
+        | 'SYSTEM_JOIN'
+        | 'SYSTEM_LEAVE'
+        | 'SYSTEM_RIDE_START_REQUESTED'
+        | 'SYSTEM_RIDE_STARTED'
+        | 'SYSTEM_RIDE_END_REQUESTED'
+        | 'SYSTEM_RIDE_ENDED';
+      settlement?: never;
+    })
+  | (MockChatMessageBase & {
+      type:
+        | 'SYSTEM_METER_REQUESTED'
+        | 'SYSTEM_SETTLEMENT_COMPLETED'
+        | 'SYSTEM_TRANSFER_DONE'
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+      content: string;
+      sender?: never;
+      settlement?: never;
+    })
+  | (MockChatMessageBase & {
+      type: 'SYSTEM_TRANSFER_REQUESTED';
+      content: string;
+      settlement: {
+        settlement_id: number;
+        total_amount: number;
+        amount_per_person: number;
+        payee: {
+          id: number;
+          name: string;
+          bank_name: string;
+          account_no: string;
+        };
+      };
+      sender?: never;
+    });
 
 type ChatRoomSubscription = {
   client: WebSocketHandlerConnection['client'];
