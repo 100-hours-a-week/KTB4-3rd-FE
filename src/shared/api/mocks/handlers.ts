@@ -19,6 +19,7 @@ import { pushTokenHandlers } from './push-tokens.handlers';
 import { signupHandlers } from './signup.handlers';
 import { taxiPotsHandlers } from './taxi-pots.handlers';
 import { userHandlers } from './user.handlers';
+import { settlementHandlers } from './settlements.handlers';
 
 export const handlers = [
   ...healthHandlers,
@@ -42,4 +43,5 @@ export const handlers = [
   ...homeHandlers,
   ...carpoolReadHandlers,
   ...userHandlers,
+  ...settlementHandlers,
 ];
