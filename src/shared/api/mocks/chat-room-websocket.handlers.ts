@@ -110,12 +110,30 @@ const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
     type: 'SYSTEM_RIDE_ENDED',
     created_at: '2026-09-05T08:23:00.000Z',
   },
+  {
+    id: 1463,
+    type: 'SYSTEM_TRANSFER_DONE',
+    content: '애롱롱님이 송금을 완료했어요! 금액 13,000원',
+    created_at: '2026-09-05T08:24:00.000Z',
+  },
+  {
+    id: 1464,
+    type: 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED',
+    content: '모두의 송금이 잘 전달됐나요?',
+    created_at: '2026-09-05T08:25:00.000Z',
+  },
+  {
+    id: 1465,
+    type: 'SYSTEM_SETTLEMENT_COMPLETED',
+    content: '정산이 완료됐어요',
+    created_at: '2026-09-05T08:26:00.000Z',
+  },
 ];
 const subscriptions = new Map<string, ChatRoomSubscription>();
 const processedMessages = new Map<string, MockChatMessage>();
 const pendingMessages = new Map<string, MockChatMessage[]>();
 const previewTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
-let nextMessageId = 1454;
+let nextMessageId = 1466;
 
 function getHeader(headers: Record<string, string>, name: string) {
   const headerName = name.toLowerCase();
