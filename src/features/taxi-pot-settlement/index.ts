@@ -1,6 +1,7 @@
 export {
   createSettlement,
   getSettlementAnalysisStatus,
+  updateSettlementAmount,
 } from './api';
 export type {
   CreateSettlementRequest,
