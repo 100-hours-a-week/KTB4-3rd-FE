@@ -81,6 +81,9 @@ export function useTaxiPotChatFlow({
       if (message.type === 'SYSTEM_RIDE_ENDED') {
         setRideActionState(undefined);
         setStatusState({ taxiPotId, status: 'COMPLETED', isHost });
+      }
+
+      if (message.type === 'SYSTEM_SETTLEMENT_COMPLETED') {
         setEvaluationTaxiPotId(taxiPotId);
       }
 
@@ -102,10 +105,6 @@ export function useTaxiPotChatFlow({
 
       setStatusState({ taxiPotId, status: response.data.status, isHost: true });
       setRideActionState(undefined);
-
-      if (nextStatus !== 'IN_PROGRESS') {
-        setEvaluationTaxiPotId(taxiPotId);
-      }
     } catch {
       useSnackbarStore.getState().showSnackbar('요청 중 오류가 발생했어요', 'critical');
     }
