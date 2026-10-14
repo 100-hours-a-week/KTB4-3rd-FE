@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
+import { pretendard } from './fonts';
 import {
   AuthBootstrapProvider,
   CarpoolRequestAuthCacheSync,
@@ -42,7 +43,7 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <body>
         <div id="app-root" className="isolate min-h-dvh">
           <ClarityProvider>
