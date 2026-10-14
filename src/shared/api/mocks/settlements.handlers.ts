@@ -4,6 +4,7 @@ import { updateSettlementAmountHandler } from './update-settlement-amount.handle
 import { submitTransferProofHandler } from './submit-transfer-proof.handler';
 import { getMySettlementParticipantHandler } from './get-my-settlement-participant.handler';
 import { getSettlementTransferProofHandler } from './get-settlement-transfer-proof.handler';
+import { completeSettlementHandler } from './complete-settlement.handler';
 
 export const settlementHandlers = [
   createSettlementHandler,
@@ -12,4 +13,5 @@ export const settlementHandlers = [
   submitTransferProofHandler,
   getMySettlementParticipantHandler,
   getSettlementTransferProofHandler,
+  completeSettlementHandler,
 ];
