@@ -5,3 +5,4 @@ export { AuthBootstrapProvider } from './auth-bootstrap-provider';
 export { CarpoolRequestAuthCacheSync } from './carpool-request-auth-cache-sync';
 export { ClarityProvider } from './clarity-provider';
 export { SnackbarProvider } from './snackbar-provider';
+export { SnackbarRouteLifecycle } from './snackbar-route-lifecycle';
