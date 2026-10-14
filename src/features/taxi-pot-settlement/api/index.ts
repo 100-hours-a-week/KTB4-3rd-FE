@@ -1,4 +1,5 @@
 export { createSettlement } from './create-settlement';
+export { getSettlementAnalysisStatus } from './get-settlement-analysis-status';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,
