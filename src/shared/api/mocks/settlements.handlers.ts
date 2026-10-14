@@ -3,6 +3,7 @@ import { getSettlementAnalysisStatusHandler } from './get-settlement-analysis-st
 import { updateSettlementAmountHandler } from './update-settlement-amount.handler';
 import { submitTransferProofHandler } from './submit-transfer-proof.handler';
 import { getMySettlementParticipantHandler } from './get-my-settlement-participant.handler';
+import { getSettlementTransferProofHandler } from './get-settlement-transfer-proof.handler';
 
 export const settlementHandlers = [
   createSettlementHandler,
@@ -10,4 +11,5 @@ export const settlementHandlers = [
   updateSettlementAmountHandler,
   submitTransferProofHandler,
   getMySettlementParticipantHandler,
+  getSettlementTransferProofHandler,
 ];
