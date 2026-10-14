@@ -86,7 +86,7 @@ function createMockTaxiPots() {
         origin_name: '판교역',
         dest_name: '강남역',
         departure_at: '2026-09-05T08:30:00.000Z',
-        current_count: 2,
+        current_count: 1,
         capacity: 4,
         host_id: 7,
         is_participating: true,
