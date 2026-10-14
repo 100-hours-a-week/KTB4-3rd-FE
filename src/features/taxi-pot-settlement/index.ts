@@ -55,3 +55,8 @@ export {
   TaxiPotSettlementRequestSystemMessage,
   type TaxiPotSettlementRequestSystemMessageProps,
 } from './ui/settlement-request-system-message';
+
+export {
+  TransferCompletionSystemMessage,
+  type TransferCompletionSystemMessageProps,
+} from './ui/transfer-completion-system-message';
