@@ -3,6 +3,7 @@ export { getSettlementAnalysisStatus } from './get-settlement-analysis-status';
 export { updateSettlementAmount } from './update-settlement-amount';
 export { submitTransferProof } from './submit-transfer-proof';
 export { getMySettlementParticipant } from './get-my-settlement-participant';
+export { getSettlementTransferProof } from './get-settlement-transfer-proof';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,

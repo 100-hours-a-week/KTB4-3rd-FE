@@ -4,6 +4,7 @@ export {
   updateSettlementAmount,
   submitTransferProof,
   getMySettlementParticipant,
+  getSettlementTransferProof,
 } from './api';
 export type {
   CreateSettlementRequest,
