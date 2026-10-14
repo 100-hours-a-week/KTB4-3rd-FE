@@ -12,9 +12,11 @@ export type PushNotificationPermissionDialogProps = Omit<
   | 'title'
 > & {
   onEnable?: DialogButtonProps['onClick'];
+  onDefer?: DialogButtonProps['onClick'];
 };
 
 export function PushNotificationPermissionDialog({
+  onDefer,
   onEnable,
   ...props
 }: PushNotificationPermissionDialogProps) {
@@ -26,6 +28,7 @@ export function PushNotificationPermissionDialog({
       primaryButtonProps={{ onClick: onEnable }}
       primaryVariant="neutral-solid"
       primaryLabel="알림 받기"
+      secondaryButtonProps={{ onClick: onDefer }}
       secondaryLabel="나중에"
       showCloseButton={false}
       title="푸시 알림 권한을 허용해주세요"
