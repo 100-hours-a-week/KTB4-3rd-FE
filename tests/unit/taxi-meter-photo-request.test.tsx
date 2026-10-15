@@ -35,7 +35,10 @@ describe('TaxiMeterPhotoRequest', () => {
 
     await user.click(screen.getByRole('button', { name: '확인' }));
     expect(inputClick).toHaveBeenCalledOnce();
-    expect(screen.getByLabelText('택시 미터기 사진 선택')).toHaveAttribute('accept', 'image/*');
+    expect(screen.getByLabelText('택시 미터기 사진 선택')).toHaveAttribute(
+      'accept',
+      'image/jpeg,image/png',
+    );
     expect(screen.getByLabelText('택시 미터기 사진 선택')).not.toHaveAttribute('capture');
 
     await user.upload(screen.getByLabelText('택시 미터기 사진 선택'), file);
