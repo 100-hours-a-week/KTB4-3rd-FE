@@ -74,6 +74,11 @@ export type SettlementTransferProofResponse = ApiResponse<{
   transferred_at?: string;
 }>;
 
+export type SettlementMeterImageResponse = ApiResponse<{
+  meter_analysis_status: MeterAnalysisStatus;
+  image_url?: string;
+}>;
+
 export type SettlementParticipant = {
   user_id: number;
   name: string;

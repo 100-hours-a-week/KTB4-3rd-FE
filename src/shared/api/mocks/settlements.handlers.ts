@@ -6,6 +6,7 @@ import { getMySettlementParticipantHandler } from './get-my-settlement-participa
 import { getSettlementTransferProofHandler } from './get-settlement-transfer-proof.handler';
 import { completeSettlementHandler } from './complete-settlement.handler';
 import { getSettlementStatusHandler } from './get-settlement-status.handler';
+import { getSettlementMeterImageHandler } from './get-settlement-meter-image.handler';
 
 export const settlementHandlers = [
   createSettlementHandler,
@@ -16,4 +17,5 @@ export const settlementHandlers = [
   getSettlementTransferProofHandler,
   completeSettlementHandler,
   getSettlementStatusHandler,
+  getSettlementMeterImageHandler,
 ];
