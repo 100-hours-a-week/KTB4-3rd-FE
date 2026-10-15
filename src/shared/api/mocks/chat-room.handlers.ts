@@ -84,12 +84,15 @@ const MOCK_CHAT_ROOMS = {
     origin_name: '판교역',
     dest_name: '강남역',
     departure_at: '2026-09-05T08:30:00.000Z',
-    current_count: 1,
+    current_count: 2,
     capacity: 4,
     companion_status: 'RECRUITING',
     closed_at: null,
     last_read_message_id: null,
-    participants: [{ id: 7, nickname: '제리' }],
+    participants: [
+      { id: 7, nickname: '제리' },
+      { id: 9, nickname: '루디' },
+    ],
   },
 } as const;
 

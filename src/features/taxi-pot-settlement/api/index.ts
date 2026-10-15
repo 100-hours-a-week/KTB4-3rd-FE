@@ -6,6 +6,7 @@ export { getMySettlementParticipant } from './get-my-settlement-participant';
 export { getSettlementTransferProof } from './get-settlement-transfer-proof';
 export { completeSettlement } from './complete-settlement';
 export { getSettlementStatus } from './get-settlement-status';
+export { uploadSettlementImage } from './settlement-image-upload';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,

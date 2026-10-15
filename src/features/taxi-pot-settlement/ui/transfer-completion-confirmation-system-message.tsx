@@ -3,13 +3,15 @@ import { Button } from '@/shared/ui/button';
 import { Text } from '@/shared/ui/text';
 
 export type TransferCompletionConfirmationSystemMessageProps = {
-  onAcknowledge: () => void;
+  onAcknowledge?: () => void;
+  acknowledging?: boolean;
   className?: string;
 };
 
 /** Prompts the host to confirm that all transfers have arrived. */
 export function TransferCompletionConfirmationSystemMessage({
   onAcknowledge,
+  acknowledging = false,
   className,
 }: TransferCompletionConfirmationSystemMessageProps) {
   return (
@@ -29,6 +31,8 @@ export function TransferCompletionConfirmationSystemMessage({
         <Button
           className="h-[43px] !rounded-[10px]"
           onClick={onAcknowledge}
+          disabled={!onAcknowledge || acknowledging}
+          loading={acknowledging}
           size="medium"
           textVariant="t4Bold"
           variant="brand-solid"

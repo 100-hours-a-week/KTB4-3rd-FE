@@ -101,9 +101,21 @@ async function emitTaxiPotMessage(
     | 'SYSTEM_RIDE_START_REQUESTED'
     | 'SYSTEM_RIDE_STARTED'
     | 'SYSTEM_RIDE_END_REQUESTED'
-    | 'SYSTEM_RIDE_ENDED',
+    | 'SYSTEM_RIDE_ENDED'
+    | 'SYSTEM_SETTLEMENT_COMPLETED',
 ) {
   await new Promise((resolve) => setTimeout(resolve, 30));
+
+  if (type === 'SYSTEM_SETTLEMENT_COMPLETED') {
+    emitMockChatRoomMessage('599', {
+      id: Date.now(),
+      type,
+      content: '정산이 완료됐어요',
+      created_at: new Date().toISOString(),
+    });
+    return;
+  }
+
   emitMockChatRoomMessage('599', {
     id: Date.now(),
     type,
@@ -272,40 +284,41 @@ describe('ChattingPage', () => {
   });
 
   it('웹소켓 입퇴장 메시지에 따라 헤더 인원수와 메시지 입력 상태를 동기화한다', async () => {
-    renderChattingPage('601');
+    renderChattingPage('501');
 
     expect(await screen.findByRole('heading', { name: '8시 판교역' })).toBeInTheDocument();
-    expect(screen.getByText('1/4')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeDisabled();
-
-    emitMockChatRoomMessage('601', {
-      id: 1501,
-      type: 'SYSTEM_JOIN',
-      joiner: { id: 15, name: '타요' },
-      created_at: '2026-10-01T10:00:00.000Z',
-    });
-
-    expect(await screen.findByText('2/4')).toBeInTheDocument();
+    expect(screen.getByText('3/4')).toBeInTheDocument();
     expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeEnabled();
 
-    emitMockChatRoomMessage('601', {
+    emitMockChatRoomMessage('501', {
       id: 1501,
       type: 'SYSTEM_JOIN',
       joiner: { id: 15, name: '타요' },
       created_at: '2026-10-01T10:00:00.000Z',
     });
 
-    await waitFor(() => expect(screen.getAllByText('2/4')).toHaveLength(1));
+    expect(await screen.findByText('타요 님이 입장하셨어요')).toBeInTheDocument();
+    expect(await screen.findByText('4/4')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeEnabled();
 
-    emitMockChatRoomMessage('601', {
+    emitMockChatRoomMessage('501', {
+      id: 1501,
+      type: 'SYSTEM_JOIN',
+      joiner: { id: 15, name: '타요' },
+      created_at: '2026-10-01T10:00:00.000Z',
+    });
+
+    await waitFor(() => expect(screen.getAllByText('4/4')).toHaveLength(1));
+
+    emitMockChatRoomMessage('501', {
       id: 1502,
       type: 'SYSTEM_LEAVE',
       leaver: { id: 15, name: '타요' },
       created_at: '2026-10-01T10:01:00.000Z',
     });
 
-    expect(await screen.findByText('1/4')).toBeInTheDocument();
-    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeDisabled();
+    expect(await screen.findByText('3/4')).toBeInTheDocument();
+    expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeEnabled();
   });
 
   it('새로운 메시지가 추가되면 메시지 목록을 하단으로 스크롤한다', () => {
@@ -750,7 +763,7 @@ describe('ChattingPage', () => {
     expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
-  it('방장이 운행 종료를 확인하면 평가 모달을 열고 백드롭으로 닫히지 않는다', async () => {
+  it('방장이 정산 완료 메시지를 받으면 평가 모달을 열고 백드롭으로 닫히지 않는다', async () => {
     const user = userEvent.setup();
 
     server.use(
@@ -798,6 +811,13 @@ describe('ChattingPage', () => {
       '운행이 종료됐나요?',
     );
     await user.click(screen.getByRole('button', { name: '확인' }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument(),
+    );
+    expect(
+      screen.queryByRole('dialog', { name: '만족도를 입력해주세요.' }),
+    ).not.toBeInTheDocument();
+    await emitTaxiPotMessage('SYSTEM_SETTLEMENT_COMPLETED');
 
     const dialog = await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' });
     fireEvent.click(screen.getByTestId('dialog-backdrop'));
@@ -806,7 +826,7 @@ describe('ChattingPage', () => {
     expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
-  it('비방장이 운행 종료 웹소켓 이벤트를 받으면 평가 모달을 연다', async () => {
+  it('비방장이 정산 완료 웹소켓 이벤트를 받으면 평가 모달을 연다', async () => {
     mockCurrentUserId(9);
 
     server.use(
@@ -831,6 +851,11 @@ describe('ChattingPage', () => {
     renderChattingPage('599');
     await screen.findByTestId('taxi-pot-announcement');
     await emitTaxiPotMessage('SYSTEM_RIDE_ENDED');
+
+    expect(
+      screen.queryByRole('dialog', { name: '만족도를 입력해주세요.' }),
+    ).not.toBeInTheDocument();
+    await emitTaxiPotMessage('SYSTEM_SETTLEMENT_COMPLETED');
 
     expect(
       await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' }),
@@ -888,6 +913,11 @@ describe('ChattingPage', () => {
     await emitTaxiPotMessage('SYSTEM_RIDE_END_REQUESTED');
 
     await user.click(await screen.findByRole('button', { name: '확인' }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument(),
+    );
+    await emitTaxiPotMessage('SYSTEM_SETTLEMENT_COMPLETED');
+    await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' });
     await user.click(screen.getByRole('radio', { name: '루디 3점' }));
     await user.click(screen.getByRole('button', { name: '확인' }));
 
@@ -957,6 +987,11 @@ describe('ChattingPage', () => {
     await emitTaxiPotMessage('SYSTEM_RIDE_END_REQUESTED');
 
     await user.click(await screen.findByRole('button', { name: '확인' }));
+    await waitFor(() =>
+      expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument(),
+    );
+    await emitTaxiPotMessage('SYSTEM_SETTLEMENT_COMPLETED');
+    await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' });
     await user.click(screen.getByRole('button', { name: '루디 신고하기' }));
     await user.click(screen.getByRole('radio', { name: '노쇼' }));
     await user.click(screen.getByRole('button', { name: '신고하기' }));
