@@ -2,6 +2,9 @@ import { Bubble, ChatNotice } from '@/features/chatting';
 import {
   TransferCompletionConfirmationSystemMessage,
   TransferCompletionSystemMessage,
+  TaxiMeterPhotoRequest,
+  TaxiPotSettlementRequestSystemMessage,
+  TransferPhotoRequest,
 } from '@/features/taxi-pot-settlement';
 import { cn } from '@/shared/lib/cn';
 import { Avatar } from '@/shared/ui/avatar';
@@ -18,6 +21,14 @@ type ChatMessageItemProps = {
   index: number;
   onReport: (target: ChatReportTarget) => void;
   transferAmount?: number;
+  transferSettlementId?: number;
+  onAcknowledgeSettlement?: (settlementId: number) => void;
+  completingSettlement?: boolean;
+  isTaxiPotHost?: boolean;
+  onSendMeterPhoto?: (file: File) => void;
+  onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  uploadingSettlementPhoto?: boolean;
+  currentUserId?: number;
 };
 
 function getTransferCompletionDetails(content: string, fallbackAmount: number) {
@@ -45,9 +56,63 @@ export function ChatMessageItem({
   index,
   onReport,
   transferAmount = 0,
+  transferSettlementId,
+  onAcknowledgeSettlement,
+  completingSettlement = false,
+  isTaxiPotHost = false,
+  onSendMeterPhoto,
+  onSendTransferPhoto,
+  uploadingSettlementPhoto = false,
+  currentUserId,
 }: ChatMessageItemProps) {
   if (message.kind === 'notice') {
     const className = getMessageClassName(message, index);
+
+    if (message.systemType === 'SYSTEM_METER_REQUESTED' && isTaxiPotHost && onSendMeterPhoto) {
+      return (
+        <TaxiMeterPhotoRequest
+          className={className}
+          onSend={onSendMeterPhoto}
+          sending={uploadingSettlementPhoto}
+        />
+      );
+    }
+
+    if (message.systemType === 'SYSTEM_TRANSFER_REQUESTED') {
+      const isHost =
+        currentUserId === undefined ? isTaxiPotHost : message.settlement.payee.id === currentUserId;
+      const role = isHost ? 'host' : 'passenger';
+      const bankAccount = `${message.settlement.payee.bank_name} ${message.settlement.payee.account_no}`;
+      const requestMessage =
+        role === 'host' ? (
+          <TaxiPotSettlementRequestSystemMessage
+            bankAccount={bankAccount}
+            onBankAccountClick={(value) => void navigator.clipboard?.writeText(value)}
+            perPersonAmount={message.settlement.amount_per_person}
+            role="host"
+          />
+        ) : (
+          <TaxiPotSettlementRequestSystemMessage
+            bankAccount={bankAccount}
+            onBankAccountClick={(value) => void navigator.clipboard?.writeText(value)}
+            perPersonAmount={message.settlement.amount_per_person}
+            role="passenger"
+            totalAmount={message.settlement.total_amount}
+            onViewMeterPhoto={() => undefined}
+          />
+        );
+      return (
+        <div className={cn('flex flex-col gap-3', className)}>
+          {requestMessage}
+          {role === 'passenger' && onSendTransferPhoto ? (
+            <TransferPhotoRequest
+              onSend={(file) => onSendTransferPhoto(message.settlement.settlement_id, file)}
+              sending={uploadingSettlementPhoto}
+            />
+          ) : null}
+        </div>
+      );
+    }
 
     if (message.systemType === 'SYSTEM_TRANSFER_DONE') {
       const { amount, nickname } = getTransferCompletionDetails(message.content, transferAmount);
@@ -66,7 +131,12 @@ export function ChatMessageItem({
       return (
         <TransferCompletionConfirmationSystemMessage
           className={className}
-          onAcknowledge={() => undefined}
+          acknowledging={completingSettlement}
+          onAcknowledge={
+            transferSettlementId === undefined || !onAcknowledgeSettlement
+              ? undefined
+              : () => onAcknowledgeSettlement(transferSettlementId)
+          }
         />
       );
     }

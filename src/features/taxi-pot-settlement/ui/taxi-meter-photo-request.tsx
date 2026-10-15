@@ -191,7 +191,7 @@ export function TaxiMeterPhotoRequest({
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
 
-    if (!file || !file.type.startsWith('image/')) {
+    if (!file || !['image/jpeg', 'image/png'].includes(file.type)) {
       return;
     }
 
@@ -244,7 +244,7 @@ export function TaxiMeterPhotoRequest({
       </div>
       <input
         ref={inputRef}
-        accept="image/*"
+        accept="image/jpeg,image/png"
         aria-label="택시 미터기 사진 선택"
         className="sr-only"
         onChange={handlePhotoChange}
@@ -299,7 +299,7 @@ export function TransferPhotoRequest({
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
 
-    if (!file || !file.type.startsWith('image/')) {
+    if (!file || !['image/jpeg', 'image/png'].includes(file.type)) {
       return;
     }
 
@@ -353,7 +353,7 @@ export function TransferPhotoRequest({
       </div>
       <input
         ref={inputRef}
-        accept="image/*"
+        accept="image/jpeg,image/png"
         aria-label="송금 사진 선택"
         className="sr-only"
         onChange={handlePhotoChange}

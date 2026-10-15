@@ -23,6 +23,13 @@ type ChatMessageListProps = {
   hasNewMessages?: boolean;
   liveMessageCount?: number;
   bottomContent?: ReactNode;
+  onAcknowledgeSettlement?: (settlementId: number) => void;
+  completingSettlement?: boolean;
+  isTaxiPotHost?: boolean;
+  onSendMeterPhoto?: (file: File) => void;
+  onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  uploadingSettlementPhoto?: boolean;
+  currentUserId?: number;
 };
 
 type LoadDirection = 'before' | 'after';
@@ -72,14 +79,23 @@ export function ChatMessageList({
   hasNewMessages = false,
   liveMessageCount = 0,
   bottomContent,
+  onAcknowledgeSettlement,
+  completingSettlement = false,
+  isTaxiPotHost = false,
+  onSendMeterPhoto,
+  onSendTransferPhoto,
+  uploadingSettlementPhoto = false,
+  currentUserId,
 }: ChatMessageListProps) {
   let transferAmount = 0;
+  let transferSettlementId: number | undefined;
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];
 
     if (message?.kind === 'notice' && message.systemType === 'SYSTEM_TRANSFER_REQUESTED') {
       transferAmount = message.settlement.amount_per_person;
+      transferSettlementId = message.settlement.settlement_id;
       break;
     }
   }
@@ -333,6 +349,14 @@ export function ChatMessageList({
             message={message}
             onReport={onReport}
             transferAmount={transferAmount}
+            transferSettlementId={transferSettlementId}
+            onAcknowledgeSettlement={onAcknowledgeSettlement}
+            completingSettlement={completingSettlement}
+            isTaxiPotHost={isTaxiPotHost}
+            onSendMeterPhoto={onSendMeterPhoto}
+            onSendTransferPhoto={onSendTransferPhoto}
+            uploadingSettlementPhoto={uploadingSettlementPhoto}
+            currentUserId={currentUserId}
           />
         ))}
         {hasNewerMessages && onLoadNewerMessages ? (

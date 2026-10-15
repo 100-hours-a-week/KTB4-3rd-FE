@@ -20,6 +20,13 @@ import {
 import type { ChatWebSocketMessage } from '@/entities/chat';
 import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
+  createSettlement,
+  submitTransferProof,
+  uploadSettlementImage,
+  useCompleteSettlementMutation,
+} from '@/features/taxi-pot-settlement';
+import { getAccessToken } from '@/entities/auth';
+import {
   createTaxiPotChatEntryMessages,
   getLatestTaxiPotRideAction,
   isTaxiPotRideActionMessage,
@@ -192,9 +199,11 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const leaveCompanionMutation = useLeaveCompanionMutation();
   const leaveTaxiPotMutation = useLeaveTaxiPotMutation();
   const readMarkerMutation = useChatRoomReadMarkerMutation();
+  const completeSettlementMutation = useCompleteSettlementMutation();
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
+  const [uploadingSettlementPhoto, setUploadingSettlementPhoto] = useState(false);
   const [newMessagesState, setNewMessagesState] = useState<NewMessagesState>({
     roomId,
     cursor: null,
@@ -424,6 +433,61 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   );
 
   const handleLeave = useCallback(() => setIsLeaveDialogOpen(true), []);
+  const handleSettlementAcknowledge = useCallback(
+    async (settlementId: number) => {
+      try {
+        await completeSettlementMutation.mutateAsync(settlementId);
+      } catch (error) {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '정산을 완료하지 못했어요',
+            'critical',
+          );
+      }
+    },
+    [completeSettlementMutation],
+  );
+  const handleSendMeterPhoto = useCallback(
+    async (file: File) => {
+      if (companionId === undefined) {
+        return;
+      }
+      setUploadingSettlementPhoto(true);
+      try {
+        const token = await getAccessToken();
+        const imageKey = await uploadSettlementImage(token, 'METER', file);
+        await createSettlement(token, { companion_id: companionId, meter_image_key: imageKey });
+      } catch (error) {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '미터기 사진을 보내지 못했어요',
+            'critical',
+          );
+      } finally {
+        setUploadingSettlementPhoto(false);
+      }
+    },
+    [companionId],
+  );
+  const handleSendTransferPhoto = useCallback(async (settlementId: number, file: File) => {
+    setUploadingSettlementPhoto(true);
+    try {
+      const token = await getAccessToken();
+      const imageKey = await uploadSettlementImage(token, 'TRANSFER', file);
+      await submitTransferProof(token, settlementId, { transfer_image_key: imageKey });
+    } catch (error) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar(
+          error instanceof Error ? error.message : '송금 사진을 보내지 못했어요',
+          'critical',
+        );
+    } finally {
+      setUploadingSettlementPhoto(false);
+    }
+  }, []);
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
       syncLiveMemberCount(message);
@@ -570,8 +634,12 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           isReportDialogOpen={isReportDialogOpen}
           isTaxiPot={isTaxiPot}
           isTaxiPotHost={taxiPotFlow.isHost}
+          currentUserId={currentUserId}
           messagesQuery={messagesQuery}
           onBack={handleBack}
+          onAcknowledgeSettlement={handleSettlementAcknowledge}
+          onSendMeterPhoto={handleSendMeterPhoto}
+          onSendTransferPhoto={handleSendTransferPhoto}
           onEvaluationReport={handleEvaluationReport}
           onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
@@ -594,6 +662,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           reportLoading={reportMutation.isPending}
           leaveLoading={leaveLoading}
           ratingLoading={ratingMutation.isPending}
+          completingSettlement={completeSettlementMutation.isPending}
+          uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
           taxiPotDetail={taxiPotDetail}
           taxiPotQuery={taxiPotQuery}
@@ -623,6 +693,7 @@ type ChattingPageContentProps = {
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
   onBack: () => void;
+  onAcknowledgeSettlement: (settlementId: number) => void;
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
@@ -645,6 +716,11 @@ type ChattingPageContentProps = {
   onRideActionConfirm: () => void;
   ratingLoading: boolean;
   reportLoading: boolean;
+  completingSettlement: boolean;
+  onSendMeterPhoto: (file: File) => void;
+  onSendTransferPhoto: (settlementId: number, file: File) => void;
+  uploadingSettlementPhoto: boolean;
+  currentUserId?: number;
 };
 
 function ChattingPageContent({
@@ -665,6 +741,7 @@ function ChattingPageContent({
   isTaxiPotHost,
   messagesQuery,
   onBack,
+  onAcknowledgeSettlement,
   onEvaluationReport,
   onEvaluationSubmit,
   onEvaluationOpenChange,
@@ -681,6 +758,11 @@ function ChattingPageContent({
   rideActionLoading,
   ratingLoading,
   reportLoading,
+  completingSettlement,
+  onSendMeterPhoto,
+  onSendTransferPhoto,
+  uploadingSettlementPhoto,
+  currentUserId,
   leaveLoading,
   room,
   taxiPotDetail,
@@ -743,6 +825,13 @@ function ChattingPageContent({
           onLoadPreviousMessages={onLoadPreviousMessages}
           onLoadNewerMessages={onLoadNewerMessages}
           onReport={onReport}
+          onAcknowledgeSettlement={isTaxiPotHost ? onAcknowledgeSettlement : undefined}
+          completingSettlement={completingSettlement}
+          isTaxiPotHost={isTaxiPotHost}
+          currentUserId={currentUserId}
+          onSendMeterPhoto={onSendMeterPhoto}
+          onSendTransferPhoto={onSendTransferPhoto}
+          uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
           topContent={topContent}
         />

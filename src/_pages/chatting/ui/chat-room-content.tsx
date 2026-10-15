@@ -23,6 +23,13 @@ type ChatRoomContentProps = {
   onReport?: (target: ChatReportTarget) => void;
   topContent?: ReactNode;
   bottomContent?: ReactNode;
+  onAcknowledgeSettlement?: (settlementId: number) => void;
+  completingSettlement?: boolean;
+  isTaxiPotHost?: boolean;
+  onSendMeterPhoto?: (file: File) => void;
+  onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  uploadingSettlementPhoto?: boolean;
+  currentUserId?: number;
 };
 
 export function ChatRoomContent({
@@ -41,6 +48,13 @@ export function ChatRoomContent({
   hasNewMessages = false,
   topContent,
   bottomContent,
+  onAcknowledgeSettlement,
+  completingSettlement = false,
+  isTaxiPotHost = false,
+  onSendMeterPhoto,
+  onSendTransferPhoto,
+  uploadingSettlementPhoto = false,
+  currentUserId,
 }: ChatRoomContentProps) {
   const messages = useMemo(() => {
     const roomMessageIds = new Set(room.messages.map((message) => message.id));
@@ -72,6 +86,13 @@ export function ChatRoomContent({
           hasNewMessages={hasNewMessages}
           liveMessageCount={liveMessages.length}
           bottomContent={bottomContent}
+          onAcknowledgeSettlement={onAcknowledgeSettlement}
+          completingSettlement={completingSettlement}
+          isTaxiPotHost={isTaxiPotHost}
+          onSendMeterPhoto={onSendMeterPhoto}
+          onSendTransferPhoto={onSendTransferPhoto}
+          uploadingSettlementPhoto={uploadingSettlementPhoto}
+          currentUserId={currentUserId}
         />
         <ChatComposer
           className="!fixed bottom-0 left-1/2 z-20 !h-[calc(98px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)] !pb-[env(safe-area-inset-bottom,0px)]"
