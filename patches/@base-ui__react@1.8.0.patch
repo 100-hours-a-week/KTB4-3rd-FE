@@ -1,0 +1,104 @@
+diff --git a/drawer/popup/DrawerPopup.js b/drawer/popup/DrawerPopup.js
+index 7e0247ed635a933b5e795ddbd7045452a46dfa1c..9f12edec38f0ea34a4c70c42603826e79a262d21 100644
+--- a/drawer/popup/DrawerPopup.js
++++ b/drawer/popup/DrawerPopup.js
+@@ -179,15 +179,15 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+       (0, _error.error)(`${message}${ownerStackMessage}`);
+     }, [swipe]);
+   }
+-  const measureHeight = (0, _useStableCallback.useStableCallback)(() => {
++  const measureHeight = (0, _useStableCallback.useStableCallback)(measuredHeight => {
+     const popupElement = popupRef.current;
+     if (!popupElement) {
+       return;
+     }
+-    const offsetHeight = popupElement.offsetHeight;
++    const nextHeight = measuredHeight ?? popupElement.offsetHeight;
+
+     // Only skip while the element is still actually stretched beyond its last measured height.
+-    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && offsetHeight > popupHeightRef.current) {
++    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && nextHeight > popupHeightRef.current) {
+       return;
+     }
+     const keepHeightWhileNested = popupHeightRef.current > 0 && hasNestedDrawer;
+@@ -197,7 +197,6 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+       onPopupHeightChange(oldHeight);
+       return;
+     }
+-    const nextHeight = offsetHeight;
+     if (nextHeight === popupHeightRef.current) {
+       return;
+     }
+@@ -217,11 +216,18 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+       return undefined;
+     }
+     removeCSSVariableInheritance();
+-    measureHeight();
+     if (typeof ResizeObserver !== 'function') {
++      measureHeight();
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureHeight);
++    const resizeObserver = new ResizeObserver(entries => {
++      const entry = entries.find(item => item.target === popupElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(popupElement);
+     return () => {
+       resizeObserver.disconnect();
+diff --git a/drawer/popup/DrawerPopup.mjs b/drawer/popup/DrawerPopup.mjs
+index 388efbb32bd6257a1767b3588e05a3a1acd45fa4..9b82fdef2ea32e1411e8cf83a1f1176f4348d905 100644
+--- a/drawer/popup/DrawerPopup.mjs
++++ b/drawer/popup/DrawerPopup.mjs
+@@ -174,15 +174,15 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+       error(`${message}${ownerStackMessage}`);
+     }, [swipe]);
+   }
+-  const measureHeight = useStableCallback(() => {
++  const measureHeight = useStableCallback((measuredHeight) => {
+     const popupElement = popupRef.current;
+     if (!popupElement) {
+       return;
+     }
+-    const offsetHeight = popupElement.offsetHeight;
++    const nextHeight = measuredHeight ?? popupElement.offsetHeight;
+
+     // Only skip while the element is still actually stretched beyond its last measured height.
+-    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && offsetHeight > popupHeightRef.current) {
++    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && nextHeight > popupHeightRef.current) {
+       return;
+     }
+     const keepHeightWhileNested = popupHeightRef.current > 0 && hasNestedDrawer;
+@@ -192,7 +192,6 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+       onPopupHeightChange(oldHeight);
+       return;
+     }
+-    const nextHeight = offsetHeight;
+     if (nextHeight === popupHeightRef.current) {
+       return;
+     }
+@@ -212,11 +211,18 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+       return undefined;
+     }
+     removeCSSVariableInheritance();
+-    measureHeight();
+     if (typeof ResizeObserver !== 'function') {
++      measureHeight();
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureHeight);
++    const resizeObserver = new ResizeObserver((entries) => {
++      const entry = entries.find((item) => item.target === popupElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(popupElement);
+     return () => {
+       resizeObserver.disconnect();
