@@ -102,3 +102,85 @@ index 388efbb32bd6257a1767b3588e05a3a1acd45fa4..9b82fdef2ea32e1411e8cf83a1f1176f
      resizeObserver.observe(popupElement);
      return () => {
        resizeObserver.disconnect();
+diff --git a/drawer/root/useDrawerSnapPoints.js b/drawer/root/useDrawerSnapPoints.js
+index 983dee44f7acca8c014dbb52ada24d16d8934e33..715e9978661b2c1890c1c9849067e089c2785128 100644
+--- a/drawer/root/useDrawerSnapPoints.js
++++ b/drawer/root/useDrawerSnapPoints.js
+@@ -77,21 +77,31 @@ function useDrawerSnapPoints() {
+   const viewportElement = store.useState('viewportElement');
+   const [viewportHeight, setViewportHeight] = React.useState(0);
+   const [rootFontSize, setRootFontSize] = React.useState(16);
+-  const measureViewportHeight = (0, _useStableCallback.useStableCallback)(() => {
++  const measureViewportHeight = (0, _useStableCallback.useStableCallback)(measuredHeight => {
+     const doc = (0, _owner.ownerDocument)(viewportElement);
+     const html = doc.documentElement;
+-    setViewportHeight(viewportElement ? viewportElement.offsetHeight : html.clientHeight);
++    setViewportHeight(measuredHeight ?? (viewportElement ? viewportElement.offsetHeight : html.clientHeight));
+     const fontSize = parseFloat(getComputedStyle(html).fontSize);
+     if (Number.isFinite(fontSize)) {
+       setRootFontSize(fontSize);
+     }
+   });
+   (0, _useIsoLayoutEffect.useIsoLayoutEffect)(() => {
+-    measureViewportHeight();
+-    if (!viewportElement || typeof ResizeObserver !== 'function') {
++    if (!viewportElement) {
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureViewportHeight);
++    if (typeof ResizeObserver !== 'function') {
++      measureViewportHeight();
++      return undefined;
++    }
++    const resizeObserver = new ResizeObserver(entries => {
++      const entry = entries.find(item => item.target === viewportElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureViewportHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(viewportElement);
+     return () => {
+       resizeObserver.disconnect();
+diff --git a/drawer/root/useDrawerSnapPoints.mjs b/drawer/root/useDrawerSnapPoints.mjs
+index 1a0f9d7b9a2ddd68f3b4a19038af9720cf2c3544..51f73354cc6224c74ff99b2d1f38fa7e3bf72d76 100644
+--- a/drawer/root/useDrawerSnapPoints.mjs
++++ b/drawer/root/useDrawerSnapPoints.mjs
+@@ -69,21 +69,31 @@ export function useDrawerSnapPoints() {
+   const viewportElement = store.useState('viewportElement');
+   const [viewportHeight, setViewportHeight] = React.useState(0);
+   const [rootFontSize, setRootFontSize] = React.useState(16);
+-  const measureViewportHeight = useStableCallback(() => {
++  const measureViewportHeight = useStableCallback((measuredHeight) => {
+     const doc = ownerDocument(viewportElement);
+     const html = doc.documentElement;
+-    setViewportHeight(viewportElement ? viewportElement.offsetHeight : html.clientHeight);
++    setViewportHeight(measuredHeight ?? (viewportElement ? viewportElement.offsetHeight : html.clientHeight));
+     const fontSize = parseFloat(getComputedStyle(html).fontSize);
+     if (Number.isFinite(fontSize)) {
+       setRootFontSize(fontSize);
+     }
+   });
+   useIsoLayoutEffect(() => {
+-    measureViewportHeight();
+-    if (!viewportElement || typeof ResizeObserver !== 'function') {
++    if (!viewportElement) {
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureViewportHeight);
++    if (typeof ResizeObserver !== 'function') {
++      measureViewportHeight();
++      return undefined;
++    }
++    const resizeObserver = new ResizeObserver((entries) => {
++      const entry = entries.find((item) => item.target === viewportElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureViewportHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(viewportElement);
+     return () => {
+       resizeObserver.disconnect();

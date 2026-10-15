@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  '@base-ui/react@1.8.0': f164331ed74eb98004549b6a0e42edbb0a36debb340bfc83b7b6d64de9c5fb1e
+  '@base-ui/react@1.8.0': 35fea2f3b25c136fa0756c5727a0c8d7af1ba80a9bbd3d2e34835fa801666d1f
 
 importers:
 
@@ -13,7 +13,7 @@ importers:
     dependencies:
       '@base-ui/react':
         specifier: ^1.8.0
-        version: 1.8.0(patch_hash=f164331ed74eb98004549b6a0e42edbb0a36debb340bfc83b7b6d64de9c5fb1e)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+        version: 1.8.0(patch_hash=35fea2f3b25c136fa0756c5727a0c8d7af1ba80a9bbd3d2e34835fa801666d1f)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
       '@hookform/resolvers':
         specifier: ^5.9.1
         version: 5.9.1(ajv@8.20.0)(react-hook-form@7.88.0(react@19.3.0))(zod@4.6.4)
@@ -4227,7 +4227,7 @@ snapshots:
       '@babel/helper-string-parser': 7.29.7
       '@babel/helper-validator-identifier': 7.29.7
 
-  '@base-ui/react@1.8.0(patch_hash=f164331ed74eb98004549b6a0e42edbb0a36debb340bfc83b7b6d64de9c5fb1e)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
+  '@base-ui/react@1.8.0(patch_hash=35fea2f3b25c136fa0756c5727a0c8d7af1ba80a9bbd3d2e34835fa801666d1f)(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)':
     dependencies:
       '@babel/runtime': 7.29.7
       '@base-ui/utils': 0.4.0(@types/react@19.3.0)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
