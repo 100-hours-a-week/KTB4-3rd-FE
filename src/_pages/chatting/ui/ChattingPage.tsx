@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -22,6 +22,9 @@ import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
   createSettlement,
   submitTransferProof,
+  settlementQueries,
+  SettlementTransferProofDialog,
+  SettlementMeterImageDialog,
   uploadSettlementImage,
   useCompleteSettlementMutation,
 } from '@/features/taxi-pot-settlement';
@@ -83,6 +86,13 @@ type LiveMemberCountState = {
   count: number | null;
   processedMessageIds: Set<number>;
 };
+
+type TransferProofTarget = {
+  settlementId: number;
+  userId: number;
+} | null;
+
+type MeterImageTarget = number | null;
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -176,6 +186,7 @@ function getLastPersistedMessageId(messages: readonly { id: string | number }[])
 
 export function ChattingPage({ roomId }: ChattingPageProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [liveMessagesState, setLiveMessagesState] = useState<LiveMessagesState>({
     roomId,
     messages: [],
@@ -204,6 +215,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
   const [uploadingSettlementPhoto, setUploadingSettlementPhoto] = useState(false);
+  const [transferProofTarget, setTransferProofTarget] = useState<TransferProofTarget>(null);
+  const [meterImageTarget, setMeterImageTarget] = useState<MeterImageTarget>(null);
   const [newMessagesState, setNewMessagesState] = useState<NewMessagesState>({
     roomId,
     cursor: null,
@@ -283,6 +296,45 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     taxiPotDetail,
     taxiPotId,
   });
+
+  const handleViewTransferProof = useCallback(
+    async (settlementId: number, nickname: string) => {
+      if (!taxiPotFlow.isHost) {
+        return;
+      }
+
+      try {
+        const response = await queryClient.fetchQuery(settlementQueries.status(settlementId));
+        const matchingParticipants = response.data.participants.filter(
+          (participant) => participant.name === nickname,
+        );
+
+        if (matchingParticipants.length !== 1) {
+          useSnackbarStore
+            .getState()
+            .showSnackbar('송금자를 확인할 수 없어 인증 사진을 열지 못했어요', 'critical');
+          return;
+        }
+
+        setTransferProofTarget({
+          settlementId,
+          userId: matchingParticipants[0].user_id,
+        });
+      } catch (error) {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '송금 내역을 불러오지 못했어요',
+            'critical',
+          );
+      }
+    },
+    [queryClient, taxiPotFlow.isHost],
+  );
+
+  const handleViewMeterImage = useCallback((settlementId: number) => {
+    setMeterImageTarget(settlementId);
+  }, []);
 
   const syncLiveMemberCount = useCallback(
     (message: ChatWebSocketMessage) => {
@@ -640,6 +692,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           onAcknowledgeSettlement={handleSettlementAcknowledge}
           onSendMeterPhoto={handleSendMeterPhoto}
           onSendTransferPhoto={handleSendTransferPhoto}
+          onViewTransferProof={handleViewTransferProof}
+          onViewMeterImage={handleViewMeterImage}
           onEvaluationReport={handleEvaluationReport}
           onEvaluationSubmit={handleEvaluationSubmit}
           onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
@@ -665,6 +719,18 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           completingSettlement={completeSettlementMutation.isPending}
           uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
+          transferProofTarget={transferProofTarget}
+          meterImageTarget={meterImageTarget}
+          onMeterImageOpenChange={(open) => {
+            if (!open) {
+              setMeterImageTarget(null);
+            }
+          }}
+          onTransferProofOpenChange={(open) => {
+            if (!open) {
+              setTransferProofTarget(null);
+            }
+          }}
           taxiPotDetail={taxiPotDetail}
           taxiPotQuery={taxiPotQuery}
           taxiPotStatus={taxiPotFlow.status}
@@ -719,6 +785,12 @@ type ChattingPageContentProps = {
   completingSettlement: boolean;
   onSendMeterPhoto: (file: File) => void;
   onSendTransferPhoto: (settlementId: number, file: File) => void;
+  onViewTransferProof: (settlementId: number, nickname: string) => void;
+  onViewMeterImage: (settlementId: number) => void;
+  transferProofTarget: TransferProofTarget;
+  meterImageTarget: MeterImageTarget;
+  onMeterImageOpenChange: (open: boolean) => void;
+  onTransferProofOpenChange: (open: boolean) => void;
   uploadingSettlementPhoto: boolean;
   currentUserId?: number;
 };
@@ -761,6 +833,12 @@ function ChattingPageContent({
   completingSettlement,
   onSendMeterPhoto,
   onSendTransferPhoto,
+  onViewTransferProof,
+  onViewMeterImage,
+  transferProofTarget,
+  meterImageTarget,
+  onMeterImageOpenChange,
+  onTransferProofOpenChange,
   uploadingSettlementPhoto,
   currentUserId,
   leaveLoading,
@@ -831,6 +909,8 @@ function ChattingPageContent({
           currentUserId={currentUserId}
           onSendMeterPhoto={onSendMeterPhoto}
           onSendTransferPhoto={onSendTransferPhoto}
+          onViewTransferProof={onViewTransferProof}
+          onViewMeterImage={onViewMeterImage}
           uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
           topContent={topContent}
@@ -869,6 +949,17 @@ function ChattingPageContent({
           loading: ratingLoading,
           onClick: (event) => event.preventDefault(),
         }}
+      />
+      <SettlementTransferProofDialog
+        onOpenChange={onTransferProofOpenChange}
+        open={transferProofTarget !== null}
+        settlementId={transferProofTarget?.settlementId}
+        userId={transferProofTarget?.userId}
+      />
+      <SettlementMeterImageDialog
+        onOpenChange={onMeterImageOpenChange}
+        open={meterImageTarget !== null}
+        settlementId={meterImageTarget ?? undefined}
       />
     </>
   );

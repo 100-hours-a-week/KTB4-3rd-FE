@@ -27,6 +27,8 @@ type ChatMessageItemProps = {
   isTaxiPotHost?: boolean;
   onSendMeterPhoto?: (file: File) => void;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  onViewTransferProof?: (settlementId: number, nickname: string) => void;
+  onViewMeterImage?: (settlementId: number) => void;
   uploadingSettlementPhoto?: boolean;
   currentUserId?: number;
 };
@@ -62,6 +64,8 @@ export function ChatMessageItem({
   isTaxiPotHost = false,
   onSendMeterPhoto,
   onSendTransferPhoto,
+  onViewTransferProof,
+  onViewMeterImage,
   uploadingSettlementPhoto = false,
   currentUserId,
 }: ChatMessageItemProps) {
@@ -98,7 +102,7 @@ export function ChatMessageItem({
             perPersonAmount={message.settlement.amount_per_person}
             role="passenger"
             totalAmount={message.settlement.total_amount}
-            onViewMeterPhoto={() => undefined}
+            onViewMeterPhoto={() => onViewMeterImage?.(message.settlement.settlement_id)}
           />
         );
       return (
@@ -122,7 +126,11 @@ export function ChatMessageItem({
           amount={amount}
           className={className}
           nickname={nickname}
-          onViewReceipt={() => undefined}
+          onViewReceipt={
+            isTaxiPotHost && transferSettlementId !== undefined && onViewTransferProof
+              ? () => onViewTransferProof(transferSettlementId, nickname)
+              : undefined
+          }
         />
       );
     }
