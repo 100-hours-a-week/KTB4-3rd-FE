@@ -6,10 +6,12 @@ export {
   getSettlementStatus,
   uploadSettlementImage,
   getSettlementTransferProof,
+  settlementQueries,
   submitTransferProof,
   updateSettlementAmount,
 } from './api';
 export { useCompleteSettlementMutation } from './model/use-complete-settlement-mutation';
+export { useSettlementTransferProofQuery } from './model/use-settlement-transfer-proof-query';
 export type {
   CreateSettlementRequest,
   CreateSettlementResponse,
