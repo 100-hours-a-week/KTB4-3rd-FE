@@ -1,5 +1,5 @@
 import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
-import { getMessaging, getToken, isSupported } from 'firebase/messaging';
+import { getMessaging, getToken, isSupported, type Messaging } from 'firebase/messaging';
 
 const PUSH_FIREBASE_APP_NAME = 'moyeota-push';
 
@@ -17,6 +17,23 @@ function getFirebaseConfig(): FirebaseOptions | null {
   return { apiKey, authDomain, projectId, messagingSenderId, appId };
 }
 
+export async function getFcmMessaging(): Promise<Messaging | null> {
+  if (typeof window === 'undefined') {
+    return null;
+  }
+
+  const firebaseConfig = getFirebaseConfig();
+
+  if (!firebaseConfig || !(await isSupported())) {
+    return null;
+  }
+
+  const firebaseApp = getApps().some(({ name }) => name === PUSH_FIREBASE_APP_NAME)
+    ? getApp(PUSH_FIREBASE_APP_NAME)
+    : initializeApp(firebaseConfig, PUSH_FIREBASE_APP_NAME);
+  return getMessaging(firebaseApp);
+}
+
 export async function getFcmRegistrationToken(): Promise<string | null> {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return null;
@@ -26,17 +43,18 @@ export async function getFcmRegistrationToken(): Promise<string | null> {
     return null;
   }
 
-  const firebaseConfig = getFirebaseConfig();
   const vapidKey = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_VAPID_KEY;
 
-  if (!firebaseConfig || !vapidKey || !(await isSupported())) {
+  if (!vapidKey) {
     return null;
   }
 
-  const firebaseApp = getApps().some(({ name }) => name === PUSH_FIREBASE_APP_NAME)
-    ? getApp(PUSH_FIREBASE_APP_NAME)
-    : initializeApp(firebaseConfig, PUSH_FIREBASE_APP_NAME);
-  const messaging = getMessaging(firebaseApp);
+  const messaging = await getFcmMessaging();
+
+  if (!messaging) {
+    return null;
+  }
+
   const serviceWorkerRegistration = await navigator.serviceWorker.register(
     '/firebase-messaging-sw.js',
   );

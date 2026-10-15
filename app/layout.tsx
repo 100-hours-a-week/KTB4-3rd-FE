@@ -12,7 +12,10 @@ import {
   QueryProvider,
   SnackbarProvider,
 } from '@/_app/providers';
-import { PushTokenRegistrationSync } from '@/features/push-token';
+import {
+  PushNotificationForegroundListener,
+  PushTokenRegistrationSync,
+} from '@/features/push-token';
 
 import './globals.css';
 
@@ -54,6 +57,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
                     <PushTokenRegistrationSync />
+                    <PushNotificationForegroundListener />
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
                   </AuthBootstrapProvider>
                 </SnackbarProvider>
