@@ -6,7 +6,7 @@ export type MemberAnalysisStatus = 'PENDING' | 'ANALYZING' | 'PASSED' | 'FAILED'
 
 export type CreateSettlementRequest = {
   companion_id: number;
-  meter_image_url: string;
+  meter_image_key: string;
 };
 
 export type CreateSettlementResponse = ApiResponse<{
@@ -36,7 +36,7 @@ export type UpdateSettlementAmountResponse = ApiResponse<{
 }>;
 
 export type SubmitTransferProofRequest = {
-  transfer_image_url: string;
+  transfer_image_key: string;
 };
 
 export type SubmitTransferProofResponse = ApiResponse<{

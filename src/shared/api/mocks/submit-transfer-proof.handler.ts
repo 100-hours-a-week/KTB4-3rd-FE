@@ -51,7 +51,8 @@ export const submitTransferProofHandler = http.post(
 
     if (
       !settlementMock.isObject(body) ||
-      !settlementMock.hasValidImageUrl(body.transfer_image_url)
+      typeof body.transfer_image_key !== 'string' ||
+      !body.transfer_image_key.startsWith('tmp/transfer/')
     ) {
       return settlementMock.errorResponse(
         '요청 형식이 올바르지 않습니다.',
@@ -80,7 +81,7 @@ export const submitTransferProofHandler = http.post(
     }
 
     participant.transfer_attempts += 1;
-    participant.transfer_image_url = body.transfer_image_url;
+    participant.transfer_image_url = `https://mock-images.local/${body.transfer_image_key}`;
     participant.member_analysis_status = 'ANALYZING';
     participant.analysis_result_pending = true;
     participant.transferred_at = undefined;

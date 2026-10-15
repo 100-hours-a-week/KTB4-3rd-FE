@@ -51,7 +51,7 @@ export const createSettlementHandler = http.post('*/settlements', async ({ reque
     return settlementMock.errorResponse('방장만 정산을 시작할 수 있습니다', 'FORBIDDEN', null, 403);
   }
 
-  if (!settlementMock.hasValidImageUrl(body.meter_image_url)) {
+  if (typeof body.meter_image_key !== 'string' || !body.meter_image_key.startsWith('tmp/meter/')) {
     return settlementMock.errorResponse(
       '요청 형식이 올바르지 않습니다.',
       'MALFORMED_REQUEST',
@@ -61,7 +61,7 @@ export const createSettlementHandler = http.post('*/settlements', async ({ reque
   }
 
   const settlement = settlementMock.createSettlement(companionId, participants);
-  settlement.meter_image_url = body.meter_image_url;
+  settlement.meter_image_url = `https://mock-images.local/${body.meter_image_key}`;
   return HttpResponse.json(
     {
       message: '미터기 금액 분석 상태를 확인하세요.',
