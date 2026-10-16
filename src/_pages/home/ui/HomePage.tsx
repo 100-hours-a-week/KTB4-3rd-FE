@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
+import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
@@ -469,6 +470,13 @@ export function HomePage() {
           }
           rightSlot={
             <span className="flex items-center gap-1.5 pt-3 pr-1.5">
+              <Link
+                aria-label="모여타 소개"
+                className="rounded-md px-1.5 py-2 text-xs font-medium text-[var(--color-fg-neutral-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
+                href="/about"
+              >
+                소개
+              </Link>
               {isAuthenticated ? (
                 <NotificationButton onClick={notificationEntry.onNotificationClick} />
               ) : null}
