@@ -184,3 +184,21 @@ index 1a0f9d7b9a2ddd68f3b4a19038af9720cf2c3544..51f73354cc6224c74ff99b2d1f38fa7e
      resizeObserver.observe(viewportElement);
      return () => {
        resizeObserver.disconnect();
+diff --git a/drawer/popup/DrawerPopup.js b/drawer/popup/DrawerPopup.js
+--- a/drawer/popup/DrawerPopup.js
++++ b/drawer/popup/DrawerPopup.js
+@@ -278,4 +278,5 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+   (0, _useOpenChangeComplete.useOpenChangeComplete)({
++    enabled: store.context.onOpenChangeComplete != null,
+     open,
+     ref: popupRef,
+     onComplete() {
+diff --git a/drawer/popup/DrawerPopup.mjs b/drawer/popup/DrawerPopup.mjs
+--- a/drawer/popup/DrawerPopup.mjs
++++ b/drawer/popup/DrawerPopup.mjs
+@@ -273,4 +273,5 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+   useOpenChangeComplete({
++    enabled: store.context.onOpenChangeComplete != null,
+     open,
+     ref: popupRef,
+     onComplete() {
