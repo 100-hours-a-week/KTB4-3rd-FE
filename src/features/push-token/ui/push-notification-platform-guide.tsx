@@ -1,10 +1,10 @@
 export function PushNotificationPlatformGuide() {
   return (
-    <details className="mt-4 rounded-xl bg-[var(--color-bg-layer-fill)] px-4 py-3">
+    <details className="relative z-20 mt-4 select-none rounded-xl bg-[var(--color-bg-layer-fill)] px-4 py-3">
       <summary className="cursor-pointer text-sm font-semibold text-[var(--color-fg-neutral)]">
         푸시 알림이 오지 않나요?
       </summary>
-      <div className="mt-3 space-y-4 text-sm text-[var(--color-fg-neutral-muted)]">
+      <div className="absolute top-full left-0 z-30 mt-1 w-full rounded-xl bg-[var(--color-bg-layer-fill)] p-4 text-sm text-[var(--color-fg-neutral-muted)] shadow-lg">
         <section>
           <h2 className="font-semibold text-[var(--color-fg-neutral)]">
             Mac에서 Chrome을 사용하는 경우
