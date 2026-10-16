@@ -1,6 +1,6 @@
 export function PushNotificationPlatformGuide() {
   return (
-    <details className="relative z-20 mt-4 select-none rounded-xl bg-[var(--color-bg-layer-fill)] px-4 py-3">
+    <details className="relative z-20 mt-4 rounded-xl bg-[var(--color-bg-layer-fill)] px-4 py-3 select-none">
       <summary className="cursor-pointer text-sm font-semibold text-[var(--color-fg-neutral)]">
         푸시 알림이 오지 않나요?
       </summary>
