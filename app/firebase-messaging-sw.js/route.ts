@@ -29,6 +29,14 @@ importScripts('https://www.gstatic.com/firebasejs/${FIREBASE_COMPAT_VERSION}/fir
 
 firebase.initializeApp(${JSON.stringify(firebaseConfig).replace(/</g, '\\u003c')});
 
+self.addEventListener('install', (event) => {
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate', (event) => {
+  event.waitUntil(self.clients.claim());
+});
+
 const messaging = firebase.messaging();
 
 messaging.onBackgroundMessage((payload) => {
@@ -38,10 +46,43 @@ messaging.onBackgroundMessage((payload) => {
     return;
   }
 
-  self.registration.showNotification(title, {
+  return self.registration.showNotification(title, {
     body: payload.notification?.body,
     data: payload.data ?? {},
   });
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  event.waitUntil((async () => {
+    const data = event.notification.data ?? {};
+    const isPositiveInteger = (value) => /^\\d+$/.test(String(value ?? '')) && Number(value) > 0;
+    let destination = '/notification';
+
+    if (data.type === 'COMMENT_CREATED' && isPositiveInteger(data.target_post_id)) {
+      destination = '/posts/' + Number(data.target_post_id);
+    } else if (isPositiveInteger(data.target_chat_room_id)) {
+      destination = '/chatroom/' + Number(data.target_chat_room_id);
+    }
+
+    const targetUrl = new URL(destination, self.location.origin);
+
+    if (isPositiveInteger(data.notification_id)) {
+      targetUrl.searchParams.set('fcm_notification_id', String(Number(data.notification_id)));
+    }
+
+    const clients = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+    const client = clients[0];
+
+    if (client) {
+      const navigatedClient = await client.navigate(targetUrl.href);
+      await (navigatedClient ?? client).focus();
+      return;
+    }
+
+    await self.clients.openWindow(targetUrl.href);
+  })());
 });
 `;
 

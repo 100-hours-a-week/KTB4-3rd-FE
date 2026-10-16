@@ -8,6 +8,7 @@ import {
   type Notification,
 } from '@/entities/notification';
 import { useNotificationListQuery } from '@/features/notification-center';
+import { PushNotificationPlatformGuide } from '@/features/push-token';
 import { BackButton } from '@/shared/ui/back-button';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Button } from '@/shared/ui/button';
@@ -168,6 +169,8 @@ export function NotificationPageView({
           options={NOTIFICATION_TAB_OPTIONS}
           value={activeTab}
         />
+
+        <PushNotificationPlatformGuide />
 
         {!isError && (isLoading || visibleNotifications.length > 0) ? (
           <div className="mt-5 flex justify-end pr-3">

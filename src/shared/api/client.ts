@@ -1,4 +1,22 @@
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').replace(/\/$/, '');
+const mockApiEnabled = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+
+let mockApiReady: Promise<void> | null = null;
+
+async function waitForMockApi() {
+  if (!mockApiEnabled || typeof window === 'undefined') {
+    return;
+  }
+
+  mockApiReady ??= import('./mocks/browser')
+    .then(({ startMockApi }) => startMockApi())
+    .catch((error: unknown) => {
+      mockApiReady = null;
+      throw error;
+    });
+
+  await mockApiReady;
+}
 
 export type ApiErrorBody = {
   message?: string;
@@ -88,6 +106,8 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
 }
 
 async function fetchApi(path: string, init: RequestInit, token?: string) {
+  await waitForMockApi();
+
   const headers = new Headers(init.headers);
   const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
 

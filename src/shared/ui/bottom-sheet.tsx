@@ -1,6 +1,6 @@
 'use client';
 
-import { Drawer, type DrawerRootActions } from '@base-ui/react/drawer';
+import { Drawer, type DrawerPopupProps, type DrawerRootActions } from '@base-ui/react/drawer';
 import { useCallback, useRef, useState, type ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
@@ -18,6 +18,7 @@ export type BottomSheetProps = {
   defaultOpen?: boolean;
   onOpenChange?: (open: boolean) => void;
   onOpenChangeComplete?: (open: boolean) => void;
+  initialFocus?: DrawerPopupProps['initialFocus'];
 
   snapPoints?: BottomSheetSnapPoint[];
   defaultSnapPoint?: BottomSheetSnapPoint | null;
@@ -123,6 +124,7 @@ export function BottomSheet({
   defaultOpen,
   onOpenChange,
   onOpenChangeComplete,
+  initialFocus,
   snapPoints,
   defaultSnapPoint,
   snapPoint,
@@ -247,6 +249,7 @@ export function BottomSheet({
         >
           <Drawer.Popup
             aria-label={hasTitle ? undefined : '바텀시트'}
+            initialFocus={initialFocus}
             className={cn(
               popupClassName,
               modal !== true && 'pointer-events-auto',

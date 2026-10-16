@@ -526,6 +526,7 @@ export function HomePage() {
           bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
           className="mx-auto w-full max-w-[393px]"
           defaultSnapPoint="110px"
+          initialFocus={false}
           modal={false}
           open={selectedPost === null}
           showBackdrop={false}
