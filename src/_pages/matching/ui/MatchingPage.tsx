@@ -330,7 +330,7 @@ export function MatchingPage() {
         nearbyCarpools={listContent}
         isListOpen={selection === null}
         onScrollElementChange={setScrollRoot}
-        scrollContentKey={listQueryKey}
+        scrollContentKey={`${listQueryKey}:${pins.length}`}
         onTaxipotClick={onTaxipotClick}
         user={currentUserQuery.data?.data}
       />

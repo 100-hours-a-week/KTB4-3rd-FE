@@ -35,14 +35,13 @@ export function useScrollFog(contentKey?: string | number) {
       return;
     }
 
-    const hasScrollableContent =
-      scrollElement.scrollHeight - scrollElement.clientHeight > SCROLL_EPSILON;
+    const scrollHeight = scrollElement.scrollHeight;
+    const clientHeight = scrollElement.clientHeight;
+    const scrollTop = scrollElement.scrollTop;
+    const hasScrollableContent = scrollHeight - clientHeight > SCROLL_EPSILON;
     const nextState: ScrollFogState = {
-      showBottom:
-        hasScrollableContent &&
-        scrollElement.scrollTop + scrollElement.clientHeight <
-          scrollElement.scrollHeight - SCROLL_EPSILON,
-      showTop: hasScrollableContent && scrollElement.scrollTop > SCROLL_EPSILON,
+      showBottom: hasScrollableContent && scrollTop + clientHeight < scrollHeight - SCROLL_EPSILON,
+      showTop: hasScrollableContent && scrollTop > SCROLL_EPSILON,
     };
 
     setScrollFogState((previousState) =>
@@ -60,12 +59,15 @@ export function useScrollFog(contentKey?: string | number) {
       return;
     }
 
-    updateScrollFogState();
     scrollElement.addEventListener('scroll', updateScrollFogState, { passive: true });
 
     const resizeObserver =
       typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(updateScrollFogState);
-    resizeObserver?.observe(scrollElement);
+    if (resizeObserver) {
+      resizeObserver.observe(scrollElement);
+    } else {
+      updateScrollFogState();
+    }
 
     return () => {
       scrollElement.removeEventListener('scroll', updateScrollFogState);
