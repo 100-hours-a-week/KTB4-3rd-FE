@@ -28,6 +28,8 @@ type ChatMessageListProps = {
   isTaxiPotHost?: boolean;
   onSendMeterPhoto?: (file: File) => void;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  onViewTransferProof?: (settlementId: number, nickname: string) => void;
+  onViewMeterImage?: (settlementId: number) => void;
   uploadingSettlementPhoto?: boolean;
   currentUserId?: number;
 };
@@ -84,6 +86,8 @@ export function ChatMessageList({
   isTaxiPotHost = false,
   onSendMeterPhoto,
   onSendTransferPhoto,
+  onViewTransferProof,
+  onViewMeterImage,
   uploadingSettlementPhoto = false,
   currentUserId,
 }: ChatMessageListProps) {
@@ -355,6 +359,8 @@ export function ChatMessageList({
             isTaxiPotHost={isTaxiPotHost}
             onSendMeterPhoto={onSendMeterPhoto}
             onSendTransferPhoto={onSendTransferPhoto}
+            onViewTransferProof={onViewTransferProof}
+            onViewMeterImage={onViewMeterImage}
             uploadingSettlementPhoto={uploadingSettlementPhoto}
             currentUserId={currentUserId}
           />

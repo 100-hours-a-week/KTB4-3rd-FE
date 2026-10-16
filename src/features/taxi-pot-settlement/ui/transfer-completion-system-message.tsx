@@ -5,7 +5,7 @@ import { Text } from '@/shared/ui/text';
 export type TransferCompletionSystemMessageProps = {
   nickname: string;
   amount: number;
-  onViewReceipt: () => void;
+  onViewReceipt?: () => void;
   className?: string;
 };
 
@@ -39,6 +39,7 @@ export function TransferCompletionSystemMessage({
         <Button
           className="h-[43px] !rounded-[10px]"
           onClick={onViewReceipt}
+          disabled={!onViewReceipt}
           size="medium"
           textVariant="t4Bold"
           variant="neutral-solid"
