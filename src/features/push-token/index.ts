@@ -3,6 +3,7 @@ export { useRegisterPushTokenMutation } from './model/use-register-push-token-mu
 export { PushTokenRegistrationSync } from './model/push-token-registration-sync';
 export { PushNotificationForegroundListener } from './model/push-notification-foreground-listener';
 export { PushNotificationClickHandler } from './model/push-notification-click-handler';
+export { PushNotificationPlatformGuide } from './ui/push-notification-platform-guide';
 export { useNotificationEntry } from './model/use-notification-entry';
 export {
   PushNotificationPermissionDialog,
