@@ -199,7 +199,7 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const MeterAnalysisResults: Story = {
-  args: { scenario: "DELAYED_10S" },
+  args: { scenario: 'DELAYED_10S' },
   parameters: {
     docs: {
       description: {
