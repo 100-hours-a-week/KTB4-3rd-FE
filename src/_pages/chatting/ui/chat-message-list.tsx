@@ -26,8 +26,13 @@ type ChatMessageListProps = {
   onAcknowledgeSettlement?: (settlementId: number) => void;
   completingSettlement?: boolean;
   isTaxiPotHost?: boolean;
-  onSendMeterPhoto?: (file: File) => void;
+  onSendMeterPhoto?: (settlementId: number, file: File) => void;
+  onManualMeterEntry?: (settlementId: number) => void;
+  meterSettlementId?: number;
+  remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
+  onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
   onViewMeterImage?: (settlementId: number) => void;
   uploadingSettlementPhoto?: boolean;
@@ -85,7 +90,12 @@ export function ChatMessageList({
   completingSettlement = false,
   isTaxiPotHost = false,
   onSendMeterPhoto,
+  onManualMeterEntry,
+  meterSettlementId,
+  remainingMeterAttempts,
   onSendTransferPhoto,
+  onRegisterMeterPhotoPicker,
+  onRegisterTransferPhotoPicker,
   onViewTransferProof,
   onViewMeterImage,
   uploadingSettlementPhoto = false,
@@ -358,7 +368,12 @@ export function ChatMessageList({
             completingSettlement={completingSettlement}
             isTaxiPotHost={isTaxiPotHost}
             onSendMeterPhoto={onSendMeterPhoto}
+            onManualMeterEntry={onManualMeterEntry}
+            meterSettlementId={meterSettlementId}
+            remainingMeterAttempts={remainingMeterAttempts}
             onSendTransferPhoto={onSendTransferPhoto}
+            onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
+            onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
             onViewTransferProof={onViewTransferProof}
             onViewMeterImage={onViewMeterImage}
             uploadingSettlementPhoto={uploadingSettlementPhoto}
