@@ -41,6 +41,7 @@ type MockTaxiPot = {
   host_id: number;
   is_participating: boolean;
   is_host: boolean;
+  settlement_id?: number;
 };
 
 function createMockTaxiPots() {
@@ -246,6 +247,9 @@ function toTaxiPotResponse(taxiPot: MockTaxiPot) {
     current_count: taxiPot.current_count,
     capacity: taxiPot.capacity,
     host_id: taxiPot.host_id,
+    ...(taxiPot.status === 'COMPLETED' && taxiPot.settlement_id
+      ? { settlement_id: taxiPot.settlement_id }
+      : {}),
   };
 }
 
@@ -443,6 +447,9 @@ export const taxiPotsHandlers = [
 
     taxiPot.status = nextStatus;
     taxiPot.current_count = taxiPot.capacity;
+    if (nextStatus === 'COMPLETED') {
+      taxiPot.settlement_id = 77;
+    }
 
     return HttpResponse.json({
       message: '운행 상태가 변경됐어요',

@@ -26,6 +26,7 @@ export const getSettlementAnalysisStatusHandler = http.get(
         group_settlement_status: settlement.group_settlement_status,
         meter_analysis_status: settlement.meter_analysis_status,
         total_amount: settlement.total_amount,
+        remaining_meter_attempts: Math.max(0, 2 - settlement.meter_image_attempts),
         ...(settlement.analysis_started_at
           ? { analysis_started_at: settlement.analysis_started_at }
           : {}),

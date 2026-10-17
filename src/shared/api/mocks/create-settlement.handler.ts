@@ -71,6 +71,7 @@ export const createSettlementHandler = http.post('*/settlements', async ({ reque
         group_settlement_status: settlement.group_settlement_status,
         meter_analysis_status: settlement.meter_analysis_status,
         analysis_started_at: settlement.analysis_started_at,
+        remaining_meter_attempts: Math.max(0, 2 - settlement.meter_image_attempts),
       },
     },
     { status: 202 },
