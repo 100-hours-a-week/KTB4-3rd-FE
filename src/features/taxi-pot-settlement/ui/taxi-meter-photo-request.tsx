@@ -255,7 +255,6 @@ export function TaxiMeterPhotoRequest({
           ) : (
             <Button
               className="h-[44px] !rounded-[10px]"
-              disabled={remainingAttempts === undefined}
               onClick={openPhotoPicker}
               size="medium"
               variant="brand-solid"
