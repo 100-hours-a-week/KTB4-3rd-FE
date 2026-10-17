@@ -15,6 +15,7 @@ export type CreateSettlementResponse = ApiResponse<{
   group_settlement_status: GroupSettlementStatus;
   meter_analysis_status: MeterAnalysisStatus;
   analysis_started_at?: string;
+  remaining_meter_attempts: number;
 }>;
 
 export type SettlementAnalysisStatusResponse = ApiResponse<{
@@ -22,6 +23,19 @@ export type SettlementAnalysisStatusResponse = ApiResponse<{
   meter_analysis_status: MeterAnalysisStatus;
   total_amount: number | null;
   analysis_started_at?: string;
+  remaining_meter_attempts: number;
+}>;
+
+export type SubmitMeterImageRequest = {
+  meter_image_key: string;
+};
+
+export type SubmitMeterImageResponse = ApiResponse<{
+  participant_count: number;
+  group_settlement_status: GroupSettlementStatus;
+  meter_analysis_status: MeterAnalysisStatus;
+  analysis_started_at?: string;
+  remaining_meter_attempts: number;
 }>;
 
 export type UpdateSettlementAmountRequest = {

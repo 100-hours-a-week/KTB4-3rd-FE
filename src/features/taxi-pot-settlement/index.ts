@@ -9,6 +9,7 @@ export {
   getSettlementMeterImage,
   settlementQueries,
   submitTransferProof,
+  submitMeterImage,
   updateSettlementAmount,
 } from './api';
 export { useCompleteSettlementMutation } from './model/use-complete-settlement-mutation';
@@ -29,6 +30,8 @@ export type {
   SettlementMeterImageResponse,
   SubmitTransferProofRequest,
   SubmitTransferProofResponse,
+  SubmitMeterImageRequest,
+  SubmitMeterImageResponse,
   UpdateSettlementAmountRequest,
   UpdateSettlementAmountResponse,
 } from './api';

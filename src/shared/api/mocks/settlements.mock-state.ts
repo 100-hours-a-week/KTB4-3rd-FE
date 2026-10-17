@@ -30,6 +30,7 @@ export type MockSettlement = {
   meter_analysis_status: MeterAnalysisStatus;
   meter_image_url?: string;
   meter_analysis_result_pending: boolean;
+  meter_image_attempts: number;
   total_amount: number | null;
   analysis_started_at?: string;
   amount_per_person?: number;
@@ -66,6 +67,7 @@ function createMockSettlements() {
     group_settlement_status: 'PENDING',
     meter_analysis_status: 'ANALYZING',
     meter_analysis_result_pending: false,
+    meter_image_attempts: 1,
     total_amount: null,
     analysis_started_at: currentTimestamp(),
     participants: [
@@ -203,6 +205,18 @@ export function advanceMeterAnalysis(settlement: MockSettlement) {
   }
 }
 
+export function submitMeterImage(settlement: MockSettlement, imageKey: string) {
+  if (settlement.meter_image_attempts >= 2) {
+    return false;
+  }
+  settlement.meter_image_attempts += 1;
+  settlement.meter_image_url = `https://mock-images.local/${imageKey}`;
+  settlement.meter_analysis_status = 'ANALYZING';
+  settlement.meter_analysis_result_pending = true;
+  settlement.analysis_started_at = currentTimestamp();
+  return true;
+}
+
 export function hasValidImageUrl(value: unknown): value is string {
   if (typeof value !== 'string' || value.trim() === '') {
     return false;
@@ -240,6 +254,7 @@ export function createSettlement(
     group_settlement_status: 'PENDING',
     meter_analysis_status: 'ANALYZING',
     meter_analysis_result_pending: true,
+    meter_image_attempts: 1,
     meter_image_url: undefined,
     total_amount: null,
     analysis_started_at: currentTimestamp(),

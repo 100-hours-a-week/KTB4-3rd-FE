@@ -3,6 +3,8 @@ import { queryOptions } from '@tanstack/react-query';
 import { getAccessToken } from '@/entities/auth';
 import { API_QUERY_RETRY_DELAY, shouldRetryApiQuery } from '@/shared/api/query-retry';
 
+import { getMySettlementParticipant } from './get-my-settlement-participant';
+import { getSettlementAnalysisStatus } from './get-settlement-analysis-status';
 import { getSettlementStatus } from './get-settlement-status';
 import { getSettlementMeterImage } from './get-settlement-meter-image';
 import { getSettlementTransferProof } from './get-settlement-transfer-proof';
@@ -39,6 +41,44 @@ export const settlementQueries = {
         return getSettlementStatus(await getAccessToken(), settlementId, signal);
       },
       enabled: enabled && Number.isSafeInteger(settlementId) && (settlementId ?? 0) > 0,
+      retry: shouldRetryApiQuery,
+      retryDelay: API_QUERY_RETRY_DELAY,
+      staleTime: 0,
+    }),
+  analysisStatus: (settlementId?: number, enabled = true) =>
+    queryOptions({
+      queryKey: [...settlementQueries.all(), 'analysis-status', settlementId] as const,
+      queryFn: async ({ signal }) => {
+        if (settlementId === undefined || !hasValidSettlementId(settlementId)) {
+          throw new Error('정산 정보가 필요합니다');
+        }
+
+        return getSettlementAnalysisStatus(await getAccessToken(), settlementId, signal);
+      },
+      enabled: enabled && hasValidSettlementId(settlementId),
+      retry: shouldRetryApiQuery,
+      retryDelay: API_QUERY_RETRY_DELAY,
+      staleTime: 0,
+    }),
+  myParticipant: (settlementId?: number, enabled = true) =>
+    queryOptions({
+      queryKey: [...settlementQueries.all(), 'my-participant', settlementId] as const,
+      queryFn: async ({ signal }) => {
+        if (settlementId === undefined || !hasValidSettlementId(settlementId)) {
+          throw new Error('정산 정보가 필요합니다');
+        }
+
+        return getMySettlementParticipant(await getAccessToken(), settlementId, signal);
+      },
+      enabled: enabled && hasValidSettlementId(settlementId),
+      refetchInterval: (query) => {
+        const data = query.state.data?.data;
+        return data &&
+          'member_analysis_status' in data &&
+          ['PENDING', 'ANALYZING'].includes(data.member_analysis_status)
+          ? 1_000
+          : false;
+      },
       retry: shouldRetryApiQuery,
       retryDelay: API_QUERY_RETRY_DELAY,
       staleTime: 0,

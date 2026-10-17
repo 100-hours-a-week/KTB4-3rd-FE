@@ -130,6 +130,10 @@ const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
   },
 ];
 const subscriptions = new Map<string, ChatRoomSubscription>();
+const settlementSubscriptions = new Map<
+  string,
+  { client: WebSocketHandlerConnection['client']; subscriptionId: string }
+>();
 const processedMessages = new Map<string, MockChatMessage>();
 const pendingMessages = new Map<string, MockChatMessage[]>();
 const previewTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
@@ -233,6 +237,11 @@ function removeClientSubscriptions(client: WebSocketHandlerConnection['client'])
       previewTimers.delete(subscriptionId);
     }
   }
+  for (const [subscriptionKey, subscription] of settlementSubscriptions) {
+    if (subscription.client.id === client.id) {
+      settlementSubscriptions.delete(subscriptionKey);
+    }
+  }
 }
 
 function sendMessageToSubscription(subscription: ChatRoomSubscription, message: MockChatMessage) {
@@ -265,6 +274,28 @@ export function emitMockChatRoomMessage(roomId: string, message: MockChatMessage
 
   if (!delivered) {
     pendingMessages.set(roomId, [...(pendingMessages.get(roomId) ?? []), message]);
+  }
+}
+
+export function emitMockSettlementAnalysisFinished(message: {
+  type: 'METER_ANALYSIS_FINISHED';
+  settlement_id: number;
+  meter_analysis_status: 'PASSED' | 'FAILED';
+  remaining_meter_attempts: number;
+}) {
+  for (const [key, subscription] of settlementSubscriptions) {
+    subscription.client.send(
+      createFrame(
+        'MESSAGE',
+        {
+          destination: '/user/sub/settlement',
+          subscription: subscription.subscriptionId,
+          'message-id': key,
+          'content-type': 'application/json',
+        },
+        JSON.stringify(message),
+      ),
+    );
   }
 }
 
@@ -311,7 +342,18 @@ function handleConnect(client: WebSocketHandlerConnection['client'], frame: Stom
 
 function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: StompFrame) {
   const subscriptionId = getHeader(frame.headers, 'id');
-  const roomId = getRoomId(getHeader(frame.headers, 'destination'), '/sub/chat/');
+  const destination = getHeader(frame.headers, 'destination');
+  if (!subscriptionId) {
+    return;
+  }
+  if (destination === '/user/sub/settlement') {
+    settlementSubscriptions.set(`${client.id}:${subscriptionId}`, { client, subscriptionId });
+    return;
+  }
+  if (destination === '/user/sub/errors') {
+    return;
+  }
+  const roomId = getRoomId(destination, '/sub/chat/');
 
   if (!subscriptionId || !isValidRoom(roomId)) {
     return;
@@ -340,6 +382,7 @@ function handleUnsubscribe(client: WebSocketHandlerConnection['client'], frame: 
 
   if (subscriptionId) {
     subscriptions.delete(`${client.id}:${subscriptionId}`);
+    settlementSubscriptions.delete(`${client.id}:${subscriptionId}`);
   }
 }
 
