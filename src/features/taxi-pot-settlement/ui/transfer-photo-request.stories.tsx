@@ -20,11 +20,11 @@ export default meta;
 type Story = StoryObj<typeof meta>;
 
 export const AttachmentRequest: Story = {
-  args: { onSend: () => {} },
+  args: { onSend: () => {}, settlementId: 77 },
 };
 
 export const PhotoPreview: Story = {
-  args: { onSend: () => {} },
+  args: { onSend: () => {}, settlementId: 77 },
   render: () => (
     <TaxiMeterPhotoConfirmation
       onBack={() => {}}

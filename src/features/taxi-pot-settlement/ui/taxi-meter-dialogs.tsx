@@ -76,6 +76,8 @@ export type TaxiMeterAmountDialogProps = {
   value: string;
   onValueChange: (value: string) => void;
   recognitionFailed?: boolean;
+  allowRetakePhoto?: boolean;
+  submitting?: boolean;
   onSettle?: () => void;
   onRetakePhoto?: () => void;
   onOpenChange?: (open: boolean) => void;
@@ -87,13 +89,15 @@ export function TaxiMeterAmountDialog({
   value,
   onValueChange,
   recognitionFailed = false,
+  allowRetakePhoto = true,
+  submitting = false,
   onSettle,
   onRetakePhoto,
   onOpenChange,
 }: TaxiMeterAmountDialogProps) {
   return (
     <Dialog
-      buttons={recognitionFailed ? 'primarySecondary' : 'primary'}
+      buttons={recognitionFailed && allowRetakePhoto ? 'primarySecondary' : 'primary'}
       className={cn(
         dialogSurfaceClassName,
         actionFooterClassName,
@@ -106,7 +110,12 @@ export function TaxiMeterAmountDialog({
       description={recognitionFailed ? '결제 금액을 직접 입력해주세요' : undefined}
       onOpenChange={onOpenChange}
       open={open}
-      primaryButtonProps={{ className: actionButtonClassName, onClick: onSettle }}
+      primaryButtonProps={{
+        className: actionButtonClassName,
+        disabled: submitting,
+        loading: submitting,
+        onClick: onSettle,
+      }}
       primaryLabel="정산하기"
       primaryVariant="neutral-solid"
       secondaryButtonProps={{
