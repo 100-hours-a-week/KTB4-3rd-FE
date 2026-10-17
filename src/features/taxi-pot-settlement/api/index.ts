@@ -2,6 +2,7 @@ export { createSettlement } from './create-settlement';
 export { getSettlementAnalysisStatus } from './get-settlement-analysis-status';
 export { updateSettlementAmount } from './update-settlement-amount';
 export { submitTransferProof } from './submit-transfer-proof';
+export { submitMeterImage } from './submit-meter-image';
 export { getMySettlementParticipant } from './get-my-settlement-participant';
 export { getSettlementTransferProof } from './get-settlement-transfer-proof';
 export { getSettlementMeterImage } from './get-settlement-meter-image';
@@ -24,6 +25,8 @@ export type {
   SettlementMeterImageResponse,
   SubmitTransferProofRequest,
   SubmitTransferProofResponse,
+  SubmitMeterImageRequest,
+  SubmitMeterImageResponse,
   UpdateSettlementAmountRequest,
   UpdateSettlementAmountResponse,
 } from './settlements.types';

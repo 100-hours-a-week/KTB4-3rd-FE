@@ -15,6 +15,7 @@ export type TaxiPotDetailData = {
   current_count: number;
   capacity: number;
   host_id: number;
+  settlement_id?: number;
 };
 
 export type TaxiPotDetailResponse = ApiResponse<TaxiPotDetailData>;

@@ -7,9 +7,11 @@ import { getSettlementTransferProofHandler } from './get-settlement-transfer-pro
 import { completeSettlementHandler } from './complete-settlement.handler';
 import { getSettlementStatusHandler } from './get-settlement-status.handler';
 import { getSettlementMeterImageHandler } from './get-settlement-meter-image.handler';
+import { submitMeterImageHandler } from './submit-meter-image.handler';
 
 export const settlementHandlers = [
   createSettlementHandler,
+  submitMeterImageHandler,
   getSettlementAnalysisStatusHandler,
   updateSettlementAmountHandler,
   submitTransferProofHandler,

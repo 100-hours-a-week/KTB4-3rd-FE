@@ -10,6 +10,13 @@ export type ChatSettlementSnapshot = {
   };
 };
 
+export type SettlementAnalysisFinishedMessage = {
+  type: 'METER_ANALYSIS_FINISHED';
+  settlement_id: number;
+  meter_analysis_status: 'PASSED' | 'FAILED';
+  remaining_meter_attempts: number;
+};
+
 type ChatWebSocketMessageBase = {
   id: number;
   content?: string | null;
@@ -64,6 +71,7 @@ export type ChatWebSocketClientOptions = {
   accessToken: string;
   url?: string;
   onMessage?: (message: ChatWebSocketMessage) => void;
+  onSettlementAnalysisFinished?: (message: SettlementAnalysisFinishedMessage) => void;
   onStatusChange?: (status: ChatWebSocketStatus) => void;
   onError?: (error: Error) => void;
 };
@@ -201,6 +209,10 @@ export class ChatWebSocketClient {
 
   private readonly subscriptionId = `chat-subscription-${createMessageId()}`;
 
+  private readonly settlementSubscriptionId = `settlement-subscription-${createMessageId()}`;
+
+  private readonly errorSubscriptionId = `error-subscription-${createMessageId()}`;
+
   constructor(options: ChatWebSocketClientOptions) {
     this.options = options;
   }
@@ -313,6 +325,18 @@ export class ChatWebSocketClient {
             destination: `/sub/chat/${this.options.roomId}`,
           }),
         );
+        this.socket?.send(
+          createFrame('SUBSCRIBE', {
+            id: this.settlementSubscriptionId,
+            destination: '/user/sub/settlement',
+          }),
+        );
+        this.socket?.send(
+          createFrame('SUBSCRIBE', {
+            id: this.errorSubscriptionId,
+            destination: '/user/sub/errors',
+          }),
+        );
         this.notifyStatus('open');
         this.resolveConnect?.();
         this.clearPendingConnect();
@@ -321,7 +345,14 @@ export class ChatWebSocketClient {
 
       if (frame.command === 'MESSAGE') {
         try {
-          this.options.onMessage?.(JSON.parse(frame.body) as ChatWebSocketMessage);
+          const message = JSON.parse(frame.body) as { type?: string };
+          if (message.type === 'METER_ANALYSIS_FINISHED') {
+            this.options.onSettlementAnalysisFinished?.(
+              message as SettlementAnalysisFinishedMessage,
+            );
+          } else {
+            this.options.onMessage?.(message as ChatWebSocketMessage);
+          }
         } catch {
           this.options.onError?.(new Error('채팅 메시지를 읽지 못했어요.'));
         }
