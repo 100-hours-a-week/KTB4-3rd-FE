@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { useEffect, useRef, useState, type ChangeEvent } from 'react';
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react';
 
 import { cn } from '@/shared/lib/cn';
 import { Button } from '@/shared/ui/button';
@@ -12,6 +12,9 @@ import { Text } from '@/shared/ui/text';
 
 export type TaxiMeterPhotoRequestProps = {
   onSend: (file: File) => void;
+  onManualEntry?: () => void;
+  onRegisterPhotoPicker?: (openPicker: (() => void) | null) => void;
+  remainingAttempts?: number;
   sending?: boolean;
   className?: string;
 };
@@ -163,6 +166,9 @@ export function TaxiMeterPhotoConfirmation({
 /** A settlement system message that opens the device image picker and previews its result. */
 export function TaxiMeterPhotoRequest({
   onSend,
+  onManualEntry,
+  onRegisterPhotoPicker,
+  remainingAttempts,
   sending = false,
   className,
 }: TaxiMeterPhotoRequestProps) {
@@ -178,7 +184,7 @@ export function TaxiMeterPhotoRequest({
     };
   }, []);
 
-  function openPhotoPicker() {
+  const openPhotoPicker = useCallback(() => {
     if (!inputRef.current || sending) {
       return;
     }
@@ -186,7 +192,12 @@ export function TaxiMeterPhotoRequest({
     // The native value must be cleared to allow selecting the same image again.
     inputRef.current.value = '';
     inputRef.current.click();
-  }
+  }, [sending]);
+
+  useEffect(() => {
+    onRegisterPhotoPicker?.(openPhotoPicker);
+    return () => onRegisterPhotoPicker?.(null);
+  }, [onRegisterPhotoPicker, openPhotoPicker]);
 
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];
@@ -231,15 +242,28 @@ export function TaxiMeterPhotoRequest({
           미터기 사진을 보내주세요
         </Text>
         <div className="-mx-1 w-[calc(100%+8px)]">
-          <Button
-            className="h-[44px] !rounded-[10px]"
-            onClick={openPhotoPicker}
-            size="medium"
-            variant="brand-solid"
-            width="fill"
-          >
-            확인
-          </Button>
+          {remainingAttempts === 0 ? (
+            <Button
+              className="h-[44px] !rounded-[10px]"
+              onClick={onManualEntry}
+              size="medium"
+              variant="brand-solid"
+              width="fill"
+            >
+              수동 입력하기
+            </Button>
+          ) : (
+            <Button
+              className="h-[44px] !rounded-[10px]"
+              disabled={remainingAttempts === undefined}
+              onClick={openPhotoPicker}
+              size="medium"
+              variant="brand-solid"
+              width="fill"
+            >
+              확인
+            </Button>
+          )}
         </div>
       </div>
       <input
@@ -264,14 +288,18 @@ export function TaxiMeterPhotoRequest({
 }
 
 export type TransferPhotoRequestProps = {
+  settlementId: number;
   onSend: (file: File) => void;
+  onRegisterPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   sending?: boolean;
   className?: string;
 };
 
 /** A passenger settlement message that opens the native image picker and previews the selected transfer proof. */
 export function TransferPhotoRequest({
+  settlementId,
   onSend,
+  onRegisterPhotoPicker,
   sending = false,
   className,
 }: TransferPhotoRequestProps) {
@@ -287,14 +315,19 @@ export function TransferPhotoRequest({
     };
   }, []);
 
-  function openPhotoPicker() {
+  const openPhotoPicker = useCallback(() => {
     if (!inputRef.current || sending) {
       return;
     }
 
     inputRef.current.value = '';
     inputRef.current.click();
-  }
+  }, [sending]);
+
+  useEffect(() => {
+    onRegisterPhotoPicker?.(settlementId, openPhotoPicker);
+    return () => onRegisterPhotoPicker?.(settlementId, null);
+  }, [onRegisterPhotoPicker, openPhotoPicker, settlementId]);
 
   function handlePhotoChange(event: ChangeEvent<HTMLInputElement>) {
     const file = event.currentTarget.files?.[0];

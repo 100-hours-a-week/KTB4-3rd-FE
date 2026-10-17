@@ -25,8 +25,13 @@ type ChatMessageItemProps = {
   onAcknowledgeSettlement?: (settlementId: number) => void;
   completingSettlement?: boolean;
   isTaxiPotHost?: boolean;
-  onSendMeterPhoto?: (file: File) => void;
+  onSendMeterPhoto?: (settlementId: number, file: File) => void;
+  onManualMeterEntry?: (settlementId: number) => void;
+  meterSettlementId?: number;
+  remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
+  onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
   onViewMeterImage?: (settlementId: number) => void;
   uploadingSettlementPhoto?: boolean;
@@ -63,7 +68,12 @@ export function ChatMessageItem({
   completingSettlement = false,
   isTaxiPotHost = false,
   onSendMeterPhoto,
+  onManualMeterEntry,
+  meterSettlementId,
+  remainingMeterAttempts,
   onSendTransferPhoto,
+  onRegisterMeterPhotoPicker,
+  onRegisterTransferPhotoPicker,
   onViewTransferProof,
   onViewMeterImage,
   uploadingSettlementPhoto = false,
@@ -76,7 +86,18 @@ export function ChatMessageItem({
       return (
         <TaxiMeterPhotoRequest
           className={className}
-          onSend={onSendMeterPhoto}
+          onSend={(file) => {
+            if (meterSettlementId !== undefined) {
+              onSendMeterPhoto(meterSettlementId, file);
+            }
+          }}
+          onManualEntry={() => {
+            if (meterSettlementId !== undefined) {
+              onManualMeterEntry?.(meterSettlementId);
+            }
+          }}
+          onRegisterPhotoPicker={onRegisterMeterPhotoPicker}
+          remainingAttempts={remainingMeterAttempts}
           sending={uploadingSettlementPhoto}
         />
       );
@@ -110,6 +131,8 @@ export function ChatMessageItem({
           {requestMessage}
           {role === 'passenger' && onSendTransferPhoto ? (
             <TransferPhotoRequest
+              settlementId={message.settlement.settlement_id}
+              onRegisterPhotoPicker={onRegisterTransferPhotoPicker}
               onSend={(file) => onSendTransferPhoto(message.settlement.settlement_id, file)}
               sending={uploadingSettlementPhoto}
             />
