@@ -6,11 +6,40 @@ const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || 'http://dev.moyeota.co
   /\/$/,
   '',
 );
+const CONTENT_SECURITY_POLICY = [
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "object-src 'none'",
+  "script-src 'self' 'unsafe-inline' https://www.gstatic.com https://www.googletagmanager.com https://www.clarity.ms",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https://*.moyeota.com https://dapi.kakao.com https://*.kakao.com https://*.daumcdn.net https://*.googleapis.com https://*.firebaseapp.com https://*.firebaseio.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.clarity.ms https://*.sentry.io wss:",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
+].join('; ');
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  poweredByHeader: false,
   env: {
     NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
+  },
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+        ],
+      },
+    ];
   },
   async redirects() {
     return [
