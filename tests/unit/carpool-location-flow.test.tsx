@@ -146,6 +146,23 @@ describe('CarpoolCreatePage', () => {
     });
   });
 
+  it('현재 위치 역지오코딩 결과가 없으면 출발지를 비워 둔다', async () => {
+    reverseGeocodeLocation.mockResolvedValue({ placeName: null, roadAddress: null });
+    renderPage(<CarpoolCreatePage />);
+
+    await userEvent.click(screen.getByRole('button', { name: '테스트 현재 위치 지정' }));
+
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '출발지' })).toHaveTextContent('출발지');
+      expect(screen.getByRole('button', { name: '출발지' })).not.toHaveTextContent('현재 위치');
+      expect(useCarpoolCreateStore.getState().draft.origin).toEqual({
+        name: '',
+        lat: 37.5,
+        lng: 127,
+      });
+    });
+  });
+
   it('지도를 이동하면 출발 좌표와 역지오코딩한 위치명을 갱신한다', async () => {
     reverseGeocodeLocation.mockResolvedValue({ placeName: '판교역', roadAddress: '판교역로' });
     renderPage(<CarpoolCreatePage />);
