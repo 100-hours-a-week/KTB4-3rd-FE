@@ -274,9 +274,15 @@ jobs:
             NEXT_PUBLIC_CLARITY_PROJECT_ID
           )
 
-          out="$(aws ssm get-parameters --with-decryption \
-            --names "${required[@]/#/${SSM_BUILD_PREFIX}/}" "${optional[@]/#/${SSM_BUILD_PREFIX}/}" \
-            --output json)"
+          # GetParameters는 한 번에 최대 10개까지만 받으므로 10개씩 나눠 조회하고 결과를 합친다.
+          names=("${required[@]/#/${SSM_BUILD_PREFIX}/}" "${optional[@]/#/${SSM_BUILD_PREFIX}/}")
+          chunks=()
+          for ((i = 0; i < ${#names[@]}; i += 10)); do
+            chunks+=("$(aws ssm get-parameters --with-decryption \
+              --names "${names[@]:i:10}" \
+              --output json)")
+          done
+          out="$(printf '%s\n' "${chunks[@]}" | jq -s '{Parameters: (map(.Parameters) | add), InvalidParameters: (map(.InvalidParameters) | add)}')"
 
           missing=()
           for key in "${required[@]}"; do
