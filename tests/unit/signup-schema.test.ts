@@ -44,6 +44,24 @@ describe('signupSchema', () => {
     );
   });
 
+  it('닉네임이 12자를 초과하면 길이 오류 메시지를 반환한다', () => {
+    const result = signupSchema.safeParse({
+      ...baseValues,
+      nickname: '가'.repeat(13),
+    });
+
+    expect(result.success).toBe(false);
+    if (result.success) {
+      throw new Error('12자를 초과한 닉네임이 통과했습니다.');
+    }
+    expect(result.error.issues).toContainEqual(
+      expect.objectContaining({
+        message: '2~12자로 입력해주세요',
+        path: ['nickname'],
+      }),
+    );
+  });
+
   it('은행과 계좌번호를 모두 입력하지 않으면 통과한다', () => {
     expect(signupSchema.safeParse(baseValues).success).toBe(true);
   });
