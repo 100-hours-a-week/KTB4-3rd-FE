@@ -291,6 +291,7 @@ export type TransferPhotoRequestProps = {
   onSend: (file: File) => void;
   onRegisterPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   sending?: boolean;
+  disabled?: boolean;
   className?: string;
 };
 
@@ -300,6 +301,7 @@ export function TransferPhotoRequest({
   onSend,
   onRegisterPhotoPicker,
   sending = false,
+  disabled = false,
   className,
 }: TransferPhotoRequestProps) {
   const inputRef = useRef<HTMLInputElement>(null);
@@ -315,13 +317,13 @@ export function TransferPhotoRequest({
   }, []);
 
   const openPhotoPicker = useCallback(() => {
-    if (!inputRef.current || sending) {
+    if (!inputRef.current || sending || disabled) {
       return;
     }
 
     inputRef.current.value = '';
     inputRef.current.click();
-  }, [sending]);
+  }, [disabled, sending]);
 
   useEffect(() => {
     onRegisterPhotoPicker?.(settlementId, openPhotoPicker);
@@ -373,7 +375,7 @@ export function TransferPhotoRequest({
         <div className="-mx-1 w-[calc(100%+8px)]">
           <Button
             className="h-[44px] !rounded-[10px]"
-            disabled={sending}
+            disabled={sending || disabled}
             onClick={openPhotoPicker}
             size="medium"
             variant="brand-solid"

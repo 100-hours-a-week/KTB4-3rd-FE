@@ -78,6 +78,8 @@ describe('ChatWebSocketClient', () => {
     emitMockSettlementAnalysisFinished({
       type: 'TRANSFER_ANALYZED',
       settlement_id: 123,
+      user_id: 43,
+      name: '홍길동',
       member_analysis_status: 'PASSED',
       transfer_completed: true,
       remaining_transfer_attempts: 1,
@@ -95,6 +97,8 @@ describe('ChatWebSocketClient', () => {
       {
         type: 'TRANSFER_ANALYZED',
         settlement_id: 123,
+        user_id: 43,
+        name: '홍길동',
         member_analysis_status: 'PASSED',
         transfer_completed: true,
         remaining_transfer_attempts: 1,

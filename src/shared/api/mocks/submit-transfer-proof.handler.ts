@@ -114,6 +114,8 @@ export const submitTransferProofHandler = http.post(
         emitMockSettlementAnalysisFinished({
           type: 'TRANSFER_ANALYZED',
           settlement_id: settlement.id,
+          user_id: userId,
+          name: participant.name,
           member_analysis_status: participant.member_analysis_status,
           transfer_completed: participant.member_analysis_status === 'PASSED',
           remaining_transfer_attempts: Math.max(0, 2 - participant.transfer_attempts),

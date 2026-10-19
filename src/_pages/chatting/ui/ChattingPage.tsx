@@ -107,6 +107,8 @@ type MeterAmountTarget = {
 } | null;
 
 const TRANSFER_RETRY_LIMIT_MESSAGE = '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.';
+const TRANSFER_AMOUNT_MISMATCH_MESSAGE = '송금 금액이 일치하지 않아요';
+const TRANSFER_MANUAL_COMPARISON_MESSAGE = '대면 비교 요청 부탁드립니다';
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -258,6 +260,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [transferAnalysisSettlementId, setTransferAnalysisSettlementId] = useState<number | null>(
     null,
   );
+  const [transferSubmissionBlockedSettlementId, setTransferSubmissionBlockedSettlementId] =
+    useState<number | null>(null);
   const [analysisResetKey, setAnalysisResetKey] = useState(0);
   const meterPhotoPickerRef = useRef<(() => void) | null>(null);
   const transferPhotoPickerRefs = useRef(new Map<number, () => void>());
@@ -479,10 +483,20 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           queryKey: settlementQueries.myParticipant(message.settlement_id).queryKey,
         });
 
-        if (message.member_analysis_status === 'FAILED') {
-          setTransferAnalysisSettlementId(message.settlement_id);
-        } else if (message.member_analysis_status === 'PASSED') {
+        if (message.transfer_completed) {
+          setTransferSubmissionBlockedSettlementId(message.settlement_id);
           setTransferAnalysisSettlementId(null);
+        } else if (message.remaining_transfer_attempts === 0) {
+          setTransferSubmissionBlockedSettlementId(message.settlement_id);
+          setTransferAnalysisSettlementId(null);
+          useSnackbarStore.getState().showSnackbar(TRANSFER_MANUAL_COMPARISON_MESSAGE, 'critical');
+        } else if (message.member_analysis_status === 'FAILED') {
+          setTransferSubmissionBlockedSettlementId(null);
+          setTransferAnalysisSettlementId(message.settlement_id);
+        } else {
+          setTransferSubmissionBlockedSettlementId(null);
+          setTransferAnalysisSettlementId(null);
+          useSnackbarStore.getState().showSnackbar(TRANSFER_AMOUNT_MISMATCH_MESSAGE, 'critical');
         }
 
         activeAnalysisSettlementIdRef.current = null;
@@ -840,6 +854,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     async (settlementId: number, file: File) => {
       activeAnalysisSettlementIdRef.current = settlementId;
       analysisCompletionHandledRef.current = false;
+      setTransferSubmissionBlockedSettlementId(null);
       setUploadingSettlementPhoto(true);
       settlementAnalysisFinishedMessageRef.current = null;
       try {
@@ -869,7 +884,10 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           setTransferAnalysisSettlementId(settlementId);
         }
 
-        if (finishedTransferMessage?.member_analysis_status !== 'PASSED') {
+        if (
+          finishedTransferMessage?.member_analysis_status === 'FAILED' &&
+          finishedTransferMessage.remaining_transfer_attempts > 0
+        ) {
           setTransferAnalysisSettlementId(settlementId);
         }
       } catch (error) {
@@ -877,12 +895,12 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         analysisCompletionHandledRef.current = false;
         setTransferAnalysisSettlementId(null);
         setAnalysisResetKey((currentKey) => currentKey + 1);
-        const errorMessage =
-          error instanceof ApiError && error.code === 'TRANSFER_RETRY_LIMIT_EXCEEDED'
-            ? TRANSFER_RETRY_LIMIT_MESSAGE
-            : error instanceof Error
-              ? error.message
-              : '송금 사진을 보내지 못했어요';
+        let errorMessage = '송금 사진을 보내지 못했어요';
+        if (error instanceof ApiError && error.code === 'TRANSFER_RETRY_LIMIT_EXCEEDED') {
+          errorMessage = TRANSFER_RETRY_LIMIT_MESSAGE;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
         useSnackbarStore.getState().showSnackbar(errorMessage, 'critical');
       } finally {
         setUploadingSettlementPhoto(false);
@@ -1072,6 +1090,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
             hideMeterRequestMessage={meterAnalysisStatus === 'PASSED'}
             remainingMeterAttempts={remainingMeterAttempts}
             onSendTransferPhoto={handleSendTransferPhoto}
+            transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
             onRegisterMeterPhotoPicker={handleRegisterMeterPhotoPicker}
             onRegisterTransferPhotoPicker={handleRegisterTransferPhotoPicker}
             onViewTransferProof={handleViewTransferProof}
@@ -1206,6 +1225,7 @@ type ChattingPageContentProps = {
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
   onSendTransferPhoto: (settlementId: number, file: File) => void;
+  transferSubmissionBlockedSettlementId: number | null;
   onRegisterMeterPhotoPicker: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof: (settlementId: number, nickname: string) => void;
@@ -1262,6 +1282,7 @@ function ChattingPageContent({
   meterSettlementId,
   remainingMeterAttempts,
   onSendTransferPhoto,
+  transferSubmissionBlockedSettlementId,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -1351,6 +1372,7 @@ function ChattingPageContent({
           meterSettlementId={meterSettlementId}
           remainingMeterAttempts={remainingMeterAttempts}
           onSendTransferPhoto={onSendTransferPhoto}
+          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
           onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
           onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
           onViewTransferProof={onViewTransferProof}

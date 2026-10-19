@@ -32,6 +32,7 @@ type ChatRoomContentProps = {
   remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
   analysisResetKey?: number;
+  transferSubmissionBlockedSettlementId?: number | null;
   onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
@@ -66,6 +67,7 @@ export function ChatRoomContent({
   remainingMeterAttempts,
   onSendTransferPhoto,
   analysisResetKey,
+  transferSubmissionBlockedSettlementId = null,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -135,6 +137,7 @@ export function ChatRoomContent({
           remainingMeterAttempts={remainingMeterAttempts}
           onSendTransferPhoto={onSendTransferPhoto}
           analysisResetKey={analysisResetKey}
+          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
           onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
           onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
           onViewTransferProof={onViewTransferProof}

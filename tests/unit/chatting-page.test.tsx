@@ -9,7 +9,10 @@ import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
 import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
-import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.handlers';
+import {
+  emitMockChatRoomMessage,
+  emitMockSettlementAnalysisFinished,
+} from '@/shared/api/mocks/chat-room-websocket.handlers';
 import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
@@ -737,6 +740,107 @@ describe('ChattingPage', () => {
     expect(screen.getByRole('status')).toHaveTextContent(
       '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.',
     );
+  });
+
+  it('송금 금액이 불일치하면 Snackbar를 표시하고 재제출할 수 있다', async () => {
+    const user = userEvent.setup();
+    mockTransferPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/transfer-proof', () =>
+        HttpResponse.json(
+          {
+            message: 'AI 송금 분석 상태를 확인하세요.',
+            data: {
+              group_settlement_status: 'REQUESTED',
+              remaining_transfer_attempts: 1,
+            },
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('송금한 화면을 첨부해주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('송금 사진 선택'),
+      new File(['transfer'], 'transfer.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(
+      await screen.findByRole('dialog', { name: '이미지를 분석하고있어요' }),
+    ).toBeInTheDocument();
+
+    emitMockSettlementAnalysisFinished({
+      type: 'TRANSFER_ANALYZED',
+      settlement_id: 77,
+      user_id: 8,
+      name: '테스트 유저',
+      member_analysis_status: 'PASSED',
+      transfer_completed: false,
+      remaining_transfer_attempts: 1,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('송금 금액이 일치하지 않아요');
+      expect(
+        screen.queryByRole('dialog', { name: '이미지를 분석하고있어요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '사진 첨부하기' })).not.toBeDisabled();
+  });
+
+  it('송금 인증 횟수를 모두 사용하면 대면 비교 안내를 표시하고 제출 버튼을 막는다', async () => {
+    const user = userEvent.setup();
+    mockTransferPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/transfer-proof', () =>
+        HttpResponse.json(
+          {
+            message: 'AI 송금 분석 상태를 확인하세요.',
+            data: {
+              group_settlement_status: 'REQUESTED',
+              remaining_transfer_attempts: 0,
+            },
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('송금한 화면을 첨부해주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('송금 사진 선택'),
+      new File(['transfer'], 'transfer.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(
+      await screen.findByRole('dialog', { name: '이미지를 분석하고있어요' }),
+    ).toBeInTheDocument();
+
+    emitMockSettlementAnalysisFinished({
+      type: 'TRANSFER_ANALYZED',
+      settlement_id: 77,
+      user_id: 8,
+      name: '테스트 유저',
+      member_analysis_status: 'FAILED',
+      transfer_completed: false,
+      remaining_transfer_attempts: 0,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('대면 비교 요청 부탁드립니다');
+      expect(
+        screen.queryByRole('dialog', { name: '이미지를 분석하고있어요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '사진 첨부하기' })).toBeDisabled();
+    expect(
+      screen.queryByRole('dialog', { name: '사진 인식을 실패했어요' }),
+    ).not.toBeInTheDocument();
   });
 
   it('나가기 버튼을 누르면 확인 후 DELETE 요청을 보내고 홈으로 이동한다', async () => {

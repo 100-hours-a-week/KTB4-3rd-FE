@@ -32,6 +32,7 @@ type ChatMessageItemProps = {
   remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
   analysisResetKey?: number;
+  transferPhotoDisabled?: boolean;
   onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
@@ -93,6 +94,7 @@ export function ChatMessageItem({
   remainingMeterAttempts,
   onSendTransferPhoto,
   analysisResetKey,
+  transferPhotoDisabled = false,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -166,6 +168,7 @@ export function ChatMessageItem({
               key={`transfer-photo-${analysisResetKey ?? 0}`}
               onRegisterPhotoPicker={onRegisterTransferPhotoPicker}
               onSend={(file) => onSendTransferPhoto(message.settlement.settlement_id, file)}
+              disabled={transferPhotoDisabled}
               sending={uploadingSettlementPhoto}
             />
           ) : null}

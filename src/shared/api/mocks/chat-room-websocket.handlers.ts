@@ -287,6 +287,8 @@ type MockSettlementAnalysisFinishedMessage =
   | {
       type: 'TRANSFER_ANALYZED';
       settlement_id: number;
+      user_id: number;
+      name: string;
       member_analysis_status: 'PASSED' | 'FAILED';
       transfer_completed: boolean;
       remaining_transfer_attempts: number;
