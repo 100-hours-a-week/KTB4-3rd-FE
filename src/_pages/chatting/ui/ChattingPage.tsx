@@ -108,7 +108,6 @@ type MeterAmountTarget = {
 
 const TRANSFER_RETRY_LIMIT_MESSAGE = '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.';
 const TRANSFER_AMOUNT_MISMATCH_MESSAGE = '송금 금액이 일치하지 않아요';
-const TRANSFER_MANUAL_COMPARISON_MESSAGE = '대면 비교 요청 부탁드립니다';
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -489,7 +488,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         } else if (message.remaining_transfer_attempts === 0) {
           setTransferSubmissionBlockedSettlementId(message.settlement_id);
           setTransferAnalysisSettlementId(null);
-          useSnackbarStore.getState().showSnackbar(TRANSFER_MANUAL_COMPARISON_MESSAGE, 'critical');
+          useSnackbarStore.getState().showSnackbar(TRANSFER_RETRY_LIMIT_MESSAGE, 'critical');
         } else if (message.member_analysis_status === 'FAILED') {
           setTransferSubmissionBlockedSettlementId(null);
           setTransferAnalysisSettlementId(message.settlement_id);

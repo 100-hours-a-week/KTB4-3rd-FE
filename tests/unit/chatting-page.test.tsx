@@ -832,7 +832,9 @@ describe('ChattingPage', () => {
     });
 
     await waitFor(() => {
-      expect(screen.getByRole('status')).toHaveTextContent('대면 비교 요청 부탁드립니다');
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.',
+      );
       expect(
         screen.queryByRole('dialog', { name: '이미지를 분석하고있어요' }),
       ).not.toBeInTheDocument();
