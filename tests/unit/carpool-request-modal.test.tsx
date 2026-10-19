@@ -42,6 +42,33 @@ describe('CarpoolRequestModal', () => {
     expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
   });
 
+  it('keeps both decision buttons in a shared-width row without horizontal overflow', () => {
+    render(
+      <CarpoolRequestModal
+        canAccept
+        canReject
+        onAccept={vi.fn<() => void>()}
+        onClose={vi.fn<() => void>()}
+        onReject={vi.fn<() => void>()}
+        open
+        processingAction={null}
+        request={request}
+        status="content"
+      />,
+    );
+
+    const acceptButton = screen.getByRole('button', { name: '수락' });
+    const rejectButton = screen.getByRole('button', { name: '거절' });
+
+    expect(acceptButton.className).toContain('flex-1');
+    expect(acceptButton.className).toContain('!shrink');
+    expect(acceptButton.className).toContain('!min-w-0');
+    expect(rejectButton.className).toContain('flex-1');
+    expect(rejectButton.className).toContain('!shrink');
+    expect(rejectButton.className).toContain('!min-w-0');
+    expect(acceptButton.parentElement?.className).toContain('gap-3');
+  });
+
   it('disables only the accept action when accepting is unavailable', () => {
     render(
       <CarpoolRequestModal

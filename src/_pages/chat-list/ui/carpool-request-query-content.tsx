@@ -19,6 +19,7 @@ import {
 } from '@/features/carpool-request-review';
 import { ApiError } from '@/shared/api/client';
 import { carpoolQueries } from '@/shared/api/carpool';
+import { Dialog } from '@/shared/ui/dialog';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { chatRoomListQueries } from '@/_pages/chat-list/api/chat-room-list';
 import {
@@ -45,6 +46,13 @@ type SelectedRequest = {
   viewerId: number;
   detailUpdateCountAtOpen: number;
   needsServerDetail: boolean;
+};
+
+type PendingListDecision = {
+  action: Exclude<RequestProcessingAction, null>;
+  carpoolId: number;
+  requestId: number;
+  requesterName: string;
 };
 
 const uncertainDecisionKeys = new Set<string>();
@@ -198,6 +206,7 @@ export function CarpoolRequestQueryContent({
   const query = useCarpoolRequestListQuery({ direction, enabled: isAuthenticated, viewerId });
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<SelectedRequest | null>(null);
+  const [pendingListDecision, setPendingListDecision] = useState<PendingListDecision | null>(null);
   const [processingAction, setProcessingAction] = useState<RequestProcessingAction>(null);
   const [awaitingReconciliation, setAwaitingReconciliation] = useState(false);
   const [isReconciling, setIsReconciling] = useState(false);
@@ -609,6 +618,44 @@ export function CarpoolRequestQueryContent({
     [direction, query.data, queryClient, viewerId],
   );
 
+  const handleListDecisionClick = useCallback(
+    (carpoolId: number, requestId: number, action: Exclude<RequestProcessingAction, null>) => {
+      if (direction !== 'RECEIVED' || !query.data || viewerId === null) {
+        return;
+      }
+      const preview = query.data.pages
+        .flatMap((page) => page.data.items)
+        .find((item) => item.carpool_id === carpoolId && item.id === requestId);
+
+      if (!preview) {
+        return;
+      }
+
+      const queryKey = carpoolRequestQueryKeys.detail(viewerId, carpoolId, requestId);
+      const detailUpdateCountAtOpen = queryClient.getQueryState(queryKey)?.dataUpdateCount ?? 0;
+      const key = decisionKey(viewerId, carpoolId, requestId);
+      const isUncertain = uncertainDecisionKeys.has(key);
+      setSelected({
+        carpoolId,
+        requestId,
+        preview,
+        viewerId,
+        detailUpdateCountAtOpen,
+        needsServerDetail: isUncertain || capacityBlockedAcceptKeys.has(key),
+      });
+      setNotice(undefined);
+      setReconciliationFailed(false);
+      setAwaitingReconciliation(isUncertain);
+      setPendingListDecision({
+        action,
+        carpoolId,
+        requestId,
+        requesterName: preview.counterpart.name,
+      });
+    },
+    [direction, query.data, queryClient, viewerId],
+  );
+
   let state: CarpoolRequestListState;
   if (!isAuthenticated || viewerId === null || (query.isPending && !query.data)) {
     state = { status: 'loading' };
@@ -658,7 +705,12 @@ export function CarpoolRequestQueryContent({
     detail = previewDetail(selected.preview).data;
   }
   let modal = null;
-  if (selectedRequest && selected?.viewerId === viewerId && isAuthenticated) {
+  if (
+    selectedRequest &&
+    selected?.viewerId === viewerId &&
+    isAuthenticated &&
+    !pendingListDecision
+  ) {
     const detailUnavailable =
       selected.needsServerDetail &&
       detailQuery.error instanceof ApiError &&
@@ -719,10 +771,42 @@ export function CarpoolRequestQueryContent({
       <CarpoolRequestListContent
         direction={direction}
         onChatClick={onChatClick}
+        onRequestDecisionClick={handleListDecisionClick}
         onRequestClick={handleRequestClick}
         state={state}
       />
       {modal}
+      <Dialog
+        buttons="primarySecondary"
+        description={
+          pendingListDecision?.action === 'accept'
+            ? `${pendingListDecision.requesterName}님의 카풀 요청을 수락할까요?`
+            : `${pendingListDecision?.requesterName ?? ''}님의 카풀 요청을 거절할까요?`
+        }
+        onOpenChange={(open) => {
+          if (!open) {
+            setPendingListDecision(null);
+            if (!actionLock.current) {
+              setSelected(null);
+            }
+          }
+        }}
+        open={pendingListDecision !== null}
+        primaryButtonProps={{
+          onClick: () => {
+            if (pendingListDecision) {
+              void handleDecision(pendingListDecision.action);
+            }
+          },
+        }}
+        primaryLabel={pendingListDecision?.action === 'accept' ? '수락하기' : '거절하기'}
+        primaryVariant={pendingListDecision?.action === 'reject' ? 'critical-solid' : 'brand-solid'}
+        secondaryButtonProps={{ onClick: () => setSelected(null) }}
+        secondaryLabel="취소"
+        title={
+          pendingListDecision?.action === 'accept' ? '요청을 수락할까요?' : '요청을 거절할까요?'
+        }
+      />
     </>
   );
 }

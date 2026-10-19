@@ -2,6 +2,8 @@ export type ChatCarpoolTab = 'chat' | 'carpool';
 export type CarpoolRequestDirection = 'SENT' | 'RECEIVED';
 export type CarpoolRequestStatus = 'PENDING' | 'ACCEPTED' | 'REJECTED' | 'EXPIRED';
 
+export const CARPOOL_REQUEST_AVATAR_PLACEHOLDER_SRC = '/avatars/carpool-request-placeholder.svg';
+
 export type CarpoolUser = {
   id: number;
   name: string;

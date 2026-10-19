@@ -20,6 +20,7 @@ export type BottomModalProps = {
   onOpenChange?: (open: boolean) => void;
   bottomOffset?: number | string;
   className?: string;
+  ariaLabel?: string;
 };
 
 const modalClassName =
@@ -47,6 +48,7 @@ export function BottomModal({
   onOpenChange,
   bottomOffset = '8px',
   className,
+  ariaLabel = '바텀모달',
 }: BottomModalProps) {
   const popupRef = useRef<HTMLDivElement | null>(null);
   const [internalOpen, setInternalOpen] = useState(defaultOpen);
@@ -86,7 +88,7 @@ export function BottomModal({
           onMouseDown={keepFocusWhenLocked}
         />
         <BaseDialog.Popup
-          aria-label="바텀모달"
+          aria-label={ariaLabel}
           className={cn(modalClassName, 'outline-none', className)}
           data-testid="bottom-modal"
           ref={popupRef}

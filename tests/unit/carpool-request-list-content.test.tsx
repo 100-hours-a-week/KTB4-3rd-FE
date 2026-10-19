@@ -52,6 +52,9 @@ describe('CarpoolRequestListContent pagination', () => {
       <CarpoolRequestListContent
         direction="RECEIVED"
         onChatClick={vi.fn<(chatRoomId: number) => void>()}
+        onRequestDecisionClick={vi.fn<
+          (carpoolId: number, requestId: number, action: 'accept' | 'reject') => void
+        >()}
         onRequestClick={vi.fn<(carpoolId: number, requestId: number) => void>()}
         state={state}
       />,

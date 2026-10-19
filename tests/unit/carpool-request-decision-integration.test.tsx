@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider, type InfiniteData } from '@tanstack/react-query';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { type ReactNode } from 'react';
@@ -60,9 +60,24 @@ function createWrapper() {
 }
 
 async function openReceivedRequests(user: ReturnType<typeof userEvent.setup>) {
+  await openReceivedRequestList(user);
+  await user.click(await screen.findByRole('button', { name: '이루디님의 카풀 요청 상세 보기' }));
+}
+
+async function openReceivedRequestList(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('tab', { name: '카풀' }));
   await user.click(screen.getByRole('tab', { name: '받은 요청' }));
-  await user.click(await screen.findByRole('button', { name: '요청 확인' }));
+}
+
+function getRequestDialogButton(name: string) {
+  return within(screen.getByRole('dialog', { name: '카풀 요청 확인' })).getByRole('button', {
+    name,
+  });
+}
+
+function queryRequestDialogButton(name: string) {
+  const dialog = screen.queryByRole('dialog', { name: '카풀 요청 확인' });
+  return dialog ? within(dialog).queryByRole('button', { name }) : null;
 }
 
 function requestListHandler(getItems: () => (typeof receivedItem)[] = () => [receivedItem]) {
@@ -116,6 +131,32 @@ afterEach(() => {
 });
 
 describe('채팅 내 받은 카풀 요청 처리', () => {
+  it('목록에서 수락을 누르면 재확인 후에 요청을 처리한다', async () => {
+    const user = userEvent.setup();
+    const { Wrapper } = createWrapper();
+    const onDecision = vi.fn<() => void>();
+    server.use(
+      http.patch('*/carpools/53/join-requests/90', () => {
+        onDecision();
+        return HttpResponse.json({
+          message: '요청을 수락했습니다',
+          data: { id: 90, status: 'ACCEPTED', chat_room_id: 301, current_count: 3, capacity: 4 },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await openReceivedRequestList(user);
+    const requestButtons = await screen.findAllByRole('button', { name: '수락' });
+    await user.click(requestButtons[0]);
+
+    expect(screen.getByRole('dialog', { name: '요청을 수락할까요?' })).toBeInTheDocument();
+    expect(onDecision).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '수락하기' }));
+    await waitFor(() => expect(onDecision).toHaveBeenCalledOnce());
+  });
+
   it('첫 페이지가 비어 있어도 다음 커서가 있으면 항목을 찾을 때까지 조회한다', async () => {
     const user = userEvent.setup();
     let releaseNextPage: (() => void) | undefined;
@@ -170,7 +211,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     expect(cursors).toEqual([null, 'after-empty-page', 'after-second-empty-page']);
 
     releaseNextPage?.();
-    expect(await screen.findByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: '수락' })).toBeInTheDocument();
     expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
   });
 
@@ -248,7 +289,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '수락' }));
+    await user.click(getRequestDialogButton('수락'));
 
     await waitFor(() => {
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' })).not.toBeInTheDocument();
@@ -313,7 +354,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '거절' }));
+    await user.click(getRequestDialogButton('거절'));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
     await waitFor(() =>
@@ -372,9 +413,9 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     render(<ChatListPage />, { wrapper: Wrapper });
     await user.click(await screen.findByRole('tab', { name: '카풀' }));
     await user.click(screen.getByRole('tab', { name: '받은 요청' }));
-    const requestButtons = await screen.findAllByRole('button', { name: '요청 확인' });
+    const requestButtons = await screen.findAllByRole('button', { name: '수락' });
     await user.click(requestButtons[0]);
-    await user.click(await screen.findByRole('button', { name: '수락' }));
+    await user.click(screen.getByRole('button', { name: '수락하기' }));
 
     await waitFor(
       () => {
@@ -384,7 +425,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       },
       { timeout: 5_000 },
     );
-    expect(screen.getAllByRole('button', { name: '요청 확인' })).toHaveLength(1);
+    expect(screen.getAllByRole('button', { name: '수락' })).toHaveLength(1);
     expect(receivedListRequestCount).toBeGreaterThan(2);
   });
 
@@ -452,7 +493,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '수락' }));
+    await user.click(getRequestDialogButton('수락'));
 
     await waitFor(
       () => {
@@ -466,7 +507,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       },
       { timeout: 5_000 },
     );
-    expect(screen.getByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '수락' })).toBeInTheDocument();
     expect(cursors).toContain('after-first-page');
     expect(screen.queryByTestId('carpool-request-list-empty')).not.toBeInTheDocument();
   });
@@ -511,7 +552,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
       },
       { timeout: 5_000 },
     );
-    expect(screen.getByRole('button', { name: '요청 확인' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '수락' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '더 불러오기' })).toBeInTheDocument();
     expect(receivedListRequestCount).toBeGreaterThan(1);
   });
@@ -538,14 +579,14 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '거절' }));
+    await user.click(getRequestDialogButton('거절'));
 
     expect(await screen.findByText('입력값을 확인해주세요')).toBeInTheDocument();
     expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
     expect(screen.getByText(receivedItem.content)).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '거절' })).toBeEnabled();
+    expect(getRequestDialogButton('거절')).toBeEnabled();
 
-    await user.click(screen.getByRole('button', { name: '거절' }));
+    await user.click(getRequestDialogButton('거절'));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' })).not.toBeInTheDocument(),
     );
@@ -576,11 +617,11 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '수락' }));
+    await user.click(getRequestDialogButton('수락'));
     await patchStarted;
 
-    expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
+    expect(getRequestDialogButton('수락')).toBeDisabled();
+    expect(getRequestDialogButton('거절')).toBeDisabled();
     expect(screen.queryByRole('button', { name: '닫기' })).not.toBeInTheDocument();
     await user.keyboard('{Escape}');
     expect(screen.getByRole('dialog', { name: '카풀 요청 확인' })).toBeInTheDocument();
@@ -626,21 +667,21 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     await openReceivedRequests(user);
     expect(screen.getByText(receivedItem.content)).toBeInTheDocument();
     expect(detailCount).toBe(0);
-    await user.click(screen.getByRole('button', { name: '수락' }));
+    await user.click(getRequestDialogButton('수락'));
     expect(
       await screen.findByText(
         '요청이 아직 대기 중으로 보여요. 처리 결과가 확인될 때까지 수락과 거절은 잠겨 있어요.',
       ),
     ).toBeInTheDocument();
     expect(detailCount).toBe(1);
-    expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
+    expect(getRequestDialogButton('수락')).toBeDisabled();
+    expect(getRequestDialogButton('거절')).toBeDisabled();
     expect(patchCount).toBe(1);
 
     await user.click(screen.getByRole('button', { name: '요청 상태 다시 확인' }));
     await waitFor(() => expect(detailCount).toBe(2));
-    expect(screen.getByRole('button', { name: '수락' })).toBeDisabled();
-    expect(screen.getByRole('button', { name: '거절' })).toBeDisabled();
+    expect(getRequestDialogButton('수락')).toBeDisabled();
+    expect(getRequestDialogButton('거절')).toBeDisabled();
     expect(patchCount).toBe(1);
 
     await user.click(screen.getByRole('button', { name: '요청 상태 다시 확인' }));
@@ -677,25 +718,21 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
     render(<ChatListPage />, { wrapper: Wrapper });
     await openReceivedRequests(user);
-    await user.click(await screen.findByRole('button', { name: '수락' }));
+    await user.click(getRequestDialogButton('수락'));
     await waitFor(() => expect(useSnackbarStore.getState().description).toBe(message));
     await waitFor(() =>
       expect(screen.queryByRole('dialog', { name: '카풀 요청 확인' }) !== null).toBe(remainsOpen),
     );
-    expect(screen.queryByRole('button', { name: '거절' }) !== null).toBe(remainsOpen);
-    expect(Boolean(screen.queryByRole('button', { name: '수락' })?.hasAttribute('disabled'))).toBe(
+    expect(queryRequestDialogButton('거절') !== null).toBe(remainsOpen);
+    expect(Boolean(queryRequestDialogButton('수락')?.hasAttribute('disabled'))).toBe(
       code === 'CAPACITY_FULL',
     );
     if (code === 'CAPACITY_FULL') {
-      rejectEnabledAfterCapacityFull = !screen
-        .getByRole('button', { name: '거절' })
-        .hasAttribute('disabled');
+      rejectEnabledAfterCapacityFull = !getRequestDialogButton('거절').hasAttribute('disabled');
       await user.click(screen.getByRole('button', { name: '닫기' }));
       await openReceivedRequests(user);
       await waitFor(() => {
-        acceptEnabledAfterReopen = !screen
-          .getByRole('button', { name: '수락' })
-          .hasAttribute('disabled');
+        acceptEnabledAfterReopen = !getRequestDialogButton('수락').hasAttribute('disabled');
         if (!acceptEnabledAfterReopen) {
           throw new Error('상세 재조회 후 수락을 다시 시도할 수 있어야 합니다.');
         }
@@ -758,7 +795,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
 
       render(<ChatListPage />, { wrapper: Wrapper });
       await openReceivedRequests(user);
-      await user.click(screen.getByRole('button', { name: '수락' }));
+      await user.click(getRequestDialogButton('수락'));
 
       await waitFor(() => expect(useSnackbarStore.getState().description).toBe(message));
       await waitFor(() =>
