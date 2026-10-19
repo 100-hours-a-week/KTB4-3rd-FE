@@ -50,6 +50,7 @@ import {
   useTaxiPotChatFlow,
 } from '@/features/taxi-pot-chat';
 import { useCurrentUserQuery } from '@/features/user-profile';
+import { ApiError } from '@/shared/api/client';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
@@ -104,6 +105,8 @@ type MeterAmountTarget = {
   settlementId: number;
   recognitionFailed: boolean;
 } | null;
+
+const TRANSFER_RETRY_LIMIT_MESSAGE = '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.';
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -835,23 +838,52 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   );
   const handleSendTransferPhoto = useCallback(
     async (settlementId: number, file: File) => {
+      activeAnalysisSettlementIdRef.current = settlementId;
+      analysisCompletionHandledRef.current = false;
       setUploadingSettlementPhoto(true);
+      settlementAnalysisFinishedMessageRef.current = null;
       try {
         const token = await getAccessToken();
         const imageKey = await uploadSettlementImage(token, 'TRANSFER', file);
-        await submitTransferProof(token, settlementId, { transfer_image_key: imageKey });
+        const response = await submitTransferProof(token, settlementId, {
+          transfer_image_key: imageKey,
+        });
+        if (response.status !== 202) {
+          throw new Error('송금 사진 분석 요청을 시작하지 못했어요');
+        }
+
         await queryClient.removeQueries({
           queryKey: settlementQueries.myParticipant(settlementId).queryKey,
           exact: true,
         });
-        setTransferAnalysisSettlementId(settlementId);
+        const finishedMessage =
+          settlementAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
+        const finishedTransferMessage =
+          finishedMessage?.type === 'TRANSFER_ANALYZED' &&
+          finishedMessage.settlement_id === settlementId
+            ? finishedMessage
+            : null;
+
+        if (!finishedTransferMessage) {
+          setAnalysisResetKey((currentKey) => currentKey + 1);
+          setTransferAnalysisSettlementId(settlementId);
+        }
+
+        if (finishedTransferMessage?.member_analysis_status !== 'PASSED') {
+          setTransferAnalysisSettlementId(settlementId);
+        }
       } catch (error) {
-        useSnackbarStore
-          .getState()
-          .showSnackbar(
-            error instanceof Error ? error.message : '송금 사진을 보내지 못했어요',
-            'critical',
-          );
+        activeAnalysisSettlementIdRef.current = null;
+        analysisCompletionHandledRef.current = false;
+        setTransferAnalysisSettlementId(null);
+        setAnalysisResetKey((currentKey) => currentKey + 1);
+        const errorMessage =
+          error instanceof ApiError && error.code === 'TRANSFER_RETRY_LIMIT_EXCEEDED'
+            ? TRANSFER_RETRY_LIMIT_MESSAGE
+            : error instanceof Error
+              ? error.message
+              : '송금 사진을 보내지 못했어요';
+        useSnackbarStore.getState().showSnackbar(errorMessage, 'critical');
       } finally {
         setUploadingSettlementPhoto(false);
       }
