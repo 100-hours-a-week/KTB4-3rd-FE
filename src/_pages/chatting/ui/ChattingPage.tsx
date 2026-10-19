@@ -245,7 +245,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [meterAnalysisSettlementId, setMeterAnalysisSettlementId] = useState<number | null>(null);
   const [meterAnalysisFinishedMessage, setMeterAnalysisFinishedMessage] =
     useState<SettlementAnalysisFinishedMessage | null>(null);
-  const meterAnalysisFinishedMessageRef = useRef<SettlementAnalysisFinishedMessage | null>(null);
+  const settlementAnalysisFinishedMessageRef = useRef<SettlementAnalysisFinishedMessage | null>(
+    null,
+  );
   const [isMeterAnalysisDelayed, setIsMeterAnalysisDelayed] = useState(false);
   const [meterAmountTarget, setMeterAmountTarget] = useState<MeterAmountTarget>(null);
   const [meterAmount, setMeterAmount] = useState('');
@@ -253,8 +255,11 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [transferAnalysisSettlementId, setTransferAnalysisSettlementId] = useState<number | null>(
     null,
   );
+  const [analysisResetKey, setAnalysisResetKey] = useState(0);
   const meterPhotoPickerRef = useRef<(() => void) | null>(null);
   const transferPhotoPickerRefs = useRef(new Map<number, () => void>());
+  const activeAnalysisSettlementIdRef = useRef<number | null>(null);
+  const analysisCompletionHandledRef = useRef(false);
   const meterAnalysisQuery = useQuery(
     settlementQueries.analysisStatus(settlementId, settlementId !== undefined),
   );
@@ -265,7 +270,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     ),
   );
   const meterAnalysisFinished =
-    meterAnalysisFinishedMessage?.settlement_id === settlementId
+    meterAnalysisFinishedMessage?.type === 'METER_ANALYSIS_FINISHED' &&
+    meterAnalysisFinishedMessage.settlement_id === settlementId
       ? meterAnalysisFinishedMessage
       : null;
   const meterAnalysisStatus =
@@ -452,9 +458,34 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     meterPhotoPickerRef.current = openPicker;
   }, []);
 
-  const handleMeterAnalysisFinished = useCallback(
+  const handleSettlementAnalysisFinished = useCallback(
     (message: SettlementAnalysisFinishedMessage) => {
-      meterAnalysisFinishedMessageRef.current = message;
+      if (
+        message.settlement_id !== activeAnalysisSettlementIdRef.current ||
+        analysisCompletionHandledRef.current
+      ) {
+        return;
+      }
+
+      analysisCompletionHandledRef.current = true;
+      setAnalysisResetKey((currentKey) => currentKey + 1);
+      settlementAnalysisFinishedMessageRef.current = message;
+
+      if (message.type === 'TRANSFER_ANALYZED') {
+        void queryClient.invalidateQueries({
+          queryKey: settlementQueries.myParticipant(message.settlement_id).queryKey,
+        });
+
+        if (message.member_analysis_status === 'FAILED') {
+          setTransferAnalysisSettlementId(message.settlement_id);
+        } else if (message.member_analysis_status === 'PASSED') {
+          setTransferAnalysisSettlementId(null);
+        }
+
+        activeAnalysisSettlementIdRef.current = null;
+        return;
+      }
+
       setMeterAnalysisFinishedMessage(message);
       if (message.meter_analysis_status === 'FAILED') {
         setMeterAnalysisSettlementId(message.settlement_id);
@@ -476,6 +507,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
               }
             : current,
       );
+      activeAnalysisSettlementIdRef.current = null;
     },
     [meterAnalysisSettlementId, queryClient],
   );
@@ -568,7 +600,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
               }
             : current,
       );
-      meterAnalysisFinishedMessageRef.current = null;
+      settlementAnalysisFinishedMessageRef.current = null;
       setMeterAnalysisFinishedMessage(null);
       setMeterAnalysisSettlementId(null);
       setMeterAmountTarget(null);
@@ -755,8 +787,10 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         handleManualMeterEntry(targetSettlementId);
         return;
       }
+      activeAnalysisSettlementIdRef.current = targetSettlementId;
+      analysisCompletionHandledRef.current = false;
       setUploadingSettlementPhoto(true);
-      meterAnalysisFinishedMessageRef.current = null;
+      settlementAnalysisFinishedMessageRef.current = null;
       setMeterAnalysisFinishedMessage(null);
       try {
         const token = await getAccessToken();
@@ -764,21 +798,29 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         const response = await submitMeterImage(token, targetSettlementId, {
           meter_image_key: imageKey,
         });
+        if (response.status !== 202) {
+          throw new Error('미터기 사진 분석 요청을 시작하지 못했어요');
+        }
+
         setIsMeterAnalysisDelayed(false);
         setMeterAmount('');
         const finishedMessage =
-          meterAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
+          settlementAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
         if (finishedMessage?.settlement_id !== targetSettlementId) {
+          setAnalysisResetKey((currentKey) => currentKey + 1);
           queryClient.setQueryData(settlementQueries.analysisStatus(targetSettlementId).queryKey, {
-            message: response.message,
-            data: {
-              ...response.data,
-              total_amount: null,
-            },
+            message: response.data.message,
+            data: response.data.data,
           });
           setMeterAnalysisSettlementId(targetSettlementId);
         }
       } catch (error) {
+        activeAnalysisSettlementIdRef.current = null;
+        analysisCompletionHandledRef.current = false;
+        setMeterAnalysisSettlementId(null);
+        setMeterAnalysisFinishedMessage(null);
+        setIsMeterAnalysisDelayed(false);
+        setAnalysisResetKey((currentKey) => currentKey + 1);
         useSnackbarStore
           .getState()
           .showSnackbar(
@@ -966,7 +1008,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
       enabled={Boolean(room)}
       roomId={roomId}
       onMessage={handleWebSocketMessage}
-      onSettlementAnalysisFinished={handleMeterAnalysisFinished}
+      onSettlementAnalysisFinished={handleSettlementAnalysisFinished}
     >
       {(connection) => (
         <>
@@ -992,6 +1034,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
             onAcknowledgeSettlement={handleSettlementAcknowledge}
             onWebSocketOpen={handleRefreshSettlementStatus}
             onSendMeterPhoto={handleSendMeterPhoto}
+            analysisResetKey={analysisResetKey}
             onManualMeterEntry={handleManualMeterEntry}
             meterSettlementId={settlementId}
             hideMeterRequestMessage={meterAnalysisStatus === 'PASSED'}
@@ -1126,6 +1169,7 @@ type ChattingPageContentProps = {
   reportLoading: boolean;
   completingSettlement: boolean;
   onSendMeterPhoto: (settlementId: number, file: File) => void;
+  analysisResetKey: number;
   onManualMeterEntry: (settlementId?: number) => void;
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
@@ -1181,6 +1225,7 @@ function ChattingPageContent({
   reportLoading,
   completingSettlement,
   onSendMeterPhoto,
+  analysisResetKey,
   onManualMeterEntry,
   meterSettlementId,
   remainingMeterAttempts,
@@ -1269,6 +1314,7 @@ function ChattingPageContent({
           isTaxiPotHost={isTaxiPotHost}
           currentUserId={currentUserId}
           onSendMeterPhoto={onSendMeterPhoto}
+          analysisResetKey={analysisResetKey}
           onManualMeterEntry={onManualMeterEntry}
           meterSettlementId={meterSettlementId}
           remainingMeterAttempts={remainingMeterAttempts}

@@ -31,6 +31,7 @@ type ChatMessageListProps = {
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  analysisResetKey?: number;
   onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
@@ -94,6 +95,7 @@ export function ChatMessageList({
   meterSettlementId,
   remainingMeterAttempts,
   onSendTransferPhoto,
+  analysisResetKey,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -372,6 +374,7 @@ export function ChatMessageList({
             meterSettlementId={meterSettlementId}
             remainingMeterAttempts={remainingMeterAttempts}
             onSendTransferPhoto={onSendTransferPhoto}
+            analysisResetKey={analysisResetKey}
             onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
             onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
             onViewTransferProof={onViewTransferProof}

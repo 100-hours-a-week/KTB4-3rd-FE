@@ -30,13 +30,7 @@ export type SubmitMeterImageRequest = {
   meter_image_key: string;
 };
 
-export type SubmitMeterImageResponse = ApiResponse<{
-  participant_count: number;
-  group_settlement_status: GroupSettlementStatus;
-  meter_analysis_status: MeterAnalysisStatus;
-  analysis_started_at?: string;
-  remaining_meter_attempts: number;
-}>;
+export type SubmitMeterImageResponse = SettlementAnalysisStatusResponse;
 
 export type UpdateSettlementAmountRequest = {
   total_amount: number;
@@ -54,11 +48,8 @@ export type SubmitTransferProofRequest = {
 };
 
 export type SubmitTransferProofResponse = ApiResponse<{
-  participant_count: number;
-  group_settlement_status: GroupSettlementStatus;
-  member_analysis_status: MemberAnalysisStatus;
-  transferred_at?: string;
-  is_forged?: boolean;
+  group_settlement_status: 'REQUESTED';
+  remaining_transfer_attempts: number;
 }>;
 
 export type SettlementPayee = {

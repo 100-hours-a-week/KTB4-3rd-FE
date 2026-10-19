@@ -31,6 +31,7 @@ type ChatMessageItemProps = {
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  analysisResetKey?: number;
   onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
@@ -91,6 +92,7 @@ export function ChatMessageItem({
   meterSettlementId,
   remainingMeterAttempts,
   onSendTransferPhoto,
+  analysisResetKey,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -107,6 +109,7 @@ export function ChatMessageItem({
         return (
           <TaxiMeterPhotoRequest
             className={systemMessageClassName}
+            key={`meter-photo-${analysisResetKey ?? 0}`}
             onSend={(file) => {
               if (meterSettlementId !== undefined) {
                 onSendMeterPhoto(meterSettlementId, file);
@@ -160,6 +163,7 @@ export function ChatMessageItem({
           {role === 'passenger' && onSendTransferPhoto ? (
             <TransferPhotoRequest
               settlementId={message.settlement.settlement_id}
+              key={`transfer-photo-${analysisResetKey ?? 0}`}
               onRegisterPhotoPicker={onRegisterTransferPhotoPicker}
               onSend={(file) => onSendTransferPhoto(message.settlement.settlement_id, file)}
               sending={uploadingSettlementPhoto}

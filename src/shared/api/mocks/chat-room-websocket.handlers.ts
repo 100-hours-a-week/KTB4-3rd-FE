@@ -277,12 +277,22 @@ export function emitMockChatRoomMessage(roomId: string, message: MockChatMessage
   }
 }
 
-export function emitMockSettlementAnalysisFinished(message: {
-  type: 'METER_ANALYSIS_FINISHED';
-  settlement_id: number;
-  meter_analysis_status: 'PASSED' | 'FAILED';
-  remaining_meter_attempts: number;
-}) {
+type MockSettlementAnalysisFinishedMessage =
+  | {
+      type: 'METER_ANALYSIS_FINISHED';
+      settlement_id: number;
+      meter_analysis_status: 'PASSED' | 'FAILED';
+      remaining_meter_attempts: number;
+    }
+  | {
+      type: 'TRANSFER_ANALYZED';
+      settlement_id: number;
+      member_analysis_status: 'PASSED' | 'FAILED';
+      transfer_completed: boolean;
+      remaining_transfer_attempts: number;
+    };
+
+export function emitMockSettlementAnalysisFinished(message: MockSettlementAnalysisFinishedMessage) {
   for (const [key, subscription] of settlementSubscriptions) {
     subscription.client.send(
       createFrame(

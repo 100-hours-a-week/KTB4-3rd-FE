@@ -215,14 +215,14 @@ export function TaxiMeterPhotoRequest({
     setPhoto({ file, previewUrl });
   }
 
-  function closeConfirmation() {
+  const closeConfirmation = useCallback(() => {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
     }
 
     setPhoto(null);
-  }
+  }, []);
 
   function retakePhoto() {
     closeConfirmation();
@@ -344,14 +344,14 @@ export function TransferPhotoRequest({
     setPhoto({ file, previewUrl });
   }
 
-  function closeConfirmation() {
+  const closeConfirmation = useCallback(() => {
     if (previewUrlRef.current) {
       URL.revokeObjectURL(previewUrlRef.current);
       previewUrlRef.current = null;
     }
 
     setPhoto(null);
-  }
+  }, []);
 
   function retakePhoto() {
     closeConfirmation();
