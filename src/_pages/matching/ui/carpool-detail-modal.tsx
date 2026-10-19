@@ -163,7 +163,7 @@ export function CarpoolDetailModal({
         setIsDiscardOpen(true);
         return;
       }
-      if (target?.id !== selectionRef.current?.id || target === null) {
+      if (stage === 'request' || target?.id !== selectionRef.current?.id || target === null) {
         finishSelection(target);
       }
     },
@@ -470,6 +470,7 @@ export function CarpoolDetailModal({
             <h2 className="sr-only">동행 요청 작성</h2>
             <CarpoolRequestCard
               isSubmitting={joinRequestMutation.isPending || isReconcilingJoinRequest}
+              onCancel={() => exitTo(selectionRef.current)}
               onDirtyChange={setIsDirty}
               onSubmit={handleSubmit}
               profileSlot={

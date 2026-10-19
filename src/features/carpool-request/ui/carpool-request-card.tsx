@@ -17,6 +17,7 @@ export type CarpoolRequestSubmitActionProps = {
 export type CarpoolRequestCardProps = {
   isSubmitting: boolean;
   onSubmit: (content: string) => void;
+  onCancel?: () => void;
   onDirtyChange: (isDirty: boolean) => void;
   profileSlot?: ReactNode;
   renderSubmitAction?: (props: CarpoolRequestSubmitActionProps) => ReactNode;
@@ -27,6 +28,7 @@ const MAX_CONTENT_LENGTH = 200;
 export function CarpoolRequestCard({
   isSubmitting,
   onSubmit,
+  onCancel,
   onDirtyChange,
   profileSlot,
   renderSubmitAction,
@@ -102,19 +104,33 @@ export function CarpoolRequestCard({
           maxCharacterCount={MAX_CONTENT_LENGTH}
         />
       </div>
-      <div className="mt-auto pt-3">
-        {renderSubmitAction ? (
-          renderSubmitAction(submitActionProps)
-        ) : (
+      <div className="mt-auto flex flex-col gap-1 pt-3">
+        <div>
+          {renderSubmitAction ? (
+            renderSubmitAction(submitActionProps)
+          ) : (
+            <Button
+              {...submitActionProps}
+              className="!h-11 !min-h-11 !rounded-[22px]"
+              variant="brand-solid"
+              width="fill"
+            >
+              전송하기
+            </Button>
+          )}
+        </div>
+        {onCancel ? (
           <Button
-            {...submitActionProps}
-            className="!h-11 !min-h-11 !rounded-[22px]"
-            variant="brand-solid"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            size="small"
+            type="button"
+            variant="ghost"
             width="fill"
           >
-            전송하기
+            취소
           </Button>
-        )}
+        ) : null}
       </div>
     </form>
   );

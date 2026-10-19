@@ -172,6 +172,24 @@ describe('카풀 요청 메시지 카드', () => {
     expect(onDirtyChange.mock.calls).toEqual([[false], [true], [false]]);
   });
 
+  it('취소 버튼을 누르면 취소 콜백을 호출한다', async () => {
+    const user = userEvent.setup();
+    const onCancel = vi.fn<() => void>();
+
+    render(
+      <CarpoolRequestCard
+        isSubmitting={false}
+        onCancel={onCancel}
+        onDirtyChange={vi.fn<(dirty: boolean) => void>()}
+        onSubmit={vi.fn<(content: string) => void>()}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '취소' }));
+
+    expect(onCancel).toHaveBeenCalledOnce();
+  });
+
   it('상위가 주입한 프로필과 제출 액션에 현재 잠금·로딩·submit type을 전달한다', () => {
     const renderSubmitAction = vi.fn<NonNullable<Props['renderSubmitAction']>>(
       ({ disabled, loading, type }) => (

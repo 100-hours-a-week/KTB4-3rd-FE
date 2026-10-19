@@ -600,12 +600,18 @@ describe('MatchingPage', () => {
     expect(
       screen.getByPlaceholderText('운전자에게 보낼 메시지를 입력해주세요'),
     ).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '취소' })).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '취소' }));
+    expect(await screen.findByText('참여자')).toBeInTheDocument();
+    expect(screen.queryByRole('textbox', { name: '요청 메시지' })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole('button', { name: '동행 요청하기' }));
     const requestMessage = await screen.findByRole('textbox', { name: '요청 메시지' });
     await user.type(requestMessage, '함께 이동하고 싶어요.');
     await user.click(screen.getByRole('button', { name: '전송하기' }));
 
     expect(await screen.findByText('동행 요청을 보낸 상태예요.')).toBeInTheDocument();
-    expect(detailRequestCount).toBe(2);
+    expect(detailRequestCount).toBe(3);
     expect(joinRequestCount).toBe(1);
     expect(screen.queryByRole('textbox', { name: '요청 메시지' })).not.toBeInTheDocument();
   });
