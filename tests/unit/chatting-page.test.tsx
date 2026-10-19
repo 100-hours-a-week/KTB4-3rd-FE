@@ -9,6 +9,7 @@ import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
 import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
+import { BankCode } from '@/entities/user';
 import {
   emitMockChatRoomMessage,
   emitMockSettlementAnalysisFinished,
@@ -1542,7 +1543,7 @@ describe('ChattingPage', () => {
         payee: {
           id: 1,
           name: '테스트 유저',
-          bank_name: '카카오뱅크',
+          bank_name: BankCode.TOSS,
           account_no: '000-0000-0000',
         },
       },
@@ -1557,9 +1558,9 @@ describe('ChattingPage', () => {
       </SnackbarProvider>,
     );
 
-    await user.click(screen.getByRole('button', { name: '카카오뱅크 000-0000-0000 복사' }));
+    await user.click(screen.getByRole('button', { name: '토스뱅크 000-0000-0000 복사' }));
 
-    expect(writeText).toHaveBeenCalledWith('카카오뱅크 000-0000-0000');
+    expect(writeText).toHaveBeenCalledWith('토스뱅크 000-0000-0000');
     expect(await screen.findByRole('status')).toHaveTextContent('복사완료');
     expect(screen.getByRole('region', { name: '방장의 정산 요청' }).parentElement).toHaveClass(
       'self-start',
