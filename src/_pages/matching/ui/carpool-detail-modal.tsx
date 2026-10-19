@@ -478,7 +478,7 @@ export function CarpoolDetailModal({
                   <>
                     <Avatar
                       alt={`${carpool.host.name} 프로필`}
-                      size={90}
+                      size={72}
                       src={carpool.host.profile_image_url}
                     />
                     <Text as="span" variant="t8Bold">

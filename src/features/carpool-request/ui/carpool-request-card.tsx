@@ -88,7 +88,7 @@ export function CarpoolRequestCard({
               render={
                 <Textarea
                   autoSize={false}
-                  className="[&>div]:h-[170px]"
+                  className="[&>div]:h-[140px]"
                   onValueChange={setContent}
                   placeholder="운전자에게 보낼 메시지를 입력해주세요"
                   textareaClassName="h-full"

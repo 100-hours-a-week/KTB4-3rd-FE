@@ -9,7 +9,7 @@ import { CarpoolRequestCard, type CarpoolRequestCardProps } from './carpool-requ
 
 const profile = (
   <>
-    <Avatar alt="김춘식 프로필" size={90} />
+    <Avatar alt="김춘식 프로필" size={72} />
     <Text as="span" variant="t8Bold">
       김춘식
     </Text>
