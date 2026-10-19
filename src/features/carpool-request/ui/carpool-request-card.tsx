@@ -17,6 +17,7 @@ export type CarpoolRequestSubmitActionProps = {
 export type CarpoolRequestCardProps = {
   isSubmitting: boolean;
   onSubmit: (content: string) => void;
+  onCancel?: () => void;
   onDirtyChange: (isDirty: boolean) => void;
   profileSlot?: ReactNode;
   renderSubmitAction?: (props: CarpoolRequestSubmitActionProps) => ReactNode;
@@ -27,6 +28,7 @@ const MAX_CONTENT_LENGTH = 200;
 export function CarpoolRequestCard({
   isSubmitting,
   onSubmit,
+  onCancel,
   onDirtyChange,
   profileSlot,
   renderSubmitAction,
@@ -74,7 +76,7 @@ export function CarpoolRequestCard({
           <Divider className="mt-[10px]" color="var(--color-stroke-neutral-weak)" />
         </>
       ) : null}
-      <div className={profileSlot ? 'mt-3' : undefined}>
+      <div className={profileSlot ? 'mt-6' : undefined}>
         <Field
           characterCount={characterCount}
           characterCountShowFrom={180}
@@ -86,8 +88,9 @@ export function CarpoolRequestCard({
               render={
                 <Textarea
                   autoSize={false}
+                  className="[&>div]:h-[140px]"
                   onValueChange={setContent}
-                  placeholder="함께 타고 싶은 이유를 알려주세요"
+                  placeholder="운전자에게 보낼 메시지를 입력해주세요"
                   textareaClassName="h-full"
                   value={content}
                 />
@@ -97,23 +100,37 @@ export function CarpoolRequestCard({
           }
           invalid={isOverLimit}
           label="요청 메시지"
+          labelWeight="medium"
           maxCharacterCount={MAX_CONTENT_LENGTH}
-          required
         />
       </div>
-      <div className="mt-auto pt-3">
-        {renderSubmitAction ? (
-          renderSubmitAction(submitActionProps)
-        ) : (
+      <div className="mt-auto flex flex-col gap-1 pt-3">
+        <div>
+          {renderSubmitAction ? (
+            renderSubmitAction(submitActionProps)
+          ) : (
+            <Button
+              {...submitActionProps}
+              className="!h-11 !min-h-11 !rounded-[22px]"
+              variant="brand-solid"
+              width="fill"
+            >
+              전송하기
+            </Button>
+          )}
+        </div>
+        {onCancel ? (
           <Button
-            {...submitActionProps}
-            className="!h-11 !min-h-11 !rounded-[22px]"
-            variant="brand-solid"
+            disabled={isSubmitting}
+            onClick={onCancel}
+            size="small"
+            type="button"
+            variant="ghost"
             width="fill"
           >
-            전송하기
+            취소
           </Button>
-        )}
+        ) : null}
       </div>
     </form>
   );
