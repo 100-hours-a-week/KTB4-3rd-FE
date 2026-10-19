@@ -152,7 +152,20 @@ describe('카풀 요청 표시 컴포넌트', () => {
     expect(screen.queryByRole('button', { name: '채팅하기' })).not.toBeInTheDocument();
   });
 
-  it('받은 요청은 카풀 ID와 요청 ID를 전달한다', async () => {
+  it('프로필 이미지가 없는 요청은 피그마 placeholder를 사용한다', () => {
+    render(
+      <ul>
+        <CarpoolRequestItem request={request} onChatClick={() => undefined} />
+      </ul>,
+    );
+
+    expect(screen.getByRole('img', { name: '김우림 프로필 이미지' })).toHaveAttribute(
+      'src',
+      expect.stringContaining('/avatars/carpool-request-placeholder.svg'),
+    );
+  });
+
+  it('받은 요청의 수락과 거절 버튼은 카풀 ID와 요청 ID를 전달한다', async () => {
     const user = userEvent.setup();
     const onRequestClick = vi.fn<(carpoolId: number, requestId: number) => void>();
     const received: CarpoolReceivedRequest = { ...request, status: 'PENDING' };
@@ -161,7 +174,9 @@ describe('카풀 요청 표시 컴포넌트', () => {
         <CarpoolReceivedItem request={received} onRequestClick={onRequestClick} />
       </ul>,
     );
-    await user.click(screen.getByRole('button', { name: '요청 확인' }));
+    await user.click(screen.getByRole('button', { name: '수락' }));
+    await user.click(screen.getByRole('button', { name: '거절' }));
     expect(onRequestClick).toHaveBeenCalledWith(51, 88);
+    expect(onRequestClick).toHaveBeenCalledTimes(2);
   });
 });

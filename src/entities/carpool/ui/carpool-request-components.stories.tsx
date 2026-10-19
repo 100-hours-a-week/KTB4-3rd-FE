@@ -34,7 +34,7 @@ const meta = {
   parameters: { layout: 'centered' },
   decorators: [
     (Story) => (
-      <div className="w-[393px] bg-[var(--color-bg-layer-default)]">
+      <div className="w-[353px] bg-[var(--color-bg-layer-default)]">
         <Story />
       </div>
     ),
@@ -75,6 +75,26 @@ export const SentRequestAccepted: Story = {
   ),
 };
 
+export const SentRequestStatuses: Story = {
+  render: () => (
+    <ul className="flex flex-col gap-3">
+      <CarpoolRequestItem
+        request={{ ...sentRequest, status: 'PENDING', chat_room_id: undefined }}
+        onChatClick={() => undefined}
+      />
+      <CarpoolRequestItem request={sentRequest} onChatClick={() => undefined} />
+      <CarpoolRequestItem
+        request={{ ...sentRequest, status: 'EXPIRED', chat_room_id: null }}
+        onChatClick={() => undefined}
+      />
+      <CarpoolRequestItem
+        request={{ ...sentRequest, status: 'REJECTED', chat_room_id: null }}
+        onChatClick={() => undefined}
+      />
+    </ul>
+  ),
+};
+
 export const SentRequestAcceptedWithoutChat: Story = {
   render: () => (
     <ul>
@@ -90,6 +110,21 @@ export const ReceivedRequest: Story = {
   render: () => (
     <ul>
       <CarpoolReceivedItem request={receivedRequest} onRequestClick={() => undefined} />
+    </ul>
+  ),
+};
+
+export const ReceivedRequestLongRoute: Story = {
+  render: () => (
+    <ul>
+      <CarpoolReceivedItem
+        request={{
+          ...receivedRequest,
+          origin_name: '서울특별시 강남구 테헤란로 긴 출발지',
+          dest_name: '경기도 성남시 분당구 판교역 긴 도착지',
+        }}
+        onRequestClick={() => undefined}
+      />
     </ul>
   ),
 };

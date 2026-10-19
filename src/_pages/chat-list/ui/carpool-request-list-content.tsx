@@ -139,7 +139,7 @@ export function CarpoolRequestListContent({
       data-testid="carpool-request-scroll-root"
       ref={scrollRootRef}
     >
-      <ul className="m-0 w-full list-none p-0">
+      <ul className="m-0 w-full list-none space-y-3 p-0">
         {state.items.map((request) =>
           direction === 'SENT' ? (
             <CarpoolRequestItem
