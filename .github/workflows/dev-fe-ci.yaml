@@ -6,14 +6,18 @@ on:
     branches:
       - develop
       - main
+      - 'release/**'
 
-  # develop은 Dev 이미지 생성 대상이고, main은 Prod CD의 검증 대상이다.
-  # main에서는 이미지를 다시 빌드해 배포하지 않고, develop에서 검증한
+  # develop은 Dev 이미지, release/vX.Y.Z는 Stg 이미지(rc-*), hotfix/vX.Y.Z는 Prod 긴급 수정 이미지(hf-*) 생성 대상이고,
+  # main은 Prod CD의 검증 대상이다.
+  # main에서는 이미지를 다시 빌드해 배포하지 않고, Stg에서 검증한
   # 이미지 Digest를 Prod CD가 승격한다.
   push:
     branches:
       - develop
       - main
+      - 'release/**'
+      - 'hotfix/**'
 
   workflow_dispatch:
 
@@ -27,15 +31,60 @@ env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
   ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
   IMAGE_NAME: moyeota-fe
-  NEXT_PUBLIC_API_BASE_URL: ${{ vars.NEXT_PUBLIC_API_BASE_URL }}
-  NEXT_PUBLIC_KAKAO_MAP_APP_KEY: ${{ vars.NEXT_PUBLIC_KAKAO_MAP_APP_KEY }}
-  NEXT_PUBLIC_GA_ID: ${{ vars.NEXT_PUBLIC_GA_ID }}
-  NEXT_PUBLIC_CLARITY_PROJECT_ID: ${{ vars.NEXT_PUBLIC_CLARITY_PROJECT_ID }}
-  NEXT_PUBLIC_SENTRY_DSN: ${{ vars.NEXT_PUBLIC_SENTRY_DSN }}
-  NEXT_PUBLIC_SENTRY_ENVIRONMENT: ${{ vars.NEXT_PUBLIC_SENTRY_ENVIRONMENT }}
-  NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE: ${{ vars.NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE }}
+  # 빌드 시 번들에 들어가는 NEXT_PUBLIC_* 는 GitHub vars가 아니라 SSM Parameter Store에서 읽는다.
+  #   경로: /moyeota/v2/build/frontend/<KEY>  (CLOUD 레포 v2/ssm.tf, issues/ecs-ssm-env-management.md)
+  #   스테이지가 없는 이유: 같은 digest를 Stg → Prod로 승격하므로 빌드 값은 하나뿐이다.
+  SSM_BUILD_PREFIX: /moyeota/v2/build/frontend
 
 jobs:
+  # 브랜치 정책 가드 (모든 요청에서 실행, 해당하지 않으면 step만 건너뛴다)
+  #   1) main으로 가는 PR은 release/vX.Y.Z 또는 hotfix/vX.Y.Z에서만 받는다.
+  #      Prod CD가 다른 원본을 거부하므로, 머지 전에 PR 단계에서 먼저 막는다.
+  #   2) hotfix는 main에서 만든 브랜치여야 한다. develop에만 있는(아직 출시되지 않은) 커밋이 섞이면 실패한다.
+  branch-policy:
+    name: Branch policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    env:
+      INTEGRATION_BRANCH: develop
+      IS_HOTFIX: ${{ startsWith(github.ref_name, 'hotfix/') || startsWith(github.head_ref, 'hotfix/') }}
+
+    steps:
+      - name: Check main PR source branch
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          set -Eeuo pipefail
+          if [[ ! "$HEAD_REF" =~ ^(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error title=main PR 원본 브랜치 오류::main은 release/vX.Y.Z 또는 hotfix/vX.Y.Z에서만 머지한다 (현재: ${HEAD_REF})"
+            exit 1
+          fi
+
+      # hotfix일 때만 전체 히스토리를 받는다.
+      - name: Checkout
+        if: env.IS_HOTFIX == 'true'
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check hotfix branch base
+        if: env.IS_HOTFIX == 'true'
+        run: |
+          set -Eeuo pipefail
+
+          unreleased="$(comm -12 \
+            <(git rev-list "origin/main..HEAD" | sort) \
+            <(git rev-list "origin/main..origin/${INTEGRATION_BRANCH}" | sort))"
+
+          if [[ -n "$unreleased" ]]; then
+            echo "::error title=hotfix 브랜치 기준 오류::${INTEGRATION_BRANCH}에만 있는 커밋이 hotfix에 섞여 있다. main에서 브랜치를 다시 만들고 수정만 cherry-pick한다."
+            git log --oneline --no-walk --stdin <<<"$unreleased" | head -20
+            exit 1
+          fi
+
   test:
     name: Unit tests
     runs-on: ubuntu-latest
@@ -116,6 +165,7 @@ jobs:
   build:
     name: Build and publish
     needs:
+      - branch-policy
       - test
       - quality
     runs-on: ubuntu-latest
@@ -134,7 +184,8 @@ jobs:
         with:
           node-version-file: .node-version
 
-      # develop에서는 Dev 배포용 이미지를 ECR에 Push한다.
+      # develop에서는 Dev 배포용 이미지를, release/vX.Y.Z에서는 Stg 배포용 이미지(rc-*)를,
+      # hotfix/vX.Y.Z에서는 Prod 긴급 수정 이미지(hf-*)를 ECR에 Push한다.
       # main과 PR에서는 Dockerfile 검증만 수행하고 ECR에 Push하지 않는다.
       - name: Resolve image tag
         id: meta
@@ -144,6 +195,27 @@ jobs:
           if [[ "$GITHUB_REF_NAME" == develop ]]; then
             image_tag="dev-${GITHUB_SHA:0:7}"
             release_version=""
+            if [[ "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+              push_image=true
+            else
+              push_image=false
+            fi
+          elif [[ "$GITHUB_REF_NAME" == release/* ]]; then
+            version="${GITHUB_REF_NAME#release/}"
+            [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            image_tag="rc-${version}-${GITHUB_SHA:0:7}"
+            release_version="${version#v}"
+            if [[ "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+              push_image=true
+            else
+              push_image=false
+            fi
+          elif [[ "$GITHUB_REF_NAME" == hotfix/* ]]; then
+            # main에서 만든 긴급 수정. Stg를 거치지 않고 Prod CD가 이 digest를 승격한다.
+            version="${GITHUB_REF_NAME#hotfix/}"
+            [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+            image_tag="hf-${version}-${GITHUB_SHA:0:7}"
+            release_version="${version#v}"
             if [[ "$GITHUB_EVENT_NAME" == push || "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
               push_image=true
             else
@@ -166,6 +238,98 @@ jobs:
             echo "build_date=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           } >> "$GITHUB_OUTPUT"
 
+      # ECR push 대상 빌드(develop·release/*·hotfix/*)만 AWS에 인증한다.
+      # CI Role 신뢰 정책이 브랜치 ref만 허용하므로 PR 이벤트는 인증할 수 없다.
+      - name: Configure AWS credentials
+        if: steps.meta.outputs.push_image == 'true'
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: fe-ci-${{ github.run_id }}
+
+      # 배포될 이미지는 SSM 값으로만 빌드한다. 키가 없거나 CHANGE_ME면 여기서 실패한다
+      # (V1처럼 빈 값·기본값으로 빌드가 성공해 버리는 것을 막는다).
+      - name: Load build env from SSM
+        if: steps.meta.outputs.push_image == 'true'
+        run: |
+          set -Eeuo pipefail
+
+          required=(
+            NEXT_PUBLIC_API_BASE_URL
+            NEXT_PUBLIC_KAKAO_MAP_APP_KEY
+            NEXT_PUBLIC_SENTRY_DSN
+            NEXT_PUBLIC_SENTRY_ENVIRONMENT
+            NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
+            NEXT_PUBLIC_FIREBASE_API_KEY
+            NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN
+            NEXT_PUBLIC_FIREBASE_PROJECT_ID
+            NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID
+            NEXT_PUBLIC_FIREBASE_APP_ID
+            NEXT_PUBLIC_FIREBASE_MESSAGING_VAPID_KEY
+          )
+          # SSM은 빈 값을 저장할 수 없다. 선택값은 파라미터가 없으면 빈 값으로 빌드한다.
+          optional=(
+            NEXT_PUBLIC_GA_ID
+            NEXT_PUBLIC_CLARITY_PROJECT_ID
+          )
+
+          out="$(aws ssm get-parameters --with-decryption \
+            --names "${required[@]/#/${SSM_BUILD_PREFIX}/}" "${optional[@]/#/${SSM_BUILD_PREFIX}/}" \
+            --output json)"
+
+          missing=()
+          for key in "${required[@]}"; do
+            if jq -e --arg n "${SSM_BUILD_PREFIX}/${key}" '.InvalidParameters | index($n)' <<<"$out" >/dev/null; then
+              missing+=("$key")
+            fi
+          done
+          if (( ${#missing[@]} > 0 )); then
+            echo "::error title=SSM 빌드 파라미터 없음::${SSM_BUILD_PREFIX}/ 아래에 ${missing[*]} 가 없다. CLOUD 레포 v2/ssm.tf 확인"
+            exit 1
+          fi
+
+          for key in "${optional[@]}"; do
+            echo "${key}=" >> "$GITHUB_ENV"   # 아래에서 값이 있으면 덮어쓴다
+          done
+
+          placeholders=()
+          while IFS=$'\t' read -r name value; do
+            key="${name##*/}"
+            if [[ "$value" == CHANGE_ME ]]; then
+              placeholders+=("$key")
+              continue
+            fi
+            echo "${key}=${value}" >> "$GITHUB_ENV"
+            echo "loaded: ${key}"
+          done < <(jq -r '.Parameters[] | [.Name, .Value] | @tsv' <<<"$out")
+
+          if (( ${#placeholders[@]} > 0 )); then
+            echo "::error title=SSM 빌드 파라미터 미입력::${placeholders[*]} 가 CHANGE_ME다. 콘솔 Parameter Store에서 ${SSM_BUILD_PREFIX}/<KEY> 값을 입력"
+            exit 1
+          fi
+
+      # PR·main 빌드는 Dockerfile·빌드 검증만 하고 이미지를 push하지 않는다.
+      # 배포되지 않는 이미지이므로 실제 값 대신 명시적인 더미 값을 쓴다.
+      - name: Use placeholder build env
+        if: steps.meta.outputs.push_image != 'true'
+        run: |
+          {
+            echo "NEXT_PUBLIC_API_BASE_URL=/api"
+            echo "NEXT_PUBLIC_KAKAO_MAP_APP_KEY=ci-placeholder"
+            echo "NEXT_PUBLIC_GA_ID="
+            echo "NEXT_PUBLIC_CLARITY_PROJECT_ID="
+            echo "NEXT_PUBLIC_SENTRY_DSN="
+            echo "NEXT_PUBLIC_SENTRY_ENVIRONMENT=ci"
+            echo "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=0"
+            echo "NEXT_PUBLIC_FIREBASE_API_KEY=ci-placeholder"
+            echo "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=ci-placeholder.firebaseapp.com"
+            echo "NEXT_PUBLIC_FIREBASE_PROJECT_ID=ci-placeholder"
+            echo "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=0"
+            echo "NEXT_PUBLIC_FIREBASE_APP_ID=ci-placeholder"
+            echo "NEXT_PUBLIC_FIREBASE_MESSAGING_VAPID_KEY=ci-placeholder"
+          } >> "$GITHUB_ENV"
+
       - name: Build Docker image
         run: |
           set -Eeuo pipefail
@@ -181,13 +345,19 @@ jobs:
             --build-arg "BUILD_SHA=${GITHUB_SHA}" \
             --build-arg "RELEASE_VERSION=${{ steps.meta.outputs.release_version }}" \
             --build-arg "BUILD_DATE=${{ steps.meta.outputs.build_date }}" \
-            --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL:-/api}" \
-            --build-arg "NEXT_PUBLIC_KAKAO_MAP_APP_KEY=${NEXT_PUBLIC_KAKAO_MAP_APP_KEY:-}" \
-            --build-arg "NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID:-}" \
-            --build-arg "NEXT_PUBLIC_CLARITY_PROJECT_ID=${NEXT_PUBLIC_CLARITY_PROJECT_ID:-}" \
-            --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN:-}" \
-            --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT:-production}" \
-            --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE:-0.1}" \
+            --build-arg "NEXT_PUBLIC_API_BASE_URL=${NEXT_PUBLIC_API_BASE_URL}" \
+            --build-arg "NEXT_PUBLIC_KAKAO_MAP_APP_KEY=${NEXT_PUBLIC_KAKAO_MAP_APP_KEY}" \
+            --build-arg "NEXT_PUBLIC_GA_ID=${NEXT_PUBLIC_GA_ID}" \
+            --build-arg "NEXT_PUBLIC_CLARITY_PROJECT_ID=${NEXT_PUBLIC_CLARITY_PROJECT_ID}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_DSN=${NEXT_PUBLIC_SENTRY_DSN}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_ENVIRONMENT=${NEXT_PUBLIC_SENTRY_ENVIRONMENT}" \
+            --build-arg "NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE=${NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE}" \
+            --build-arg "NEXT_PUBLIC_FIREBASE_API_KEY=${NEXT_PUBLIC_FIREBASE_API_KEY}" \
+            --build-arg "NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}" \
+            --build-arg "NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}" \
+            --build-arg "NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}" \
+            --build-arg "NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}" \
+            --build-arg "NEXT_PUBLIC_FIREBASE_MESSAGING_VAPID_KEY=${NEXT_PUBLIC_FIREBASE_MESSAGING_VAPID_KEY}" \
             --build-arg "SENTRY_ORG=${SENTRY_ORG:-}" \
             --build-arg "SENTRY_PROJECT=${SENTRY_PROJECT:-}" \
             "${docker_build_args[@]}" \
@@ -198,14 +368,6 @@ jobs:
           SENTRY_ORG: ${{ vars.SENTRY_ORG }}
           SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
         shell: bash
-
-      - name: Configure AWS credentials
-        if: steps.meta.outputs.push_image == 'true'
-        uses: aws-actions/configure-aws-credentials@v6.3.0
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-          role-session-name: fe-ci-${{ github.run_id }}
 
       - name: Login to ECR
         if: steps.meta.outputs.push_image == 'true'
