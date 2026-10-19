@@ -60,9 +60,13 @@ function createWrapper() {
 }
 
 async function openReceivedRequests(user: ReturnType<typeof userEvent.setup>) {
+  await openReceivedRequestList(user);
+  await user.click(await screen.findByRole('button', { name: '이루디님의 카풀 요청 상세 보기' }));
+}
+
+async function openReceivedRequestList(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('tab', { name: '카풀' }));
   await user.click(screen.getByRole('tab', { name: '받은 요청' }));
-  await user.click(await screen.findByRole('button', { name: '수락' }));
 }
 
 function getRequestDialogButton(name: string) {
@@ -127,6 +131,32 @@ afterEach(() => {
 });
 
 describe('채팅 내 받은 카풀 요청 처리', () => {
+  it('목록에서 수락을 누르면 재확인 후에 요청을 처리한다', async () => {
+    const user = userEvent.setup();
+    const { Wrapper } = createWrapper();
+    const onDecision = vi.fn<() => void>();
+    server.use(
+      http.patch('*/carpools/53/join-requests/90', () => {
+        onDecision();
+        return HttpResponse.json({
+          message: '요청을 수락했습니다',
+          data: { id: 90, status: 'ACCEPTED', chat_room_id: 301, current_count: 3, capacity: 4 },
+        });
+      }),
+    );
+
+    render(<ChatListPage />, { wrapper: Wrapper });
+    await openReceivedRequestList(user);
+    const requestButtons = await screen.findAllByRole('button', { name: '수락' });
+    await user.click(requestButtons[0]);
+
+    expect(screen.getByRole('dialog', { name: '요청을 수락할까요?' })).toBeInTheDocument();
+    expect(onDecision).not.toHaveBeenCalled();
+
+    await user.click(screen.getByRole('button', { name: '수락하기' }));
+    await waitFor(() => expect(onDecision).toHaveBeenCalledOnce());
+  });
+
   it('첫 페이지가 비어 있어도 다음 커서가 있으면 항목을 찾을 때까지 조회한다', async () => {
     const user = userEvent.setup();
     let releaseNextPage: (() => void) | undefined;
@@ -385,7 +415,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     await user.click(screen.getByRole('tab', { name: '받은 요청' }));
     const requestButtons = await screen.findAllByRole('button', { name: '수락' });
     await user.click(requestButtons[0]);
-    await user.click(getRequestDialogButton('수락'));
+    await user.click(screen.getByRole('button', { name: '수락하기' }));
 
     await waitFor(
       () => {

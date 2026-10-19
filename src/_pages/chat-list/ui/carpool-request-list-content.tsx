@@ -31,11 +31,17 @@ export type CarpoolRequestListState =
 export function CarpoolRequestListContent({
   direction,
   onChatClick,
+  onRequestDecisionClick,
   onRequestClick,
   state,
 }: {
   direction: 'SENT' | 'RECEIVED';
   onChatClick: (chatRoomId: number) => void;
+  onRequestDecisionClick: (
+    carpoolId: number,
+    requestId: number,
+    action: 'accept' | 'reject',
+  ) => void;
   onRequestClick: (carpoolId: number, requestId: number) => void;
   state: CarpoolRequestListState;
 }) {
@@ -150,6 +156,7 @@ export function CarpoolRequestListContent({
           ) : (
             <CarpoolReceivedItem
               key={`${request.carpool_id}:${request.id}`}
+              onDecisionClick={onRequestDecisionClick}
               onRequestClick={onRequestClick}
               request={request as CarpoolReceivedRequest}
             />

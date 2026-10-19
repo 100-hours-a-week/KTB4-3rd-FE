@@ -109,7 +109,11 @@ export const SentRequestAcceptedWithoutChat: Story = {
 export const ReceivedRequest: Story = {
   render: () => (
     <ul>
-      <CarpoolReceivedItem request={receivedRequest} onRequestClick={() => undefined} />
+      <CarpoolReceivedItem
+        onDecisionClick={() => undefined}
+        onRequestClick={() => undefined}
+        request={receivedRequest}
+      />
     </ul>
   ),
 };
@@ -118,6 +122,7 @@ export const ReceivedRequestLongRoute: Story = {
   render: () => (
     <ul>
       <CarpoolReceivedItem
+        onDecisionClick={() => undefined}
         request={{
           ...receivedRequest,
           origin_name: '서울특별시 강남구 테헤란로 긴 출발지',

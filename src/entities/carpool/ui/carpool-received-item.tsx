@@ -10,9 +10,14 @@ import {
 export type CarpoolReceivedItemProps = {
   request: CarpoolReceivedRequest;
   onRequestClick: (carpoolId: number, requestId: number) => void;
+  onDecisionClick: (carpoolId: number, requestId: number, action: 'accept' | 'reject') => void;
 };
 
-export function CarpoolReceivedItem({ request, onRequestClick }: CarpoolReceivedItemProps) {
+export function CarpoolReceivedItem({
+  request,
+  onDecisionClick,
+  onRequestClick,
+}: CarpoolReceivedItemProps) {
   const handleRequestClick = () => onRequestClick(request.carpool_id, request.id);
 
   return (
@@ -47,7 +52,7 @@ export function CarpoolReceivedItem({ request, onRequestClick }: CarpoolReceived
       <div className="absolute right-3.5 bottom-3.5 z-10 flex items-center gap-2.5">
         <Button
           className="!rounded-[10px]"
-          onClick={handleRequestClick}
+          onClick={() => onDecisionClick(request.carpool_id, request.id, 'accept')}
           size="small"
           variant="brand-solid"
           width="hug"
@@ -56,7 +61,7 @@ export function CarpoolReceivedItem({ request, onRequestClick }: CarpoolReceived
         </Button>
         <Button
           className="!rounded-[10px]"
-          onClick={handleRequestClick}
+          onClick={() => onDecisionClick(request.carpool_id, request.id, 'reject')}
           size="small"
           variant="neutral-weak"
           width="hug"

@@ -167,16 +167,21 @@ describe('카풀 요청 표시 컴포넌트', () => {
 
   it('받은 요청의 수락과 거절 버튼은 카풀 ID와 요청 ID를 전달한다', async () => {
     const user = userEvent.setup();
-    const onRequestClick = vi.fn<(carpoolId: number, requestId: number) => void>();
+    const onDecisionClick =
+      vi.fn<(carpoolId: number, requestId: number, action: 'accept' | 'reject') => void>();
     const received: CarpoolReceivedRequest = { ...request, status: 'PENDING' };
     render(
       <ul>
-        <CarpoolReceivedItem request={received} onRequestClick={onRequestClick} />
+        <CarpoolReceivedItem
+          onDecisionClick={onDecisionClick}
+          onRequestClick={vi.fn<(carpoolId: number, requestId: number) => void>()}
+          request={received}
+        />
       </ul>,
     );
     await user.click(screen.getByRole('button', { name: '수락' }));
     await user.click(screen.getByRole('button', { name: '거절' }));
-    expect(onRequestClick).toHaveBeenCalledWith(51, 88);
-    expect(onRequestClick).toHaveBeenCalledTimes(2);
+    expect(onDecisionClick).toHaveBeenNthCalledWith(1, 51, 88, 'accept');
+    expect(onDecisionClick).toHaveBeenNthCalledWith(2, 51, 88, 'reject');
   });
 });
