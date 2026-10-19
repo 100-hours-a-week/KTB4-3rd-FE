@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import nextConfig from '../../next.config';
+import nextConfig from '@/../next.config';
 
 describe('Next.js 보안 설정', () => {
   it('x-powered-by 헤더를 비활성화한다', () => {
