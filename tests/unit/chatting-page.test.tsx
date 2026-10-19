@@ -284,6 +284,32 @@ describe('ChattingPage', () => {
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
   });
 
+  it('미터기 분석이 완료되면 미터기 요청 메시지를 목록에서 숨긴다', () => {
+    const meterRequestMessage = {
+      id: 'meter-request-message',
+      kind: 'notice' as const,
+      content: '택시 미터기 사진을 보내주세요',
+      systemType: 'SYSTEM_METER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+    const connection = {
+      error: null,
+      sendMessage: vi.fn<(content: string) => boolean>(() => true),
+      status: 'open',
+    } satisfies ChatRoomWebSocketConnectionValue;
+
+    render(
+      <ChatRoomContent
+        connection={connection}
+        hideMeterRequestMessage
+        liveMessages={[]}
+        room={{ ...generalChatRoom, messages: [...generalChatRoom.messages, meterRequestMessage] }}
+      />,
+    );
+
+    expect(screen.queryByText('택시 미터기 사진을 보내주세요')).not.toBeInTheDocument();
+  });
+
   it('웹소켓 입퇴장 메시지에 따라 헤더 인원수와 메시지 입력 상태를 동기화한다', async () => {
     renderChattingPage('501');
 
