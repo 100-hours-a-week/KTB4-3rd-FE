@@ -977,6 +977,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
             onSendMeterPhoto={handleSendMeterPhoto}
             onManualMeterEntry={handleManualMeterEntry}
             meterSettlementId={settlementId}
+            hideMeterRequestMessage={meterAnalysisStatus === 'PASSED'}
             remainingMeterAttempts={remainingMeterAttempts}
             onSendTransferPhoto={handleSendTransferPhoto}
             onRegisterMeterPhotoPicker={handleRegisterMeterPhotoPicker}
@@ -1122,6 +1123,7 @@ type ChattingPageContentProps = {
   onTransferProofOpenChange: (open: boolean) => void;
   uploadingSettlementPhoto: boolean;
   currentUserId?: number;
+  hideMeterRequestMessage: boolean;
 };
 
 function ChattingPageContent({
@@ -1176,6 +1178,7 @@ function ChattingPageContent({
   onTransferProofOpenChange,
   uploadingSettlementPhoto,
   currentUserId,
+  hideMeterRequestMessage,
   leaveLoading,
   room,
   taxiPotDetail,
@@ -1259,6 +1262,7 @@ function ChattingPageContent({
           onViewMeterImage={onViewMeterImage}
           uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
+          hideMeterRequestMessage={hideMeterRequestMessage}
           topContent={topContent}
         />
       </ChatRoomLayout>

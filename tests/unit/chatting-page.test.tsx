@@ -13,6 +13,7 @@ import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.
 import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
 const navigation = vi.hoisted(() => ({
   push: vi.fn<(path: string) => void>(),
@@ -281,6 +282,32 @@ describe('ChattingPage', () => {
 
     expect(screen.getByRole('textbox', { name: '메시지 입력' })).toBeDisabled();
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
+  });
+
+  it('미터기 분석이 완료되면 미터기 요청 메시지를 목록에서 숨긴다', () => {
+    const meterRequestMessage = {
+      id: 'meter-request-message',
+      kind: 'notice' as const,
+      content: '택시 미터기 사진을 보내주세요',
+      systemType: 'SYSTEM_METER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+    const connection = {
+      error: null,
+      sendMessage: vi.fn<(content: string) => boolean>(() => true),
+      status: 'open',
+    } satisfies ChatRoomWebSocketConnectionValue;
+
+    render(
+      <ChatRoomContent
+        connection={connection}
+        hideMeterRequestMessage
+        liveMessages={[]}
+        room={{ ...generalChatRoom, messages: [...generalChatRoom.messages, meterRequestMessage] }}
+      />,
+    );
+
+    expect(screen.queryByText('택시 미터기 사진을 보내주세요')).not.toBeInTheDocument();
   });
 
   it('웹소켓 입퇴장 메시지에 따라 헤더 인원수와 메시지 입력 상태를 동기화한다', async () => {
@@ -1066,6 +1093,92 @@ describe('ChattingPage', () => {
     await user.click(screen.getByRole('menuitem', { name: '복사하기' }));
 
     expect(writeText).toHaveBeenCalledWith('3분 뒤 도착합니다');
+  });
+
+  it('정산 계좌번호를 누르면 클립보드에 복사하고 복사완료 Snackbar를 표시한다', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const message = {
+      id: 'settlement-request',
+      kind: 'notice' as const,
+      content: '방장이 정산을 요청했어요',
+      settlement: {
+        settlement_id: 7,
+        total_amount: 26000,
+        amount_per_person: 13000,
+        payee: {
+          id: 1,
+          name: '테스트 유저',
+          bank_name: '카카오뱅크',
+          account_no: '000-0000-0000',
+        },
+      },
+      systemType: 'SYSTEM_TRANSFER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+
+    render(
+      <SnackbarProvider>
+        <ChatMessageItem currentUserId={2} index={0} message={message} onReport={() => {}} />
+        <SnackbarViewport />
+      </SnackbarProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '카카오뱅크 000-0000-0000 복사' }));
+
+    expect(writeText).toHaveBeenCalledWith('카카오뱅크 000-0000-0000');
+    expect(await screen.findByRole('status')).toHaveTextContent('복사완료');
+    expect(screen.getByRole('region', { name: '방장의 정산 요청' }).parentElement).toHaveClass(
+      'self-start',
+    );
+  });
+
+  it('ChatNotice는 메시지 목록 중앙에 배치한다', () => {
+    const message = {
+      id: 'system-start',
+      kind: 'notice' as const,
+      content: '운행이 시작됐어요',
+      systemType: 'SYSTEM_RIDE_STARTED' as const,
+      variant: 'system' as const,
+    };
+
+    render(<ChatMessageItem index={0} message={message} onReport={() => {}} />);
+
+    expect(screen.getByText('운행이 시작됐어요').closest('[data-variant]')).toHaveClass(
+      'self-center',
+    );
+  });
+
+  it('방장이 아니면 미터기 요청을 기다림 안내를 ChatNotice로 표시한다', () => {
+    const message = {
+      id: 'meter-request',
+      kind: 'notice' as const,
+      content: '택시 미터기 사진을 보내주세요',
+      systemType: 'SYSTEM_METER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+
+    render(
+      <ChatMessageItem
+        index={0}
+        isTaxiPotHost={false}
+        message={message}
+        onReport={() => {}}
+        onSendMeterPhoto={() => {}}
+      />,
+    );
+
+    const notice = screen.getByText('방장의 정산 요청을 기다리고있어요');
+
+    expect(notice).toHaveAttribute('data-variant', 'system');
+    expect(notice).toHaveClass('self-center', 'mb-[44px]');
+    expect(screen.queryByText('택시 미터기 사진을 보내주세요')).not.toBeInTheDocument();
   });
 
   it('신고하기 버튼을 누르면 신고 API 요청을 보낸다', async () => {
