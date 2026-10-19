@@ -480,6 +480,53 @@ describe('ChattingPage', () => {
     expect(requests).toEqual(['leave']);
   });
 
+  it('카풀 채팅방에서 나갈 때 카풀 나가기 API를 호출한다', async () => {
+    const user = userEvent.setup();
+    const requests: string[] = [];
+
+    server.use(
+      http.get('*/chat-rooms/700', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 700,
+            companion_id: 51,
+            kind: 'CARPOOL',
+            title: '카풀 채팅방',
+            host_id: 7,
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 2,
+            capacity: 4,
+            companion_status: 'RECRUITING',
+            closed_at: null,
+            last_read_message_id: null,
+          },
+        }),
+      ),
+      http.get('*/chat-rooms/700/messages', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], before_cursor: null, after_cursor: null },
+        }),
+      ),
+      http.delete('*/carpools/51/participants/me', () => {
+        requests.push('leave');
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderChattingPage('700');
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
+
+    await user.click(screen.getByRole('button', { name: '채팅방 나가기' }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    expect(requests).toEqual(['leave']);
+  });
+
   it('뒤로가기 버튼을 누르면 마지막 메시지를 읽음 처리한 뒤 채팅방을 나간다', async () => {
     const user = userEvent.setup();
     const requests: string[] = [];

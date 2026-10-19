@@ -4,7 +4,7 @@ import type { ChatSettlementSnapshot } from '@/entities/chat';
 export type ChatRoomDetailData = {
   id: number;
   companion_id: number;
-  kind: 'GENERAL' | 'TAXI_POT';
+  kind: 'GENERAL' | 'TAXI_POT' | 'CARPOOL';
   title: string;
   host_id: number;
   origin_name: string | null;

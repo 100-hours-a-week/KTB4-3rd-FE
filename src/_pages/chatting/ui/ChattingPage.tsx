@@ -18,6 +18,7 @@ import {
   useChatReportMutation,
 } from '@/features/chatting';
 import type { ChatWebSocketMessage, SettlementAnalysisFinishedMessage } from '@/entities/chat';
+import { useLeaveCarpoolMutation } from '@/features/leave-carpool';
 import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
   submitTransferProof,
@@ -218,6 +219,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const chatRoomDetail = detailQuery.data?.data;
   const companionId = chatRoomDetail?.companion_id;
   const currentUserId = currentUserQuery.data?.data.id;
+  const isCarpool = chatRoomDetail?.kind === 'CARPOOL';
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
@@ -229,6 +231,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const settlementId = taxiPotDetail?.settlement_id;
   const ratingMutation = useChatRatingMutation();
   const reportMutation = useChatReportMutation();
+  const leaveCarpoolMutation = useLeaveCarpoolMutation();
   const leaveCompanionMutation = useLeaveCompanionMutation();
   const leaveTaxiPotMutation = useLeaveTaxiPotMutation();
   const readMarkerMutation = useChatRoomReadMarkerMutation();
@@ -924,7 +927,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     }
 
     try {
-      if (isTaxiPot) {
+      if (isCarpool) {
+        await leaveCarpoolMutation.mutateAsync(companionId);
+      } else if (isTaxiPot) {
         await leaveTaxiPotMutation.mutateAsync(Number(taxiPotId));
       } else {
         await leaveCompanionMutation.mutateAsync(companionId);
@@ -941,8 +946,20 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           'critical',
         );
     }
-  }, [companionId, isTaxiPot, leaveCompanionMutation, leaveTaxiPotMutation, router, taxiPotId]);
-  const leaveLoading = leaveCompanionMutation.isPending || leaveTaxiPotMutation.isPending;
+  }, [
+    companionId,
+    isCarpool,
+    isTaxiPot,
+    leaveCarpoolMutation,
+    leaveCompanionMutation,
+    leaveTaxiPotMutation,
+    router,
+    taxiPotId,
+  ]);
+  const leaveLoading =
+    leaveCarpoolMutation.isPending ||
+    leaveCompanionMutation.isPending ||
+    leaveTaxiPotMutation.isPending;
 
   return (
     <ChatRoomWebSocketConnection
