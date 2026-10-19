@@ -10,12 +10,26 @@ export type ChatSettlementSnapshot = {
   };
 };
 
-export type SettlementAnalysisFinishedMessage = {
+export type MeterAnalysisFinishedMessage = {
   type: 'METER_ANALYSIS_FINISHED';
   settlement_id: number;
   meter_analysis_status: 'PASSED' | 'FAILED';
   remaining_meter_attempts: number;
 };
+
+export type TransferAnalysisFinishedMessage = {
+  type: 'TRANSFER_ANALYZED';
+  settlement_id: number;
+  user_id: number;
+  name: string;
+  member_analysis_status: 'PASSED' | 'FAILED';
+  transfer_completed: boolean;
+  remaining_transfer_attempts: number;
+};
+
+export type SettlementAnalysisFinishedMessage =
+  | MeterAnalysisFinishedMessage
+  | TransferAnalysisFinishedMessage;
 
 type ChatWebSocketMessageBase = {
   id: number;
@@ -346,7 +360,7 @@ export class ChatWebSocketClient {
       if (frame.command === 'MESSAGE') {
         try {
           const message = JSON.parse(frame.body) as { type?: string };
-          if (message.type === 'METER_ANALYSIS_FINISHED') {
+          if (message.type === 'METER_ANALYSIS_FINISHED' || message.type === 'TRANSFER_ANALYZED') {
             this.options.onSettlementAnalysisFinished?.(
               message as SettlementAnalysisFinishedMessage,
             );

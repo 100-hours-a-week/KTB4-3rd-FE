@@ -55,6 +55,11 @@ export type ApiFetchOptions = RequestInit & {
 
 export type AuthRefreshHandler = () => Promise<string>;
 
+export type ApiFetchResponse<T> = {
+  data: T;
+  status: number;
+};
+
 let authRefreshHandler: AuthRefreshHandler | null = null;
 let authRefreshRequest: Promise<string> | null = null;
 
@@ -71,11 +76,22 @@ async function readResponseBody(response: Response): Promise<unknown> {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { data } = await apiFetchWithStatus<T>(path, options);
+  return data;
+}
+
+export async function apiFetchWithStatus<T>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<ApiFetchResponse<T>> {
   const { token, skipAuthRefresh, ...init } = options;
   const response = await fetchApi(path, init, token);
 
   if (response.response.ok) {
-    return response.body as T;
+    return {
+      data: response.body as T,
+      status: response.response.status,
+    };
   }
 
   const refreshHandler = authRefreshHandler;
@@ -102,7 +118,10 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     throwApiError(retriedResponse.response, retriedResponse.body);
   }
 
-  return retriedResponse.body as T;
+  return {
+    data: retriedResponse.body as T,
+    status: retriedResponse.response.status,
+  };
 }
 
 async function fetchApi(path: string, init: RequestInit, token?: string) {

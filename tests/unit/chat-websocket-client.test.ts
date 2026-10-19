@@ -5,6 +5,7 @@ import {
   getChatWebSocketUrl,
   type ChatWebSocketMessage,
 } from '@/entities/chat';
+import { emitMockSettlementAnalysisFinished } from '@/shared/api/mocks/chat-room-websocket.handlers';
 import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 
 const clients: ChatWebSocketClient[] = [];
@@ -57,6 +58,54 @@ describe('ChatWebSocketClient', () => {
     expect(getChatWebSocketUrl()).toBe('ws://localhost:8080/wss');
   });
 
+  it('미터기와 송금 분석 완료 이벤트를 정산 콜백으로 전달한다', async () => {
+    const finishedMessages: unknown[] = [];
+    const client = new ChatWebSocketClient({
+      accessToken: MOCK_ACCESS_TOKEN,
+      onSettlementAnalysisFinished: (message) => finishedMessages.push(message),
+      roomId: '501',
+    });
+    clients.push(client);
+
+    await client.connect();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    emitMockSettlementAnalysisFinished({
+      type: 'METER_ANALYSIS_FINISHED',
+      settlement_id: 123,
+      meter_analysis_status: 'PASSED',
+      remaining_meter_attempts: 1,
+    });
+    emitMockSettlementAnalysisFinished({
+      type: 'TRANSFER_ANALYZED',
+      settlement_id: 123,
+      user_id: 43,
+      name: '홍길동',
+      member_analysis_status: 'PASSED',
+      transfer_completed: true,
+      remaining_transfer_attempts: 1,
+    });
+
+    await waitForFinishedMessages(finishedMessages, 2);
+
+    expect(finishedMessages).toEqual([
+      {
+        type: 'METER_ANALYSIS_FINISHED',
+        settlement_id: 123,
+        meter_analysis_status: 'PASSED',
+        remaining_meter_attempts: 1,
+      },
+      {
+        type: 'TRANSFER_ANALYZED',
+        settlement_id: 123,
+        user_id: 43,
+        name: '홍길동',
+        member_analysis_status: 'PASSED',
+        transfer_completed: true,
+        remaining_transfer_attempts: 1,
+      },
+    ]);
+  });
+
   it('API base path를 포함한 웹소켓 주소를 파생한다', () => {
     vi.stubEnv('NEXT_PUBLIC_API_BASE_URL', 'https://dev.moyeota.com/api');
     vi.stubEnv('NEXT_PUBLIC_WEBSOCKET_URL', '');
@@ -64,3 +113,11 @@ describe('ChatWebSocketClient', () => {
     expect(getChatWebSocketUrl()).toBe('wss://dev.moyeota.com/api/wss');
   });
 });
+
+async function waitForFinishedMessages(messages: readonly unknown[], count: number) {
+  const deadline = Date.now() + 1_000;
+
+  while (messages.length < count && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 10));
+  }
+}

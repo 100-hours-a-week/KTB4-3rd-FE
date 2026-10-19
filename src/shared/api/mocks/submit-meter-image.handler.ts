@@ -81,11 +81,11 @@ export const submitMeterImageHandler = http.post(
 
     return HttpResponse.json(
       {
-        message: '미터기 사진 분석을 시작했습니다',
+        message: '미터기 금액 분석 상태를 확인하세요.',
         data: {
-          participant_count: settlement.participant_count,
           group_settlement_status: settlement.group_settlement_status,
           meter_analysis_status: settlement.meter_analysis_status,
+          total_amount: settlement.total_amount,
           analysis_started_at: settlement.analysis_started_at,
           remaining_meter_attempts: remaining,
         },
