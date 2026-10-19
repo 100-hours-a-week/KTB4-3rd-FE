@@ -7,6 +7,7 @@ import {
   TransferPhotoRequest,
 } from '@/features/taxi-pot-settlement';
 import { cn } from '@/shared/lib/cn';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { Avatar } from '@/shared/ui/avatar';
 import { Text } from '@/shared/ui/text';
 
@@ -48,14 +49,32 @@ function getTransferCompletionDetails(content: string, fallbackAmount: number) {
   };
 }
 
-function getMessageClassName(message: ChatRoomMessage, index: number) {
+function getMessageClassName(
+  message: ChatRoomMessage,
+  index: number,
+  noticeAlignment: 'center' | 'start' = 'center',
+) {
   const spacing = initialMessageSpacing[index] ?? 'mt-4';
 
   if (message.kind === 'notice') {
-    return cn(spacing, 'self-center');
+    return cn(spacing, noticeAlignment === 'start' ? 'self-start' : 'self-center');
   }
 
   return cn(spacing, message.variant === 'me' && 'self-end mr-[10px]');
+}
+
+async function copyBankAccount(bankAccount: string) {
+  if (!navigator.clipboard) {
+    useSnackbarStore.getState().showSnackbar('계좌번호를 복사하지 못했어요', 'critical');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(bankAccount);
+    useSnackbarStore.getState().showSnackbar('복사완료', 'positive');
+  } catch {
+    useSnackbarStore.getState().showSnackbar('계좌번호를 복사하지 못했어요', 'critical');
+  }
 }
 
 export function ChatMessageItem({
@@ -81,25 +100,34 @@ export function ChatMessageItem({
 }: ChatMessageItemProps) {
   if (message.kind === 'notice') {
     const className = getMessageClassName(message, index);
+    const systemMessageClassName = getMessageClassName(message, index, 'start');
 
-    if (message.systemType === 'SYSTEM_METER_REQUESTED' && isTaxiPotHost && onSendMeterPhoto) {
+    if (message.systemType === 'SYSTEM_METER_REQUESTED') {
+      if (isTaxiPotHost && onSendMeterPhoto) {
+        return (
+          <TaxiMeterPhotoRequest
+            className={systemMessageClassName}
+            onSend={(file) => {
+              if (meterSettlementId !== undefined) {
+                onSendMeterPhoto(meterSettlementId, file);
+              }
+            }}
+            onManualEntry={() => {
+              if (meterSettlementId !== undefined) {
+                onManualMeterEntry?.(meterSettlementId);
+              }
+            }}
+            onRegisterPhotoPicker={onRegisterMeterPhotoPicker}
+            remainingAttempts={remainingMeterAttempts}
+            sending={uploadingSettlementPhoto}
+          />
+        );
+      }
+
       return (
-        <TaxiMeterPhotoRequest
-          className={className}
-          onSend={(file) => {
-            if (meterSettlementId !== undefined) {
-              onSendMeterPhoto(meterSettlementId, file);
-            }
-          }}
-          onManualEntry={() => {
-            if (meterSettlementId !== undefined) {
-              onManualMeterEntry?.(meterSettlementId);
-            }
-          }}
-          onRegisterPhotoPicker={onRegisterMeterPhotoPicker}
-          remainingAttempts={remainingMeterAttempts}
-          sending={uploadingSettlementPhoto}
-        />
+        <ChatNotice className={className} data-message-id={message.id} variant={message.variant}>
+          방장의 정산 요청을 기다리고있어요
+        </ChatNotice>
       );
     }
 
@@ -112,14 +140,14 @@ export function ChatMessageItem({
         role === 'host' ? (
           <TaxiPotSettlementRequestSystemMessage
             bankAccount={bankAccount}
-            onBankAccountClick={(value) => void navigator.clipboard?.writeText(value)}
+            onBankAccountClick={copyBankAccount}
             perPersonAmount={message.settlement.amount_per_person}
             role="host"
           />
         ) : (
           <TaxiPotSettlementRequestSystemMessage
             bankAccount={bankAccount}
-            onBankAccountClick={(value) => void navigator.clipboard?.writeText(value)}
+            onBankAccountClick={copyBankAccount}
             perPersonAmount={message.settlement.amount_per_person}
             role="passenger"
             totalAmount={message.settlement.total_amount}
@@ -127,7 +155,7 @@ export function ChatMessageItem({
           />
         );
       return (
-        <div className={cn('flex flex-col gap-3', className)}>
+        <div className={cn('flex flex-col gap-3', systemMessageClassName)}>
           {requestMessage}
           {role === 'passenger' && onSendTransferPhoto ? (
             <TransferPhotoRequest
@@ -147,7 +175,7 @@ export function ChatMessageItem({
       return (
         <TransferCompletionSystemMessage
           amount={amount}
-          className={className}
+          className={systemMessageClassName}
           nickname={nickname}
           onViewReceipt={
             isTaxiPotHost && transferSettlementId !== undefined && onViewTransferProof
@@ -161,7 +189,7 @@ export function ChatMessageItem({
     if (message.systemType === 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED') {
       return (
         <TransferCompletionConfirmationSystemMessage
-          className={className}
+          className={systemMessageClassName}
           acknowledging={completingSettlement}
           onAcknowledge={
             transferSettlementId === undefined || !onAcknowledgeSettlement
