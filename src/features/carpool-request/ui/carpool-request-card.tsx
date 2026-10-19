@@ -74,7 +74,7 @@ export function CarpoolRequestCard({
           <Divider className="mt-[10px]" color="var(--color-stroke-neutral-weak)" />
         </>
       ) : null}
-      <div className={profileSlot ? 'mt-3' : undefined}>
+      <div className={profileSlot ? 'mt-6' : undefined}>
         <Field
           characterCount={characterCount}
           characterCountShowFrom={180}
@@ -86,8 +86,9 @@ export function CarpoolRequestCard({
               render={
                 <Textarea
                   autoSize={false}
+                  className="[&>div]:h-[170px]"
                   onValueChange={setContent}
-                  placeholder="함께 타고 싶은 이유를 알려주세요"
+                  placeholder="운전자에게 보낼 메시지를 입력해주세요"
                   textareaClassName="h-full"
                   value={content}
                 />
@@ -97,8 +98,8 @@ export function CarpoolRequestCard({
           }
           invalid={isOverLimit}
           label="요청 메시지"
+          labelWeight="medium"
           maxCharacterCount={MAX_CONTENT_LENGTH}
-          required
         />
       </div>
       <div className="mt-auto pt-3">

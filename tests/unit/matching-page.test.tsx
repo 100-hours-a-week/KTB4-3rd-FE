@@ -563,7 +563,7 @@ describe('MatchingPage', () => {
           data: {
             id: 51,
             status: 'RECRUITING',
-            host: { id: 11, name: '홍길동', profile_image_url: null },
+            host: { id: 11, name: '홍길동', profile_image_url: '/host-profile.png' },
             origin_name: '서울역',
             dest_name: '판교역',
             departure_at: '2030-10-10T09:40:00.000Z',
@@ -591,6 +591,15 @@ describe('MatchingPage', () => {
     renderMatchingPage();
     await user.click(await screen.findByRole('button', { name: '카풀 게시글 51' }));
     await user.click(await screen.findByRole('button', { name: '동행 요청하기' }));
+    expect(await screen.findByRole('img', { name: '홍길동 프로필' })).toHaveAttribute(
+      'src',
+      expect.stringMatching(/\/host-profile\.png$/),
+    );
+    expect(screen.getByText('홍길동')).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: '상세로' })).not.toBeInTheDocument();
+    expect(
+      screen.getByPlaceholderText('운전자에게 보낼 메시지를 입력해주세요'),
+    ).toBeInTheDocument();
     const requestMessage = await screen.findByRole('textbox', { name: '요청 메시지' });
     await user.type(requestMessage, '함께 이동하고 싶어요.');
     await user.click(screen.getByRole('button', { name: '전송하기' }));

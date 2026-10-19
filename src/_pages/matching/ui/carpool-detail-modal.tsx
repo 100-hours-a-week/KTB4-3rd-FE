@@ -19,6 +19,7 @@ import {
 } from '@/features/carpool-join-request';
 import { ApiError } from '@/shared/api/client';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import { Avatar } from '@/shared/ui/avatar';
 import { Button } from '@/shared/ui/button';
 import { BottomModal } from '@/shared/ui/bottom-modal';
 import { Dialog } from '@/shared/ui/dialog';
@@ -466,22 +467,25 @@ export function CarpoolDetailModal({
       >
         {stage === 'request' ? (
           <div>
-            <div className="px-6 pt-5 pb-3">
-              <button
-                className="mb-3 text-sm"
-                onClick={() => exitTo(selectionRef.current)}
-                type="button"
-              >
-                ← 상세로
-              </button>
-              <Text as="h2" className="sr-only" variant="t5Bold">
-                동행 요청 작성
-              </Text>
-            </div>
+            <h2 className="sr-only">동행 요청 작성</h2>
             <CarpoolRequestCard
               isSubmitting={joinRequestMutation.isPending || isReconcilingJoinRequest}
               onDirtyChange={setIsDirty}
               onSubmit={handleSubmit}
+              profileSlot={
+                carpool ? (
+                  <>
+                    <Avatar
+                      alt={`${carpool.host.name} 프로필`}
+                      size={90}
+                      src={carpool.host.profile_image_url}
+                    />
+                    <Text as="span" variant="t8Bold">
+                      {carpool.host.name}
+                    </Text>
+                  </>
+                ) : undefined
+              }
               renderSubmitAction={(props) => (
                 <Button
                   {...props}
