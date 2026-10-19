@@ -195,7 +195,7 @@ jobs:
         uses: aws-actions/configure-aws-credentials@v6.3.0
         with:
           aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.ECS_DEPLOY_ROLE_ARN }}
+          role-to-assume: ${{ secrets.ECS_DEPLOY_ROLE_ARN_PROD }}
           role-session-name: frontend-prod-cd-${{ github.run_id }}
 
       - name: Checkout deploy action
