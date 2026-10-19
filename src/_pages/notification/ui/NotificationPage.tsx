@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
@@ -9,6 +10,7 @@ import {
 } from '@/entities/notification';
 import {
   useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
   useNotificationListQuery,
 } from '@/features/notification-center';
 import { PushNotificationPlatformGuide } from '@/features/push-token';
@@ -34,6 +36,7 @@ export type NotificationPageProps = {
   notifications?: readonly Notification[];
   onLoadMore?: () => void;
   onMarkAllRead?: () => void;
+  onNotificationClick?: (notification: Notification) => void;
   onRetry?: () => void;
   onTabChange?: (tab: NotificationTabValue) => void;
 };
@@ -54,6 +57,7 @@ export function NotificationPageView({
   notifications = [],
   onLoadMore,
   onMarkAllRead,
+  onNotificationClick,
   onRetry,
   onTabChange,
 }: NotificationPageProps) {
@@ -127,7 +131,11 @@ export function NotificationPageView({
         data-testid="notification-list-scroll-region"
         ref={listScrollRef}
       >
-        <NotificationList className="!mt-0" items={visibleNotifications} />
+        <NotificationList
+          className="!mt-0"
+          items={visibleNotifications}
+          onItemClick={onNotificationClick}
+        />
         {hasNextPage ? (
           <div
             aria-busy={isFetchingNextPage}
@@ -206,10 +214,12 @@ export function NotificationPageLoading() {
 }
 
 export function NotificationPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<NotificationTabValue>('all');
   const query = useNotificationListQuery(activeTab);
   const { isPending: isMarkingAllRead, mutate: markAllNotificationsRead } =
     useMarkAllNotificationsReadMutation();
+  const { mutate: markNotificationRead } = useMarkNotificationReadMutation();
   const { data, fetchNextPage, hasNextPage, isError, isFetchingNextPage, isLoading, refetch } =
     query;
   const notifications = data?.pages.flatMap(({ data: pageData }) => pageData.notifications) ?? [];
@@ -229,6 +239,21 @@ export function NotificationPage() {
 
     markAllNotificationsRead({ max_notification_id: maxNotificationId });
   }, [isMarkingAllRead, markAllNotificationsRead, maxNotificationId]);
+  const onNotificationClick = useCallback(
+    (notification: Notification) => {
+      markNotificationRead(notification.id);
+
+      if (notification.target_post_id !== null) {
+        router.push(`/posts/${notification.target_post_id}`);
+        return;
+      }
+
+      if (notification.target_chat_room_id !== null) {
+        router.push(`/chatroom/${notification.target_chat_room_id}`);
+      }
+    },
+    [markNotificationRead, router],
+  );
 
   return (
     <NotificationPageView
@@ -241,6 +266,7 @@ export function NotificationPage() {
       notifications={notifications}
       onLoadMore={onLoadMore}
       onMarkAllRead={onMarkAllRead}
+      onNotificationClick={onNotificationClick}
       onRetry={() => void refetch()}
       onTabChange={setActiveTab}
     />
