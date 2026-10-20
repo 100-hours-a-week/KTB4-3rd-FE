@@ -1,0 +1,345 @@
+name: FE Prod CD
+
+# main 브랜치 → Prod ECS 클러스터(moyeota-v2-prod) 승인 배포
+#   브랜치 흐름: develop → release/vX.Y.Z (Stg 검증) → main (Prod 승인 배포)
+#             main → hotfix/vX.Y.Z (긴급 수정, Stg 미경유) → main (Prod 승인 배포)
+#   1) resolve : main 머지 커밋의 원본 PR 브랜치로 승격할 digest를 찾는다. (재빌드 금지)
+#                release/vX.Y.Z → Stg CD가 남긴 stg-vX.Y.Z-<sha> (Stg와 동일 digest)
+#                hotfix/vX.Y.Z  → hotfix CI가 push한 hf-vX.Y.Z-<sha> (리뷰·테스트한 커밋의 digest)
+#   2) deploy  : production environment 승인 후 frontend에 digest를 반영한다.
+#   3) promote : 배포가 끝난 digest에 prod-vX.Y.Z-<sha> 태그를 남긴다.
+#   4) backmerge: main → develop(hotfix면 진행 중인 release/*도) 역병합 PR을 연다.
+
+on:
+  workflow_run:
+    workflows:
+      - FE CI
+    types:
+      - completed
+    branches:
+      - main
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  pull-requests: read
+
+concurrency:
+  group: frontend-cd-prod
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve verified release
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      image_ref: ${{ steps.release.outputs.image_ref }}
+      image_digest: ${{ steps.release.outputs.image_digest }}
+      source_tag: ${{ steps.release.outputs.source_tag }}
+      release_path: ${{ steps.release.outputs.release_path }}
+      release_version: ${{ steps.release.outputs.release_version }}
+      promote_tag: ${{ steps.release.outputs.promote_tag }}
+      needs_promotion: ${{ steps.release.outputs.needs_promotion }}
+    env:
+      GH_TOKEN: ${{ github.token }}
+      MAIN_SHA: ${{ github.event.workflow_run.head_sha }}
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: frontend-prod-resolve-${{ github.run_id }}
+
+      - name: Debug ECR repository
+        run: |
+          printf 'ECR_REPOSITORY=%q\n' "$ECR_REPOSITORY"
+          test -n "$ECR_REPOSITORY"
+          test "$ECR_REPOSITORY" = "${ECR_REPOSITORY//[[:space:]]/}"
+
+      - name: Resolve QA-approved source commit
+        id: source
+        run: |
+          set -Eeuo pipefail
+
+          source_sha="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/commits/${MAIN_SHA}/pulls" \
+            --jq '[.[] | select(.base.ref == "main")][0].head.sha // empty')"
+          source_branch="$(gh api \
+            -H 'Accept: application/vnd.github+json' \
+            "/repos/${GITHUB_REPOSITORY}/commits/${MAIN_SHA}/pulls" \
+            --jq '[.[] | select(.base.ref == "main")][0].head.ref // empty')"
+
+          if [[ -z "$source_sha" || -z "$source_branch" ]]; then
+            echo "Unable to resolve the source pull request for ${MAIN_SHA}; refusing production deployment." >&2
+            exit 1
+          fi
+
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+
+          {
+            echo "source_sha=$source_sha"
+            echo "source_branch=$source_branch"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Resolve release version and verified image
+        id: release
+        env:
+          SOURCE_SHA: ${{ steps.source.outputs.source_sha }}
+          SOURCE_BRANCH: ${{ steps.source.outputs.source_branch }}
+        run: |
+          set -Eeuo pipefail
+
+          # Prod는 두 경로만 받는다. (develop → main 직행은 검증된 이미지가 없으므로 거부)
+          #   release/vX.Y.Z : Stg 배포가 끝난 stg-vX.Y.Z-<sha> digest
+          #   hotfix/vX.Y.Z  : main에서 만든 hotfix 브랜치를 CI가 빌드한 hf-vX.Y.Z-<sha> digest
+          #                    Stg를 거치지 않으므로 PR 리뷰 + production 승인 + CI 가드(브랜치 기준·DB 마이그레이션)로 보완한다.
+          case "$SOURCE_BRANCH" in
+            release/v*)
+              release_path=release
+              release_version="${SOURCE_BRANCH#release/}"
+              source_prefix=stg
+              ;;
+            hotfix/v*)
+              release_path=hotfix
+              release_version="${SOURCE_BRANCH#hotfix/}"
+              source_prefix=hf
+              ;;
+            *)
+              echo "Unsupported production source branch: ${SOURCE_BRANCH} (expected release/vX.Y.Z or hotfix/vX.Y.Z)" >&2
+              exit 1
+              ;;
+          esac
+
+          [[ "$release_version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          source_tag="${source_prefix}-${release_version}-${SOURCE_SHA:0:7}"
+          promote_tag="prod-${release_version}-${SOURCE_SHA:0:7}"
+
+          if ! image_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$source_tag" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null)"; then
+            echo "Verified image not found: ${source_tag}" >&2
+            if [[ "$release_path" == release ]]; then
+              echo "${SOURCE_BRANCH}@${SOURCE_SHA:0:7} has not been deployed to Stg successfully; refusing production deployment." >&2
+            else
+              echo "${SOURCE_BRANCH}@${SOURCE_SHA:0:7} has no hotfix image; check the CI run on the hotfix branch push." >&2
+            fi
+            exit 1
+          fi
+
+          [[ "$image_digest" == sha256:* ]]
+
+          needs_promotion=true
+          if existing_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$promote_tag" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null)"; then
+            if [[ "$existing_digest" != "$image_digest" ]]; then
+              echo "ECR tag collision: ${promote_tag}" >&2
+              echo "Expected digest: ${image_digest}" >&2
+              echo "Existing digest: ${existing_digest}" >&2
+              exit 1
+            fi
+
+            echo "ECR tag already points to the expected digest: ${promote_tag}"
+            needs_promotion=false
+          fi
+
+          {
+            echo "image_ref=${ECR_REGISTRY}/${ECR_REPOSITORY}@${image_digest}"
+            echo "image_digest=$image_digest"
+            echo "source_tag=$source_tag"
+            echo "release_path=$release_path"
+            echo "release_version=$release_version"
+            echo "promote_tag=$promote_tag"
+            echo "needs_promotion=$needs_promotion"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Prod release (${release_path})"
+            echo "- source: \`${SOURCE_BRANCH}@${SOURCE_SHA:0:7}\`"
+            echo "- image: \`${source_tag}\` (\`${image_digest}\`)"
+            echo "- promote: \`${promote_tag}\`"
+            if [[ "$release_path" == hotfix ]]; then
+              echo "- ⚠️ hotfix 경로: Stg 검증 없이 배포된다. 배포 후 역병합 PR을 확인한다."
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  deploy:
+    name: Deploy frontend (prod)
+    needs: resolve
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    # production environment의 required reviewers 승인 전까지 대기한다.
+    environment:
+      name: production
+      url: https://moyeota.com
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'moyeota-v2-prod' }}
+      ECS_SERVICE: frontend
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.ECS_DEPLOY_ROLE_ARN_PROD }}
+          role-session-name: frontend-prod-cd-${{ github.run_id }}
+
+      - name: Checkout deploy action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: Deploy to ECS
+        uses: ./.github/actions/ecs-deploy
+        with:
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          image: ${{ needs.resolve.outputs.image_ref }}
+          release-id: ${{ needs.resolve.outputs.promote_tag }}
+          timeout-seconds: '1800'
+
+  promote:
+    name: Promote image tag
+    needs:
+      - resolve
+      - deploy
+    if: needs.resolve.outputs.needs_promotion == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: frontend-prod-promote-${{ github.run_id }}
+
+      - name: Promote image tag without rebuilding
+        env:
+          SOURCE_TAG: ${{ needs.resolve.outputs.source_tag }}
+          PROMOTE_TAG: ${{ needs.resolve.outputs.promote_tag }}
+          IMAGE_DIGEST: ${{ needs.resolve.outputs.image_digest }}
+        run: |
+          set -Eeuo pipefail
+
+          manifest="$(aws ecr batch-get-image \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$SOURCE_TAG" \
+            --query 'images[0].imageManifest' \
+            --output text)"
+
+          test -n "$manifest"
+          test "$manifest" != None
+
+          aws ecr put-image \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-tag "$PROMOTE_TAG" \
+            --image-manifest "$manifest" >/dev/null
+
+          promoted_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$PROMOTE_TAG" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          test "$promoted_digest" = "$IMAGE_DIGEST"
+          echo "Promoted ${IMAGE_DIGEST} as ${PROMOTE_TAG}"
+
+  # Prod에 반영된 main의 변경을 통합 브랜치(develop)로 되돌리는 PR을 연다.
+  # hotfix면 진행 중인 release/* 에도 연다. 머지하지 않으면 다음 릴리스에서 수정이 빠진다(회귀).
+  #   - 끝난 release/* 브랜치는 삭제해 둔다. 남아 있으면 그 브랜치에도 PR이 열린다.
+  #   - GITHUB_TOKEN으로 만든 PR은 CI(pull_request)를 트리거하지 않는다. 필수 체크가 걸려 있으면 PR을 닫았다 다시 열어 CI를 돌린다.
+  #   - 레포 설정 "Allow GitHub Actions to create and approve pull requests"가 꺼져 있으면 PR 대신 경고와 비교 링크만 남긴다.
+  #   - 배포는 이미 끝났으므로 이 job은 실패하지 않는다.
+  backmerge:
+    name: Open back-merge PRs
+    needs:
+      - resolve
+      - deploy
+    if: always() && needs.deploy.result == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      INTEGRATION_BRANCH: develop
+      RELEASE_PATH: ${{ needs.resolve.outputs.release_path }}
+      RELEASE_VERSION: ${{ needs.resolve.outputs.release_version }}
+
+    steps:
+      - name: Open back-merge pull requests
+        run: |
+          set -Eeuo pipefail
+
+          targets=("$INTEGRATION_BRANCH")
+          if [[ "$RELEASE_PATH" == hotfix ]]; then
+            while IFS= read -r branch; do
+              [[ -n "$branch" ]] && targets+=("$branch")
+            done < <(gh api --paginate "/repos/${GITHUB_REPOSITORY}/branches" \
+              --jq '.[].name | select(test("^release/v[0-9]+\\.[0-9]+\\.[0-9]+$"))')
+          fi
+
+          owner="${GITHUB_REPOSITORY%%/*}"
+          echo "### Back-merge (${RELEASE_PATH} ${RELEASE_VERSION})" >> "$GITHUB_STEP_SUMMARY"
+
+          for base in "${targets[@]}"; do
+            compare_url="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/${base}...main"
+
+            if ! ahead="$(gh api "/repos/${GITHUB_REPOSITORY}/compare/${base}...main" --jq '.ahead_by')"; then
+              echo "::warning title=역병합 확인 실패::${base} 비교에 실패했다. 직접 확인: ${compare_url}"
+              continue
+            fi
+            if [[ "$ahead" == 0 ]]; then
+              echo "- \`${base}\`: main 변경이 이미 들어가 있음" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            existing="$(gh api "/repos/${GITHUB_REPOSITORY}/pulls?state=open&head=${owner}:main&base=${base}" \
+              --jq '.[0].html_url // empty')"
+            if [[ -n "$existing" ]]; then
+              echo "- \`${base}\`: 열린 역병합 PR 있음 ${existing}" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            body="$(printf '%s\n' \
+              "Prod CD(${RELEASE_PATH} ${RELEASE_VERSION}) 배포 후 자동으로 연 역병합 PR입니다." \
+              "" \
+              "- main이 ${base}보다 ${ahead}개 커밋 앞서 있습니다." \
+              "- 이 PR은 GITHUB_TOKEN으로 만들어져 CI가 자동으로 돌지 않습니다. 필수 체크가 있으면 닫았다 다시 열어 주세요." \
+              "- 충돌이 나면 ${base} 기준으로 해결합니다." \
+              "" \
+              "Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}")"
+
+            if url="$(gh api -X POST "/repos/${GITHUB_REPOSITORY}/pulls" \
+              -f title="[chore] ${RELEASE_VERSION} ${RELEASE_PATH} 역병합: main → ${base}" \
+              -f head=main \
+              -f base="$base" \
+              -f body="$body" \
+              --jq '.html_url')"; then
+              echo "- \`${base}\`: 역병합 PR 생성 ${url}" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning title=역병합 PR 생성 실패::${base}로 PR을 만들지 못했다. 직접 PR을 연다: ${compare_url}"
+              echo "- \`${base}\`: ⚠️ PR 생성 실패, 직접 열기 ${compare_url}" >> "$GITHUB_STEP_SUMMARY"
+            fi
+          done

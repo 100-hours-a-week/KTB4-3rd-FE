@@ -4,15 +4,29 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 import { NotificationPage, NotificationPageView } from '@/_pages/notification';
-import { useNotificationListQuery } from '@/features/notification-center';
+import {
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
+  useNotificationListQuery,
+} from '@/features/notification-center';
+import type { MarkAllNotificationsReadRequest } from '@/shared/api/notifications';
 
 vi.mock('@/features/notification-center', () => ({
+  useMarkAllNotificationsReadMutation: vi.fn<typeof useMarkAllNotificationsReadMutation>(),
+  useMarkNotificationReadMutation: vi.fn<typeof useMarkNotificationReadMutation>(),
   useNotificationListQuery: vi.fn<typeof useNotificationListQuery>(),
 }));
 
+const mockUseMarkAllNotificationsReadMutation = vi.mocked(useMarkAllNotificationsReadMutation);
+const mockUseMarkNotificationReadMutation = vi.mocked(useMarkNotificationReadMutation);
 const mockUseNotificationListQuery = vi.mocked(useNotificationListQuery);
 
+const navigation = {
+  push: vi.fn<(path: string) => void>(),
+};
+
 vi.mock('next/navigation', () => ({
+  useRouter: () => navigation,
   usePathname: () => '/notification',
 }));
 
@@ -49,6 +63,9 @@ const notifications = [
 
 afterEach(() => {
   cleanup();
+  navigation.push.mockReset();
+  mockUseMarkAllNotificationsReadMutation.mockReset();
+  mockUseMarkNotificationReadMutation.mockReset();
   mockUseNotificationListQuery.mockReset();
 });
 
@@ -69,6 +86,25 @@ function mockNotificationQuery(tab: 'all' | 'unread') {
     isLoading: false,
     refetch: vi.fn<() => void>(),
   } as unknown as ReturnType<typeof useNotificationListQuery>);
+}
+
+function mockMarkAllNotificationsReadMutation(isPending = false) {
+  const mutate = vi.fn<(payload: MarkAllNotificationsReadRequest) => void>();
+
+  mockUseMarkAllNotificationsReadMutation.mockReturnValue({
+    isPending,
+    mutate,
+  } as unknown as ReturnType<typeof useMarkAllNotificationsReadMutation>);
+  return mutate;
+}
+
+function mockMarkNotificationReadMutation() {
+  const mutate = vi.fn<(notificationId: number) => void>();
+
+  mockUseMarkNotificationReadMutation.mockReturnValue({
+    mutate,
+  } as unknown as ReturnType<typeof useMarkNotificationReadMutation>);
+  return mutate;
 }
 
 describe('NotificationPage', () => {
@@ -111,6 +147,8 @@ describe('NotificationPage', () => {
   it('조회 오류 시 오류 안내 ResultSection과 다시 불러오기 동작을 표시한다', async () => {
     const user = userEvent.setup();
     const onRetry = vi.fn<() => void>();
+    mockMarkAllNotificationsReadMutation();
+    mockMarkNotificationReadMutation();
     mockUseNotificationListQuery.mockReturnValue({
       data: undefined,
       fetchNextPage: vi.fn<() => void>(),
@@ -155,6 +193,8 @@ describe('NotificationPage', () => {
 
   it('화면의 탭을 목록 조회 API의 탭 인자로 전달하고 응답 알림을 렌더링한다', async () => {
     const user = userEvent.setup();
+    mockMarkAllNotificationsReadMutation();
+    mockMarkNotificationReadMutation();
     mockNotificationQuery('all');
     render(<NotificationPage />);
 
@@ -167,5 +207,44 @@ describe('NotificationPage', () => {
     expect(mockUseNotificationListQuery).toHaveBeenLastCalledWith('unread');
     expect(screen.getByText(notifications[0].content)).toBeInTheDocument();
     expect(screen.queryByText(notifications[1].content)).not.toBeInTheDocument();
+  });
+
+  it('모두 읽기 버튼을 전체 읽음 mutation에 연결하고 현재 목록의 최대 알림 id를 전달한다', async () => {
+    const user = userEvent.setup();
+    const mutate = mockMarkAllNotificationsReadMutation();
+    mockMarkNotificationReadMutation();
+    mockNotificationQuery('all');
+    render(<NotificationPage />);
+
+    await user.click(screen.getByRole('button', { name: '모두 읽기' }));
+
+    expect(mutate).toHaveBeenCalledOnce();
+    expect(mutate).toHaveBeenCalledWith({ max_notification_id: 2 });
+  });
+
+  it('게시글 알림을 클릭하면 읽음 API를 호출하고 게시글 상세로 이동한다', async () => {
+    const user = userEvent.setup();
+    const markNotificationRead = mockMarkNotificationReadMutation();
+    mockMarkAllNotificationsReadMutation();
+    mockNotificationQuery('all');
+    render(<NotificationPage />);
+
+    await user.click(screen.getByRole('button', { name: /우림님이 댓글을 남겼어요/ }));
+
+    expect(markNotificationRead).toHaveBeenCalledWith(notifications[0].id);
+    expect(navigation.push).toHaveBeenCalledWith('/posts/10');
+  });
+
+  it('채팅 알림을 클릭하면 읽음 API를 호출하고 채팅방으로 이동한다', async () => {
+    const user = userEvent.setup();
+    const markNotificationRead = mockMarkNotificationReadMutation();
+    mockMarkAllNotificationsReadMutation();
+    mockNotificationQuery('all');
+    render(<NotificationPage />);
+
+    await user.click(screen.getByRole('button', { name: /정산 요청이 도착했어요/ }));
+
+    expect(markNotificationRead).toHaveBeenCalledWith(notifications[1].id);
+    expect(navigation.push).toHaveBeenCalledWith('/chatroom/11');
   });
 });

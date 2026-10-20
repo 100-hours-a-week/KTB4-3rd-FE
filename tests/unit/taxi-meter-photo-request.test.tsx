@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -50,6 +50,22 @@ describe('TaxiMeterPhotoRequest', () => {
 
     await user.click(screen.getByRole('button', { name: '전송' }));
     expect(onSend).toHaveBeenCalledWith(file);
+  });
+
+  it('closes the confirmation screen when settlement analysis is finished', async () => {
+    const user = userEvent.setup();
+    const file = new File(['meter'], 'meter.png', { type: 'image/png' });
+    const { rerender } = render(<TaxiMeterPhotoRequest key="initial" onSend={() => {}} />);
+
+    await user.upload(screen.getByLabelText('택시 미터기 사진 선택'), file);
+    expect(screen.getByRole('heading', { name: '사진 확인' })).toBeInTheDocument();
+
+    rerender(<TaxiMeterPhotoRequest key="reset" onSend={() => {}} />);
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
+    });
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:meter-preview');
   });
 
   it('keeps the photo when exit confirmation is cancelled or dismissed', async () => {

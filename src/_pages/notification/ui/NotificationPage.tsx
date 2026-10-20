@@ -1,5 +1,6 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 
 import {
@@ -7,7 +8,11 @@ import {
   NotificationListSkeleton,
   type Notification,
 } from '@/entities/notification';
-import { useNotificationListQuery } from '@/features/notification-center';
+import {
+  useMarkAllNotificationsReadMutation,
+  useMarkNotificationReadMutation,
+  useNotificationListQuery,
+} from '@/features/notification-center';
 import { PushNotificationPlatformGuide } from '@/features/push-token';
 import { BackButton } from '@/shared/ui/back-button';
 import { BottomNav } from '@/shared/ui/BottomNav';
@@ -26,10 +31,12 @@ export type NotificationPageProps = {
   initialTab?: NotificationTabValue;
   isError?: boolean;
   isFetchingNextPage?: boolean;
+  isMarkingAllRead?: boolean;
   isLoading?: boolean;
   notifications?: readonly Notification[];
   onLoadMore?: () => void;
   onMarkAllRead?: () => void;
+  onNotificationClick?: (notification: Notification) => void;
   onRetry?: () => void;
   onTabChange?: (tab: NotificationTabValue) => void;
 };
@@ -45,10 +52,12 @@ export function NotificationPageView({
   initialTab = 'all',
   isError = false,
   isFetchingNextPage = false,
+  isMarkingAllRead = false,
   isLoading = false,
   notifications = [],
   onLoadMore,
   onMarkAllRead,
+  onNotificationClick,
   onRetry,
   onTabChange,
 }: NotificationPageProps) {
@@ -122,7 +131,11 @@ export function NotificationPageView({
         data-testid="notification-list-scroll-region"
         ref={listScrollRef}
       >
-        <NotificationList className="!mt-0" items={visibleNotifications} />
+        <NotificationList
+          className="!mt-0"
+          items={visibleNotifications}
+          onItemClick={onNotificationClick}
+        />
         {hasNextPage ? (
           <div
             aria-busy={isFetchingNextPage}
@@ -175,6 +188,7 @@ export function NotificationPageView({
         {!isError && (isLoading || visibleNotifications.length > 0) ? (
           <div className="mt-5 flex justify-end pr-3">
             <Button
+              loading={isMarkingAllRead}
               onClick={onMarkAllRead}
               size="xsmall"
               textVariant="t2Bold"
@@ -200,16 +214,46 @@ export function NotificationPageLoading() {
 }
 
 export function NotificationPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<NotificationTabValue>('all');
   const query = useNotificationListQuery(activeTab);
+  const { isPending: isMarkingAllRead, mutate: markAllNotificationsRead } =
+    useMarkAllNotificationsReadMutation();
+  const { mutate: markNotificationRead } = useMarkNotificationReadMutation();
   const { data, fetchNextPage, hasNextPage, isError, isFetchingNextPage, isLoading, refetch } =
     query;
   const notifications = data?.pages.flatMap(({ data: pageData }) => pageData.notifications) ?? [];
+  const maxNotificationId = notifications.reduce<number | null>(
+    (maxId, notification) => (maxId === null ? notification.id : Math.max(maxId, notification.id)),
+    null,
+  );
   const onLoadMore = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
       void fetchNextPage();
     }
   }, [fetchNextPage, hasNextPage, isFetchingNextPage]);
+  const onMarkAllRead = useCallback(() => {
+    if (isMarkingAllRead || maxNotificationId === null) {
+      return;
+    }
+
+    markAllNotificationsRead({ max_notification_id: maxNotificationId });
+  }, [isMarkingAllRead, markAllNotificationsRead, maxNotificationId]);
+  const onNotificationClick = useCallback(
+    (notification: Notification) => {
+      markNotificationRead(notification.id);
+
+      if (notification.target_post_id !== null) {
+        router.push(`/posts/${notification.target_post_id}`);
+        return;
+      }
+
+      if (notification.target_chat_room_id !== null) {
+        router.push(`/chatroom/${notification.target_chat_room_id}`);
+      }
+    },
+    [markNotificationRead, router],
+  );
 
   return (
     <NotificationPageView
@@ -217,9 +261,12 @@ export function NotificationPage() {
       hasNextPage={hasNextPage}
       isError={isError && notifications.length === 0}
       isFetchingNextPage={isFetchingNextPage}
+      isMarkingAllRead={isMarkingAllRead}
       isLoading={isLoading}
       notifications={notifications}
       onLoadMore={onLoadMore}
+      onMarkAllRead={onMarkAllRead}
+      onNotificationClick={onNotificationClick}
       onRetry={() => void refetch()}
       onTabChange={setActiveTab}
     />

@@ -18,6 +18,7 @@ import {
   useChatReportMutation,
 } from '@/features/chatting';
 import type { ChatWebSocketMessage, SettlementAnalysisFinishedMessage } from '@/entities/chat';
+import { useLeaveCarpoolMutation } from '@/features/leave-carpool';
 import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
   submitTransferProof,
@@ -49,6 +50,7 @@ import {
   useTaxiPotChatFlow,
 } from '@/features/taxi-pot-chat';
 import { useCurrentUserQuery } from '@/features/user-profile';
+import { ApiError } from '@/shared/api/client';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
@@ -103,6 +105,9 @@ type MeterAmountTarget = {
   settlementId: number;
   recognitionFailed: boolean;
 } | null;
+
+const TRANSFER_RETRY_LIMIT_MESSAGE = '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.';
+const TRANSFER_AMOUNT_MISMATCH_MESSAGE = '송금 금액이 일치하지 않아요';
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -218,6 +223,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const chatRoomDetail = detailQuery.data?.data;
   const companionId = chatRoomDetail?.companion_id;
   const currentUserId = currentUserQuery.data?.data.id;
+  const isCarpool = chatRoomDetail?.kind === 'CARPOOL';
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
@@ -229,6 +235,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const settlementId = taxiPotDetail?.settlement_id;
   const ratingMutation = useChatRatingMutation();
   const reportMutation = useChatReportMutation();
+  const leaveCarpoolMutation = useLeaveCarpoolMutation();
   const leaveCompanionMutation = useLeaveCompanionMutation();
   const leaveTaxiPotMutation = useLeaveTaxiPotMutation();
   const readMarkerMutation = useChatRoomReadMarkerMutation();
@@ -242,7 +249,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [meterAnalysisSettlementId, setMeterAnalysisSettlementId] = useState<number | null>(null);
   const [meterAnalysisFinishedMessage, setMeterAnalysisFinishedMessage] =
     useState<SettlementAnalysisFinishedMessage | null>(null);
-  const meterAnalysisFinishedMessageRef = useRef<SettlementAnalysisFinishedMessage | null>(null);
+  const settlementAnalysisFinishedMessageRef = useRef<SettlementAnalysisFinishedMessage | null>(
+    null,
+  );
   const [isMeterAnalysisDelayed, setIsMeterAnalysisDelayed] = useState(false);
   const [meterAmountTarget, setMeterAmountTarget] = useState<MeterAmountTarget>(null);
   const [meterAmount, setMeterAmount] = useState('');
@@ -250,8 +259,13 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const [transferAnalysisSettlementId, setTransferAnalysisSettlementId] = useState<number | null>(
     null,
   );
+  const [transferSubmissionBlockedSettlementId, setTransferSubmissionBlockedSettlementId] =
+    useState<number | null>(null);
+  const [analysisResetKey, setAnalysisResetKey] = useState(0);
   const meterPhotoPickerRef = useRef<(() => void) | null>(null);
   const transferPhotoPickerRefs = useRef(new Map<number, () => void>());
+  const activeAnalysisSettlementIdRef = useRef<number | null>(null);
+  const analysisCompletionHandledRef = useRef(false);
   const meterAnalysisQuery = useQuery(
     settlementQueries.analysisStatus(settlementId, settlementId !== undefined),
   );
@@ -262,7 +276,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     ),
   );
   const meterAnalysisFinished =
-    meterAnalysisFinishedMessage?.settlement_id === settlementId
+    meterAnalysisFinishedMessage?.type === 'METER_ANALYSIS_FINISHED' &&
+    meterAnalysisFinishedMessage.settlement_id === settlementId
       ? meterAnalysisFinishedMessage
       : null;
   const meterAnalysisStatus =
@@ -449,9 +464,44 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     meterPhotoPickerRef.current = openPicker;
   }, []);
 
-  const handleMeterAnalysisFinished = useCallback(
+  const handleSettlementAnalysisFinished = useCallback(
     (message: SettlementAnalysisFinishedMessage) => {
-      meterAnalysisFinishedMessageRef.current = message;
+      if (
+        message.settlement_id !== activeAnalysisSettlementIdRef.current ||
+        analysisCompletionHandledRef.current
+      ) {
+        return;
+      }
+
+      analysisCompletionHandledRef.current = true;
+      setAnalysisResetKey((currentKey) => currentKey + 1);
+      settlementAnalysisFinishedMessageRef.current = message;
+
+      if (message.type === 'TRANSFER_ANALYZED') {
+        void queryClient.invalidateQueries({
+          queryKey: settlementQueries.myParticipant(message.settlement_id).queryKey,
+        });
+
+        if (message.transfer_completed) {
+          setTransferSubmissionBlockedSettlementId(message.settlement_id);
+          setTransferAnalysisSettlementId(null);
+        } else if (message.remaining_transfer_attempts === 0) {
+          setTransferSubmissionBlockedSettlementId(message.settlement_id);
+          setTransferAnalysisSettlementId(null);
+          useSnackbarStore.getState().showSnackbar(TRANSFER_RETRY_LIMIT_MESSAGE, 'critical');
+        } else if (message.member_analysis_status === 'FAILED') {
+          setTransferSubmissionBlockedSettlementId(null);
+          setTransferAnalysisSettlementId(message.settlement_id);
+        } else {
+          setTransferSubmissionBlockedSettlementId(null);
+          setTransferAnalysisSettlementId(null);
+          useSnackbarStore.getState().showSnackbar(TRANSFER_AMOUNT_MISMATCH_MESSAGE, 'critical');
+        }
+
+        activeAnalysisSettlementIdRef.current = null;
+        return;
+      }
+
       setMeterAnalysisFinishedMessage(message);
       if (message.meter_analysis_status === 'FAILED') {
         setMeterAnalysisSettlementId(message.settlement_id);
@@ -473,6 +523,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
               }
             : current,
       );
+      activeAnalysisSettlementIdRef.current = null;
     },
     [meterAnalysisSettlementId, queryClient],
   );
@@ -565,7 +616,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
               }
             : current,
       );
-      meterAnalysisFinishedMessageRef.current = null;
+      settlementAnalysisFinishedMessageRef.current = null;
       setMeterAnalysisFinishedMessage(null);
       setMeterAnalysisSettlementId(null);
       setMeterAmountTarget(null);
@@ -752,8 +803,10 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         handleManualMeterEntry(targetSettlementId);
         return;
       }
+      activeAnalysisSettlementIdRef.current = targetSettlementId;
+      analysisCompletionHandledRef.current = false;
       setUploadingSettlementPhoto(true);
-      meterAnalysisFinishedMessageRef.current = null;
+      settlementAnalysisFinishedMessageRef.current = null;
       setMeterAnalysisFinishedMessage(null);
       try {
         const token = await getAccessToken();
@@ -761,21 +814,29 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         const response = await submitMeterImage(token, targetSettlementId, {
           meter_image_key: imageKey,
         });
+        if (response.status !== 202) {
+          throw new Error('미터기 사진 분석 요청을 시작하지 못했어요');
+        }
+
         setIsMeterAnalysisDelayed(false);
         setMeterAmount('');
         const finishedMessage =
-          meterAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
+          settlementAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
         if (finishedMessage?.settlement_id !== targetSettlementId) {
+          setAnalysisResetKey((currentKey) => currentKey + 1);
           queryClient.setQueryData(settlementQueries.analysisStatus(targetSettlementId).queryKey, {
-            message: response.message,
-            data: {
-              ...response.data,
-              total_amount: null,
-            },
+            message: response.data.message,
+            data: response.data.data,
           });
           setMeterAnalysisSettlementId(targetSettlementId);
         }
       } catch (error) {
+        activeAnalysisSettlementIdRef.current = null;
+        analysisCompletionHandledRef.current = false;
+        setMeterAnalysisSettlementId(null);
+        setMeterAnalysisFinishedMessage(null);
+        setIsMeterAnalysisDelayed(false);
+        setAnalysisResetKey((currentKey) => currentKey + 1);
         useSnackbarStore
           .getState()
           .showSnackbar(
@@ -790,23 +851,56 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   );
   const handleSendTransferPhoto = useCallback(
     async (settlementId: number, file: File) => {
+      activeAnalysisSettlementIdRef.current = settlementId;
+      analysisCompletionHandledRef.current = false;
+      setTransferSubmissionBlockedSettlementId(null);
       setUploadingSettlementPhoto(true);
+      settlementAnalysisFinishedMessageRef.current = null;
       try {
         const token = await getAccessToken();
         const imageKey = await uploadSettlementImage(token, 'TRANSFER', file);
-        await submitTransferProof(token, settlementId, { transfer_image_key: imageKey });
+        const response = await submitTransferProof(token, settlementId, {
+          transfer_image_key: imageKey,
+        });
+        if (response.status !== 202) {
+          throw new Error('송금 사진 분석 요청을 시작하지 못했어요');
+        }
+
         await queryClient.removeQueries({
           queryKey: settlementQueries.myParticipant(settlementId).queryKey,
           exact: true,
         });
-        setTransferAnalysisSettlementId(settlementId);
+        const finishedMessage =
+          settlementAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
+        const finishedTransferMessage =
+          finishedMessage?.type === 'TRANSFER_ANALYZED' &&
+          finishedMessage.settlement_id === settlementId
+            ? finishedMessage
+            : null;
+
+        if (!finishedTransferMessage) {
+          setAnalysisResetKey((currentKey) => currentKey + 1);
+          setTransferAnalysisSettlementId(settlementId);
+        }
+
+        if (
+          finishedTransferMessage?.member_analysis_status === 'FAILED' &&
+          finishedTransferMessage.remaining_transfer_attempts > 0
+        ) {
+          setTransferAnalysisSettlementId(settlementId);
+        }
       } catch (error) {
-        useSnackbarStore
-          .getState()
-          .showSnackbar(
-            error instanceof Error ? error.message : '송금 사진을 보내지 못했어요',
-            'critical',
-          );
+        activeAnalysisSettlementIdRef.current = null;
+        analysisCompletionHandledRef.current = false;
+        setTransferAnalysisSettlementId(null);
+        setAnalysisResetKey((currentKey) => currentKey + 1);
+        let errorMessage = '송금 사진을 보내지 못했어요';
+        if (error instanceof ApiError && error.code === 'TRANSFER_RETRY_LIMIT_EXCEEDED') {
+          errorMessage = TRANSFER_RETRY_LIMIT_MESSAGE;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        useSnackbarStore.getState().showSnackbar(errorMessage, 'critical');
       } finally {
         setUploadingSettlementPhoto(false);
       }
@@ -924,7 +1018,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     }
 
     try {
-      if (isTaxiPot) {
+      if (isCarpool) {
+        await leaveCarpoolMutation.mutateAsync(companionId);
+      } else if (isTaxiPot) {
         await leaveTaxiPotMutation.mutateAsync(Number(taxiPotId));
       } else {
         await leaveCompanionMutation.mutateAsync(companionId);
@@ -941,15 +1037,27 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           'critical',
         );
     }
-  }, [companionId, isTaxiPot, leaveCompanionMutation, leaveTaxiPotMutation, router, taxiPotId]);
-  const leaveLoading = leaveCompanionMutation.isPending || leaveTaxiPotMutation.isPending;
+  }, [
+    companionId,
+    isCarpool,
+    isTaxiPot,
+    leaveCarpoolMutation,
+    leaveCompanionMutation,
+    leaveTaxiPotMutation,
+    router,
+    taxiPotId,
+  ]);
+  const leaveLoading =
+    leaveCarpoolMutation.isPending ||
+    leaveCompanionMutation.isPending ||
+    leaveTaxiPotMutation.isPending;
 
   return (
     <ChatRoomWebSocketConnection
       enabled={Boolean(room)}
       roomId={roomId}
       onMessage={handleWebSocketMessage}
-      onSettlementAnalysisFinished={handleMeterAnalysisFinished}
+      onSettlementAnalysisFinished={handleSettlementAnalysisFinished}
     >
       {(connection) => (
         <>
@@ -975,10 +1083,13 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
             onAcknowledgeSettlement={handleSettlementAcknowledge}
             onWebSocketOpen={handleRefreshSettlementStatus}
             onSendMeterPhoto={handleSendMeterPhoto}
+            analysisResetKey={analysisResetKey}
             onManualMeterEntry={handleManualMeterEntry}
             meterSettlementId={settlementId}
+            hideMeterRequestMessage={meterAnalysisStatus === 'PASSED'}
             remainingMeterAttempts={remainingMeterAttempts}
             onSendTransferPhoto={handleSendTransferPhoto}
+            transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
             onRegisterMeterPhotoPicker={handleRegisterMeterPhotoPicker}
             onRegisterTransferPhotoPicker={handleRegisterTransferPhotoPicker}
             onViewTransferProof={handleViewTransferProof}
@@ -1108,10 +1219,12 @@ type ChattingPageContentProps = {
   reportLoading: boolean;
   completingSettlement: boolean;
   onSendMeterPhoto: (settlementId: number, file: File) => void;
+  analysisResetKey: number;
   onManualMeterEntry: (settlementId?: number) => void;
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
   onSendTransferPhoto: (settlementId: number, file: File) => void;
+  transferSubmissionBlockedSettlementId: number | null;
   onRegisterMeterPhotoPicker: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof: (settlementId: number, nickname: string) => void;
@@ -1122,6 +1235,7 @@ type ChattingPageContentProps = {
   onTransferProofOpenChange: (open: boolean) => void;
   uploadingSettlementPhoto: boolean;
   currentUserId?: number;
+  hideMeterRequestMessage: boolean;
 };
 
 function ChattingPageContent({
@@ -1162,10 +1276,12 @@ function ChattingPageContent({
   reportLoading,
   completingSettlement,
   onSendMeterPhoto,
+  analysisResetKey,
   onManualMeterEntry,
   meterSettlementId,
   remainingMeterAttempts,
   onSendTransferPhoto,
+  transferSubmissionBlockedSettlementId,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -1176,6 +1292,7 @@ function ChattingPageContent({
   onTransferProofOpenChange,
   uploadingSettlementPhoto,
   currentUserId,
+  hideMeterRequestMessage,
   leaveLoading,
   room,
   taxiPotDetail,
@@ -1249,16 +1366,19 @@ function ChattingPageContent({
           isTaxiPotHost={isTaxiPotHost}
           currentUserId={currentUserId}
           onSendMeterPhoto={onSendMeterPhoto}
+          analysisResetKey={analysisResetKey}
           onManualMeterEntry={onManualMeterEntry}
           meterSettlementId={meterSettlementId}
           remainingMeterAttempts={remainingMeterAttempts}
           onSendTransferPhoto={onSendTransferPhoto}
+          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
           onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
           onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
           onViewTransferProof={onViewTransferProof}
           onViewMeterImage={onViewMeterImage}
           uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
+          hideMeterRequestMessage={hideMeterRequestMessage}
           topContent={topContent}
         />
       </ChatRoomLayout>

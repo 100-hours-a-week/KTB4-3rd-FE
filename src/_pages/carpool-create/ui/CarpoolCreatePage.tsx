@@ -72,7 +72,7 @@ export function CarpoolCreatePage() {
 
   const handleUserLocationChange = useCallback(
     (coordinate: { lat: number; lng: number }) => {
-      handleLocationChange(coordinate, '현재 위치');
+      handleLocationChange(coordinate, '');
     },
     [handleLocationChange],
   );

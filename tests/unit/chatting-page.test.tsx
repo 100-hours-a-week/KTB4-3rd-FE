@@ -9,10 +9,15 @@ import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
 import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
-import { emitMockChatRoomMessage } from '@/shared/api/mocks/chat-room-websocket.handlers';
+import { BankCode } from '@/entities/user';
+import {
+  emitMockChatRoomMessage,
+  emitMockSettlementAnalysisFinished,
+} from '@/shared/api/mocks/chat-room-websocket.handlers';
 import type { ChatRoomWebSocketConnectionValue } from '@/features/chatting';
 import { server } from '@/shared/api/mocks/server';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
 const navigation = vi.hoisted(() => ({
   push: vi.fn<(path: string) => void>(),
@@ -56,6 +61,8 @@ afterEach(() => {
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
   navigation.push.mockReset();
+  Reflect.deleteProperty(URL, 'createObjectURL');
+  Reflect.deleteProperty(URL, 'revokeObjectURL');
   vi.useRealTimers();
 });
 
@@ -78,6 +85,145 @@ function renderChattingPage(roomId = '501') {
       </SnackbarProvider>
     </QueryClientProvider>,
   );
+}
+
+function mockMeterPhotoChatRoom() {
+  server.use(
+    http.get('*/chat-rooms/599/messages', () =>
+      HttpResponse.json({
+        message: '조회에 성공했습니다',
+        data: {
+          items: [
+            {
+              id: 1700,
+              type: 'SYSTEM_METER_REQUESTED',
+              content: '미터기 사진을 보내주세요',
+              created_at: '2026-09-05T08:30:00.000Z',
+            },
+          ],
+          before_cursor: null,
+          after_cursor: null,
+        },
+      }),
+    ),
+    http.get('*/taxi-pots/30', () =>
+      HttpResponse.json({
+        message: '조회에 성공했습니다',
+        data: {
+          id: 30,
+          chat_room_id: 599,
+          status: 'COMPLETED',
+          origin_name: '판교역',
+          dest_name: '강남역',
+          departure_at: '2026-09-05T08:30:00.000Z',
+          current_count: 2,
+          capacity: 4,
+          host_id: 7,
+          settlement_id: 77,
+        },
+      }),
+    ),
+    http.get('*/settlements/77/analysis-status', () =>
+      HttpResponse.json({
+        message: '미터기 금액 인식 상태를 조회했습니다',
+        data: {
+          group_settlement_status: 'PENDING',
+          meter_analysis_status: 'PENDING',
+          total_amount: null,
+          remaining_meter_attempts: 1,
+        },
+      }),
+    ),
+  );
+
+  Object.defineProperties(URL, {
+    createObjectURL: {
+      configurable: true,
+      value: vi.fn<(file: Blob) => string>(() => 'blob:meter-preview'),
+    },
+    revokeObjectURL: {
+      configurable: true,
+      value: vi.fn<(url: string) => void>(),
+    },
+  });
+}
+
+function mockTransferPhotoChatRoom() {
+  server.use(
+    http.get('*/chat-rooms/599/messages', () =>
+      HttpResponse.json({
+        message: '조회에 성공했습니다',
+        data: {
+          items: [
+            {
+              id: 1701,
+              type: 'SYSTEM_TRANSFER_REQUESTED',
+              content: '송금해주세요',
+              settlement: {
+                settlement_id: 77,
+                total_amount: 18000,
+                amount_per_person: 6000,
+                payee: {
+                  id: 7,
+                  name: '김방장',
+                  bank_name: 'kb',
+                  account_no: '11012345678',
+                },
+              },
+              created_at: '2026-09-05T08:30:00.000Z',
+            },
+          ],
+          before_cursor: null,
+          after_cursor: null,
+        },
+      }),
+    ),
+    http.get('*/taxi-pots/30', () =>
+      HttpResponse.json({
+        message: '조회에 성공했습니다',
+        data: {
+          id: 30,
+          chat_room_id: 599,
+          status: 'COMPLETED',
+          origin_name: '판교역',
+          dest_name: '강남역',
+          departure_at: '2026-09-05T08:30:00.000Z',
+          current_count: 2,
+          capacity: 4,
+          host_id: 7,
+          settlement_id: 77,
+        },
+      }),
+    ),
+    http.get('*/settlements/77/participants/me', () =>
+      HttpResponse.json({
+        message: '내 송금 상태를 조회했습니다',
+        data: {
+          participant_count: 3,
+          group_settlement_status: 'REQUESTED',
+          member_analysis_status: 'PENDING',
+          amount: 6000,
+          payee: {
+            name: '김방장',
+            bank_name: 'kb',
+            account_no: '11012345678',
+          },
+        },
+      }),
+    ),
+  );
+
+  mockCurrentUserId(8);
+  Object.defineProperties(URL, {
+    createObjectURL: {
+      configurable: true,
+      value: vi.fn<(file: Blob) => string>(() => 'blob:transfer-preview'),
+    },
+    revokeObjectURL: {
+      configurable: true,
+      value: vi.fn<(url: string) => void>(),
+    },
+  });
 }
 
 function mockCurrentUserId(id: number) {
@@ -283,6 +429,32 @@ describe('ChattingPage', () => {
     expect(screen.getByRole('button', { name: '메시지 전송' })).toBeDisabled();
   });
 
+  it('미터기 분석이 완료되면 미터기 요청 메시지를 목록에서 숨긴다', () => {
+    const meterRequestMessage = {
+      id: 'meter-request-message',
+      kind: 'notice' as const,
+      content: '택시 미터기 사진을 보내주세요',
+      systemType: 'SYSTEM_METER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+    const connection = {
+      error: null,
+      sendMessage: vi.fn<(content: string) => boolean>(() => true),
+      status: 'open',
+    } satisfies ChatRoomWebSocketConnectionValue;
+
+    render(
+      <ChatRoomContent
+        connection={connection}
+        hideMeterRequestMessage
+        liveMessages={[]}
+        room={{ ...generalChatRoom, messages: [...generalChatRoom.messages, meterRequestMessage] }}
+      />,
+    );
+
+    expect(screen.queryByText('택시 미터기 사진을 보내주세요')).not.toBeInTheDocument();
+  });
+
   it('웹소켓 입퇴장 메시지에 따라 헤더 인원수와 메시지 입력 상태를 동기화한다', async () => {
     renderChattingPage('501');
 
@@ -438,6 +610,242 @@ describe('ChattingPage', () => {
     expect(await screen.findByTestId('taxi-pot-announcement')).toBeInTheDocument();
   });
 
+  it('미터기 사진 제출이 202이면 확인 화면을 닫고 분석 중 모달을 표시한다', async () => {
+    const user = userEvent.setup();
+    mockMeterPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/meter-image', () =>
+        HttpResponse.json(
+          {
+            message: '미터기 금액 분석 상태를 확인하세요.',
+            data: {
+              group_settlement_status: 'PENDING',
+              meter_analysis_status: 'ANALYZING',
+              total_amount: null,
+              analysis_started_at: '2026-09-07T09:00:03',
+              remaining_meter_attempts: 1,
+            },
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('미터기 사진을 보내주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('택시 미터기 사진 선택'),
+      new File(['meter'], 'meter.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: '이미지를 분석하고있어요' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
+  });
+
+  it('미터기 사진 제출 오류는 사진 확인 화면을 닫고 서버 오류를 Snackbar로 표시한다', async () => {
+    const user = userEvent.setup();
+    mockMeterPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/meter-image', () =>
+        HttpResponse.json(
+          {
+            message: '이미 업로드된 이미지가 없습니다.',
+            error: { code: 'IMAGE_NOT_EXISTS', field: null },
+          },
+          { status: 422 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('미터기 사진을 보내주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('택시 미터기 사진 선택'),
+      new File(['meter'], 'meter.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
+    });
+    expect(navigation.push).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent('이미 업로드된 이미지가 없습니다.');
+  });
+
+  it('송금 인증사진 제출이 202이면 확인 화면을 닫고 분석 중 모달을 표시한다', async () => {
+    const user = userEvent.setup();
+    mockTransferPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/transfer-proof', () =>
+        HttpResponse.json(
+          {
+            message: 'AI 송금 분석 상태를 확인하세요.',
+            data: {
+              group_settlement_status: 'REQUESTED',
+              remaining_transfer_attempts: 1,
+            },
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('송금한 화면을 첨부해주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('송금 사진 선택'),
+      new File(['transfer'], 'transfer.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    expect(
+      await screen.findByRole('dialog', { name: '이미지를 분석하고있어요' }),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
+  });
+
+  it('송금 인증사진 제출 오류는 사진 확인 화면을 닫고 서버 오류를 Snackbar로 표시한다', async () => {
+    const user = userEvent.setup();
+    mockTransferPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/transfer-proof', () =>
+        HttpResponse.json(
+          {
+            message: '서버의 기존 재시도 제한 메시지',
+            error: { code: 'TRANSFER_RETRY_LIMIT_EXCEEDED', field: null },
+          },
+          { status: 409 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('송금한 화면을 첨부해주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('송금 사진 선택'),
+      new File(['transfer'], 'transfer.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+
+    await waitFor(() => {
+      expect(screen.queryByRole('heading', { name: '사진 확인' })).not.toBeInTheDocument();
+    });
+    expect(navigation.push).not.toHaveBeenCalled();
+    expect(screen.getByRole('status')).toHaveTextContent(
+      '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.',
+    );
+  });
+
+  it('송금 금액이 불일치하면 Snackbar를 표시하고 재제출할 수 있다', async () => {
+    const user = userEvent.setup();
+    mockTransferPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/transfer-proof', () =>
+        HttpResponse.json(
+          {
+            message: 'AI 송금 분석 상태를 확인하세요.',
+            data: {
+              group_settlement_status: 'REQUESTED',
+              remaining_transfer_attempts: 1,
+            },
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('송금한 화면을 첨부해주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('송금 사진 선택'),
+      new File(['transfer'], 'transfer.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(
+      await screen.findByRole('dialog', { name: '이미지를 분석하고있어요' }),
+    ).toBeInTheDocument();
+
+    emitMockSettlementAnalysisFinished({
+      type: 'TRANSFER_ANALYZED',
+      settlement_id: 77,
+      user_id: 8,
+      name: '테스트 유저',
+      member_analysis_status: 'PASSED',
+      transfer_completed: false,
+      remaining_transfer_attempts: 1,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent('송금 금액이 일치하지 않아요');
+      expect(
+        screen.queryByRole('dialog', { name: '이미지를 분석하고있어요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '사진 첨부하기' })).not.toBeDisabled();
+  });
+
+  it('송금 인증 횟수를 모두 사용하면 대면 비교 안내를 표시하고 제출 버튼을 막는다', async () => {
+    const user = userEvent.setup();
+    mockTransferPhotoChatRoom();
+    server.use(
+      http.post('*/settlements/77/transfer-proof', () =>
+        HttpResponse.json(
+          {
+            message: 'AI 송금 분석 상태를 확인하세요.',
+            data: {
+              group_settlement_status: 'REQUESTED',
+              remaining_transfer_attempts: 0,
+            },
+          },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    renderChattingPage('599');
+    expect(await screen.findByText('송금한 화면을 첨부해주세요')).toBeInTheDocument();
+
+    await user.upload(
+      screen.getByLabelText('송금 사진 선택'),
+      new File(['transfer'], 'transfer.png', { type: 'image/png' }),
+    );
+    await user.click(screen.getByRole('button', { name: '전송' }));
+    expect(
+      await screen.findByRole('dialog', { name: '이미지를 분석하고있어요' }),
+    ).toBeInTheDocument();
+
+    emitMockSettlementAnalysisFinished({
+      type: 'TRANSFER_ANALYZED',
+      settlement_id: 77,
+      user_id: 8,
+      name: '테스트 유저',
+      member_analysis_status: 'FAILED',
+      transfer_completed: false,
+      remaining_transfer_attempts: 0,
+    });
+
+    await waitFor(() => {
+      expect(screen.getByRole('status')).toHaveTextContent(
+        '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.',
+      );
+      expect(
+        screen.queryByRole('dialog', { name: '이미지를 분석하고있어요' }),
+      ).not.toBeInTheDocument();
+    });
+    expect(screen.getByRole('button', { name: '사진 첨부하기' })).toBeDisabled();
+    expect(
+      screen.queryByRole('dialog', { name: '사진 인식을 실패했어요' }),
+    ).not.toBeInTheDocument();
+  });
+
   it('나가기 버튼을 누르면 확인 후 DELETE 요청을 보내고 홈으로 이동한다', async () => {
     const user = userEvent.setup();
 
@@ -472,6 +880,53 @@ describe('ChattingPage', () => {
 
     renderChattingPage('501');
     await screen.findByRole('heading', { name: '8시 판교역' });
+
+    await user.click(screen.getByRole('button', { name: '채팅방 나가기' }));
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    expect(requests).toEqual(['leave']);
+  });
+
+  it('카풀 채팅방에서 나갈 때 카풀 나가기 API를 호출한다', async () => {
+    const user = userEvent.setup();
+    const requests: string[] = [];
+
+    server.use(
+      http.get('*/chat-rooms/700', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 700,
+            companion_id: 51,
+            kind: 'CARPOOL',
+            title: '카풀 채팅방',
+            host_id: 7,
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 2,
+            capacity: 4,
+            companion_status: 'RECRUITING',
+            closed_at: null,
+            last_read_message_id: null,
+          },
+        }),
+      ),
+      http.get('*/chat-rooms/700/messages', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], before_cursor: null, after_cursor: null },
+        }),
+      ),
+      http.delete('*/carpools/51/participants/me', () => {
+        requests.push('leave');
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderChattingPage('700');
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
 
     await user.click(screen.getByRole('button', { name: '채팅방 나가기' }));
     await user.click(screen.getByRole('button', { name: '확인' }));
@@ -1066,6 +1521,92 @@ describe('ChattingPage', () => {
     await user.click(screen.getByRole('menuitem', { name: '복사하기' }));
 
     expect(writeText).toHaveBeenCalledWith('3분 뒤 도착합니다');
+  });
+
+  it('정산 계좌번호를 누르면 클립보드에 복사하고 복사완료 Snackbar를 표시한다', async () => {
+    const user = userEvent.setup();
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined);
+
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText },
+    });
+
+    const message = {
+      id: 'settlement-request',
+      kind: 'notice' as const,
+      content: '방장이 정산을 요청했어요',
+      settlement: {
+        settlement_id: 7,
+        total_amount: 26000,
+        amount_per_person: 13000,
+        payee: {
+          id: 1,
+          name: '테스트 유저',
+          bank_name: BankCode.TOSS,
+          account_no: '000-0000-0000',
+        },
+      },
+      systemType: 'SYSTEM_TRANSFER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+
+    render(
+      <SnackbarProvider>
+        <ChatMessageItem currentUserId={2} index={0} message={message} onReport={() => {}} />
+        <SnackbarViewport />
+      </SnackbarProvider>,
+    );
+
+    await user.click(screen.getByRole('button', { name: '토스뱅크 000-0000-0000 복사' }));
+
+    expect(writeText).toHaveBeenCalledWith('토스뱅크 000-0000-0000');
+    expect(await screen.findByRole('status')).toHaveTextContent('복사완료');
+    expect(screen.getByRole('region', { name: '방장의 정산 요청' }).parentElement).toHaveClass(
+      'self-start',
+    );
+  });
+
+  it('ChatNotice는 메시지 목록 중앙에 배치한다', () => {
+    const message = {
+      id: 'system-start',
+      kind: 'notice' as const,
+      content: '운행이 시작됐어요',
+      systemType: 'SYSTEM_RIDE_STARTED' as const,
+      variant: 'system' as const,
+    };
+
+    render(<ChatMessageItem index={0} message={message} onReport={() => {}} />);
+
+    expect(screen.getByText('운행이 시작됐어요').closest('[data-variant]')).toHaveClass(
+      'self-center',
+    );
+  });
+
+  it('방장이 아니면 미터기 요청을 기다림 안내를 ChatNotice로 표시한다', () => {
+    const message = {
+      id: 'meter-request',
+      kind: 'notice' as const,
+      content: '택시 미터기 사진을 보내주세요',
+      systemType: 'SYSTEM_METER_REQUESTED' as const,
+      variant: 'system' as const,
+    };
+
+    render(
+      <ChatMessageItem
+        index={0}
+        isTaxiPotHost={false}
+        message={message}
+        onReport={() => {}}
+        onSendMeterPhoto={() => {}}
+      />,
+    );
+
+    const notice = screen.getByText('방장의 정산 요청을 기다리고있어요');
+
+    expect(notice).toHaveAttribute('data-variant', 'system');
+    expect(notice).toHaveClass('self-center', 'mb-[44px]');
+    expect(screen.queryByText('택시 미터기 사진을 보내주세요')).not.toBeInTheDocument();
   });
 
   it('신고하기 버튼을 누르면 신고 API 요청을 보낸다', async () => {

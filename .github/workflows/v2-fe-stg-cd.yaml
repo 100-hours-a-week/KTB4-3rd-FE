@@ -1,0 +1,178 @@
+name: FE Stg CD
+
+# release/vX.Y.Z 브랜치 → Stg ECS 클러스터(moyeota-v2-stg) 자동 배포
+#   브랜치 흐름: develop → release/vX.Y.Z (Stg 검증) → main (Prod 승인 배포)
+#   - FE CI가 release/* push에서 만든 rc-vX.Y.Z-<sha> 이미지를 digest로 반영한다.
+#   - Stg 서비스가 모두 배포 완료되면 같은 digest에 stg-vX.Y.Z-<sha> 태그를 남긴다.
+#     Prod CD는 이 태그가 있는 커밋만 승격하므로 "Stg에서 배포 검증된 digest = Prod digest"가 보장된다.
+#   - 배포 방식은 Stg 서비스 설정(Prod와 동일 방식)을 따른다.
+
+on:
+  workflow_run:
+    workflows:
+      - FE CI
+    types:
+      - completed
+    branches:
+      - 'release/**'
+
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+
+concurrency:
+  group: frontend-cd-stg
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy frontend (stg)
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    environment:
+      name: staging
+      url: https://stg.moyeota.com
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'moyeota-v2-stg' }}
+      ECS_SERVICE: frontend
+
+    steps:
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Resolve release candidate image
+        id: release
+        run: |
+          set -Eeuo pipefail
+
+          manifest="release-manifest/release-manifest.json"
+          source_branch="$(jq -r '.source_branch' "$manifest")"
+          image_tag="$(jq -r '.image_tag' "$manifest")"
+          image_digest="$(jq -r '.image_digest' "$manifest")"
+
+          version="${source_branch#release/}"
+          [[ "$source_branch" == release/* ]]
+          [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$image_tag" == rc-${version}-* ]]
+          [[ "$image_digest" == sha256:* ]]
+
+          {
+            echo "image_ref=${ECR_REGISTRY}/${ECR_REPOSITORY}@${image_digest}"
+            echo "image_tag=$image_tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.ECS_DEPLOY_ROLE_ARN_STG }}
+          role-session-name: frontend-stg-cd-${{ github.run_id }}
+
+      - name: Checkout deploy action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: Deploy to ECS
+        uses: ./.github/actions/ecs-deploy
+        with:
+          cluster: ${{ env.ECS_CLUSTER }}
+          service: ${{ env.ECS_SERVICE }}
+          image: ${{ steps.release.outputs.image_ref }}
+          release-id: ${{ steps.release.outputs.image_tag }}
+          timeout-seconds: '1800'
+
+  # Deploy Role은 ECR 권한이 없으므로(검증된 digest를 서비스에 반영만 함) 태그 기록은 CI Role로 한다.
+  # environment가 없는 job이라 OIDC sub는 기본 브랜치 ref 기준이 된다.
+  mark-stg-verified:
+    name: Tag Stg-verified image
+    needs: deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+    steps:
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v6.3.0
+        with:
+          aws-region: ${{ env.AWS_REGION }}
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          role-session-name: frontend-stg-mark-${{ github.run_id }}
+
+      - name: Tag image as Stg-verified without rebuilding
+        run: |
+          set -Eeuo pipefail
+
+          manifest="release-manifest/release-manifest.json"
+          source_branch="$(jq -r '.source_branch' "$manifest")"
+          source_sha="$(jq -r '.source_sha' "$manifest")"
+          image_digest="$(jq -r '.image_digest' "$manifest")"
+
+          version="${source_branch#release/}"
+          [[ "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+$ ]]
+          [[ "$source_sha" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$image_digest" == sha256:* ]]
+
+          stg_tag="stg-${version}-${source_sha:0:7}"
+
+          if existing_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$stg_tag" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text 2>/dev/null)"; then
+            if [[ "$existing_digest" != "$image_digest" ]]; then
+              echo "ECR tag collision: ${stg_tag}" >&2
+              echo "Expected digest: ${image_digest}" >&2
+              echo "Existing digest: ${existing_digest}" >&2
+              exit 1
+            fi
+
+            echo "ECR tag already points to the expected digest: ${stg_tag}"
+            exit 0
+          fi
+
+          image_manifest="$(aws ecr batch-get-image \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageDigest="$image_digest" \
+            --query 'images[0].imageManifest' \
+            --output text)"
+
+          test -n "$image_manifest"
+          test "$image_manifest" != None
+
+          aws ecr put-image \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-tag "$stg_tag" \
+            --image-manifest "$image_manifest" >/dev/null
+
+          tagged_digest="$(aws ecr describe-images \
+            --repository-name "$ECR_REPOSITORY" \
+            --image-ids imageTag="$stg_tag" \
+            --query 'imageDetails[0].imageDigest' \
+            --output text)"
+
+          test "$tagged_digest" = "$image_digest"
+          echo "Tagged ${image_digest} as ${stg_tag}"

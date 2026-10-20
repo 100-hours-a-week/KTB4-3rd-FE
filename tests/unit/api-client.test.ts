@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { useAuthStore } from '@/entities/auth';
-import { apiFetch } from '@/shared/api/client';
+import { apiFetch, apiFetchWithStatus } from '@/shared/api/client';
 import { server } from '@/shared/api/mocks/server';
 
 const EXPIRED_ACCESS_TOKEN = 'expired-access-token';
@@ -24,6 +24,24 @@ afterEach(() => {
 });
 
 describe('apiFetch 인증 토큰 재시도', () => {
+  it('성공 응답의 HTTP 상태 코드와 본문을 함께 반환한다', async () => {
+    server.use(
+      http.post('*/accepted-resource', () =>
+        HttpResponse.json(
+          { message: '처리를 시작했습니다', data: { status: 'ANALYZING' } },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    const response = await apiFetchWithStatus<{ data: { status: string } }>('/accepted-resource', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.data.data.status).toBe('ANALYZING');
+  });
+
   it('401 응답 후 토큰을 재발급받아 원래 요청을 한 번 재시도한다', async () => {
     const authorizationHeaders: string[] = [];
     const requestBodies: { content: string }[] = [];

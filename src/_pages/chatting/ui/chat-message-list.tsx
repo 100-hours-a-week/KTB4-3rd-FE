@@ -31,6 +31,8 @@ type ChatMessageListProps = {
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  analysisResetKey?: number;
+  transferSubmissionBlockedSettlementId?: number | null;
   onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
@@ -94,6 +96,8 @@ export function ChatMessageList({
   meterSettlementId,
   remainingMeterAttempts,
   onSendTransferPhoto,
+  analysisResetKey,
+  transferSubmissionBlockedSettlementId = null,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
@@ -372,6 +376,12 @@ export function ChatMessageList({
             meterSettlementId={meterSettlementId}
             remainingMeterAttempts={remainingMeterAttempts}
             onSendTransferPhoto={onSendTransferPhoto}
+            analysisResetKey={analysisResetKey}
+            transferPhotoDisabled={
+              message.kind === 'notice' &&
+              message.systemType === 'SYSTEM_TRANSFER_REQUESTED' &&
+              transferSubmissionBlockedSettlementId === message.settlement.settlement_id
+            }
             onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
             onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
             onViewTransferProof={onViewTransferProof}

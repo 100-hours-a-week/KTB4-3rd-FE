@@ -31,12 +31,15 @@ type ChatRoomContentProps = {
   meterSettlementId?: number;
   remainingMeterAttempts?: number;
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  analysisResetKey?: number;
+  transferSubmissionBlockedSettlementId?: number | null;
   onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
   onViewTransferProof?: (settlementId: number, nickname: string) => void;
   onViewMeterImage?: (settlementId: number) => void;
   uploadingSettlementPhoto?: boolean;
   currentUserId?: number;
+  hideMeterRequestMessage?: boolean;
 };
 
 export function ChatRoomContent({
@@ -63,18 +66,36 @@ export function ChatRoomContent({
   meterSettlementId,
   remainingMeterAttempts,
   onSendTransferPhoto,
+  analysisResetKey,
+  transferSubmissionBlockedSettlementId = null,
   onRegisterMeterPhotoPicker,
   onRegisterTransferPhotoPicker,
   onViewTransferProof,
   onViewMeterImage,
   uploadingSettlementPhoto = false,
   currentUserId,
+  hideMeterRequestMessage = false,
 }: ChatRoomContentProps) {
   const messages = useMemo(() => {
-    const roomMessageIds = new Set(room.messages.map((message) => message.id));
+    const roomMessages = hideMeterRequestMessage
+      ? room.messages.filter(
+          (message) =>
+            !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
+        )
+      : room.messages;
+    const liveChatMessages = hideMeterRequestMessage
+      ? liveMessages.filter(
+          (message) =>
+            !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
+        )
+      : liveMessages;
+    const roomMessageIds = new Set(roomMessages.map((message) => message.id));
 
-    return [...room.messages, ...liveMessages.filter((message) => !roomMessageIds.has(message.id))];
-  }, [liveMessages, room.messages]);
+    return [
+      ...roomMessages,
+      ...liveChatMessages.filter((message) => !roomMessageIds.has(message.id)),
+    ];
+  }, [hideMeterRequestMessage, liveMessages, room.messages]);
 
   const handleSubmit = (content: string) => {
     connection.sendMessage(content);
@@ -98,7 +119,14 @@ export function ChatRoomContent({
           onLoadPreviousMessages={onLoadPreviousMessages}
           onLoadNewerMessages={onLoadNewerMessages}
           hasNewMessages={hasNewMessages}
-          liveMessageCount={liveMessages.length}
+          liveMessageCount={
+            hideMeterRequestMessage
+              ? liveMessages.filter(
+                  (message) =>
+                    !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
+                ).length
+              : liveMessages.length
+          }
           bottomContent={bottomContent}
           onAcknowledgeSettlement={onAcknowledgeSettlement}
           completingSettlement={completingSettlement}
@@ -108,6 +136,8 @@ export function ChatRoomContent({
           meterSettlementId={meterSettlementId}
           remainingMeterAttempts={remainingMeterAttempts}
           onSendTransferPhoto={onSendTransferPhoto}
+          analysisResetKey={analysisResetKey}
+          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
           onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
           onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
           onViewTransferProof={onViewTransferProof}

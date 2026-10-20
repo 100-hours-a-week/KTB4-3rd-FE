@@ -46,9 +46,9 @@ async function mockSession(page: Page) {
 }
 
 async function openReceivedRequests(page: Page) {
-  await page.getByRole('tab', { name: '카풀' }).click();
-  await page.getByRole('tab', { name: '받은 요청' }).click();
-  await page.getByRole('button', { name: '요청 확인' }).click();
+  await page.getByRole('tab', { name: '카풀' }).first().click();
+  await page.getByRole('tab', { name: '받은 요청' }).first().click();
+  await page.getByRole('button', { name: '수락' }).click();
 }
 
 test('받은 요청 목록 미리보기로 상세 요청 없이 수락하고 목록에서 제거한다', async ({ page }) => {
@@ -105,7 +105,10 @@ test('받은 요청 목록 미리보기로 상세 요청 없이 수락하고 목
   await openReceivedRequests(page);
   await expect(page.getByText(receivedRequest.content)).toBeVisible();
   await expect.poll(() => detailGetCount).toBe(0);
-  await page.getByRole('button', { name: '수락' }).click();
+  await page
+    .getByRole('dialog', { name: '카풀 요청 확인' })
+    .getByRole('button', { name: '수락' })
+    .click();
 
   await expect(page.getByText('요청을 수락했어요.')).toBeVisible();
   await expect(page.getByTestId('carpool-request-list-empty')).toBeVisible();
@@ -167,7 +170,10 @@ test('받은 카풀 요청을 거절하고 목록에서 제거한다', async ({ 
   await openReceivedRequests(page);
   await expect(page.getByText(receivedRequest.content)).toBeVisible();
   await expect.poll(() => detailGetCount).toBe(0);
-  await page.getByRole('button', { name: '거절' }).click();
+  await page
+    .getByRole('dialog', { name: '카풀 요청 확인' })
+    .getByRole('button', { name: '거절' })
+    .click();
 
   await expect(page.getByText('요청을 거절했어요.')).toBeVisible();
   await expect(page.getByTestId('carpool-request-list-empty')).toBeVisible();
