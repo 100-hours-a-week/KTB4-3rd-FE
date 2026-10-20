@@ -6,6 +6,7 @@ import {
   TaxiPotSettlementRequestSystemMessage,
   TransferPhotoRequest,
 } from '@/features/taxi-pot-settlement';
+import { BANK_ACCOUNT_OPTIONS } from '@/entities/user';
 import { cn } from '@/shared/lib/cn';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { Avatar } from '@/shared/ui/avatar';
@@ -140,7 +141,10 @@ export function ChatMessageItem({
       const isHost =
         currentUserId === undefined ? isTaxiPotHost : message.settlement.payee.id === currentUserId;
       const role = isHost ? 'host' : 'passenger';
-      const bankAccount = `${message.settlement.payee.bank_name} ${message.settlement.payee.account_no}`;
+      const bankName =
+        BANK_ACCOUNT_OPTIONS.find(({ value }) => value === message.settlement.payee.bank_name)
+          ?.label ?? message.settlement.payee.bank_name;
+      const bankAccount = `${bankName} ${message.settlement.payee.account_no}`;
       const requestMessage =
         role === 'host' ? (
           <TaxiPotSettlementRequestSystemMessage
