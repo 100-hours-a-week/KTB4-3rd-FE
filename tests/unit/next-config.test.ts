@@ -28,6 +28,7 @@ describe('Next.js 보안 설정', () => {
     expect(contentSecurityPolicy).toContain("default-src 'self'");
     expect(contentSecurityPolicy).toContain('https://dapi.kakao.com');
     expect(contentSecurityPolicy).toContain('https://*.daumcdn.net');
+    expect(contentSecurityPolicy).toContain('https://*.kakaocdn.net');
     expect(contentSecurityPolicy).toContain('https://*.clarity.ms');
     expect(contentSecurityPolicy).toContain("connect-src 'self'");
   });
