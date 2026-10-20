@@ -8,16 +8,8 @@ type StompFrame = {
   body: string;
 };
 
-export type MockChatMessage = {
+type MockChatMessageBase = {
   id: number;
-  type:
-    | 'TEXT'
-    | 'SYSTEM_JOIN'
-    | 'SYSTEM_LEAVE'
-    | 'SYSTEM_RIDE_START_REQUESTED'
-    | 'SYSTEM_RIDE_STARTED'
-    | 'SYSTEM_RIDE_END_REQUESTED'
-    | 'SYSTEM_RIDE_ENDED';
   sender?: {
     id: number;
     nickname?: string;
@@ -29,6 +21,45 @@ export type MockChatMessage = {
   content?: string | null;
   created_at: string;
 };
+
+type MockChatMessage =
+  | (MockChatMessageBase & {
+      type:
+        | 'TEXT'
+        | 'SYSTEM_JOIN'
+        | 'SYSTEM_LEAVE'
+        | 'SYSTEM_RIDE_START_REQUESTED'
+        | 'SYSTEM_RIDE_STARTED'
+        | 'SYSTEM_RIDE_END_REQUESTED'
+        | 'SYSTEM_RIDE_ENDED';
+      settlement?: never;
+    })
+  | (MockChatMessageBase & {
+      type:
+        | 'SYSTEM_METER_REQUESTED'
+        | 'SYSTEM_SETTLEMENT_COMPLETED'
+        | 'SYSTEM_TRANSFER_DONE'
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+      content: string;
+      sender?: never;
+      settlement?: never;
+    })
+  | (MockChatMessageBase & {
+      type: 'SYSTEM_TRANSFER_REQUESTED';
+      content: string;
+      settlement: {
+        settlement_id: number;
+        total_amount: number;
+        amount_per_person: number;
+        payee: {
+          id: number;
+          name: string;
+          bank_name: string;
+          account_no: string;
+        };
+      };
+      sender?: never;
+    });
 
 type ChatRoomSubscription = {
   client: WebSocketHandlerConnection['client'];
@@ -79,12 +110,34 @@ const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
     type: 'SYSTEM_RIDE_ENDED',
     created_at: '2026-09-05T08:23:00.000Z',
   },
+  {
+    id: 1463,
+    type: 'SYSTEM_TRANSFER_DONE',
+    content: '애롱롱님이 송금을 완료했어요! 금액 13,000원',
+    created_at: '2026-09-05T08:24:00.000Z',
+  },
+  {
+    id: 1464,
+    type: 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED',
+    content: '모두의 송금이 잘 전달됐나요?',
+    created_at: '2026-09-05T08:25:00.000Z',
+  },
+  {
+    id: 1465,
+    type: 'SYSTEM_SETTLEMENT_COMPLETED',
+    content: '정산이 완료됐어요',
+    created_at: '2026-09-05T08:26:00.000Z',
+  },
 ];
 const subscriptions = new Map<string, ChatRoomSubscription>();
+const settlementSubscriptions = new Map<
+  string,
+  { client: WebSocketHandlerConnection['client']; subscriptionId: string }
+>();
 const processedMessages = new Map<string, MockChatMessage>();
 const pendingMessages = new Map<string, MockChatMessage[]>();
 const previewTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
-let nextMessageId = 1454;
+let nextMessageId = 1466;
 
 function getHeader(headers: Record<string, string>, name: string) {
   const headerName = name.toLowerCase();
@@ -184,6 +237,11 @@ function removeClientSubscriptions(client: WebSocketHandlerConnection['client'])
       previewTimers.delete(subscriptionId);
     }
   }
+  for (const [subscriptionKey, subscription] of settlementSubscriptions) {
+    if (subscription.client.id === client.id) {
+      settlementSubscriptions.delete(subscriptionKey);
+    }
+  }
 }
 
 function sendMessageToSubscription(subscription: ChatRoomSubscription, message: MockChatMessage) {
@@ -216,6 +274,40 @@ export function emitMockChatRoomMessage(roomId: string, message: MockChatMessage
 
   if (!delivered) {
     pendingMessages.set(roomId, [...(pendingMessages.get(roomId) ?? []), message]);
+  }
+}
+
+type MockSettlementAnalysisFinishedMessage =
+  | {
+      type: 'METER_ANALYSIS_FINISHED';
+      settlement_id: number;
+      meter_analysis_status: 'PASSED' | 'FAILED';
+      remaining_meter_attempts: number;
+    }
+  | {
+      type: 'TRANSFER_ANALYZED';
+      settlement_id: number;
+      user_id: number;
+      name: string;
+      member_analysis_status: 'PASSED' | 'FAILED';
+      transfer_completed: boolean;
+      remaining_transfer_attempts: number;
+    };
+
+export function emitMockSettlementAnalysisFinished(message: MockSettlementAnalysisFinishedMessage) {
+  for (const [key, subscription] of settlementSubscriptions) {
+    subscription.client.send(
+      createFrame(
+        'MESSAGE',
+        {
+          destination: '/user/sub/settlement',
+          subscription: subscription.subscriptionId,
+          'message-id': key,
+          'content-type': 'application/json',
+        },
+        JSON.stringify(message),
+      ),
+    );
   }
 }
 
@@ -262,7 +354,18 @@ function handleConnect(client: WebSocketHandlerConnection['client'], frame: Stom
 
 function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: StompFrame) {
   const subscriptionId = getHeader(frame.headers, 'id');
-  const roomId = getRoomId(getHeader(frame.headers, 'destination'), '/sub/chat/');
+  const destination = getHeader(frame.headers, 'destination');
+  if (!subscriptionId) {
+    return;
+  }
+  if (destination === '/user/sub/settlement') {
+    settlementSubscriptions.set(`${client.id}:${subscriptionId}`, { client, subscriptionId });
+    return;
+  }
+  if (destination === '/user/sub/errors') {
+    return;
+  }
+  const roomId = getRoomId(destination, '/sub/chat/');
 
   if (!subscriptionId || !isValidRoom(roomId)) {
     return;
@@ -291,6 +394,7 @@ function handleUnsubscribe(client: WebSocketHandlerConnection['client'], frame: 
 
   if (subscriptionId) {
     subscriptions.delete(`${client.id}:${subscriptionId}`);
+    settlementSubscriptions.delete(`${client.id}:${subscriptionId}`);
   }
 }
 

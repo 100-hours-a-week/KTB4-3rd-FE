@@ -1,9 +1,8 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
 
+import { nearbyPostsQueries } from '@/entities/post';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapViewport } from '@/shared/ui/map';
-
-import { nearbyPostsQueries } from './nearby-posts.query';
 
 const SEOUL_STATION_COORDINATE: MapCoordinate = {
   lat: 37.5547,

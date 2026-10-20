@@ -33,11 +33,12 @@ describe('Dialog', () => {
     expect(screen.queryByRole('button', { name: '취소' })).not.toBeInTheDocument();
   });
 
-  it('medium 크기 하나로 고정한다', () => {
+  it('앱 레이아웃 폭을 넘지 않도록 viewport와 dialog 폭을 제한한다', () => {
     render(<Dialog defaultOpen title="제목" />);
 
-    expect(screen.getByTestId('dialog')).toHaveClass('md:w-[480px]');
-    expect(screen.getByTestId('dialog')).not.toHaveClass('md:w-[800px]');
+    expect(screen.getByTestId('dialog-backdrop')).toHaveClass('fixed', 'inset-0');
+    expect(screen.getByTestId('dialog').parentElement).toHaveClass('max-w-[393px]', 'w-full');
+    expect(screen.getByTestId('dialog')).toHaveClass('w-[calc(100%-40px)]', 'max-w-[353px]');
   });
 
   it('primary와 secondary 버튼을 모두 렌더링한다', () => {
@@ -46,6 +47,22 @@ describe('Dialog', () => {
     expect(screen.getByRole('button', { name: '확인' })).toBeInTheDocument();
     expect(screen.getByRole('button', { name: '취소' })).toBeInTheDocument();
     expect(screen.getByTestId('dialog-footer')).toHaveClass('flex-row');
+  });
+
+  it('neutral 확인 버튼을 선택할 수 있다', () => {
+    render(<Dialog defaultOpen primaryVariant="neutral-solid" title="제목" />);
+
+    expect(screen.getByRole('button', { name: '확인' })).toHaveClass(
+      'bg-[var(--color-bg-neutral-inverted)]',
+    );
+  });
+
+  it('critical 확인 버튼을 선택할 수 있다', () => {
+    render(<Dialog defaultOpen primaryVariant="critical-solid" title="제목" />);
+
+    expect(screen.getByRole('button', { name: '확인' })).toHaveClass(
+      'bg-[var(--color-bg-critical-solid)]',
+    );
   });
 
   it('noChildren 변형은 본문 없이 footer만 렌더링한다', () => {

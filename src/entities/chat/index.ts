@@ -19,4 +19,8 @@ export {
   type ChatWebSocketClientOptions,
   type ChatWebSocketMessage,
   type ChatWebSocketStatus,
+  type ChatSettlementSnapshot,
+  type MeterAnalysisFinishedMessage,
+  type SettlementAnalysisFinishedMessage,
+  type TransferAnalysisFinishedMessage,
 } from './api/chat-websocket-client';

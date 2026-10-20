@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
 import {
@@ -17,8 +17,24 @@ import {
   useChatRatingMutation,
   useChatReportMutation,
 } from '@/features/chatting';
-import type { ChatWebSocketMessage } from '@/entities/chat';
+import type { ChatWebSocketMessage, SettlementAnalysisFinishedMessage } from '@/entities/chat';
+import { useLeaveCarpoolMutation } from '@/features/leave-carpool';
 import { useLeaveCompanionMutation } from '@/features/leave-companion';
+import {
+  submitTransferProof,
+  submitMeterImage,
+  settlementQueries,
+  SettlementTransferProofDialog,
+  SettlementMeterImageDialog,
+  TaxiMeterAnalysisDialog,
+  TaxiMeterAmountDialog,
+  TransferConfirmationAnalysisDialog,
+  TransferConfirmationRecognitionFailedDialog,
+  uploadSettlementImage,
+  updateSettlementAmount,
+  useCompleteSettlementMutation,
+} from '@/features/taxi-pot-settlement';
+import { getAccessToken } from '@/entities/auth';
 import {
   createTaxiPotChatEntryMessages,
   getLatestTaxiPotRideAction,
@@ -34,6 +50,7 @@ import {
   useTaxiPotChatFlow,
 } from '@/features/taxi-pot-chat';
 import { useCurrentUserQuery } from '@/features/user-profile';
+import { ApiError } from '@/shared/api/client';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
 
@@ -76,6 +93,21 @@ type LiveMemberCountState = {
   count: number | null;
   processedMessageIds: Set<number>;
 };
+
+type TransferProofTarget = {
+  settlementId: number;
+  userId: number;
+} | null;
+
+type MeterImageTarget = number | null;
+
+type MeterAmountTarget = {
+  settlementId: number;
+  recognitionFailed: boolean;
+} | null;
+
+const TRANSFER_RETRY_LIMIT_MESSAGE = '인증 횟수를 모두 사용했어요. 대면 인증을 해주세요.';
+const TRANSFER_AMOUNT_MISMATCH_MESSAGE = '송금 금액이 일치하지 않아요';
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -169,6 +201,7 @@ function getLastPersistedMessageId(messages: readonly { id: string | number }[])
 
 export function ChattingPage({ roomId }: ChattingPageProps) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [liveMessagesState, setLiveMessagesState] = useState<LiveMessagesState>({
     roomId,
     messages: [],
@@ -187,14 +220,138 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     messagesQuery,
   } = useChatRoomQueries(roomId);
   const currentUserQuery = useCurrentUserQuery();
+  const chatRoomDetail = detailQuery.data?.data;
+  const companionId = chatRoomDetail?.companion_id;
+  const currentUserId = currentUserQuery.data?.data.id;
+  const isCarpool = chatRoomDetail?.kind === 'CARPOOL';
+  const taxiPotId =
+    chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
+  const isTaxiPot = taxiPotId !== undefined;
+  const taxiPotQuery = useQuery({
+    ...taxiPotQueries.detail(taxiPotId ?? ''),
+    enabled: isTaxiPot,
+  });
+  const taxiPotDetail = taxiPotQuery.data?.data;
+  const settlementId = taxiPotDetail?.settlement_id;
   const ratingMutation = useChatRatingMutation();
   const reportMutation = useChatReportMutation();
+  const leaveCarpoolMutation = useLeaveCarpoolMutation();
   const leaveCompanionMutation = useLeaveCompanionMutation();
   const leaveTaxiPotMutation = useLeaveTaxiPotMutation();
   const readMarkerMutation = useChatRoomReadMarkerMutation();
+  const completeSettlementMutation = useCompleteSettlementMutation();
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
   const [isReportDialogOpen, setIsReportDialogOpen] = useState(false);
   const [reportTarget, setReportTarget] = useState<ChatReportTarget | null>(null);
+  const [uploadingSettlementPhoto, setUploadingSettlementPhoto] = useState(false);
+  const [transferProofTarget, setTransferProofTarget] = useState<TransferProofTarget>(null);
+  const [meterImageTarget, setMeterImageTarget] = useState<MeterImageTarget>(null);
+  const [meterAnalysisSettlementId, setMeterAnalysisSettlementId] = useState<number | null>(null);
+  const [meterAnalysisFinishedMessage, setMeterAnalysisFinishedMessage] =
+    useState<SettlementAnalysisFinishedMessage | null>(null);
+  const settlementAnalysisFinishedMessageRef = useRef<SettlementAnalysisFinishedMessage | null>(
+    null,
+  );
+  const [isMeterAnalysisDelayed, setIsMeterAnalysisDelayed] = useState(false);
+  const [meterAmountTarget, setMeterAmountTarget] = useState<MeterAmountTarget>(null);
+  const [meterAmount, setMeterAmount] = useState('');
+  const [savingSettlementAmount, setSavingSettlementAmount] = useState(false);
+  const [transferAnalysisSettlementId, setTransferAnalysisSettlementId] = useState<number | null>(
+    null,
+  );
+  const [transferSubmissionBlockedSettlementId, setTransferSubmissionBlockedSettlementId] =
+    useState<number | null>(null);
+  const [analysisResetKey, setAnalysisResetKey] = useState(0);
+  const meterPhotoPickerRef = useRef<(() => void) | null>(null);
+  const transferPhotoPickerRefs = useRef(new Map<number, () => void>());
+  const activeAnalysisSettlementIdRef = useRef<number | null>(null);
+  const analysisCompletionHandledRef = useRef(false);
+  const meterAnalysisQuery = useQuery(
+    settlementQueries.analysisStatus(settlementId, settlementId !== undefined),
+  );
+  const transferAnalysisQuery = useQuery(
+    settlementQueries.myParticipant(
+      transferAnalysisSettlementId ?? undefined,
+      transferAnalysisSettlementId !== null,
+    ),
+  );
+  const meterAnalysisFinished =
+    meterAnalysisFinishedMessage?.type === 'METER_ANALYSIS_FINISHED' &&
+    meterAnalysisFinishedMessage.settlement_id === settlementId
+      ? meterAnalysisFinishedMessage
+      : null;
+  const meterAnalysisStatus =
+    meterAnalysisFinished?.meter_analysis_status ??
+    meterAnalysisQuery.data?.data.meter_analysis_status;
+  const remainingMeterAttempts =
+    meterAnalysisFinished?.remaining_meter_attempts ??
+    meterAnalysisQuery.data?.data.remaining_meter_attempts;
+  const transferParticipantData = transferAnalysisQuery.data?.data;
+  const transferAnalysisStatus =
+    transferParticipantData && 'member_analysis_status' in transferParticipantData
+      ? transferParticipantData.member_analysis_status
+      : undefined;
+  const isMeterAnalysisOpen =
+    meterAnalysisSettlementId !== null &&
+    !meterAnalysisQuery.isError &&
+    (meterAnalysisStatus === undefined ||
+      meterAnalysisStatus === 'PENDING' ||
+      meterAnalysisStatus === 'ANALYZING');
+  const activeMeterAmountTarget = useMemo<MeterAmountTarget>(
+    () =>
+      meterAmountTarget ??
+      (meterAnalysisStatus === 'FAILED' && meterAnalysisSettlementId !== null
+        ? { settlementId: meterAnalysisSettlementId, recognitionFailed: true }
+        : null),
+    [meterAnalysisSettlementId, meterAnalysisStatus, meterAmountTarget],
+  );
+  const activeTransferFailedSettlementId =
+    transferAnalysisStatus === 'FAILED' ? transferAnalysisSettlementId : null;
+  useEffect(() => {
+    if (
+      meterAnalysisSettlementId === null ||
+      meterAnalysisStatus === 'PASSED' ||
+      meterAnalysisStatus === 'FAILED'
+    ) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => setIsMeterAnalysisDelayed(true), 10_000);
+    return () => window.clearTimeout(timeoutId);
+  }, [meterAnalysisSettlementId, meterAnalysisStatus]);
+  useEffect(() => {
+    if (meterAnalysisSettlementId === null) {
+      return;
+    }
+    if (meterAnalysisQuery.isError) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar(
+          meterAnalysisQuery.error instanceof Error
+            ? meterAnalysisQuery.error.message
+            : '미터기 사진 분석 상태를 확인하지 못했어요',
+          'critical',
+        );
+      return;
+    }
+  }, [meterAnalysisQuery.error, meterAnalysisQuery.isError, meterAnalysisSettlementId]);
+
+  useEffect(() => {
+    if (transferAnalysisSettlementId === null) {
+      return;
+    }
+    if (transferAnalysisQuery.isError) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar(
+          transferAnalysisQuery.error instanceof Error
+            ? transferAnalysisQuery.error.message
+            : '송금 사진 분석 상태를 확인하지 못했어요',
+          'critical',
+        );
+      return;
+    }
+  }, [transferAnalysisQuery.error, transferAnalysisQuery.isError, transferAnalysisSettlementId]);
   const [newMessagesState, setNewMessagesState] = useState<NewMessagesState>({
     roomId,
     cursor: null,
@@ -217,17 +374,6 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const hasNewMessages =
     (newMessagesState.roomId === roomId && newMessagesState.hasNewMessages) ||
     hasDeferredAfterCursor;
-  const chatRoomDetail = detailQuery.data?.data;
-  const companionId = chatRoomDetail?.companion_id;
-  const currentUserId = currentUserQuery.data?.data.id;
-  const taxiPotId =
-    chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
-  const isTaxiPot = taxiPotId !== undefined;
-  const taxiPotQuery = useQuery({
-    ...taxiPotQueries.detail(taxiPotId ?? ''),
-    enabled: isTaxiPot,
-  });
-  const taxiPotDetail = taxiPotQuery.data?.data;
   const baseMemberCount = taxiPotDetail?.current_count ?? chatRoomDetail?.current_count;
   const chatRoomMessages = useMemo(
     () => messagesQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
@@ -274,6 +420,218 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     taxiPotDetail,
     taxiPotId,
   });
+
+  const handleViewTransferProof = useCallback(
+    async (settlementId: number, nickname: string) => {
+      if (!taxiPotFlow.isHost) {
+        return;
+      }
+
+      try {
+        const response = await queryClient.fetchQuery(settlementQueries.status(settlementId));
+        const matchingParticipants = response.data.participants.filter(
+          (participant) => participant.name === nickname,
+        );
+
+        if (matchingParticipants.length !== 1) {
+          useSnackbarStore
+            .getState()
+            .showSnackbar('송금자를 확인할 수 없어 인증 사진을 열지 못했어요', 'critical');
+          return;
+        }
+
+        setTransferProofTarget({
+          settlementId,
+          userId: matchingParticipants[0].user_id,
+        });
+      } catch (error) {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '송금 내역을 불러오지 못했어요',
+            'critical',
+          );
+      }
+    },
+    [queryClient, taxiPotFlow.isHost],
+  );
+
+  const handleViewMeterImage = useCallback((settlementId: number) => {
+    setMeterImageTarget(settlementId);
+  }, []);
+
+  const handleRegisterMeterPhotoPicker = useCallback((openPicker: (() => void) | null) => {
+    meterPhotoPickerRef.current = openPicker;
+  }, []);
+
+  const handleSettlementAnalysisFinished = useCallback(
+    (message: SettlementAnalysisFinishedMessage) => {
+      if (
+        message.settlement_id !== activeAnalysisSettlementIdRef.current ||
+        analysisCompletionHandledRef.current
+      ) {
+        return;
+      }
+
+      analysisCompletionHandledRef.current = true;
+      setAnalysisResetKey((currentKey) => currentKey + 1);
+      settlementAnalysisFinishedMessageRef.current = message;
+
+      if (message.type === 'TRANSFER_ANALYZED') {
+        void queryClient.invalidateQueries({
+          queryKey: settlementQueries.myParticipant(message.settlement_id).queryKey,
+        });
+
+        if (message.transfer_completed) {
+          setTransferSubmissionBlockedSettlementId(message.settlement_id);
+          setTransferAnalysisSettlementId(null);
+        } else if (message.remaining_transfer_attempts === 0) {
+          setTransferSubmissionBlockedSettlementId(message.settlement_id);
+          setTransferAnalysisSettlementId(null);
+          useSnackbarStore.getState().showSnackbar(TRANSFER_RETRY_LIMIT_MESSAGE, 'critical');
+        } else if (message.member_analysis_status === 'FAILED') {
+          setTransferSubmissionBlockedSettlementId(null);
+          setTransferAnalysisSettlementId(message.settlement_id);
+        } else {
+          setTransferSubmissionBlockedSettlementId(null);
+          setTransferAnalysisSettlementId(null);
+          useSnackbarStore.getState().showSnackbar(TRANSFER_AMOUNT_MISMATCH_MESSAGE, 'critical');
+        }
+
+        activeAnalysisSettlementIdRef.current = null;
+        return;
+      }
+
+      setMeterAnalysisFinishedMessage(message);
+      if (message.meter_analysis_status === 'FAILED') {
+        setMeterAnalysisSettlementId(message.settlement_id);
+        setIsMeterAnalysisDelayed(false);
+      } else if (message.settlement_id === meterAnalysisSettlementId) {
+        setMeterAnalysisSettlementId(null);
+      }
+      queryClient.setQueryData(
+        settlementQueries.analysisStatus(message.settlement_id).queryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                data: {
+                  ...current.data,
+                  meter_analysis_status: message.meter_analysis_status,
+                  remaining_meter_attempts: message.remaining_meter_attempts,
+                },
+              }
+            : current,
+      );
+      activeAnalysisSettlementIdRef.current = null;
+    },
+    [meterAnalysisSettlementId, queryClient],
+  );
+
+  const handleRefreshSettlementStatus = useCallback(() => {
+    if (!settlementId) {
+      return;
+    }
+
+    void queryClient.invalidateQueries({
+      queryKey: settlementQueries.analysisStatus(settlementId).queryKey,
+    });
+  }, [queryClient, settlementId]);
+
+  const handleRegisterTransferPhotoPicker = useCallback(
+    (settlementId: number, openPicker: (() => void) | null) => {
+      if (openPicker) {
+        transferPhotoPickerRefs.current.set(settlementId, openPicker);
+      } else {
+        transferPhotoPickerRefs.current.delete(settlementId);
+      }
+    },
+    [],
+  );
+
+  const handleManualMeterEntry = useCallback(
+    (targetSettlementId?: number) => {
+      const targetId = targetSettlementId ?? meterAnalysisSettlementId ?? settlementId;
+      if (targetId === undefined || targetId === null) {
+        return;
+      }
+
+      setMeterAnalysisSettlementId(null);
+      setIsMeterAnalysisDelayed(false);
+      setMeterAmount('');
+      setMeterAmountTarget({
+        settlementId: targetId,
+        recognitionFailed: false,
+      });
+    },
+    [meterAnalysisSettlementId, settlementId],
+  );
+
+  const handleRetakeMeterPhoto = useCallback(() => {
+    setMeterAnalysisSettlementId(null);
+    setMeterAmountTarget(null);
+    meterPhotoPickerRef.current?.();
+  }, []);
+
+  const handleReselectTransferPhoto = useCallback(() => {
+    if (activeTransferFailedSettlementId === null) {
+      return;
+    }
+
+    const openPicker = transferPhotoPickerRefs.current.get(activeTransferFailedSettlementId);
+    setTransferAnalysisSettlementId(null);
+    openPicker?.();
+  }, [activeTransferFailedSettlementId]);
+
+  const handleSettleMeterAmount = useCallback(async () => {
+    if (activeMeterAmountTarget === null) {
+      return;
+    }
+
+    const totalAmount = Number(meterAmount);
+    if (!Number.isSafeInteger(totalAmount) || totalAmount < 1 || totalAmount > 999_999) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar('1원 이상 999,999원 이하로 입력해주세요', 'critical');
+      return;
+    }
+
+    setSavingSettlementAmount(true);
+    try {
+      await updateSettlementAmount(await getAccessToken(), activeMeterAmountTarget.settlementId, {
+        total_amount: totalAmount,
+      });
+      queryClient.setQueryData(
+        settlementQueries.analysisStatus(activeMeterAmountTarget.settlementId).queryKey,
+        (current) =>
+          current
+            ? {
+                ...current,
+                data: {
+                  ...current.data,
+                  meter_analysis_status: 'MANUAL' as const,
+                  group_settlement_status: 'REQUESTED' as const,
+                  total_amount: totalAmount,
+                },
+              }
+            : current,
+      );
+      settlementAnalysisFinishedMessageRef.current = null;
+      setMeterAnalysisFinishedMessage(null);
+      setMeterAnalysisSettlementId(null);
+      setMeterAmountTarget(null);
+      setMeterAmount('');
+    } catch (error) {
+      useSnackbarStore
+        .getState()
+        .showSnackbar(
+          error instanceof Error ? error.message : '정산 금액을 저장하지 못했어요',
+          'critical',
+        );
+    } finally {
+      setSavingSettlementAmount(false);
+    }
+  }, [activeMeterAmountTarget, meterAmount, queryClient]);
 
   const syncLiveMemberCount = useCallback(
     (message: ChatWebSocketMessage) => {
@@ -424,9 +782,140 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   );
 
   const handleLeave = useCallback(() => setIsLeaveDialogOpen(true), []);
+  const handleSettlementAcknowledge = useCallback(
+    async (settlementId: number) => {
+      try {
+        await completeSettlementMutation.mutateAsync(settlementId);
+      } catch (error) {
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '정산을 완료하지 못했어요',
+            'critical',
+          );
+      }
+    },
+    [completeSettlementMutation],
+  );
+  const handleSendMeterPhoto = useCallback(
+    async (targetSettlementId: number, file: File) => {
+      if (remainingMeterAttempts === 0) {
+        handleManualMeterEntry(targetSettlementId);
+        return;
+      }
+      activeAnalysisSettlementIdRef.current = targetSettlementId;
+      analysisCompletionHandledRef.current = false;
+      setUploadingSettlementPhoto(true);
+      settlementAnalysisFinishedMessageRef.current = null;
+      setMeterAnalysisFinishedMessage(null);
+      try {
+        const token = await getAccessToken();
+        const imageKey = await uploadSettlementImage(token, 'METER', file);
+        const response = await submitMeterImage(token, targetSettlementId, {
+          meter_image_key: imageKey,
+        });
+        if (response.status !== 202) {
+          throw new Error('미터기 사진 분석 요청을 시작하지 못했어요');
+        }
+
+        setIsMeterAnalysisDelayed(false);
+        setMeterAmount('');
+        const finishedMessage =
+          settlementAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
+        if (finishedMessage?.settlement_id !== targetSettlementId) {
+          setAnalysisResetKey((currentKey) => currentKey + 1);
+          queryClient.setQueryData(settlementQueries.analysisStatus(targetSettlementId).queryKey, {
+            message: response.data.message,
+            data: response.data.data,
+          });
+          setMeterAnalysisSettlementId(targetSettlementId);
+        }
+      } catch (error) {
+        activeAnalysisSettlementIdRef.current = null;
+        analysisCompletionHandledRef.current = false;
+        setMeterAnalysisSettlementId(null);
+        setMeterAnalysisFinishedMessage(null);
+        setIsMeterAnalysisDelayed(false);
+        setAnalysisResetKey((currentKey) => currentKey + 1);
+        useSnackbarStore
+          .getState()
+          .showSnackbar(
+            error instanceof Error ? error.message : '미터기 사진을 보내지 못했어요',
+            'critical',
+          );
+      } finally {
+        setUploadingSettlementPhoto(false);
+      }
+    },
+    [handleManualMeterEntry, queryClient, remainingMeterAttempts],
+  );
+  const handleSendTransferPhoto = useCallback(
+    async (settlementId: number, file: File) => {
+      activeAnalysisSettlementIdRef.current = settlementId;
+      analysisCompletionHandledRef.current = false;
+      setTransferSubmissionBlockedSettlementId(null);
+      setUploadingSettlementPhoto(true);
+      settlementAnalysisFinishedMessageRef.current = null;
+      try {
+        const token = await getAccessToken();
+        const imageKey = await uploadSettlementImage(token, 'TRANSFER', file);
+        const response = await submitTransferProof(token, settlementId, {
+          transfer_image_key: imageKey,
+        });
+        if (response.status !== 202) {
+          throw new Error('송금 사진 분석 요청을 시작하지 못했어요');
+        }
+
+        await queryClient.removeQueries({
+          queryKey: settlementQueries.myParticipant(settlementId).queryKey,
+          exact: true,
+        });
+        const finishedMessage =
+          settlementAnalysisFinishedMessageRef.current as SettlementAnalysisFinishedMessage | null;
+        const finishedTransferMessage =
+          finishedMessage?.type === 'TRANSFER_ANALYZED' &&
+          finishedMessage.settlement_id === settlementId
+            ? finishedMessage
+            : null;
+
+        if (!finishedTransferMessage) {
+          setAnalysisResetKey((currentKey) => currentKey + 1);
+          setTransferAnalysisSettlementId(settlementId);
+        }
+
+        if (
+          finishedTransferMessage?.member_analysis_status === 'FAILED' &&
+          finishedTransferMessage.remaining_transfer_attempts > 0
+        ) {
+          setTransferAnalysisSettlementId(settlementId);
+        }
+      } catch (error) {
+        activeAnalysisSettlementIdRef.current = null;
+        analysisCompletionHandledRef.current = false;
+        setTransferAnalysisSettlementId(null);
+        setAnalysisResetKey((currentKey) => currentKey + 1);
+        let errorMessage = '송금 사진을 보내지 못했어요';
+        if (error instanceof ApiError && error.code === 'TRANSFER_RETRY_LIMIT_EXCEEDED') {
+          errorMessage = TRANSFER_RETRY_LIMIT_MESSAGE;
+        } else if (error instanceof Error) {
+          errorMessage = error.message;
+        }
+        useSnackbarStore.getState().showSnackbar(errorMessage, 'critical');
+      } finally {
+        setUploadingSettlementPhoto(false);
+      }
+    },
+    [queryClient],
+  );
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
       syncLiveMemberCount(message);
+
+      if (message.type === 'SYSTEM_RIDE_ENDED' && taxiPotId) {
+        void queryClient.invalidateQueries({
+          queryKey: taxiPotQueries.detail(taxiPotId).queryKey,
+        });
+      }
 
       if (taxiPotFlow.handleWebSocketMessage(message)) {
         return;
@@ -450,7 +939,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
       hasNewMessages,
       newMessagesState.cursor,
       roomId,
+      queryClient,
       syncLiveMemberCount,
+      taxiPotId,
       taxiPotFlow,
     ],
   );
@@ -527,7 +1018,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     }
 
     try {
-      if (isTaxiPot) {
+      if (isCarpool) {
+        await leaveCarpoolMutation.mutateAsync(companionId);
+      } else if (isTaxiPot) {
         await leaveTaxiPotMutation.mutateAsync(Number(taxiPotId));
       } else {
         await leaveCompanionMutation.mutateAsync(companionId);
@@ -544,62 +1037,139 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           'critical',
         );
     }
-  }, [companionId, isTaxiPot, leaveCompanionMutation, leaveTaxiPotMutation, router, taxiPotId]);
-  const leaveLoading = leaveCompanionMutation.isPending || leaveTaxiPotMutation.isPending;
+  }, [
+    companionId,
+    isCarpool,
+    isTaxiPot,
+    leaveCarpoolMutation,
+    leaveCompanionMutation,
+    leaveTaxiPotMutation,
+    router,
+    taxiPotId,
+  ]);
+  const leaveLoading =
+    leaveCarpoolMutation.isPending ||
+    leaveCompanionMutation.isPending ||
+    leaveTaxiPotMutation.isPending;
 
   return (
     <ChatRoomWebSocketConnection
       enabled={Boolean(room)}
       roomId={roomId}
       onMessage={handleWebSocketMessage}
+      onSettlementAnalysisFinished={handleSettlementAnalysisFinished}
     >
       {(connection) => (
-        <ChattingPageContent
-          connection={connection}
-          detailQuery={detailQuery}
-          evaluationParticipants={evaluationParticipants}
-          hasNewerMessages={hasNewerMessages}
-          hasNewMessages={hasNewMessages}
-          hasPreviousMessages={hasPreviousMessages}
-          isEvaluationOpen={taxiPotFlow.isEvaluationOpen}
-          isFetchNewerMessagesError={isFetchNewerMessagesError}
-          isFetchPreviousMessagesError={isFetchPreviousMessagesError}
-          isFetchingNewerMessages={isFetchingNewerMessages}
-          isFetchingPreviousMessages={isFetchingPreviousMessages}
-          isLeaveDialogOpen={isLeaveDialogOpen}
-          isReportDialogOpen={isReportDialogOpen}
-          isTaxiPot={isTaxiPot}
-          isTaxiPotHost={taxiPotFlow.isHost}
-          messagesQuery={messagesQuery}
-          onBack={handleBack}
-          onEvaluationReport={handleEvaluationReport}
-          onEvaluationSubmit={handleEvaluationSubmit}
-          onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
-          onLeave={handleLeave}
-          onLeaveConfirm={handleLeaveConfirm}
-          onLeaveDialogChange={setIsLeaveDialogOpen}
-          onLoadNewerMessages={handleLoadNewerMessages}
-          onLoadPreviousMessages={fetchPreviousMessages}
-          onReport={handleReportRequest}
-          onReportDialogChange={(open) => {
-            setIsReportDialogOpen(open);
-            if (!open) {
-              setReportTarget(null);
+        <>
+          <ChattingPageContent
+            connection={connection}
+            detailQuery={detailQuery}
+            evaluationParticipants={evaluationParticipants}
+            hasNewerMessages={hasNewerMessages}
+            hasNewMessages={hasNewMessages}
+            hasPreviousMessages={hasPreviousMessages}
+            isEvaluationOpen={taxiPotFlow.isEvaluationOpen}
+            isFetchNewerMessagesError={isFetchNewerMessagesError}
+            isFetchPreviousMessagesError={isFetchPreviousMessagesError}
+            isFetchingNewerMessages={isFetchingNewerMessages}
+            isFetchingPreviousMessages={isFetchingPreviousMessages}
+            isLeaveDialogOpen={isLeaveDialogOpen}
+            isReportDialogOpen={isReportDialogOpen}
+            isTaxiPot={isTaxiPot}
+            isTaxiPotHost={taxiPotFlow.isHost}
+            currentUserId={currentUserId}
+            messagesQuery={messagesQuery}
+            onBack={handleBack}
+            onAcknowledgeSettlement={handleSettlementAcknowledge}
+            onWebSocketOpen={handleRefreshSettlementStatus}
+            onSendMeterPhoto={handleSendMeterPhoto}
+            analysisResetKey={analysisResetKey}
+            onManualMeterEntry={handleManualMeterEntry}
+            meterSettlementId={settlementId}
+            hideMeterRequestMessage={meterAnalysisStatus === 'PASSED'}
+            remainingMeterAttempts={remainingMeterAttempts}
+            onSendTransferPhoto={handleSendTransferPhoto}
+            transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
+            onRegisterMeterPhotoPicker={handleRegisterMeterPhotoPicker}
+            onRegisterTransferPhotoPicker={handleRegisterTransferPhotoPicker}
+            onViewTransferProof={handleViewTransferProof}
+            onViewMeterImage={handleViewMeterImage}
+            onEvaluationReport={handleEvaluationReport}
+            onEvaluationSubmit={handleEvaluationSubmit}
+            onEvaluationOpenChange={taxiPotFlow.onEvaluationOpenChange}
+            onLeave={handleLeave}
+            onLeaveConfirm={handleLeaveConfirm}
+            onLeaveDialogChange={setIsLeaveDialogOpen}
+            onLoadNewerMessages={handleLoadNewerMessages}
+            onLoadPreviousMessages={fetchPreviousMessages}
+            onReport={handleReportRequest}
+            onReportDialogChange={(open) => {
+              setIsReportDialogOpen(open);
+              if (!open) {
+                setReportTarget(null);
+              }
+            }}
+            onReportSubmit={handleReportSubmit}
+            onRideActionConfirm={taxiPotFlow.confirmRideAction}
+            rideAction={taxiPotFlow.rideAction}
+            rideActionLoading={taxiPotFlow.isPending}
+            reportLoading={reportMutation.isPending}
+            leaveLoading={leaveLoading}
+            ratingLoading={ratingMutation.isPending}
+            completingSettlement={completeSettlementMutation.isPending}
+            uploadingSettlementPhoto={uploadingSettlementPhoto}
+            room={room}
+            transferProofTarget={transferProofTarget}
+            meterImageTarget={meterImageTarget}
+            onMeterImageOpenChange={(open) => {
+              if (!open) {
+                setMeterImageTarget(null);
+              }
+            }}
+            onTransferProofOpenChange={(open) => {
+              if (!open) {
+                setTransferProofTarget(null);
+              }
+            }}
+            taxiPotDetail={taxiPotDetail}
+            taxiPotQuery={taxiPotQuery}
+            taxiPotStatus={taxiPotFlow.status}
+            liveMessages={liveMessages}
+          />
+          <TaxiMeterAnalysisDialog
+            delayed={isMeterAnalysisDelayed}
+            onManualEntry={handleManualMeterEntry}
+            open={isMeterAnalysisOpen}
+          />
+          <TaxiMeterAmountDialog
+            onOpenChange={(open) => {
+              if (!open) {
+                setMeterAmountTarget(null);
+              }
+            }}
+            onRetakePhoto={handleRetakeMeterPhoto}
+            onSettle={handleSettleMeterAmount}
+            onValueChange={setMeterAmount}
+            open={activeMeterAmountTarget !== null}
+            allowRetakePhoto={remainingMeterAttempts !== 0}
+            recognitionFailed={activeMeterAmountTarget?.recognitionFailed}
+            submitting={savingSettlementAmount}
+            value={meterAmount}
+          />
+          <TransferConfirmationAnalysisDialog
+            open={
+              transferAnalysisSettlementId !== null &&
+              !transferAnalysisQuery.isError &&
+              (transferAnalysisStatus === undefined ||
+                transferAnalysisStatus === 'PENDING' ||
+                transferAnalysisStatus === 'ANALYZING')
             }
-          }}
-          onReportSubmit={handleReportSubmit}
-          onRideActionConfirm={taxiPotFlow.confirmRideAction}
-          rideAction={taxiPotFlow.rideAction}
-          rideActionLoading={taxiPotFlow.isPending}
-          reportLoading={reportMutation.isPending}
-          leaveLoading={leaveLoading}
-          ratingLoading={ratingMutation.isPending}
-          room={room}
-          taxiPotDetail={taxiPotDetail}
-          taxiPotQuery={taxiPotQuery}
-          taxiPotStatus={taxiPotFlow.status}
-          liveMessages={liveMessages}
-        />
+          />
+          <TransferConfirmationRecognitionFailedDialog
+            onReselectPhoto={handleReselectTransferPhoto}
+            open={activeTransferFailedSettlementId !== null}
+          />
+        </>
       )}
     </ChatRoomWebSocketConnection>
   );
@@ -623,6 +1193,8 @@ type ChattingPageContentProps = {
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
   onBack: () => void;
+  onAcknowledgeSettlement: (settlementId: number) => void;
+  onWebSocketOpen: () => void;
   taxiPotQuery: { isError: boolean; isPending: boolean };
   room?: ChatRoom;
   taxiPotDetail?: TaxiPotDetailData;
@@ -645,6 +1217,25 @@ type ChattingPageContentProps = {
   onRideActionConfirm: () => void;
   ratingLoading: boolean;
   reportLoading: boolean;
+  completingSettlement: boolean;
+  onSendMeterPhoto: (settlementId: number, file: File) => void;
+  analysisResetKey: number;
+  onManualMeterEntry: (settlementId?: number) => void;
+  meterSettlementId?: number;
+  remainingMeterAttempts?: number;
+  onSendTransferPhoto: (settlementId: number, file: File) => void;
+  transferSubmissionBlockedSettlementId: number | null;
+  onRegisterMeterPhotoPicker: (openPicker: (() => void) | null) => void;
+  onRegisterTransferPhotoPicker: (settlementId: number, openPicker: (() => void) | null) => void;
+  onViewTransferProof: (settlementId: number, nickname: string) => void;
+  onViewMeterImage: (settlementId: number) => void;
+  transferProofTarget: TransferProofTarget;
+  meterImageTarget: MeterImageTarget;
+  onMeterImageOpenChange: (open: boolean) => void;
+  onTransferProofOpenChange: (open: boolean) => void;
+  uploadingSettlementPhoto: boolean;
+  currentUserId?: number;
+  hideMeterRequestMessage: boolean;
 };
 
 function ChattingPageContent({
@@ -665,6 +1256,8 @@ function ChattingPageContent({
   isTaxiPotHost,
   messagesQuery,
   onBack,
+  onAcknowledgeSettlement,
+  onWebSocketOpen,
   onEvaluationReport,
   onEvaluationSubmit,
   onEvaluationOpenChange,
@@ -681,6 +1274,25 @@ function ChattingPageContent({
   rideActionLoading,
   ratingLoading,
   reportLoading,
+  completingSettlement,
+  onSendMeterPhoto,
+  analysisResetKey,
+  onManualMeterEntry,
+  meterSettlementId,
+  remainingMeterAttempts,
+  onSendTransferPhoto,
+  transferSubmissionBlockedSettlementId,
+  onRegisterMeterPhotoPicker,
+  onRegisterTransferPhotoPicker,
+  onViewTransferProof,
+  onViewMeterImage,
+  transferProofTarget,
+  meterImageTarget,
+  onMeterImageOpenChange,
+  onTransferProofOpenChange,
+  uploadingSettlementPhoto,
+  currentUserId,
+  hideMeterRequestMessage,
   leaveLoading,
   room,
   taxiPotDetail,
@@ -688,6 +1300,12 @@ function ChattingPageContent({
   taxiPotStatus,
   liveMessages,
 }: ChattingPageContentProps) {
+  useEffect(() => {
+    if (connection.status === 'open') {
+      onWebSocketOpen();
+    }
+  }, [connection.status, onWebSocketOpen]);
+
   if (detailQuery.isPending || messagesQuery.isPending || (isTaxiPot && taxiPotQuery.isPending)) {
     return (
       <ChatRoomLayout>
@@ -743,7 +1361,24 @@ function ChattingPageContent({
           onLoadPreviousMessages={onLoadPreviousMessages}
           onLoadNewerMessages={onLoadNewerMessages}
           onReport={onReport}
+          onAcknowledgeSettlement={isTaxiPotHost ? onAcknowledgeSettlement : undefined}
+          completingSettlement={completingSettlement}
+          isTaxiPotHost={isTaxiPotHost}
+          currentUserId={currentUserId}
+          onSendMeterPhoto={onSendMeterPhoto}
+          analysisResetKey={analysisResetKey}
+          onManualMeterEntry={onManualMeterEntry}
+          meterSettlementId={meterSettlementId}
+          remainingMeterAttempts={remainingMeterAttempts}
+          onSendTransferPhoto={onSendTransferPhoto}
+          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
+          onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
+          onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
+          onViewTransferProof={onViewTransferProof}
+          onViewMeterImage={onViewMeterImage}
+          uploadingSettlementPhoto={uploadingSettlementPhoto}
           room={room}
+          hideMeterRequestMessage={hideMeterRequestMessage}
           topContent={topContent}
         />
       </ChatRoomLayout>
@@ -780,6 +1415,17 @@ function ChattingPageContent({
           loading: ratingLoading,
           onClick: (event) => event.preventDefault(),
         }}
+      />
+      <SettlementTransferProofDialog
+        onOpenChange={onTransferProofOpenChange}
+        open={transferProofTarget !== null}
+        settlementId={transferProofTarget?.settlementId}
+        userId={transferProofTarget?.userId}
+      />
+      <SettlementMeterImageDialog
+        onOpenChange={onMeterImageOpenChange}
+        open={meterImageTarget !== null}
+        settlementId={meterImageTarget ?? undefined}
       />
     </>
   );

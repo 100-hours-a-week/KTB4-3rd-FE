@@ -1,6 +1,14 @@
 export { PostItem, type PostItemProps } from './ui/post-item';
 export { PostList, type PostListProps } from './ui/post-list';
 export { getCommunityPostComments } from './api/community-comments';
+export type {
+  NearbyPost,
+  NearbyPostsData,
+  NearbyPostsQuery,
+  NearbyPostsResponse,
+} from './api/nearby-posts.types';
+export { getNearbyPosts } from './api/get-nearby-posts';
+export { nearbyPostsQueries } from './api/nearby-posts.queries';
 export { toPostComments } from './model/to-post-comments';
 export { CommentList, type CommentListProps } from './ui/post-detail/comment-list';
 export { CommentSummary, type CommentSummaryProps } from './ui/post-detail/comment-summary';

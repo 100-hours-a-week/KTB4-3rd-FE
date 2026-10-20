@@ -23,6 +23,22 @@ type ChatMessageListProps = {
   hasNewMessages?: boolean;
   liveMessageCount?: number;
   bottomContent?: ReactNode;
+  onAcknowledgeSettlement?: (settlementId: number) => void;
+  completingSettlement?: boolean;
+  isTaxiPotHost?: boolean;
+  onSendMeterPhoto?: (settlementId: number, file: File) => void;
+  onManualMeterEntry?: (settlementId: number) => void;
+  meterSettlementId?: number;
+  remainingMeterAttempts?: number;
+  onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  analysisResetKey?: number;
+  transferSubmissionBlockedSettlementId?: number | null;
+  onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
+  onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
+  onViewTransferProof?: (settlementId: number, nickname: string) => void;
+  onViewMeterImage?: (settlementId: number) => void;
+  uploadingSettlementPhoto?: boolean;
+  currentUserId?: number;
 };
 
 type LoadDirection = 'before' | 'after';
@@ -72,7 +88,36 @@ export function ChatMessageList({
   hasNewMessages = false,
   liveMessageCount = 0,
   bottomContent,
+  onAcknowledgeSettlement,
+  completingSettlement = false,
+  isTaxiPotHost = false,
+  onSendMeterPhoto,
+  onManualMeterEntry,
+  meterSettlementId,
+  remainingMeterAttempts,
+  onSendTransferPhoto,
+  analysisResetKey,
+  transferSubmissionBlockedSettlementId = null,
+  onRegisterMeterPhotoPicker,
+  onRegisterTransferPhotoPicker,
+  onViewTransferProof,
+  onViewMeterImage,
+  uploadingSettlementPhoto = false,
+  currentUserId,
 }: ChatMessageListProps) {
+  let transferAmount = 0;
+  let transferSettlementId: number | undefined;
+
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+
+    if (message?.kind === 'notice' && message.systemType === 'SYSTEM_TRANSFER_REQUESTED') {
+      transferAmount = message.settlement.amount_per_person;
+      transferSettlementId = message.settlement.settlement_id;
+      break;
+    }
+  }
+
   const messagesRef = useRef<HTMLDivElement>(null);
   const previousMessagesRef = useRef<HTMLDivElement>(null);
   const nextMessagesRef = useRef<HTMLDivElement>(null);
@@ -316,7 +361,34 @@ export function ChatMessageList({
           </div>
         ) : null}
         {messages.map((message, index) => (
-          <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
+          <ChatMessageItem
+            index={index}
+            key={message.id}
+            message={message}
+            onReport={onReport}
+            transferAmount={transferAmount}
+            transferSettlementId={transferSettlementId}
+            onAcknowledgeSettlement={onAcknowledgeSettlement}
+            completingSettlement={completingSettlement}
+            isTaxiPotHost={isTaxiPotHost}
+            onSendMeterPhoto={onSendMeterPhoto}
+            onManualMeterEntry={onManualMeterEntry}
+            meterSettlementId={meterSettlementId}
+            remainingMeterAttempts={remainingMeterAttempts}
+            onSendTransferPhoto={onSendTransferPhoto}
+            analysisResetKey={analysisResetKey}
+            transferPhotoDisabled={
+              message.kind === 'notice' &&
+              message.systemType === 'SYSTEM_TRANSFER_REQUESTED' &&
+              transferSubmissionBlockedSettlementId === message.settlement.settlement_id
+            }
+            onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
+            onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
+            onViewTransferProof={onViewTransferProof}
+            onViewMeterImage={onViewMeterImage}
+            uploadingSettlementPhoto={uploadingSettlementPhoto}
+            currentUserId={currentUserId}
+          />
         ))}
         {hasNewerMessages && onLoadNewerMessages ? (
           <div

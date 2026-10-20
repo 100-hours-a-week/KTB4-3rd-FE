@@ -3,10 +3,13 @@
 import { useRouter } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
 import Image from 'next/image';
+import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import { getMapPinMarkerImage } from '@/entities/map-pin';
+import { getMapPinMarkerImage, type MapPinItem as MapPin } from '@/entities/map-pin';
+import { NotificationButton } from '@/entities/notification';
+import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
 import {
   PostList,
   PostDetailSkeleton,
@@ -29,8 +32,9 @@ import { useRequireAuth } from '@/features/login-required';
 import { PostCreateFab } from '@/features/post-create';
 import { useJoinCompanionMutation } from '@/features/join-companion';
 import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
+import { PushNotificationPermissionDialog, useNotificationEntry } from '@/features/push-token';
 import { useCurrentUserQuery } from '@/features/user-profile';
-import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
+import { useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import {
   type CompanionPostDetailData,
@@ -178,6 +182,10 @@ function toCommunityPostDetail(
 
 export function HomePage() {
   const router = useRouter();
+  const notificationEntry = useNotificationEntry({
+    onOpenNotifications: () => router.push('/notification'),
+  });
+  const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
@@ -446,6 +454,12 @@ export function HomePage() {
 
   return (
     <>
+      <PushNotificationPermissionDialog
+        onDefer={notificationEntry.onDefer}
+        onEnable={notificationEntry.onEnable}
+        onOpenChange={notificationEntry.onPermissionDialogOpenChange}
+        open={notificationEntry.isPermissionDialogOpen}
+      />
       <div className="relative mx-auto min-h-dvh w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]">
         <Header
           className="z-30 bg-transparent"
@@ -455,7 +469,17 @@ export function HomePage() {
             </span>
           }
           rightSlot={
-            <span className="pt-3 pr-1.5">
+            <span className="flex items-center gap-1.5 pt-3 pr-1.5">
+              <Link
+                aria-label="모여타 소개"
+                className="rounded-md px-1.5 py-2 text-xs font-medium text-[var(--color-fg-neutral-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
+                href="/about"
+              >
+                소개
+              </Link>
+              {isAuthenticated ? (
+                <NotificationButton onClick={notificationEntry.onNotificationClick} />
+              ) : null}
               <HeaderUser user={currentUserQuery.data?.data} />
             </span>
           }
@@ -502,6 +526,7 @@ export function HomePage() {
           bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
           className="mx-auto w-full max-w-[393px]"
           defaultSnapPoint="110px"
+          initialFocus={false}
           modal={false}
           open={selectedPost === null}
           showBackdrop={false}

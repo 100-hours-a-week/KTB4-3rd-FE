@@ -11,5 +11,8 @@ export default function sitemap(): MetadataRoute.Sitemap {
     return [];
   }
 
-  return [{ url: new URL('/', siteUrl).toString() }];
+  return [
+    { url: new URL('/', siteUrl).toString() },
+    { url: new URL('/about', siteUrl).toString() },
+  ];
 }

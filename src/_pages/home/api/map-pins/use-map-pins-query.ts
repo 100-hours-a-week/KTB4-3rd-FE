@@ -1,8 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 
+import { mapPinsQueries } from '@/entities/map-pin';
 import type { MapViewport } from '@/shared/ui/map';
-
-import { mapPinsQueries } from './map-pins.query';
 
 function toMapPinsQuery(viewport: MapViewport) {
   return {

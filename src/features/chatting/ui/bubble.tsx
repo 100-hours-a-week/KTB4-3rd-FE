@@ -1,8 +1,7 @@
 import type { HTMLAttributes, ReactNode } from 'react';
 
 import { cn } from '@/shared/lib/cn';
-
-import styles from './bubble.module.css';
+import { LoadingDots } from '@/shared/ui/loading-dots';
 
 export type BubbleVariant = 'system' | 'me' | 'other';
 
@@ -50,22 +49,7 @@ export function Bubble({
       <div className="min-w-0 break-words" style={{ color: variantTextColors[variant] }}>
         {children}
       </div>
-      {isLoading ? (
-        <span
-          aria-hidden="true"
-          className="ml-3 flex w-[43px] shrink-0 items-center justify-between"
-        >
-          <span
-            className={cn('size-[10px] rounded-full bg-[var(--color-fg-brand)]', styles.loadingDot)}
-          />
-          <span
-            className={cn('size-[10px] rounded-full bg-[var(--color-fg-brand)]', styles.loadingDot)}
-          />
-          <span
-            className={cn('size-[10px] rounded-full bg-[var(--color-fg-brand)]', styles.loadingDot)}
-          />
-        </span>
-      ) : null}
+      {isLoading ? <LoadingDots className="ml-3" /> : null}
     </div>
   );
 }

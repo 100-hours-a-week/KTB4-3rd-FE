@@ -27,6 +27,16 @@ export type MapViewport = {
   southWest: MapCoordinate;
 };
 
+export type MapViewportChangeSource =
+  | 'initial'
+  | 'drag'
+  | 'zoom'
+  | 'selection'
+  | 'locate'
+  | 'programmatic';
+
+export type MapCenterChangeSource = Extract<MapViewportChangeSource, 'selection' | 'programmatic'>;
+
 export type MapLoadError = {
   message: string;
 };

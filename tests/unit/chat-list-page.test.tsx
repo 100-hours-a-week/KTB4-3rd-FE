@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
+  ChatListPageLoading,
   ChatListPageContent,
   ChatListPageContentLoading,
   type ChatListPageStates,
@@ -35,6 +36,7 @@ describe('ChatListPageContent', () => {
     expect(screen.getByRole('button', { name: /8시 판교역/ })).toBeInTheDocument();
     expect(screen.queryByTestId('chat-list-empty')).not.toBeInTheDocument();
     expect(screen.getByTestId('chat-list-scroll-region')).toBeInTheDocument();
+    expect(screen.getByRole('tablist', { name: '채팅 목록 필터' })).toHaveClass('mt-6');
     expect(screen.getByTestId('chat-list-scroll-region')).toHaveClass(
       'flex-1',
       '-mx-5',
@@ -167,5 +169,18 @@ describe('ChatListPageContentLoading', () => {
       'true',
     );
     expect(screen.getAllByRole('listitem', { hidden: true })).toHaveLength(6);
+  });
+
+  it('페이지 로딩 상태에서도 채팅/카풀 탭을 헤더 바로 아래에 붙여 표시한다', () => {
+    render(<ChatListPageLoading />);
+
+    const header = screen.getByRole('banner').parentElement;
+    const main = screen.getByRole('main');
+    const tabs = screen.getByRole('tablist', { name: '채팅 화면' });
+
+    expect(header?.nextElementSibling).toBe(main);
+    expect(main).not.toHaveClass('!pt-8');
+    expect(tabs.closest('section')).toBe(main.firstElementChild);
+    expect(screen.queryByRole('heading', { name: '채팅' })).not.toBeInTheDocument();
   });
 });

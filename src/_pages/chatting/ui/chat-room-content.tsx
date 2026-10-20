@@ -23,6 +23,23 @@ type ChatRoomContentProps = {
   onReport?: (target: ChatReportTarget) => void;
   topContent?: ReactNode;
   bottomContent?: ReactNode;
+  onAcknowledgeSettlement?: (settlementId: number) => void;
+  completingSettlement?: boolean;
+  isTaxiPotHost?: boolean;
+  onSendMeterPhoto?: (settlementId: number, file: File) => void;
+  onManualMeterEntry?: (settlementId: number) => void;
+  meterSettlementId?: number;
+  remainingMeterAttempts?: number;
+  onSendTransferPhoto?: (settlementId: number, file: File) => void;
+  analysisResetKey?: number;
+  transferSubmissionBlockedSettlementId?: number | null;
+  onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
+  onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
+  onViewTransferProof?: (settlementId: number, nickname: string) => void;
+  onViewMeterImage?: (settlementId: number) => void;
+  uploadingSettlementPhoto?: boolean;
+  currentUserId?: number;
+  hideMeterRequestMessage?: boolean;
 };
 
 export function ChatRoomContent({
@@ -41,12 +58,44 @@ export function ChatRoomContent({
   hasNewMessages = false,
   topContent,
   bottomContent,
+  onAcknowledgeSettlement,
+  completingSettlement = false,
+  isTaxiPotHost = false,
+  onSendMeterPhoto,
+  onManualMeterEntry,
+  meterSettlementId,
+  remainingMeterAttempts,
+  onSendTransferPhoto,
+  analysisResetKey,
+  transferSubmissionBlockedSettlementId = null,
+  onRegisterMeterPhotoPicker,
+  onRegisterTransferPhotoPicker,
+  onViewTransferProof,
+  onViewMeterImage,
+  uploadingSettlementPhoto = false,
+  currentUserId,
+  hideMeterRequestMessage = false,
 }: ChatRoomContentProps) {
   const messages = useMemo(() => {
-    const roomMessageIds = new Set(room.messages.map((message) => message.id));
+    const roomMessages = hideMeterRequestMessage
+      ? room.messages.filter(
+          (message) =>
+            !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
+        )
+      : room.messages;
+    const liveChatMessages = hideMeterRequestMessage
+      ? liveMessages.filter(
+          (message) =>
+            !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
+        )
+      : liveMessages;
+    const roomMessageIds = new Set(roomMessages.map((message) => message.id));
 
-    return [...room.messages, ...liveMessages.filter((message) => !roomMessageIds.has(message.id))];
-  }, [liveMessages, room.messages]);
+    return [
+      ...roomMessages,
+      ...liveChatMessages.filter((message) => !roomMessageIds.has(message.id)),
+    ];
+  }, [hideMeterRequestMessage, liveMessages, room.messages]);
 
   const handleSubmit = (content: string) => {
     connection.sendMessage(content);
@@ -70,8 +119,31 @@ export function ChatRoomContent({
           onLoadPreviousMessages={onLoadPreviousMessages}
           onLoadNewerMessages={onLoadNewerMessages}
           hasNewMessages={hasNewMessages}
-          liveMessageCount={liveMessages.length}
+          liveMessageCount={
+            hideMeterRequestMessage
+              ? liveMessages.filter(
+                  (message) =>
+                    !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
+                ).length
+              : liveMessages.length
+          }
           bottomContent={bottomContent}
+          onAcknowledgeSettlement={onAcknowledgeSettlement}
+          completingSettlement={completingSettlement}
+          isTaxiPotHost={isTaxiPotHost}
+          onSendMeterPhoto={onSendMeterPhoto}
+          onManualMeterEntry={onManualMeterEntry}
+          meterSettlementId={meterSettlementId}
+          remainingMeterAttempts={remainingMeterAttempts}
+          onSendTransferPhoto={onSendTransferPhoto}
+          analysisResetKey={analysisResetKey}
+          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
+          onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
+          onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
+          onViewTransferProof={onViewTransferProof}
+          onViewMeterImage={onViewMeterImage}
+          uploadingSettlementPhoto={uploadingSettlementPhoto}
+          currentUserId={currentUserId}
         />
         <ChatComposer
           className="!fixed bottom-0 left-1/2 z-20 !h-[calc(98px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)] !pb-[env(safe-area-inset-bottom,0px)]"

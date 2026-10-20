@@ -110,9 +110,17 @@ export type KakaoMapEvent = {
   addListener(target: object, eventName: 'idle', handler: () => void): void;
   addListener(target: object, eventName: 'bounds_changed', handler: () => void): void;
   addListener(target: object, eventName: 'click', handler: () => void): void;
+  addListener(target: object, eventName: 'dragstart', handler: () => void): void;
+  addListener(target: object, eventName: 'dragend', handler: () => void): void;
+  addListener(target: object, eventName: 'zoom_start', handler: () => void): void;
+  addListener(target: object, eventName: 'zoom_changed', handler: () => void): void;
   removeListener(target: object, eventName: 'idle', handler: () => void): void;
   removeListener(target: object, eventName: 'bounds_changed', handler: () => void): void;
   removeListener(target: object, eventName: 'click', handler: () => void): void;
+  removeListener(target: object, eventName: 'dragstart', handler: () => void): void;
+  removeListener(target: object, eventName: 'dragend', handler: () => void): void;
+  removeListener(target: object, eventName: 'zoom_start', handler: () => void): void;
+  removeListener(target: object, eventName: 'zoom_changed', handler: () => void): void;
 };
 
 export type KakaoMapsApi = {

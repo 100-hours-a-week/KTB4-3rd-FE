@@ -6,6 +6,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ChatListPage } from '@/_pages/chat-list';
+import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { server } from '@/shared/api/mocks/server';
 
@@ -53,7 +54,11 @@ function createWrapper() {
   });
 
   return function QueryWrapper({ children }: { children: ReactNode }) {
-    return <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>;
+    return (
+      <SnackbarProvider>
+        <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+      </SnackbarProvider>
+    );
   };
 }
 

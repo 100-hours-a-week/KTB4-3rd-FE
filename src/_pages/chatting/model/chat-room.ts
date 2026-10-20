@@ -1,6 +1,19 @@
+import type { ChatSettlementSnapshot } from '@/entities/chat';
 import type { BubbleVariant, ChatNoticeVariant } from '@/features/chatting';
 
 import type { ChatRoomDetailData, ChatRoomMessageData } from '@/_pages/chatting/api/chat-room';
+
+type ChatSystemMessageType = Exclude<
+  ChatRoomMessageData['type'],
+  'TEXT' | 'SYSTEM_TRANSFER_REQUESTED'
+>;
+
+type ChatRoomNoticeMessage = {
+  id: string;
+  kind: 'notice';
+  content: string;
+  variant?: ChatNoticeVariant;
+};
 
 export type ChatRoomMessage =
   | {
@@ -14,12 +27,14 @@ export type ChatRoomMessage =
       layout?: 'default' | 'tall' | 'large';
       loading?: boolean;
     }
-  | {
-      id: string;
-      kind: 'notice';
-      content: string;
-      variant?: ChatNoticeVariant;
-    };
+  | (ChatRoomNoticeMessage & {
+      systemType?: ChatSystemMessageType;
+      settlement?: never;
+    })
+  | (ChatRoomNoticeMessage & {
+      systemType: 'SYSTEM_TRANSFER_REQUESTED';
+      settlement: ChatSettlementSnapshot;
+    });
 
 export type ChatRoom = {
   id: string;
@@ -100,6 +115,18 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
     return '운행이 종료됐어요';
   }
 
+  if (message.type === 'SYSTEM_METER_REQUESTED') {
+    return message.content ?? '택시 미터기 사진을 보내주세요';
+  }
+
+  if (message.type === 'SYSTEM_TRANSFER_REQUESTED') {
+    return message.content ?? '방장이 정산을 요청했어요';
+  }
+
+  if (message.type === 'SYSTEM_SETTLEMENT_COMPLETED') {
+    return message.content ?? '정산이 완료됐어요';
+  }
+
   if (message.type === 'SYSTEM_LEAVE') {
     return message.leaver ? `${message.leaver.name} 님이 퇴장하셨어요` : '새로운 멤버가 퇴장했어요';
   }
@@ -127,10 +154,22 @@ export function createChatRoomMessageFromApi(
     };
   }
 
+  if (message.type === 'SYSTEM_TRANSFER_REQUESTED') {
+    return {
+      id: String(message.id),
+      kind: 'notice',
+      content: getSystemMessageContent(message),
+      settlement: message.settlement,
+      systemType: message.type,
+      variant: 'system',
+    };
+  }
+
   return {
     id: String(message.id),
     kind: 'notice',
     content: getSystemMessageContent(message),
+    systemType: message.type,
     variant:
       message.type === 'SYSTEM_RIDE_STARTED' || message.type === 'SYSTEM_RIDE_ENDED'
         ? 'informative'

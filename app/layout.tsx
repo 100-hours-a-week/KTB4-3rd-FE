@@ -2,14 +2,21 @@ import type { Metadata, Viewport } from 'next';
 import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
+import { pretendard } from './fonts';
 import {
   AuthBootstrapProvider,
+  CarpoolRequestAuthCacheSync,
   ClarityProvider,
   LoginRequiredProvider,
   MockApiProvider,
   QueryProvider,
   SnackbarProvider,
 } from '@/_app/providers';
+import {
+  PushNotificationClickHandler,
+  PushNotificationForegroundListener,
+  PushTokenRegistrationSync,
+} from '@/features/push-token';
 
 import './globals.css';
 
@@ -41,14 +48,18 @@ type RootLayoutProps = {
 
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
-    <html lang="ko">
+    <html lang="ko" className={pretendard.variable}>
       <body>
         <div id="app-root" className="isolate min-h-dvh">
           <ClarityProvider>
             <MockApiProvider>
               <QueryProvider>
+                <CarpoolRequestAuthCacheSync />
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
+                    <PushTokenRegistrationSync />
+                    <PushNotificationForegroundListener />
+                    <PushNotificationClickHandler />
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
                   </AuthBootstrapProvider>
                 </SnackbarProvider>

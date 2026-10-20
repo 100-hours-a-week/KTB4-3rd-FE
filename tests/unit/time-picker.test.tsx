@@ -46,6 +46,21 @@ describe('TimePicker', () => {
     expect(getColumn('분')).toHaveAttribute('aria-valuetext', '40');
   });
 
+  it('좁은 바텀시트에서도 시간 선택 패널과 휠이 가용 너비에 맞춰진다', () => {
+    render(
+      <div style={{ width: 280 }}>
+        <TimePicker aria-label="출발 시간" defaultValue={defaultTime} />
+      </div>,
+    );
+
+    const panel = screen.getByRole('group', { name: '출발 시간' });
+
+    expect(panel).toHaveClass('w-full', 'max-w-[353px]');
+    expect(getColumn('오전 또는 오후')).toHaveStyle({ left: '11.6%', width: '28.9%' });
+    expect(getColumn('시')).toHaveStyle({ left: '38.2%', width: '23.2%' });
+    expect(getColumn('분')).toHaveStyle({ left: '56.4%', width: '27.8%' });
+  });
+
   it('선택 영역에는 현재 값의 강조 텍스트가 렌더링된다', () => {
     render(<TimePicker defaultValue={defaultTime} />);
 

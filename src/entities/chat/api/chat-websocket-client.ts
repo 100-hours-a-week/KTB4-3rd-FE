@@ -1,13 +1,38 @@
-export type ChatWebSocketMessage = {
+export type ChatSettlementSnapshot = {
+  settlement_id: number;
+  total_amount: number;
+  amount_per_person: number;
+  payee: {
+    id: number;
+    name: string;
+    bank_name: string;
+    account_no: string;
+  };
+};
+
+export type MeterAnalysisFinishedMessage = {
+  type: 'METER_ANALYSIS_FINISHED';
+  settlement_id: number;
+  meter_analysis_status: 'PASSED' | 'FAILED';
+  remaining_meter_attempts: number;
+};
+
+export type TransferAnalysisFinishedMessage = {
+  type: 'TRANSFER_ANALYZED';
+  settlement_id: number;
+  user_id: number;
+  name: string;
+  member_analysis_status: 'PASSED' | 'FAILED';
+  transfer_completed: boolean;
+  remaining_transfer_attempts: number;
+};
+
+export type SettlementAnalysisFinishedMessage =
+  | MeterAnalysisFinishedMessage
+  | TransferAnalysisFinishedMessage;
+
+type ChatWebSocketMessageBase = {
   id: number;
-  type:
-    | 'TEXT'
-    | 'SYSTEM_JOIN'
-    | 'SYSTEM_LEAVE'
-    | 'SYSTEM_RIDE_START_REQUESTED'
-    | 'SYSTEM_RIDE_STARTED'
-    | 'SYSTEM_RIDE_END_REQUESTED'
-    | 'SYSTEM_RIDE_ENDED';
   content?: string | null;
   sender?: {
     id: number;
@@ -26,6 +51,33 @@ export type ChatWebSocketMessage = {
   created_at: string;
 };
 
+export type ChatWebSocketMessage =
+  | (ChatWebSocketMessageBase & {
+      type:
+        | 'TEXT'
+        | 'SYSTEM_JOIN'
+        | 'SYSTEM_LEAVE'
+        | 'SYSTEM_RIDE_START_REQUESTED'
+        | 'SYSTEM_RIDE_STARTED'
+        | 'SYSTEM_RIDE_END_REQUESTED'
+        | 'SYSTEM_RIDE_ENDED';
+    })
+  | (ChatWebSocketMessageBase & {
+      type:
+        | 'SYSTEM_METER_REQUESTED'
+        | 'SYSTEM_SETTLEMENT_COMPLETED'
+        | 'SYSTEM_TRANSFER_DONE'
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+      content: string;
+      sender?: never;
+    })
+  | (ChatWebSocketMessageBase & {
+      type: 'SYSTEM_TRANSFER_REQUESTED';
+      content: string;
+      settlement: ChatSettlementSnapshot;
+      sender?: never;
+    });
+
 export type ChatWebSocketStatus = 'connecting' | 'open' | 'closed' | 'error';
 
 export type ChatWebSocketClientOptions = {
@@ -33,6 +85,7 @@ export type ChatWebSocketClientOptions = {
   accessToken: string;
   url?: string;
   onMessage?: (message: ChatWebSocketMessage) => void;
+  onSettlementAnalysisFinished?: (message: SettlementAnalysisFinishedMessage) => void;
   onStatusChange?: (status: ChatWebSocketStatus) => void;
   onError?: (error: Error) => void;
 };
@@ -170,6 +223,10 @@ export class ChatWebSocketClient {
 
   private readonly subscriptionId = `chat-subscription-${createMessageId()}`;
 
+  private readonly settlementSubscriptionId = `settlement-subscription-${createMessageId()}`;
+
+  private readonly errorSubscriptionId = `error-subscription-${createMessageId()}`;
+
   constructor(options: ChatWebSocketClientOptions) {
     this.options = options;
   }
@@ -282,6 +339,18 @@ export class ChatWebSocketClient {
             destination: `/sub/chat/${this.options.roomId}`,
           }),
         );
+        this.socket?.send(
+          createFrame('SUBSCRIBE', {
+            id: this.settlementSubscriptionId,
+            destination: '/user/sub/settlement',
+          }),
+        );
+        this.socket?.send(
+          createFrame('SUBSCRIBE', {
+            id: this.errorSubscriptionId,
+            destination: '/user/sub/errors',
+          }),
+        );
         this.notifyStatus('open');
         this.resolveConnect?.();
         this.clearPendingConnect();
@@ -290,7 +359,14 @@ export class ChatWebSocketClient {
 
       if (frame.command === 'MESSAGE') {
         try {
-          this.options.onMessage?.(JSON.parse(frame.body) as ChatWebSocketMessage);
+          const message = JSON.parse(frame.body) as { type?: string };
+          if (message.type === 'METER_ANALYSIS_FINISHED' || message.type === 'TRANSFER_ANALYZED') {
+            this.options.onSettlementAnalysisFinished?.(
+              message as SettlementAnalysisFinishedMessage,
+            );
+          } else {
+            this.options.onMessage?.(message as ChatWebSocketMessage);
+          }
         } catch {
           this.options.onError?.(new Error('채팅 메시지를 읽지 못했어요.'));
         }

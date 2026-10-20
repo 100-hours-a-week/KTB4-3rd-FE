@@ -274,12 +274,8 @@ jobs:
             NEXT_PUBLIC_CLARITY_PROJECT_ID
           )
 
-          names=()
-          for key in "${required[@]}" "${optional[@]}"; do
-            names+=("${SSM_BUILD_PREFIX}/${key}")
-          done
-
-          # GetParameters는 호출당 최대 10개 이름만 허용한다.
+          # GetParameters는 한 번에 최대 10개까지만 받으므로 10개씩 나눠 조회하고 결과를 합친다.
+          names=("${required[@]/#/${SSM_BUILD_PREFIX}/}" "${optional[@]/#/${SSM_BUILD_PREFIX}/}")
           chunks=()
           for ((i = 0; i < ${#names[@]}; i += 10)); do
             chunks+=("$(aws ssm get-parameters --with-decryption \
