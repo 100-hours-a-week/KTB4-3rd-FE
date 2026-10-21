@@ -40,3 +40,31 @@ for (const path of excludedPaths) {
     );
   });
 }
+
+for (const path of ['/llms.txt']) {
+  test(`${path}는 AI 검색용 안내 파일을 제공한다`, async ({ request }) => {
+    const response = await request.get(path);
+
+    expect(response.ok()).toBe(true);
+    expect(response.headers()['content-type']).toContain('text/plain');
+    const content = await response.text();
+
+    expect(content).toContain('# 모여타');
+    expect(content).toContain(
+      '혼자 이동하기 부담스러운 순간, 같은 방향으로 가는 사람들을 연결하는 지도 기반 동행 매칭 서비스입니다.',
+    );
+    expect(content).toContain('🚕 택시팟 자동 매칭');
+    expect(content).toContain('🚗 카풀 모집');
+    expect(content).toContain('💳 택시팟 정산');
+    expect(content).not.toContain('판교 주변');
+    expect(content).toContain('📝 커뮤니티');
+    expect(content).toContain('[서비스 소개](https://moyeota.com/about)');
+    expect(content).toContain('[매칭 홈](https://moyeota.com/matching)');
+    expect(content).not.toContain('[매칭 지도](');
+    expect(content).not.toContain('[택시팟 매칭](');
+    expect(content).not.toContain('[카풀 등록](');
+    expect(content).not.toContain('[게시글 상세](');
+    expect(content).toContain('택시팟 매칭');
+    expect(content).toContain('카풀');
+  });
+}
