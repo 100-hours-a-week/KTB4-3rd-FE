@@ -39,7 +39,8 @@ type MockChatMessage =
         | 'SYSTEM_METER_REQUESTED'
         | 'SYSTEM_SETTLEMENT_COMPLETED'
         | 'SYSTEM_TRANSFER_DONE'
-        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
+        | 'SYSTEM_TRANSFER_UNVERIFIED';
       content: string;
       sender?: never;
       settlement?: never;

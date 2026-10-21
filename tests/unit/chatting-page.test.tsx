@@ -248,15 +248,19 @@ async function emitTaxiPotMessage(
     | 'SYSTEM_RIDE_STARTED'
     | 'SYSTEM_RIDE_END_REQUESTED'
     | 'SYSTEM_RIDE_ENDED'
-    | 'SYSTEM_SETTLEMENT_COMPLETED',
+    | 'SYSTEM_SETTLEMENT_COMPLETED'
+    | 'SYSTEM_TRANSFER_UNVERIFIED',
 ) {
   await new Promise((resolve) => setTimeout(resolve, 30));
 
-  if (type === 'SYSTEM_SETTLEMENT_COMPLETED') {
+  if (type === 'SYSTEM_SETTLEMENT_COMPLETED' || type === 'SYSTEM_TRANSFER_UNVERIFIED') {
     emitMockChatRoomMessage('599', {
       id: Date.now(),
       type,
-      content: '정산이 완료됐어요',
+      content:
+        type === 'SYSTEM_TRANSFER_UNVERIFIED'
+          ? '송금 확인이 어려워요. 대면으로 송금 내역을 확인한 뒤 방장이 정산을 완료해주세요'
+          : '정산이 완료됐어요',
       created_at: new Date().toISOString(),
     });
     return;
@@ -1218,6 +1222,47 @@ describe('ChattingPage', () => {
     expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
   });
 
+  it('송금 인증 실패 시스템 메시지를 받으면 방장이 기존 정산 완료 API를 호출할 수 있다', async () => {
+    const user = userEvent.setup();
+    const completeSettlementRequest = vi.fn<() => void>();
+
+    server.use(
+      http.get('*/taxi-pots/30', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'COMPLETED',
+            settlement_id: 77,
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 4,
+            capacity: 4,
+            host_id: 7,
+          },
+        }),
+      ),
+      http.post('*/settlements/77/completion', () => {
+        completeSettlementRequest();
+        return new HttpResponse(null, { status: 204 });
+      }),
+    );
+
+    renderChattingPage('599');
+    await screen.findByTestId('taxi-pot-announcement');
+    await emitTaxiPotMessage('SYSTEM_TRANSFER_UNVERIFIED');
+
+    expect(await screen.findByText('모두의 송금이 잘 전달됐나요?')).toBeInTheDocument();
+    expect(
+      screen.getByText('송금 확인이 어려우면 대면으로 내역 확인 후 버튼을 눌러주세요.'),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole('button', { name: '확인했어요' }));
+
+    await waitFor(() => expect(completeSettlementRequest).toHaveBeenCalledTimes(1));
+  });
+
   it('방장이 정산 완료 메시지를 받으면 평가 모달을 열고 백드롭으로 닫히지 않는다', async () => {
     const user = userEvent.setup();
 
@@ -1607,6 +1652,46 @@ describe('ChattingPage', () => {
     expect(notice).toHaveAttribute('data-variant', 'system');
     expect(notice).toHaveClass('self-center', 'mb-[44px]');
     expect(screen.queryByText('택시 미터기 사진을 보내주세요')).not.toBeInTheDocument();
+  });
+
+  it('송금 인증 실패 시스템 메시지는 방장에게만 표시한다', () => {
+    const message = {
+      id: 'transfer-unverified',
+      kind: 'notice' as const,
+      content: '송금 확인이 어려워요. 대면으로 송금 내역을 확인한 뒤 방장이 정산을 완료해주세요',
+      systemType: 'SYSTEM_TRANSFER_UNVERIFIED' as const,
+      variant: 'system' as const,
+    };
+
+    const { rerender } = render(
+      <ChatMessageItem
+        index={0}
+        isTaxiPotHost
+        message={message}
+        onReport={() => {}}
+        transferSettlementId={77}
+      />,
+    );
+
+    expect(screen.getByText('모두의 송금이 잘 전달됐나요?')).toBeInTheDocument();
+    expect(
+      screen.getByText('송금 확인이 어려우면 대면으로 내역 확인 후 버튼을 눌러주세요.'),
+    ).toBeInTheDocument();
+
+    rerender(
+      <ChatMessageItem
+        index={0}
+        isTaxiPotHost={false}
+        message={message}
+        onReport={() => {}}
+        transferSettlementId={77}
+      />,
+    );
+
+    expect(screen.queryByText('모두의 송금이 잘 전달됐나요?')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('송금 확인이 어려우면 대면으로 내역 확인 후 버튼을 눌러주세요.'),
+    ).not.toBeInTheDocument();
   });
 
   it('신고하기 버튼을 누르면 신고 API 요청을 보낸다', async () => {

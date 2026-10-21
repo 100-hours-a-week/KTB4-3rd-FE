@@ -1358,6 +1358,7 @@ function ChattingPageContent({
           isFetchingNewerMessages={isFetchingNewerMessages}
           hasNewMessages={hasNewMessages}
           liveMessages={liveMessages}
+          settlementId={taxiPotDetail?.settlement_id}
           onLoadPreviousMessages={onLoadPreviousMessages}
           onLoadNewerMessages={onLoadNewerMessages}
           onReport={onReport}
