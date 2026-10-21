@@ -68,7 +68,7 @@ type ChatRoomSubscription = {
   roomId: string;
 };
 
-const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601']);
+const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601', '700']);
 const MOCK_TAXI_POT_ROOM_IDS = new Set(['599', '600', '601']);
 const MOCK_CHAT_UI_PREVIEW_ROOM_ID = '601';
 const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [

@@ -227,6 +227,10 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
+  const isRideActionChat = isTaxiPot || isCarpool;
+  const rideActionChatId =
+    isRideActionChat && companionId !== undefined ? String(companionId) : undefined;
+  const evaluationCompanionId = isRideActionChat ? companionId : undefined;
   const taxiPotQuery = useQuery({
     ...taxiPotQueries.detail(taxiPotId ?? ''),
     enabled: isTaxiPot,
@@ -379,13 +383,15 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     () => messagesQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
     [messagesQuery.data?.pages],
   );
-  const initialRideAction = isTaxiPot ? getLatestTaxiPotRideAction(chatRoomMessages) : undefined;
+  const initialRideAction = isRideActionChat
+    ? getLatestTaxiPotRideAction(chatRoomMessages)
+    : undefined;
   const chatRoomMessagesForDisplay = useMemo(
     () =>
-      isTaxiPot
+      isRideActionChat
         ? chatRoomMessages.filter((message) => !isTaxiPotRideActionMessage(message))
         : chatRoomMessages,
-    [chatRoomMessages, isTaxiPot],
+    [chatRoomMessages, isRideActionChat],
   );
   const evaluationParticipants = useMemo(
     () =>
@@ -417,13 +423,18 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const taxiPotFlow = useTaxiPotChatFlow({
     currentUserId,
     initialRideAction,
+    rideActionChatId,
+    rideActionHostId: isRideActionChat ? chatRoomDetail?.host_id : undefined,
+    rideActionStatus: isRideActionChat ? chatRoomDetail?.companion_status : undefined,
     taxiPotDetail,
     taxiPotId,
   });
+  const isTaxiPotHost = isTaxiPot && taxiPotFlow.isHost;
+  const isRideActionHost = isRideActionChat && taxiPotFlow.isHost;
 
   const handleViewTransferProof = useCallback(
     async (settlementId: number, nickname: string) => {
-      if (!taxiPotFlow.isHost) {
+      if (!isTaxiPotHost) {
         return;
       }
 
@@ -453,7 +464,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
           );
       }
     },
-    [queryClient, taxiPotFlow.isHost],
+    [isTaxiPotHost, queryClient],
   );
 
   const handleViewMeterImage = useCallback((settlementId: number) => {
@@ -705,7 +716,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
   const handleEvaluationSubmit = useCallback(
     ({ ratings }: ChatSatisfactionDialogSubmitPayload) => {
-      if (!taxiPotId) {
+      if (evaluationCompanionId === undefined) {
         return;
       }
 
@@ -723,7 +734,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
 
       ratingMutation.mutate(
         {
-          companionId: Number(taxiPotId),
+          companionId: evaluationCompanionId,
           payload: { ratings: apiRatings },
         },
         {
@@ -736,7 +747,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
         },
       );
     },
-    [ratingMutation, taxiPotFlow, taxiPotId],
+    [evaluationCompanionId, ratingMutation, taxiPotFlow],
   );
 
   const handleReportSubmit = useCallback(
@@ -1076,7 +1087,8 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
             isLeaveDialogOpen={isLeaveDialogOpen}
             isReportDialogOpen={isReportDialogOpen}
             isTaxiPot={isTaxiPot}
-            isTaxiPotHost={taxiPotFlow.isHost}
+            isRideActionHost={isRideActionHost}
+            isTaxiPotHost={isTaxiPotHost}
             currentUserId={currentUserId}
             messagesQuery={messagesQuery}
             onBack={handleBack}
@@ -1189,6 +1201,7 @@ type ChattingPageContentProps = {
   isFetchNewerMessagesError: boolean;
   isLeaveDialogOpen: boolean;
   isReportDialogOpen: boolean;
+  isRideActionHost: boolean;
   isTaxiPot: boolean;
   isTaxiPotHost: boolean;
   messagesQuery: ReturnType<typeof useChatRoomQueries>['messagesQuery'];
@@ -1252,6 +1265,7 @@ function ChattingPageContent({
   isFetchPreviousMessagesError,
   isFetchNewerMessagesError,
   isReportDialogOpen,
+  isRideActionHost,
   isTaxiPot,
   isTaxiPotHost,
   messagesQuery,
@@ -1329,7 +1343,7 @@ function ChattingPageContent({
     />
   ) : null;
   const rideActionContent =
-    isTaxiPotHost && rideAction ? (
+    isRideActionHost && rideAction ? (
       <TaxiPotRideActionNotice
         action={rideAction}
         loading={rideActionLoading}

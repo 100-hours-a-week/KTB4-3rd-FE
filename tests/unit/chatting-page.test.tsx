@@ -242,6 +242,41 @@ function mockCurrentUserId(id: number) {
   );
 }
 
+function mockCarpoolRideActionChatRoom() {
+  server.use(
+    http.get('*/chat-rooms/700', () =>
+      HttpResponse.json({
+        message: '조회에 성공했습니다',
+        data: {
+          id: 700,
+          companion_id: 51,
+          kind: 'CARPOOL',
+          title: '카풀 채팅방',
+          host_id: 7,
+          origin_name: '판교역',
+          dest_name: '강남역',
+          departure_at: '2026-09-05T08:30:00.000Z',
+          current_count: 2,
+          capacity: 4,
+          companion_status: 'RECRUITING',
+          closed_at: null,
+          last_read_message_id: null,
+          participants: [
+            { id: 7, nickname: '방장' },
+            { id: 8, nickname: '동승자' },
+          ],
+        },
+      }),
+    ),
+    http.get('*/chat-rooms/700/messages', () =>
+      HttpResponse.json({
+        message: '조회에 성공했습니다',
+        data: { items: [], before_cursor: null, after_cursor: null },
+      }),
+    ),
+  );
+}
+
 async function emitTaxiPotMessage(
   type:
     | 'SYSTEM_RIDE_START_REQUESTED'
@@ -1164,6 +1199,94 @@ describe('ChattingPage', () => {
     expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument();
     expect(screen.queryByText('운행이 시작됐어요')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: '채팅방 나가기' })).not.toBeInTheDocument();
+  });
+
+  it('카풀 채팅방의 운행 시작 요청은 방장에게만 액션 카드로 표시한다', async () => {
+    mockCurrentUserId(7);
+    mockCarpoolRideActionChatRoom();
+
+    renderChattingPage('700');
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
+
+    emitMockChatRoomMessage('700', {
+      id: 1700,
+      type: 'SYSTEM_RIDE_START_REQUESTED',
+      created_at: new Date().toISOString(),
+    });
+
+    const actionNotice = await screen.findByTestId('taxi-pot-ride-action');
+
+    expect(actionNotice).toHaveTextContent('운행이 시작됐나요?');
+    expect(screen.getByRole('button', { name: '확인' })).toBeInTheDocument();
+    expect(screen.getAllByText('운행이 시작됐나요?')).toHaveLength(1);
+  });
+
+  it('카풀 채팅방의 운행 시작 요청은 동승자에게 표시하지 않는다', async () => {
+    mockCurrentUserId(8);
+    mockCarpoolRideActionChatRoom();
+
+    renderChattingPage('700');
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
+
+    emitMockChatRoomMessage('700', {
+      id: 1700,
+      type: 'SYSTEM_RIDE_START_REQUESTED',
+      created_at: new Date().toISOString(),
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+
+    expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument();
+    expect(screen.queryByText('운행이 시작됐나요?')).not.toBeInTheDocument();
+  });
+
+  it('카풀 채팅방에서 운행 종료 이벤트를 받으면 평가 모달을 연다', async () => {
+    mockCurrentUserId(7);
+    mockCarpoolRideActionChatRoom();
+
+    renderChattingPage('700');
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
+
+    emitMockChatRoomMessage('700', {
+      id: 1701,
+      type: 'SYSTEM_RIDE_ENDED',
+      created_at: new Date().toISOString(),
+    });
+
+    expect(
+      await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' }),
+    ).toBeInTheDocument();
+    expect(screen.getByText('동승자에 대한 만족도를 입력해주세요.')).toBeInTheDocument();
+  });
+
+  it('카풀 평가를 제출하면 카풀 companion_id로 평가 API를 호출한다', async () => {
+    const user = userEvent.setup();
+    const submitRatingsRequest = vi.fn<() => void>();
+
+    mockCurrentUserId(7);
+    mockCarpoolRideActionChatRoom();
+    server.use(
+      http.post('*/companions/51/ratings', async ({ request }) => {
+        expect(await request.json()).toEqual({
+          ratings: [{ score: 5, target_user_id: 8 }],
+        });
+        submitRatingsRequest();
+        return HttpResponse.json({ message: '평가가 제출되었습니다', data: null }, { status: 201 });
+      }),
+    );
+
+    renderChattingPage('700');
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
+    emitMockChatRoomMessage('700', {
+      id: 1701,
+      type: 'SYSTEM_RIDE_ENDED',
+      created_at: new Date().toISOString(),
+    });
+
+    await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' });
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() => expect(submitRatingsRequest).toHaveBeenCalledTimes(1));
   });
 
   it('운행 상태 변경 PATCH가 실패하면 액션을 유지하고 오류 Snackbar를 표시한다', async () => {
