@@ -118,7 +118,7 @@ export function CommunityPostDetail({
         data-testid={isPageLayout ? undefined : 'community-post-detail-scroll'}
       >
         <PostDetailInfo
-          description={post.description}
+          content={post.content}
           layout={layout}
           title={post.title}
           type={post.type}

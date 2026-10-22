@@ -1,6 +1,6 @@
 import { apiFetch } from '@/shared/api/client';
 
-import type { CommunityPostCommentsResponse } from '@/entities/post/model/community-comment';
+import type { CommunityPostCommentsResponse } from './community-comments.types';
 
 export function getCommunityPostComments(
   postId: number,
