@@ -64,8 +64,13 @@ async function openReceivedRequests(user: ReturnType<typeof userEvent.setup>) {
   await user.click(await screen.findByRole('button', { name: '이루디님의 카풀 요청 상세 보기' }));
 }
 
+async function clickCarpoolRequestTab(user: ReturnType<typeof userEvent.setup>) {
+  const chatTabs = await screen.findByRole('tablist', { name: '채팅 화면' });
+  await user.click(within(chatTabs).getByRole('tab', { name: '카풀' }));
+}
+
 async function openReceivedRequestList(user: ReturnType<typeof userEvent.setup>) {
-  await user.click(await screen.findByRole('tab', { name: '카풀' }));
+  await clickCarpoolRequestTab(user);
   await user.click(screen.getByRole('tab', { name: '받은 요청' }));
 }
 
@@ -203,7 +208,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     );
 
     render(<ChatListPage />, { wrapper: Wrapper });
-    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await clickCarpoolRequestTab(user);
     await user.click(screen.getByRole('tab', { name: '받은 요청' }));
     await nextPageStarted;
 
@@ -411,7 +416,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     );
 
     render(<ChatListPage />, { wrapper: Wrapper });
-    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await clickCarpoolRequestTab(user);
     await user.click(screen.getByRole('tab', { name: '받은 요청' }));
     const requestButtons = await screen.findAllByRole('button', { name: '수락' });
     await user.click(requestButtons[0]);
@@ -540,7 +545,7 @@ describe('채팅 내 받은 카풀 요청 처리', () => {
     );
 
     render(<ChatListPage />, { wrapper: Wrapper });
-    await user.click(await screen.findByRole('tab', { name: '카풀' }));
+    await clickCarpoolRequestTab(user);
     await user.click(screen.getByRole('tab', { name: '받은 요청' }));
     await user.click(await screen.findByRole('button', { name: '요청 더 보기' }));
 

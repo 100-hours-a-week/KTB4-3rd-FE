@@ -12,7 +12,14 @@ export type ChatListPageState =
 export type ChatListPageStates = Record<ChatListTabValue, ChatListPageState>;
 
 export const DEFAULT_CHAT_LIST_STATES: ChatListPageStates = {
-  matching: {
+  taxiPot: {
+    status: 'success',
+    data: {
+      items: [],
+      next_cursor: null,
+    },
+  },
+  carpool: {
     status: 'success',
     data: {
       items: [],
