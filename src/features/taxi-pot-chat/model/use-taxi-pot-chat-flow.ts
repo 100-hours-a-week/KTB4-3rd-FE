@@ -15,20 +15,28 @@ type TaxiPotChatFlowOptions = {
   initialRideAction?: TaxiPotRideAction;
   rideActionChatId?: string;
   rideActionHostId?: number;
-  rideActionStatus?: string;
+  rideActionStatus?: TaxiPotStatus;
+  rideStatusMutation?: RideStatusMutation;
   taxiPotDetail?: TaxiPotDetailData;
   taxiPotId?: string;
 };
 
 type TaxiPotStatusState = {
+  chatId: string;
   isHost: boolean;
   status: TaxiPotStatus;
-  taxiPotId: string;
 };
 
 type TaxiPotRideActionState = {
   action: TaxiPotRideAction;
   chatId: string;
+};
+
+type RideStatusMutation = {
+  isPending: boolean;
+  mutateAsync: (status: Exclude<TaxiPotStatus, 'RECRUITING'>) => Promise<{
+    data: { status: TaxiPotStatus };
+  }>;
 };
 
 export function useTaxiPotChatFlow({
@@ -37,36 +45,41 @@ export function useTaxiPotChatFlow({
   rideActionChatId,
   rideActionHostId,
   rideActionStatus,
+  rideStatusMutation,
   taxiPotDetail,
   taxiPotId,
 }: TaxiPotChatFlowOptions) {
   const [rideActionState, setRideActionState] = useState<TaxiPotRideActionState>();
   const [statusState, setStatusState] = useState<TaxiPotStatusState>();
   const [evaluationChatId, setEvaluationChatId] = useState<string>();
-  const statusMutation = useTaxiPotStatusMutation(taxiPotId ?? '');
+  const taxiPotStatusMutation = useTaxiPotStatusMutation(taxiPotId ?? '');
+  const statusMutation = rideStatusMutation ?? taxiPotStatusMutation;
   const isTaxiPot = taxiPotId !== undefined;
   const rideActionChatIdValue = taxiPotId ?? rideActionChatId;
-  let isHost = rideActionHostId === currentUserId;
+  const isStatusForCurrentChat =
+    rideActionChatIdValue !== undefined && statusState?.chatId === rideActionChatIdValue;
+  let isHost = rideActionHostId !== undefined && rideActionHostId === currentUserId;
 
-  if (isTaxiPot) {
+  if (isStatusForCurrentChat) {
+    isHost = statusState.isHost;
+  } else if (isTaxiPot) {
     isHost = taxiPotDetail?.host_id === currentUserId;
   }
 
-  if (statusState !== undefined && statusState.taxiPotId === taxiPotId) {
-    isHost = statusState.isHost;
+  let status = rideActionStatus;
+
+  if (isStatusForCurrentChat) {
+    status = statusState.status;
+  } else if (isTaxiPot) {
+    status = taxiPotDetail?.status;
   }
-  const status =
-    statusState !== undefined && statusState.taxiPotId === taxiPotId
-      ? statusState.status
-      : taxiPotDetail?.status;
   const currentRideAction =
     rideActionState !== undefined && rideActionState.chatId === rideActionChatIdValue
       ? rideActionState.action
       : undefined;
-  const currentRideActionStatus = isTaxiPot ? status : rideActionStatus;
   const canShowInitialRideAction =
-    (initialRideAction === 'start' && currentRideActionStatus === 'RECRUITING') ||
-    (initialRideAction === 'end' && currentRideActionStatus === 'IN_PROGRESS');
+    (initialRideAction === 'start' && status === 'RECRUITING') ||
+    (initialRideAction === 'end' && status === 'IN_PROGRESS');
   const rideAction =
     currentRideAction ?? (canShowInitialRideAction ? initialRideAction : undefined);
 
@@ -88,16 +101,14 @@ export function useTaxiPotChatFlow({
 
       if (message.type === 'SYSTEM_RIDE_STARTED') {
         setRideActionState(undefined);
-        if (taxiPotId) {
-          setStatusState({ taxiPotId, status: 'IN_PROGRESS', isHost });
-        }
+        setStatusState({ chatId: rideActionChatIdValue, status: 'IN_PROGRESS', isHost });
       }
 
       if (message.type === 'SYSTEM_RIDE_ENDED') {
         setRideActionState(undefined);
-        if (taxiPotId) {
-          setStatusState({ taxiPotId, status: 'COMPLETED', isHost });
-        } else {
+        setStatusState({ chatId: rideActionChatIdValue, status: 'COMPLETED', isHost });
+
+        if (!taxiPotId) {
           setEvaluationChatId(rideActionChatIdValue);
         }
       }
@@ -116,28 +127,28 @@ export function useTaxiPotChatFlow({
       return;
     }
 
-    if (!taxiPotId) {
-      setRideActionState(undefined);
-      return;
-    }
-
     const nextStatus: Exclude<TaxiPotStatus, 'RECRUITING'> =
       rideAction === 'start' ? 'IN_PROGRESS' : 'COMPLETED';
 
     try {
       const response = await statusMutation.mutateAsync(nextStatus);
 
-      setStatusState({ taxiPotId, status: response.data.status, isHost: true });
+      setStatusState({
+        chatId: rideActionChatIdValue,
+        status: response.data.status,
+        isHost: true,
+      });
       setRideActionState(undefined);
     } catch {
       useSnackbarStore.getState().showSnackbar('요청 중 오류가 발생했어요', 'critical');
     }
-  }, [isHost, rideAction, rideActionChatIdValue, statusMutation, taxiPotId]);
+  }, [isHost, rideAction, rideActionChatIdValue, statusMutation]);
 
   return {
     confirmRideAction,
     handleWebSocketMessage,
-    isEvaluationOpen: evaluationChatId !== undefined && evaluationChatId === rideActionChatIdValue,
+    isEvaluationOpen:
+      rideActionChatIdValue !== undefined && evaluationChatId === rideActionChatIdValue,
     isHost,
     isPending: statusMutation.isPending,
     onEvaluationOpenChange: (open: boolean) =>
