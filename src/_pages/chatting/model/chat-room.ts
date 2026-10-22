@@ -127,6 +127,13 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
     return message.content ?? '정산이 완료됐어요';
   }
 
+  if (message.type === 'SYSTEM_TRANSFER_UNVERIFIED') {
+    return (
+      message.content ??
+      '송금 확인이 어려워요. 대면으로 송금 내역을 확인한 뒤 방장이 정산을 완료해주세요'
+    );
+  }
+
   if (message.type === 'SYSTEM_LEAVE') {
     return message.leaver ? `${message.leaver.name} 님이 퇴장하셨어요` : '새로운 멤버가 퇴장했어요';
   }

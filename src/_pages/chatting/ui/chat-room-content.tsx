@@ -23,6 +23,7 @@ type ChatRoomContentProps = {
   onReport?: (target: ChatReportTarget) => void;
   topContent?: ReactNode;
   bottomContent?: ReactNode;
+  settlementId?: number;
   onAcknowledgeSettlement?: (settlementId: number) => void;
   completingSettlement?: boolean;
   isTaxiPotHost?: boolean;
@@ -42,6 +43,26 @@ type ChatRoomContentProps = {
   hideMeterRequestMessage?: boolean;
 };
 
+function shouldDisplayMessage(
+  message: ChatRoomMessage,
+  hideMeterRequestMessage: boolean,
+  isTaxiPotHost: boolean,
+) {
+  if (
+    hideMeterRequestMessage &&
+    message.kind === 'notice' &&
+    message.systemType === 'SYSTEM_METER_REQUESTED'
+  ) {
+    return false;
+  }
+
+  return !(
+    !isTaxiPotHost &&
+    message.kind === 'notice' &&
+    message.systemType === 'SYSTEM_TRANSFER_UNVERIFIED'
+  );
+}
+
 export function ChatRoomContent({
   room,
   liveMessages,
@@ -58,6 +79,7 @@ export function ChatRoomContent({
   hasNewMessages = false,
   topContent,
   bottomContent,
+  settlementId,
   onAcknowledgeSettlement,
   completingSettlement = false,
   isTaxiPotHost = false,
@@ -77,25 +99,19 @@ export function ChatRoomContent({
   hideMeterRequestMessage = false,
 }: ChatRoomContentProps) {
   const messages = useMemo(() => {
-    const roomMessages = hideMeterRequestMessage
-      ? room.messages.filter(
-          (message) =>
-            !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
-        )
-      : room.messages;
-    const liveChatMessages = hideMeterRequestMessage
-      ? liveMessages.filter(
-          (message) =>
-            !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
-        )
-      : liveMessages;
+    const roomMessages = room.messages.filter((message) =>
+      shouldDisplayMessage(message, hideMeterRequestMessage, isTaxiPotHost),
+    );
+    const liveChatMessages = liveMessages.filter((message) =>
+      shouldDisplayMessage(message, hideMeterRequestMessage, isTaxiPotHost),
+    );
     const roomMessageIds = new Set(roomMessages.map((message) => message.id));
 
     return [
       ...roomMessages,
       ...liveChatMessages.filter((message) => !roomMessageIds.has(message.id)),
     ];
-  }, [hideMeterRequestMessage, liveMessages, room.messages]);
+  }, [hideMeterRequestMessage, isTaxiPotHost, liveMessages, room.messages]);
 
   const handleSubmit = (content: string) => {
     connection.sendMessage(content);
@@ -120,14 +136,12 @@ export function ChatRoomContent({
           onLoadNewerMessages={onLoadNewerMessages}
           hasNewMessages={hasNewMessages}
           liveMessageCount={
-            hideMeterRequestMessage
-              ? liveMessages.filter(
-                  (message) =>
-                    !(message.kind === 'notice' && message.systemType === 'SYSTEM_METER_REQUESTED'),
-                ).length
-              : liveMessages.length
+            liveMessages.filter((message) =>
+              shouldDisplayMessage(message, hideMeterRequestMessage, isTaxiPotHost),
+            ).length
           }
           bottomContent={bottomContent}
+          settlementId={settlementId}
           onAcknowledgeSettlement={onAcknowledgeSettlement}
           completingSettlement={completingSettlement}
           isTaxiPotHost={isTaxiPotHost}

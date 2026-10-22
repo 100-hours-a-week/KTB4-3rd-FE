@@ -16,7 +16,7 @@ const CONTENT_SECURITY_POLICY = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  "connect-src 'self' https://*.moyeota.com https://dapi.kakao.com https://*.kakao.com https://*.daumcdn.net https://*.kakaocdn.net https://*.googleapis.com https://*.firebaseapp.com https://*.firebaseio.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.clarity.ms https://*.sentry.io wss:",
+  "connect-src 'self' https://*.moyeota.com https://moyeota-dev-images.s3.ap-northeast-2.amazonaws.com https://moyeota-prod-images.s3.ap-northeast-2.amazonaws.com https://dapi.kakao.com https://*.kakao.com https://*.daumcdn.net https://*.kakaocdn.net https://*.googleapis.com https://*.firebaseapp.com https://*.firebaseio.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com https://*.clarity.ms https://*.sentry.io wss:",
   "worker-src 'self' blob:",
   "manifest-src 'self'",
   ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
