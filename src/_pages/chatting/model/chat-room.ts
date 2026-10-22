@@ -38,6 +38,7 @@ export type ChatRoomMessage =
 
 export type ChatRoom = {
   id: string;
+  kind: ChatRoomDetailData['kind'];
   lastReadMessageId: number | null;
   title: string;
   memberCount: number;
@@ -47,6 +48,7 @@ export type ChatRoom = {
 
 export const generalChatRoom: ChatRoom = {
   id: 'general-1',
+  kind: 'GENERAL',
   lastReadMessageId: null,
   title: '5시 판교역',
   memberCount: 1,
@@ -197,6 +199,7 @@ export function createChatRoomFromApi(
 
   return {
     id: String(detail.id),
+    kind: detail.kind,
     lastReadMessageId: detail.last_read_message_id,
     title: detail.title,
     memberCount: detail.current_count,

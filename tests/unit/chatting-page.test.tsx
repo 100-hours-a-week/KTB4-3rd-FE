@@ -7,6 +7,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
 import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
+import { TaxiPotChatMessageItem } from '@/_pages/chatting/ui/taxi-pot-chat-message-item';
+import { TaxiPotChatRoomContent } from '@/_pages/chatting/ui/taxi-pot-chat-room-content';
 import { SnackbarProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
 import { BankCode } from '@/entities/user';
@@ -483,11 +485,38 @@ describe('ChattingPage', () => {
     } satisfies ChatRoomWebSocketConnectionValue;
 
     render(
-      <ChatRoomContent
+      <TaxiPotChatRoomContent
         connection={connection}
-        hideMeterRequestMessage
         liveMessages={[]}
         room={{ ...generalChatRoom, messages: [...generalChatRoom.messages, meterRequestMessage] }}
+        onReport={() => {}}
+        isTaxiPotHost={false}
+        onRideActionConfirm={() => {}}
+        rideActionLoading={false}
+        settlement={{
+          meter: {
+            hideMeterRequestMessage: true,
+            isTaxiPotHost: false,
+            uploadingMeterPhoto: false,
+          },
+          transfer: {
+            completingSettlement: false,
+            isTaxiPotHost: false,
+            transferSubmissionBlockedSettlementId: null,
+            uploadingTransferPhoto: false,
+          },
+        }}
+        taxiPotDetail={{
+          capacity: 4,
+          chat_room_id: 599,
+          current_count: 2,
+          departure_at: '2026-09-05T08:30:00.000Z',
+          dest_name: '강남역',
+          host_id: 7,
+          id: 30,
+          origin_name: '판교역',
+          status: 'RECRUITING',
+        }}
       />,
     );
 
@@ -1799,7 +1828,12 @@ describe('ChattingPage', () => {
 
     render(
       <SnackbarProvider>
-        <ChatMessageItem currentUserId={2} index={0} message={message} onReport={() => {}} />
+        <TaxiPotChatMessageItem
+          index={0}
+          message={message}
+          onReport={() => {}}
+          transfer={{ currentUserId: 2 }}
+        />
         <SnackbarViewport />
       </SnackbarProvider>,
     );
@@ -1839,12 +1873,12 @@ describe('ChattingPage', () => {
     };
 
     render(
-      <ChatMessageItem
+      <TaxiPotChatMessageItem
         index={0}
-        isTaxiPotHost={false}
         message={message}
         onReport={() => {}}
-        onSendMeterPhoto={() => {}}
+        meter={{ onSendMeterPhoto: () => {} }}
+        transfer={{ isTaxiPotHost: false }}
       />,
     );
 
@@ -1865,12 +1899,11 @@ describe('ChattingPage', () => {
     };
 
     const { rerender } = render(
-      <ChatMessageItem
+      <TaxiPotChatMessageItem
         index={0}
-        isTaxiPotHost
         message={message}
         onReport={() => {}}
-        transferSettlementId={77}
+        transfer={{ isTaxiPotHost: true, transferSettlementId: 77 }}
       />,
     );
 
@@ -1880,12 +1913,11 @@ describe('ChattingPage', () => {
     ).toBeInTheDocument();
 
     rerender(
-      <ChatMessageItem
+      <TaxiPotChatMessageItem
         index={0}
-        isTaxiPotHost={false}
         message={message}
         onReport={() => {}}
-        transferSettlementId={77}
+        transfer={{ isTaxiPotHost: false, transferSettlementId: 77 }}
       />,
     );
 
