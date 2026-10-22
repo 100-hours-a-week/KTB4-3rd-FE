@@ -4,6 +4,8 @@ import { useCallback, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 
+import type { SettlementAnalysisFinishedMessage } from '@/entities/chat';
+import { useCarpoolChatFlow } from '@/features/carpool-chat';
 import {
   createTaxiPotChatEntryMessages,
   getLatestTaxiPotRideAction,
@@ -12,14 +14,14 @@ import {
   type TaxiPotChatEntryMessage,
   useTaxiPotChatFlow,
 } from '@/features/taxi-pot-chat';
-import { useCarpoolStatusMutation } from '@/features/carpool-chat';
 import { useCurrentUserQuery } from '@/features/user-profile';
 
 import { useChatRoomQueries, useChatRoomReadMarkerMutation } from '@/_pages/chatting/api/chat-room';
 import { createChatRoomFromApi, type ChatRoom, type ChatRoomMessage } from './chat-room';
 import { useChatRoomActionsModel } from './use-chat-room-actions-model';
 import { useChatRoomLiveMessagesModel } from './use-chat-room-live-messages-model';
-import { useChatRoomSettlementModel } from './use-chat-room-settlement-model';
+import { useChatRoomMeterSettlementModel } from './use-chat-room-meter-settlement-model';
+import { useChatRoomTransferSettlementModel } from './use-chat-room-transfer-settlement-model';
 
 function toChatRoomMessage(message: TaxiPotChatEntryMessage): ChatRoomMessage {
   return {
@@ -71,15 +73,11 @@ export function useChattingPageModel(roomId: string) {
   const companionId = chatRoomDetail?.companion_id;
   const currentUserId = currentUserQuery.data?.data.id;
   const isCarpool = chatRoomDetail?.kind === 'CARPOOL';
-  const carpoolStatusMutation = useCarpoolStatusMutation(
-    isCarpool && companionId !== undefined ? String(companionId) : '',
-  );
+  const carpoolId = isCarpool && companionId !== undefined ? String(companionId) : undefined;
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
   const isRideActionChat = isTaxiPot || isCarpool;
-  const rideActionChatId =
-    isRideActionChat && companionId !== undefined ? String(companionId) : undefined;
   const evaluationCompanionId = isRideActionChat ? companionId : undefined;
   const taxiPotQuery = useQuery({
     ...taxiPotQueries.detail(taxiPotId ?? ''),
@@ -102,18 +100,22 @@ export function useChattingPageModel(roomId: string) {
         : chatRoomMessages,
     [chatRoomMessages, isRideActionChat],
   );
+  const carpoolFlow = useCarpoolChatFlow({
+    carpoolId,
+    currentUserId,
+    hostId: isCarpool ? chatRoomDetail?.host_id : undefined,
+    initialRideAction: isCarpool ? initialRideAction : undefined,
+    status: isCarpool ? chatRoomDetail?.companion_status : undefined,
+  });
   const taxiPotFlow = useTaxiPotChatFlow({
     currentUserId,
-    initialRideAction,
-    rideActionChatId,
-    rideActionHostId: isRideActionChat ? chatRoomDetail?.host_id : undefined,
-    rideActionStatus: isRideActionChat ? chatRoomDetail?.companion_status : undefined,
-    rideStatusMutation: isCarpool ? carpoolStatusMutation : undefined,
+    initialRideAction: isTaxiPot ? initialRideAction : undefined,
     taxiPotDetail,
     taxiPotId,
   });
+  const rideActionFlow = isCarpool ? carpoolFlow : taxiPotFlow;
   const isTaxiPotHost = isTaxiPot && taxiPotFlow.isHost;
-  const isRideActionHost = isRideActionChat && taxiPotFlow.isHost;
+  const isRideActionHost = isRideActionChat && rideActionFlow.isHost;
   const handleRideEnded = useCallback(() => {
     if (!taxiPotId) {
       return;
@@ -129,8 +131,8 @@ export function useChattingPageModel(roomId: string) {
     baseMemberCount,
     currentUserId,
     fetchNewerMessages,
-    onRideActionMessage: taxiPotFlow.handleWebSocketMessage,
-    onRideEnded: handleRideEnded,
+    onRideActionMessage: rideActionFlow.handleWebSocketMessage,
+    onRideEnded: isTaxiPot ? handleRideEnded : undefined,
     roomId,
   });
   const actions = useChatRoomActionsModel({
@@ -140,12 +142,32 @@ export function useChattingPageModel(roomId: string) {
     currentUserId,
     evaluationCompanionId,
     isCarpool,
-    isEvaluationOpen: taxiPotFlow.isEvaluationOpen,
+    isEvaluationOpen: rideActionFlow.isEvaluationOpen,
     isTaxiPot,
-    onEvaluationOpenChange: taxiPotFlow.onEvaluationOpenChange,
+    onEvaluationOpenChange: rideActionFlow.onEvaluationOpenChange,
     taxiPotId,
   });
-  const settlement = useChatRoomSettlementModel(settlementId, isTaxiPotHost);
+  const meterSettlement = useChatRoomMeterSettlementModel({ settlementId });
+  const transferSettlement = useChatRoomTransferSettlementModel({
+    isTaxiPotHost,
+    settlementId,
+  });
+  const {
+    handleRefreshSettlementStatus,
+    handleSettlementAnalysisFinished: handleMeterAnalysisFinished,
+  } = meterSettlement;
+  const { handleSettlementAnalysisFinished: handleTransferAnalysisFinished } = transferSettlement;
+  const handleSettlementAnalysisFinished = useCallback(
+    (message: SettlementAnalysisFinishedMessage) => {
+      if (message.type === 'METER_ANALYSIS_FINISHED') {
+        handleMeterAnalysisFinished(message);
+        return;
+      }
+
+      handleTransferAnalysisFinished(message);
+    },
+    [handleMeterAnalysisFinished, handleTransferAnalysisFinished],
+  );
   const baseRoom =
     chatRoomDetail && messagesQuery.data
       ? createChatRoomFromApi(chatRoomDetail, chatRoomMessagesForDisplay, currentUserId)
@@ -186,79 +208,124 @@ export function useChattingPageModel(roomId: string) {
   }, [lastMessageId, readMarkerMutation, roomId, router]);
 
   return {
-    activeMeterAmountTarget: settlement.activeMeterAmountTarget,
-    activeTransferFailedSettlementId: settlement.activeTransferFailedSettlementId,
-    analysisResetKey: settlement.analysisResetKey,
-    completingSettlement: settlement.completingSettlement,
-    currentUserId,
-    detailQuery: { isError: detailQuery.isError, isPending: detailQuery.isPending },
-    evaluationParticipants: actions.evaluationParticipants,
-    hasNewerMessages,
-    hasNewMessages: liveMessagesModel.hasNewMessages,
-    hasPreviousMessages,
-    hideMeterRequestMessage: settlement.meterAnalysisStatus === 'PASSED',
-    isEvaluationOpen: taxiPotFlow.isEvaluationOpen,
-    isFetchNewerMessagesError,
-    isFetchPreviousMessagesError,
-    isFetchingNewerMessages,
-    isFetchingPreviousMessages,
-    isLeaveDialogOpen: actions.isLeaveDialogOpen,
-    leaveLoading: actions.leaveLoading,
-    isMeterAnalysisDelayed: settlement.isMeterAnalysisDelayed,
-    isMeterAnalysisOpen: settlement.isMeterAnalysisOpen,
-    isReportDialogOpen: actions.isReportDialogOpen,
-    isRideActionHost,
-    isTaxiPot,
-    isTaxiPotHost,
-    isTransferAnalysisOpen: settlement.isTransferAnalysisOpen,
-    liveMessages: liveMessagesModel.liveMessages,
-    messagesQuery: { isError: messagesQuery.isError, isPending: messagesQuery.isPending },
-    meterAmount: settlement.meterAmount,
-    meterImageTarget: settlement.meterImageTarget,
-    meterSettlementId: settlement.meterSettlementId,
-    onAcknowledgeSettlement: settlement.handleAcknowledgeSettlement,
-    onBack: handleBack,
-    onEvaluationOpenChange: taxiPotFlow.onEvaluationOpenChange,
-    onEvaluationReport: actions.handleEvaluationReport,
-    onEvaluationSubmit: actions.handleEvaluationSubmit,
-    onLeave: actions.handleLeave,
-    onLeaveConfirm: actions.handleLeaveConfirm,
-    onLeaveDialogChange: actions.setIsLeaveDialogOpen,
-    onLoadNewerMessages: liveMessagesModel.handleLoadNewerMessages,
-    onLoadPreviousMessages: fetchPreviousMessages,
-    onManualMeterEntry: settlement.handleManualMeterEntry,
-    onMeterAmountChange: settlement.onMeterAmountChange,
-    onMeterAmountOpenChange: settlement.onMeterAmountOpenChange,
-    onMeterImageOpenChange: settlement.onMeterImageOpenChange,
-    onRegisterMeterPhotoPicker: settlement.handleRegisterMeterPhotoPicker,
-    onRegisterTransferPhotoPicker: settlement.handleRegisterTransferPhotoPicker,
-    onReport: actions.handleReportRequest,
-    onReportDialogChange: actions.handleReportDialogChange,
-    onReportSubmit: actions.handleReportSubmit,
-    onReselectTransferPhoto: settlement.handleReselectTransferPhoto,
-    onRetakeMeterPhoto: settlement.handleRetakeMeterPhoto,
-    onRideActionConfirm: taxiPotFlow.confirmRideAction,
-    onSendMeterPhoto: settlement.handleSendMeterPhoto,
-    onSendTransferPhoto: settlement.handleSendTransferPhoto,
-    onSettleMeterAmount: settlement.handleSettleMeterAmount,
-    onTransferProofOpenChange: settlement.onTransferProofOpenChange,
-    onViewMeterImage: settlement.handleViewMeterImage,
-    onViewTransferProof: settlement.handleViewTransferProof,
-    onWebSocketOpen: settlement.handleRefreshSettlementStatus,
-    ratingLoading: actions.ratingLoading,
-    remainingMeterAttempts: settlement.remainingMeterAttempts,
-    reportLoading: actions.reportLoading,
-    rideAction: taxiPotFlow.rideAction,
-    rideActionLoading: taxiPotFlow.isPending,
-    room,
-    savingSettlementAmount: settlement.savingSettlementAmount,
-    taxiPotDetail,
-    taxiPotQuery: { isError: taxiPotQuery.isError, isPending: taxiPotQuery.isPending },
-    taxiPotStatus: taxiPotFlow.status,
-    transferProofTarget: settlement.transferProofTarget,
-    transferSubmissionBlockedSettlementId: settlement.transferSubmissionBlockedSettlementId,
-    uploadingSettlementPhoto: settlement.uploadingSettlementPhoto,
-    onMessage: liveMessagesModel.handleWebSocketMessage,
-    onSettlementAnalysisFinished: settlement.handleSettlementAnalysisFinished,
+    actionDialogs: {
+      evaluation: {
+        loading: actions.ratingLoading,
+        onOpenChange: rideActionFlow.onEvaluationOpenChange,
+        onReport: actions.handleEvaluationReport,
+        onSubmit: actions.handleEvaluationSubmit,
+        open: rideActionFlow.isEvaluationOpen,
+        participants: actions.evaluationParticipants,
+      },
+      leave: {
+        loading: actions.leaveLoading,
+        onConfirm: actions.handleLeaveConfirm,
+        onOpenChange: actions.setIsLeaveDialogOpen,
+        open: actions.isLeaveDialogOpen,
+      },
+      report: {
+        loading: actions.reportLoading,
+        onOpenChange: actions.handleReportDialogChange,
+        onSubmit: actions.handleReportSubmit,
+        open: actions.isReportDialogOpen,
+      },
+    },
+    screen: {
+      detailQuery: { isError: detailQuery.isError, isPending: detailQuery.isPending },
+      isTaxiPot,
+      messagesQuery: { isError: messagesQuery.isError, isPending: messagesQuery.isPending },
+      onBack: handleBack,
+      onLeave: actions.handleLeave,
+      onWebSocketOpen: handleRefreshSettlementStatus,
+      room,
+      taxiPotQuery: { isError: taxiPotQuery.isError, isPending: taxiPotQuery.isPending },
+      messageArea: {
+        currentUserId,
+        hasNewMessages: liveMessagesModel.hasNewMessages,
+        hasNewerMessages,
+        hasPreviousMessages,
+        isFetchNewerMessagesError,
+        isFetchPreviousMessagesError,
+        isFetchingNewerMessages,
+        isFetchingPreviousMessages,
+        liveMessages: liveMessagesModel.liveMessages,
+        onLoadNewerMessages: liveMessagesModel.handleLoadNewerMessages,
+        onLoadPreviousMessages: fetchPreviousMessages,
+        onReport: actions.handleReportRequest,
+      },
+      variant: {
+        isRideActionHost,
+        isTaxiPotHost,
+        onRideActionConfirm: rideActionFlow.confirmRideAction,
+        rideAction: rideActionFlow.rideAction,
+        rideActionLoading: rideActionFlow.isPending,
+        taxiPotDetail,
+        taxiPotSettlement: {
+          meter: {
+            analysisResetKey: meterSettlement.analysisResetKey,
+            hideMeterRequestMessage: meterSettlement.meterAnalysisStatus === 'PASSED',
+            isTaxiPotHost,
+            meterSettlementId: meterSettlement.meterSettlementId,
+            onManualMeterEntry: meterSettlement.handleManualMeterEntry,
+            onRegisterMeterPhotoPicker: meterSettlement.handleRegisterMeterPhotoPicker,
+            onSendMeterPhoto: meterSettlement.handleSendMeterPhoto,
+            onViewMeterImage: meterSettlement.handleViewMeterImage,
+            remainingMeterAttempts: meterSettlement.remainingMeterAttempts,
+            uploadingMeterPhoto: meterSettlement.uploadingMeterPhoto,
+          },
+          transfer: {
+            analysisResetKey: transferSettlement.analysisResetKey,
+            completingSettlement: transferSettlement.completingSettlement,
+            currentUserId,
+            isTaxiPotHost,
+            onAcknowledgeSettlement: transferSettlement.handleAcknowledgeSettlement,
+            onRegisterTransferPhotoPicker: transferSettlement.handleRegisterTransferPhotoPicker,
+            onSendTransferPhoto: transferSettlement.handleSendTransferPhoto,
+            onViewTransferProof: transferSettlement.handleViewTransferProof,
+            settlementId: transferSettlement.settlementId,
+            transferSubmissionBlockedSettlementId:
+              transferSettlement.transferSubmissionBlockedSettlementId,
+            uploadingTransferPhoto: transferSettlement.uploadingTransferPhoto,
+          },
+        },
+        taxiPotStatus: taxiPotFlow.status,
+      },
+    },
+    settlementDialogs: {
+      meter: {
+        image: {
+          onOpenChange: meterSettlement.onMeterImageOpenChange,
+          target: meterSettlement.meterImageTarget,
+        },
+        analysis: {
+          amount: meterSettlement.meterAmount,
+          amountTarget: meterSettlement.activeMeterAmountTarget,
+          isDelayed: meterSettlement.isMeterAnalysisDelayed,
+          isOpen: meterSettlement.isMeterAnalysisOpen,
+          onManualEntry: meterSettlement.handleManualMeterEntry,
+          onOpenChange: meterSettlement.onMeterAmountOpenChange,
+          onRetakePhoto: meterSettlement.handleRetakeMeterPhoto,
+          onSettle: meterSettlement.handleSettleMeterAmount,
+          onValueChange: meterSettlement.onMeterAmountChange,
+          remainingAttempts: meterSettlement.remainingMeterAttempts,
+          savingAmount: meterSettlement.savingSettlementAmount,
+        },
+      },
+      transfer: {
+        proof: {
+          onOpenChange: transferSettlement.onTransferProofOpenChange,
+          target: transferSettlement.transferProofTarget,
+        },
+        analysis: {
+          failedSettlementId: transferSettlement.activeTransferFailedSettlementId,
+          isOpen: transferSettlement.isTransferAnalysisOpen,
+          onReselectPhoto: transferSettlement.handleReselectTransferPhoto,
+        },
+      },
+    },
+    websocket: {
+      onMessage: liveMessagesModel.handleWebSocketMessage,
+      onSettlementAnalysisFinished: handleSettlementAnalysisFinished,
+    },
   };
 }

@@ -5,9 +5,9 @@ import { ChatComposer, type ChatRoomWebSocketConnectionValue } from '@/features/
 import type { ChatRoom, ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageList } from './chat-message-list';
-import type { ChatReportTarget } from '@/_pages/chatting/model/chat-report-target';
+import type { ChatReportTarget } from './chat-message-menu';
 
-type ChatRoomContentProps = {
+export type ChatRoomContentProps = {
   room: ChatRoom;
   liveMessages: readonly ChatRoomMessage[];
   connection: ChatRoomWebSocketConnectionValue;
@@ -23,45 +23,7 @@ type ChatRoomContentProps = {
   onReport?: (target: ChatReportTarget) => void;
   topContent?: ReactNode;
   bottomContent?: ReactNode;
-  settlementId?: number;
-  onAcknowledgeSettlement?: (settlementId: number) => void;
-  completingSettlement?: boolean;
-  isTaxiPotHost?: boolean;
-  onSendMeterPhoto?: (settlementId: number, file: File) => void;
-  onManualMeterEntry?: (settlementId: number) => void;
-  meterSettlementId?: number;
-  remainingMeterAttempts?: number;
-  onSendTransferPhoto?: (settlementId: number, file: File) => void;
-  analysisResetKey?: number;
-  transferSubmissionBlockedSettlementId?: number | null;
-  onRegisterMeterPhotoPicker?: (openPicker: (() => void) | null) => void;
-  onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
-  onViewTransferProof?: (settlementId: number, nickname: string) => void;
-  onViewMeterImage?: (settlementId: number) => void;
-  uploadingSettlementPhoto?: boolean;
-  currentUserId?: number;
-  hideMeterRequestMessage?: boolean;
 };
-
-function shouldDisplayMessage(
-  message: ChatRoomMessage,
-  hideMeterRequestMessage: boolean,
-  isTaxiPotHost: boolean,
-) {
-  if (
-    hideMeterRequestMessage &&
-    message.kind === 'notice' &&
-    message.systemType === 'SYSTEM_METER_REQUESTED'
-  ) {
-    return false;
-  }
-
-  return !(
-    !isTaxiPotHost &&
-    message.kind === 'notice' &&
-    message.systemType === 'SYSTEM_TRANSFER_UNVERIFIED'
-  );
-}
 
 export function ChatRoomContent({
   room,
@@ -79,93 +41,39 @@ export function ChatRoomContent({
   hasNewMessages = false,
   topContent,
   bottomContent,
-  settlementId,
-  onAcknowledgeSettlement,
-  completingSettlement = false,
-  isTaxiPotHost = false,
-  onSendMeterPhoto,
-  onManualMeterEntry,
-  meterSettlementId,
-  remainingMeterAttempts,
-  onSendTransferPhoto,
-  analysisResetKey,
-  transferSubmissionBlockedSettlementId = null,
-  onRegisterMeterPhotoPicker,
-  onRegisterTransferPhotoPicker,
-  onViewTransferProof,
-  onViewMeterImage,
-  uploadingSettlementPhoto = false,
-  currentUserId,
-  hideMeterRequestMessage = false,
 }: ChatRoomContentProps) {
   const messages = useMemo(() => {
-    const roomMessages = room.messages.filter((message) =>
-      shouldDisplayMessage(message, hideMeterRequestMessage, isTaxiPotHost),
-    );
-    const liveChatMessages = liveMessages.filter((message) =>
-      shouldDisplayMessage(message, hideMeterRequestMessage, isTaxiPotHost),
-    );
-    const roomMessageIds = new Set(roomMessages.map((message) => message.id));
+    const roomMessageIds = new Set(room.messages.map((message) => message.id));
 
-    return [
-      ...roomMessages,
-      ...liveChatMessages.filter((message) => !roomMessageIds.has(message.id)),
-    ];
-  }, [hideMeterRequestMessage, isTaxiPotHost, liveMessages, room.messages]);
-
-  const handleSubmit = (content: string) => {
-    connection.sendMessage(content);
-  };
+    return [...room.messages, ...liveMessages.filter((message) => !roomMessageIds.has(message.id))];
+  }, [liveMessages, room.messages]);
 
   return (
-    <>
-      <section className="relative flex min-h-0 flex-1 flex-col">
-        {topContent}
-        <ChatMessageList
-          lastReadMessageId={room.lastReadMessageId}
-          messages={messages}
-          onReport={onReport}
-          roomId={room.id}
-          hasPreviousMessages={hasPreviousMessages}
-          hasNewerMessages={hasNewerMessages}
-          isFetchingPreviousMessages={isFetchingPreviousMessages}
-          isFetchingNewerMessages={isFetchingNewerMessages}
-          isFetchPreviousMessagesError={isFetchPreviousMessagesError}
-          isFetchNewerMessagesError={isFetchNewerMessagesError}
-          onLoadPreviousMessages={onLoadPreviousMessages}
-          onLoadNewerMessages={onLoadNewerMessages}
-          hasNewMessages={hasNewMessages}
-          liveMessageCount={
-            liveMessages.filter((message) =>
-              shouldDisplayMessage(message, hideMeterRequestMessage, isTaxiPotHost),
-            ).length
-          }
-          bottomContent={bottomContent}
-          settlementId={settlementId}
-          onAcknowledgeSettlement={onAcknowledgeSettlement}
-          completingSettlement={completingSettlement}
-          isTaxiPotHost={isTaxiPotHost}
-          onSendMeterPhoto={onSendMeterPhoto}
-          onManualMeterEntry={onManualMeterEntry}
-          meterSettlementId={meterSettlementId}
-          remainingMeterAttempts={remainingMeterAttempts}
-          onSendTransferPhoto={onSendTransferPhoto}
-          analysisResetKey={analysisResetKey}
-          transferSubmissionBlockedSettlementId={transferSubmissionBlockedSettlementId}
-          onRegisterMeterPhotoPicker={onRegisterMeterPhotoPicker}
-          onRegisterTransferPhotoPicker={onRegisterTransferPhotoPicker}
-          onViewTransferProof={onViewTransferProof}
-          onViewMeterImage={onViewMeterImage}
-          uploadingSettlementPhoto={uploadingSettlementPhoto}
-          currentUserId={currentUserId}
-        />
-        <ChatComposer
-          className="!fixed bottom-0 left-1/2 z-20 !h-[calc(98px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)] !pb-[env(safe-area-inset-bottom,0px)]"
-          disabled={room.memberCount === 1}
-          onSubmit={handleSubmit}
-          submitDisabled={connection.status !== 'open'}
-        />
-      </section>
-    </>
+    <section className="relative flex min-h-0 flex-1 flex-col">
+      {topContent}
+      <ChatMessageList
+        lastReadMessageId={room.lastReadMessageId}
+        messages={messages}
+        onReport={onReport}
+        roomId={room.id}
+        hasPreviousMessages={hasPreviousMessages}
+        hasNewerMessages={hasNewerMessages}
+        isFetchingPreviousMessages={isFetchingPreviousMessages}
+        isFetchingNewerMessages={isFetchingNewerMessages}
+        isFetchPreviousMessagesError={isFetchPreviousMessagesError}
+        isFetchNewerMessagesError={isFetchNewerMessagesError}
+        onLoadPreviousMessages={onLoadPreviousMessages}
+        onLoadNewerMessages={onLoadNewerMessages}
+        hasNewMessages={hasNewMessages}
+        liveMessageCount={liveMessages.length}
+        bottomContent={bottomContent}
+      />
+      <ChatComposer
+        className="!fixed bottom-0 left-1/2 z-20 !h-[calc(98px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] -translate-x-1/2 border-t border-[var(--color-stroke-neutral-weak)] !pb-[env(safe-area-inset-bottom,0px)]"
+        disabled={room.memberCount === 1}
+        onSubmit={(content) => connection.sendMessage(content)}
+        submitDisabled={connection.status !== 'open'}
+      />
+    </section>
   );
 }

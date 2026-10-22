@@ -30,7 +30,7 @@ type UseChatRoomLiveMessagesModelOptions = {
   currentUserId?: number;
   fetchNewerMessages: () => Promise<unknown>;
   onRideActionMessage: (message: ChatWebSocketMessage) => boolean;
-  onRideEnded: () => void;
+  onRideEnded?: () => void;
   roomId: string;
 };
 
@@ -137,7 +137,7 @@ export function useChatRoomLiveMessagesModel({
       syncLiveMemberCount(message);
 
       if (message.type === 'SYSTEM_RIDE_ENDED') {
-        onRideEnded();
+        onRideEnded?.();
       }
 
       if (onRideActionMessage(message)) {

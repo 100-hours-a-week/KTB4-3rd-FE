@@ -11,16 +11,22 @@ export type ChattingPageProps = {
 };
 
 export function ChattingPage({ roomId }: ChattingPageProps) {
-  const model = useChattingPageModel(roomId);
+  const { actionDialogs, screen, settlementDialogs, websocket } = useChattingPageModel(roomId);
 
   return (
     <ChatRoomWebSocketConnection
-      enabled={Boolean(model.room)}
+      enabled={Boolean(screen.room)}
       roomId={roomId}
-      onMessage={model.onMessage}
-      onSettlementAnalysisFinished={model.onSettlementAnalysisFinished}
+      onMessage={websocket.onMessage}
+      onSettlementAnalysisFinished={websocket.onSettlementAnalysisFinished}
     >
-      {(connection) => <ChattingPageContent {...model} connection={connection} />}
+      {(connection) => (
+        <ChattingPageContent
+          actionDialogs={actionDialogs}
+          screen={{ ...screen, connection }}
+          settlementDialogs={settlementDialogs}
+        />
+      )}
     </ChatRoomWebSocketConnection>
   );
 }

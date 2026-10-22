@@ -8,3 +8,4 @@ export {
   type CarpoolTransitionStatus,
 } from './api/carpool';
 export { useCarpoolStatusMutation } from './model/use-carpool-status-mutation';
+export { useCarpoolChatFlow } from './model/use-carpool-chat-flow';
