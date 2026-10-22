@@ -5,7 +5,7 @@ import { Icon } from '@/shared/ui/icon';
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageItem } from './chat-message-item';
-import type { ChatReportTarget } from './chat-message-menu';
+import type { ChatReportTarget } from '@/_pages/chatting/model/chat-report-target';
 
 type ChatMessageListProps = {
   roomId: string;

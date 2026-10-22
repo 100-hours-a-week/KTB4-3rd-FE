@@ -5,7 +5,7 @@ import { ChatComposer, type ChatRoomWebSocketConnectionValue } from '@/features/
 import type { ChatRoom, ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageList } from './chat-message-list';
-import type { ChatReportTarget } from './chat-message-menu';
+import type { ChatReportTarget } from '@/_pages/chatting/model/chat-report-target';
 
 type ChatRoomContentProps = {
   room: ChatRoom;
