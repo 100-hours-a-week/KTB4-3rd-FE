@@ -22,6 +22,15 @@ const CONTENT_SECURITY_POLICY = [
   ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
 ].join('; ');
 
+const SECURITY_HEADERS = [
+  ...(process.env.NODE_ENV === 'development'
+    ? []
+    : [{ key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY }]),
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
@@ -32,12 +41,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/:path*',
-        headers: [
-          { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        ],
+        headers: SECURITY_HEADERS,
       },
     ];
   },
