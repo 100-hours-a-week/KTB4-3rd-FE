@@ -1,27 +1,12 @@
 'use client';
 
-import { useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
-import {
-  type Post,
-  type PostDetail,
-  toCompanionPostDetail,
-  toCommunityPostDetail,
-} from '@/entities/post';
+import type { Post } from '@/entities/post';
 import { getMapPinMarkerImage } from '@/entities/map-pin';
-import { useJoinCompanionWorkflow } from '@/features/join-companion';
 import { useRequireAuth } from '@/features/login-required';
-import { useCommunityPostCommentWorkflow } from '@/features/post-comment';
 import { useCurrentUserQuery } from '@/features/user-profile';
-import { useCompanionPostDetailQuery } from '@/_pages/post-detail/api/companion-posts';
-import {
-  communityPostQueries,
-  useCommunityPostCommentsQuery,
-  useCommunityPostDetailQuery,
-} from '@/_pages/post-detail/api/community-posts';
-import { ApiError } from '@/shared/api/client';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapMarker, MapRef, MapViewport } from '@/shared/ui/map';
@@ -29,6 +14,8 @@ import type { MapMarker, MapRef, MapViewport } from '@/shared/ui/map';
 import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import type { SelectedPost } from '@/_pages/home/model/home-types';
+import { useHomeCompanionModel } from '@/_pages/home/model/use-home-companion-model';
+import { useHomeCommunityModel } from '@/_pages/home/model/use-home-community-model';
 
 const POST_LOCATION_ROUTE = '/post/create/location';
 
@@ -51,7 +38,6 @@ function getPositionedPost(post: Post, mapPins: readonly MapPin[]): SelectedPost
 
 export function useHomePageModel() {
   const router = useRouter();
-  const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
   const [selectedPost, setSelectedPost] = useState<SelectedPost | null>(null);
   const [userLocation, setUserLocation] = useState<MapCoordinate | null>(null);
@@ -59,42 +45,12 @@ export function useHomePageModel() {
   const mapRef = useRef<MapRef>(null);
 
   const currentUserQuery = useCurrentUserQuery();
-  const selectedCompanionId = selectedPost?.type === 'COMPANION' ? selectedPost.id : null;
-  const selectedCommunityId = selectedPost?.type === 'COMMUNITY' ? selectedPost.id : null;
-
   const mapPinsQuery = useMapPinsQuery(mapViewport);
   const nearbyPostsQuery = useNearbyPostsQuery(userLocation, mapViewport);
-  const companionDetailQuery = useCompanionPostDetailQuery(selectedCompanionId);
-  const communityDetailQuery = useCommunityPostDetailQuery(selectedCommunityId);
-  const communityCommentsQuery = useCommunityPostCommentsQuery(selectedCommunityId);
-
-  const handleJoined = useCallback(
-    (chatRoomId: number) => {
-      router.push(`/chatroom/${chatRoomId}`);
-    },
-    [router],
-  );
-
-  const handleCommentCreated = useCallback(
-    (postId: number) => {
-      void queryClient.invalidateQueries({
-        queryKey: communityPostQueries.detail(postId).queryKey,
-      });
-    },
-    [queryClient],
-  );
-
-  const joinWorkflow = useJoinCompanionWorkflow({
-    companionId: selectedCompanionId,
-    onJoined: handleJoined,
-    requireAuth,
-  });
-  const commentWorkflow = useCommunityPostCommentWorkflow({
-    commentsQuery: communityCommentsQuery,
-    onCommentCreated: handleCommentCreated,
-    postId: selectedCommunityId,
-    requireAuth,
-  });
+  const companionModel = useHomeCompanionModel({ requireAuth, selectedPost });
+  const communityModel = useHomeCommunityModel({ requireAuth, selectedPost });
+  const { onClose: onCompanionClose, onRetry: onCompanionRetry } = companionModel;
+  const { onClose: onCommunityClose, onRetry: onCommunityRetry } = communityModel;
 
   const mapPins = useMemo(() => mapPinsQuery.data?.data.items ?? [], [mapPinsQuery.data]);
   const nearbyPosts = useMemo(
@@ -112,44 +68,29 @@ export function useHomePageModel() {
     [mapPins],
   );
 
-  const selectedDetail: PostDetail | null = useMemo(() => {
-    if (selectedPost?.type === 'COMPANION' && companionDetailQuery.data) {
-      const summary = selectedPost.summary;
-
-      return toCompanionPostDetail(
-        companionDetailQuery.data.data,
-        summary?.type === 'COMPANION' ? summary : undefined,
-      );
+  const selectedDetail = (() => {
+    if (selectedPost?.type === 'COMPANION') {
+      return companionModel.detail;
     }
 
-    if (selectedPost?.type === 'COMMUNITY' && communityDetailQuery.data) {
-      const summary = selectedPost.summary;
-
-      return toCommunityPostDetail(
-        communityDetailQuery.data.data,
-        commentWorkflow.comments,
-        summary?.type === 'COMMUNITY' ? summary : undefined,
-      );
+    if (selectedPost?.type === 'COMMUNITY') {
+      return communityModel.detail;
     }
 
     return null;
-  }, [
-    commentWorkflow.comments,
-    companionDetailQuery.data,
-    communityDetailQuery.data,
-    selectedPost,
-  ]);
+  })();
+  const selectedDetailState = (() => {
+    if (selectedPost?.type === 'COMPANION') {
+      return companionModel.detailState;
+    }
 
-  let selectedDetailQuery: typeof companionDetailQuery | typeof communityDetailQuery | null = null;
+    if (selectedPost?.type === 'COMMUNITY') {
+      return communityModel.detailState;
+    }
 
-  if (selectedPost?.type === 'COMPANION') {
-    selectedDetailQuery = companionDetailQuery;
-  } else if (selectedPost?.type === 'COMMUNITY') {
-    selectedDetailQuery = communityDetailQuery;
-  }
-
-  const selectedDetailIsNotFound =
-    selectedDetailQuery?.error instanceof ApiError && selectedDetailQuery.error.status === 404;
+    return null;
+  })();
+  const selectedDetailIsNotFound = selectedDetailState?.isNotFound ?? false;
 
   useEffect(() => {
     if (!selectedPost || !selectedDetailIsNotFound) {
@@ -211,12 +152,12 @@ export function useHomePageModel() {
   const handleDetailModalChange = useCallback(
     (open: boolean) => {
       if (!open) {
-        commentWorkflow.onCommentFeedbackDismiss();
-        joinWorkflow.onJoinErrorDismiss();
+        onCommunityClose();
+        onCompanionClose();
         setSelectedPost(null);
       }
     },
-    [commentWorkflow, joinWorkflow],
+    [onCommunityClose, onCompanionClose],
   );
 
   const handleLoadMorePosts = useCallback(() => {
@@ -240,8 +181,14 @@ export function useHomePageModel() {
   }, [mapPinsQuery]);
 
   const handleRetrySelectedDetail = useCallback(() => {
-    void selectedDetailQuery?.refetch();
-  }, [selectedDetailQuery]);
+    if (selectedPost?.type === 'COMPANION') {
+      onCompanionRetry();
+    }
+
+    if (selectedPost?.type === 'COMMUNITY') {
+      onCommunityRetry();
+    }
+  }, [onCommunityRetry, onCompanionRetry, selectedPost?.type]);
 
   return {
     currentUser: currentUserQuery.data?.data,
@@ -274,22 +221,10 @@ export function useHomePageModel() {
       posts: nearbyPosts,
     },
     postDetailModal: {
-      commentProps: {
-        commentFeedback: commentWorkflow.commentFeedback,
-        commentIdToScroll: commentWorkflow.commentIdToScroll,
-        commentsError: commentWorkflow.commentsError,
-        commentsLoading: commentWorkflow.commentsLoading,
-        hasMoreComments: commentWorkflow.hasMoreComments,
-        isCommentSubmitting: commentWorkflow.isCommentSubmitting,
-        isLoadingMoreComments: commentWorkflow.isLoadingMoreComments,
-        onCommentFeedbackDismiss: commentWorkflow.onCommentFeedbackDismiss,
-        onCommentScrolled: commentWorkflow.onCommentScrolled,
-        onCommentSubmit: commentWorkflow.onCommentSubmit,
-        onLoadMoreComments: commentWorkflow.onLoadMoreComments,
-      },
-      companionProps: joinWorkflow,
-      detailError: selectedDetailQuery?.isError ?? false,
-      detailLoading: selectedDetailQuery?.isPending ?? false,
+      commentProps: communityModel.commentProps,
+      companionProps: companionModel.companionProps,
+      detailError: selectedDetailState?.isError ?? false,
+      detailLoading: selectedDetailState?.isLoading ?? false,
       onOpenChange: handleDetailModalChange,
       onRetry: handleRetrySelectedDetail,
       post: selectedPost,
