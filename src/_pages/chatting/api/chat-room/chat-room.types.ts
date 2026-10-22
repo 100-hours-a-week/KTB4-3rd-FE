@@ -13,6 +13,7 @@ export type ChatRoomDetailData = {
   current_count: number;
   capacity: number;
   companion_status: 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+  rated?: boolean;
   closed_at: string | null;
   last_read_message_id: number | null;
   participants?: readonly ChatRoomParticipantData[];

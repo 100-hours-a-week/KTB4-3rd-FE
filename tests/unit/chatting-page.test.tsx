@@ -244,7 +244,12 @@ function mockCurrentUserId(id: number) {
   );
 }
 
-function mockCarpoolRideActionChatRoom() {
+function mockCarpoolRideActionChatRoom(options?: {
+  rated?: boolean;
+  status?: 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+}) {
+  const { rated, status = 'RECRUITING' } = options ?? {};
+
   server.use(
     http.get('*/chat-rooms/700', () =>
       HttpResponse.json({
@@ -260,9 +265,10 @@ function mockCarpoolRideActionChatRoom() {
           departure_at: '2026-09-05T08:30:00.000Z',
           current_count: 2,
           capacity: 4,
-          companion_status: 'RECRUITING',
+          companion_status: status,
           closed_at: null,
           last_read_message_id: null,
+          ...(rated === undefined ? {} : { rated }),
           participants: [
             { id: 7, nickname: '방장' },
             { id: 8, nickname: '동승자' },
@@ -1286,6 +1292,31 @@ describe('ChattingPage', () => {
       await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' }),
     ).toBeInTheDocument();
     expect(screen.getByText('동승자에 대한 만족도를 입력해주세요.')).toBeInTheDocument();
+  });
+
+  it('카풀 채팅방 상세의 rated가 false면 동승자에게 평가 모달을 연다', async () => {
+    mockCurrentUserId(8);
+    mockCarpoolRideActionChatRoom({ rated: false, status: 'COMPLETED' });
+
+    renderChattingPage('700');
+
+    expect(
+      await screen.findByRole('dialog', { name: '만족도를 입력해주세요.' }),
+    ).toBeInTheDocument();
+  });
+
+  it('카풀 채팅방 상세의 rated가 true면 평가 모달을 열지 않는다', async () => {
+    mockCurrentUserId(8);
+    mockCarpoolRideActionChatRoom({ rated: true, status: 'COMPLETED' });
+
+    renderChattingPage('700');
+
+    await screen.findByRole('heading', { name: '카풀 채팅방' });
+    await waitFor(() =>
+      expect(
+        screen.queryByRole('dialog', { name: '만족도를 입력해주세요.' }),
+      ).not.toBeInTheDocument(),
+    );
   });
 
   it('카풀 평가를 제출하면 카풀 companion_id로 평가 API를 호출한다', async () => {
