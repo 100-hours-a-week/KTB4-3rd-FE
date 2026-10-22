@@ -1,4 +1,4 @@
-import type { CommunityPostComment } from './community-comment';
+import type { CommunityPostComment } from '@/entities/post/api/community-comments.types';
 import type { PostComment } from './post-detail';
 
 const UNKNOWN_COMMENT_AUTHOR = '알 수 없는 사용자';

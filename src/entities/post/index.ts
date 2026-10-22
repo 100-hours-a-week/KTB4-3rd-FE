@@ -9,7 +9,21 @@ export type {
 } from './api/nearby-posts.types';
 export { getNearbyPosts } from './api/get-nearby-posts';
 export { nearbyPostsQueries } from './api/nearby-posts.queries';
+export type {
+  CommunityPostComment,
+  CommunityPostCommentsData,
+  CommunityPostCommentsResponse,
+} from './api/community-comments.types';
+export type {
+  CompanionPostDetailData,
+  CompanionPostDetailResponse,
+  CompanionPostParticipant,
+  CommunityPostDetailData,
+  CommunityPostDetailResponse,
+  PostDetailAuthor,
+} from './api/post-detail.types';
 export { toPostComments } from './model/to-post-comments';
+export { toCompanionPostDetail, toCommunityPostDetail } from './model/to-post-detail';
 export { CommentList, type CommentListProps } from './ui/post-detail/comment-list';
 export { CommentSummary, type CommentSummaryProps } from './ui/post-detail/comment-summary';
 export {
@@ -33,17 +47,8 @@ export type {
   CompanionTransport,
   Post,
   PostAuthor,
-  PostListResponse,
   PostType,
 } from './model/post';
-export type {
-  CommunityPostComment,
-  CommunityPostCommentsData,
-  CommunityPostCommentsResponse,
-  CreateCommunityPostCommentPayload,
-  CreateCommunityPostCommentResponse,
-  CreatedCommunityPostComment,
-} from './model/community-comment';
 export type {
   CommunityPostDetail,
   CompanionPostDetail,
