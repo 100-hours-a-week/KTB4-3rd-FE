@@ -4,14 +4,14 @@ import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import type { Post } from '@/entities/post';
-import { getMapPinMarkerImage } from '@/entities/map-pin';
+import { getMapPinMarkerImage, type MapPinItem as MapPin } from '@/entities/map-pin';
 import { useRequireAuth } from '@/features/login-required';
 import { useCurrentUserQuery } from '@/features/user-profile';
 import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 import type { MapCoordinate } from '@/shared/types/common';
 import type { MapMarker, MapRef, MapViewport } from '@/shared/ui/map';
 
-import { type MapPin, useMapPinsQuery } from '@/_pages/home/api/map-pins';
+import { useMapPinsQuery } from '@/_pages/home/api/map-pins';
 import { useNearbyPostsQuery } from '@/_pages/home/api/nearby-posts';
 import type { SelectedPost } from '@/_pages/home/model/home-types';
 import { useHomeCompanionModel } from '@/_pages/home/model/use-home-companion-model';
