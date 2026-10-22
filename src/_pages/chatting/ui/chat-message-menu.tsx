@@ -3,6 +3,10 @@ import type { ReactElement } from 'react';
 import { Icon } from '@/shared/ui/icon';
 import { Menu, type MenuItem } from '@/shared/ui/menu';
 
+import type { ChatReportTarget } from '@/_pages/chatting/model/chat-report-target';
+
+export type { ChatReportTarget } from '@/_pages/chatting/model/chat-report-target';
+
 type ChatMessageMenuProps = {
   children: ReactElement;
   messageContent: string;
@@ -10,17 +14,6 @@ type ChatMessageMenuProps = {
   onReport?: (target: ChatReportTarget) => void;
   reportedUserId?: number;
 };
-
-export type ChatReportTarget =
-  | {
-      type: 'message';
-      reportedMessageId: number;
-      reportedUserId: number;
-    }
-  | {
-      type: 'user';
-      reportedUserId: number;
-    };
 
 export function ChatMessageMenu({
   children,
