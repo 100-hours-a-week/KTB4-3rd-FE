@@ -8,3 +8,7 @@ export {
   useCreateCommunityPostCommentMutation,
   type CreateCommunityPostCommentVariables,
 } from './model/use-create-community-post-comment';
+export {
+  useCommunityPostCommentWorkflow,
+  type CommunityPostCommentWorkflowOptions,
+} from './model/use-community-post-comment-workflow';
