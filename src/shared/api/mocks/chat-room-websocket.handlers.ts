@@ -39,7 +39,8 @@ type MockChatMessage =
         | 'SYSTEM_METER_REQUESTED'
         | 'SYSTEM_SETTLEMENT_COMPLETED'
         | 'SYSTEM_TRANSFER_DONE'
-        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
+        | 'SYSTEM_TRANSFER_UNVERIFIED';
       content: string;
       sender?: never;
       settlement?: never;
@@ -67,7 +68,7 @@ type ChatRoomSubscription = {
   roomId: string;
 };
 
-const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601']);
+const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601', '700']);
 const MOCK_TAXI_POT_ROOM_IDS = new Set(['599', '600', '601']);
 const MOCK_CHAT_UI_PREVIEW_ROOM_ID = '601';
 const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
