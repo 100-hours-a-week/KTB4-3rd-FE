@@ -23,6 +23,7 @@ type ChatMessageListProps = {
   hasNewMessages?: boolean;
   liveMessageCount?: number;
   bottomContent?: ReactNode;
+  settlementId?: number;
   onAcknowledgeSettlement?: (settlementId: number) => void;
   completingSettlement?: boolean;
   isTaxiPotHost?: boolean;
@@ -88,6 +89,7 @@ export function ChatMessageList({
   hasNewMessages = false,
   liveMessageCount = 0,
   bottomContent,
+  settlementId,
   onAcknowledgeSettlement,
   completingSettlement = false,
   isTaxiPotHost = false,
@@ -106,7 +108,7 @@ export function ChatMessageList({
   currentUserId,
 }: ChatMessageListProps) {
   let transferAmount = 0;
-  let transferSettlementId: number | undefined;
+  let transferSettlementId: number | undefined = settlementId;
 
   for (let index = messages.length - 1; index >= 0; index -= 1) {
     const message = messages[index];

@@ -197,11 +197,23 @@ export function ChatMessageItem({
       );
     }
 
-    if (message.systemType === 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED') {
+    if (
+      message.systemType === 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED' ||
+      message.systemType === 'SYSTEM_TRANSFER_UNVERIFIED'
+    ) {
+      if (message.systemType === 'SYSTEM_TRANSFER_UNVERIFIED' && !isTaxiPotHost) {
+        return null;
+      }
+
       return (
         <TransferCompletionConfirmationSystemMessage
           className={systemMessageClassName}
           acknowledging={completingSettlement}
+          description={
+            message.systemType === 'SYSTEM_TRANSFER_UNVERIFIED'
+              ? '송금 확인이 어려우면 대면으로 내역 확인 후 버튼을 눌러주세요.'
+              : undefined
+          }
           onAcknowledge={
             transferSettlementId === undefined || !onAcknowledgeSettlement
               ? undefined
