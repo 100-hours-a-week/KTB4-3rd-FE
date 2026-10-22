@@ -92,7 +92,8 @@ describe('ChatListTabs', () => {
   it('커뮤니티 탭을 기본 선택 상태로 보여준다', () => {
     render(<ChatListTabs />);
 
-    expect(screen.getByRole('tab', { name: '매칭' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: '택시팟' })).toHaveAttribute('aria-selected', 'false');
+    expect(screen.getByRole('tab', { name: '카풀' })).toHaveAttribute('aria-selected', 'false');
     expect(screen.getByRole('tab', { name: '커뮤니티' })).toHaveAttribute('aria-selected', 'true');
   });
 
@@ -101,10 +102,11 @@ describe('ChatListTabs', () => {
     const onValueChange = vi.fn<(value: ChatListTabValue) => void>();
 
     render(<ChatListTabs onValueChange={onValueChange} />);
-    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    await user.click(screen.getByRole('tab', { name: '택시팟' }));
 
-    expect(screen.getByRole('tab', { name: '매칭' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByRole('tab', { name: '택시팟' })).toHaveAttribute('aria-selected', 'true');
     expect(screen.getByRole('tab', { name: '커뮤니티' })).toHaveAttribute('aria-selected', 'false');
-    expect(onValueChange).toHaveBeenCalledWith('matching');
+    expect(screen.getByRole('tab', { name: '카풀' })).toHaveAttribute('aria-selected', 'false');
+    expect(onValueChange).toHaveBeenCalledWith('taxiPot');
   });
 });
