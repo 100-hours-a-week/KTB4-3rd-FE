@@ -1289,6 +1289,84 @@ describe('ChattingPage', () => {
     await waitFor(() => expect(submitRatingsRequest).toHaveBeenCalledTimes(1));
   });
 
+  it('카풀 방장이 운행 시작을 확인하면 carpools PATCH에 IN_PROGRESS를 전송한다', async () => {
+    const user = userEvent.setup();
+
+    mockCurrentUserId(7);
+    server.use(
+      http.get('*/chat-rooms/501', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 501,
+            companion_id: 51,
+            kind: 'CARPOOL',
+            title: '카풀 채팅방',
+            host_id: 7,
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00.000Z',
+            current_count: 2,
+            capacity: 4,
+            companion_status: 'RECRUITING',
+            closed_at: null,
+            last_read_message_id: null,
+          },
+        }),
+      ),
+      http.get('*/chat-rooms/501/messages', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: [
+              {
+                id: 1700,
+                type: 'SYSTEM_RIDE_START_REQUESTED',
+                created_at: '2026-09-05T07:58:12.000Z',
+              },
+            ],
+            before_cursor: null,
+            after_cursor: null,
+          },
+        }),
+      ),
+      http.patch('*/carpools/51', async ({ request }) => {
+        expect(await request.json()).toEqual({ status: 'IN_PROGRESS' });
+
+        return HttpResponse.json({
+          message: '운행 상태가 변경됐어요',
+          data: {
+            id: 51,
+            status: 'IN_PROGRESS',
+            host: { id: 7, name: '김우림', profile_image_url: null },
+            origin_name: '판교역',
+            dest_name: '강남역',
+            departure_at: '2026-09-05T08:30:00',
+            car_model: '포르쉐 911',
+            current_count: 2,
+            capacity: 4,
+            is_full: false,
+            participants: [
+              { id: 7, name: '김우림', profile_image_url: null },
+              { id: 9, name: '이루디', profile_image_url: null },
+            ],
+          },
+        });
+      }),
+    );
+
+    renderChattingPage('501');
+
+    expect(await screen.findByTestId('taxi-pot-ride-action')).toHaveTextContent(
+      '운행이 시작됐나요?',
+    );
+    await user.click(screen.getByRole('button', { name: '확인' }));
+
+    await waitFor(() =>
+      expect(screen.queryByTestId('taxi-pot-ride-action')).not.toBeInTheDocument(),
+    );
+  });
+
   it('운행 상태 변경 PATCH가 실패하면 액션을 유지하고 오류 Snackbar를 표시한다', async () => {
     const user = userEvent.setup();
 

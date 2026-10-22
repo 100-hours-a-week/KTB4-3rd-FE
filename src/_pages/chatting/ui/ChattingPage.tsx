@@ -19,6 +19,7 @@ import {
 } from '@/features/chatting';
 import type { ChatWebSocketMessage, SettlementAnalysisFinishedMessage } from '@/entities/chat';
 import { useLeaveCarpoolMutation } from '@/features/leave-carpool';
+import { useCarpoolStatusMutation } from '@/features/carpool-chat';
 import { useLeaveCompanionMutation } from '@/features/leave-companion';
 import {
   submitTransferProof,
@@ -224,6 +225,9 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
   const companionId = chatRoomDetail?.companion_id;
   const currentUserId = currentUserQuery.data?.data.id;
   const isCarpool = chatRoomDetail?.kind === 'CARPOOL';
+  const carpoolStatusMutation = useCarpoolStatusMutation(
+    isCarpool && companionId !== undefined ? String(companionId) : '',
+  );
   const taxiPotId =
     chatRoomDetail?.kind === 'TAXI_POT' ? String(chatRoomDetail.companion_id) : undefined;
   const isTaxiPot = taxiPotId !== undefined;
@@ -426,6 +430,7 @@ export function ChattingPage({ roomId }: ChattingPageProps) {
     rideActionChatId,
     rideActionHostId: isRideActionChat ? chatRoomDetail?.host_id : undefined,
     rideActionStatus: isRideActionChat ? chatRoomDetail?.companion_status : undefined,
+    rideStatusMutation: isCarpool ? carpoolStatusMutation : undefined,
     taxiPotDetail,
     taxiPotId,
   });
