@@ -13,6 +13,7 @@ import type { TaxiPotRideAction } from './taxi-pot-chat';
 type TaxiPotChatFlowOptions = {
   currentUserId?: number;
   initialRideAction?: TaxiPotRideAction;
+  rated?: boolean;
   taxiPotDetail?: TaxiPotDetailData;
   taxiPotId?: string;
 };
@@ -46,6 +47,7 @@ function getInitialRideAction(
 export function useTaxiPotChatFlow({
   currentUserId,
   initialRideAction,
+  rated,
   taxiPotDetail,
   taxiPotId,
 }: TaxiPotChatFlowOptions) {
@@ -62,6 +64,7 @@ export function useTaxiPotChatFlow({
     rideActionState?.taxiPotId === taxiPotId
       ? rideActionState?.action
       : getInitialRideAction(initialRideAction, status);
+  const [dismissedEvaluationTaxiPotId, setDismissedEvaluationTaxiPotId] = useState<string>();
 
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
@@ -120,10 +123,16 @@ export function useTaxiPotChatFlow({
   return {
     confirmRideAction,
     handleWebSocketMessage,
-    isEvaluationOpen: taxiPotId !== undefined && evaluationTaxiPotId === taxiPotId,
+    isEvaluationOpen:
+      taxiPotId !== undefined &&
+      (evaluationTaxiPotId === taxiPotId ||
+        (rated === false && dismissedEvaluationTaxiPotId !== taxiPotId)),
     isHost,
     isPending: statusMutation.isPending,
-    onEvaluationOpenChange: (open: boolean) => setEvaluationTaxiPotId(open ? taxiPotId : undefined),
+    onEvaluationOpenChange: (open: boolean) => {
+      setEvaluationTaxiPotId(open ? taxiPotId : undefined);
+      setDismissedEvaluationTaxiPotId(open ? undefined : taxiPotId);
+    },
     rideAction,
     status,
   };

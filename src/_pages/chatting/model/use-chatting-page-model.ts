@@ -105,11 +105,13 @@ export function useChattingPageModel(roomId: string) {
     currentUserId,
     hostId: isCarpool ? chatRoomDetail?.host_id : undefined,
     initialRideAction: isCarpool ? initialRideAction : undefined,
+    rated: isCarpool ? chatRoomDetail?.rated : undefined,
     status: isCarpool ? chatRoomDetail?.companion_status : undefined,
   });
   const taxiPotFlow = useTaxiPotChatFlow({
     currentUserId,
     initialRideAction: isTaxiPot ? initialRideAction : undefined,
+    rated: isTaxiPot ? chatRoomDetail?.rated : undefined,
     taxiPotDetail,
     taxiPotId,
   });

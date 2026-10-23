@@ -15,6 +15,7 @@ type CarpoolChatFlowOptions = {
   currentUserId?: number;
   hostId?: number;
   initialRideAction?: CarpoolRideAction;
+  rated?: boolean;
   status?: CarpoolStatus;
 };
 
@@ -49,6 +50,7 @@ export function useCarpoolChatFlow({
   currentUserId,
   hostId,
   initialRideAction,
+  rated,
   status: initialStatus,
 }: CarpoolChatFlowOptions) {
   const [rideActionState, setRideActionState] = useState<CarpoolRideActionState>();
@@ -64,6 +66,7 @@ export function useCarpoolChatFlow({
     rideActionState?.chatId === carpoolId
       ? rideActionState?.action
       : getInitialRideAction(initialRideAction, status);
+  const [dismissedEvaluationChatId, setDismissedEvaluationChatId] = useState<string>();
 
   const handleWebSocketMessage = useCallback(
     (message: ChatWebSocketMessage) => {
@@ -117,10 +120,16 @@ export function useCarpoolChatFlow({
   return {
     confirmRideAction,
     handleWebSocketMessage,
-    isEvaluationOpen: carpoolId !== undefined && evaluationChatId === carpoolId,
+    isEvaluationOpen:
+      carpoolId !== undefined &&
+      (evaluationChatId === carpoolId ||
+        (rated === false && dismissedEvaluationChatId !== carpoolId)),
     isHost,
     isPending: statusMutation.isPending,
-    onEvaluationOpenChange: (open: boolean) => setEvaluationChatId(open ? carpoolId : undefined),
+    onEvaluationOpenChange: (open: boolean) => {
+      setEvaluationChatId(open ? carpoolId : undefined);
+      setDismissedEvaluationChatId(open ? undefined : carpoolId);
+    },
     rideAction,
     status,
   };
