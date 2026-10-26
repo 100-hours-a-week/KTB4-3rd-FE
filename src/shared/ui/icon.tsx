@@ -1,5 +1,6 @@
 import {
   CalendarDays,
+  CarFront,
   Clock3,
   Copy,
   Crosshair,
@@ -66,6 +67,7 @@ const iconRegistry = {
     source: '/icons/seed/icon_horizline2_vertical_chatbubble_rectangular_right_line.svg',
   },
   calendarDays: { type: 'lucide', component: CalendarDays },
+  carFront: { type: 'lucide', component: CarFront },
   clock3: { type: 'lucide', component: Clock3 },
   copy: { type: 'lucide', component: Copy },
   info: { type: 'lucide', component: Info },

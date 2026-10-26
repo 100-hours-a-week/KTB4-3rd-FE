@@ -96,6 +96,12 @@ export function HeaderUser({ user }: HeaderUserProps) {
 
   const userMenuItems = [
     {
+      id: 'owned-car-management',
+      icon: <Icon name="carFront" size={24} />,
+      content: '내 차량 관리',
+      onClick: () => router.push('/profile/cars'),
+    },
+    {
       id: 'logout',
       icon: <Icon name="logOut" size={24} />,
       content: '로그아웃',

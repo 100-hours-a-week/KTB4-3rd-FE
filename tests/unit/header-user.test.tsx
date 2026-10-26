@@ -9,9 +9,10 @@ import { HeaderUser } from '@/features/header-user';
 import { server } from '@/shared/api/mocks/server';
 
 const replace = vi.fn<(path: string) => void>();
+const push = vi.fn<(path: string) => void>();
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: vi.fn<(path: string) => void>(), replace }),
+  useRouter: () => ({ push, replace }),
 }));
 
 function renderHeaderUser() {
@@ -29,6 +30,7 @@ afterEach(() => {
   document.querySelectorAll('[data-base-ui-portal]').forEach((portal) => portal.remove());
   useAuthStore.getState().clearTokens();
   replace.mockClear();
+  push.mockClear();
 });
 
 describe('HeaderUser', () => {
@@ -40,9 +42,21 @@ describe('HeaderUser', () => {
     await user.click(screen.getByRole('button', { name: '프로필 메뉴 열기' }));
 
     expect(screen.getByRole('menu')).toHaveAttribute('aria-label', '사용자 메뉴');
-    expect(screen.getAllByRole('menuitem')).toHaveLength(2);
+    expect(screen.getAllByRole('menuitem')).toHaveLength(3);
+    expect(screen.getByRole('menuitem', { name: '내 차량 관리' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: '로그아웃' })).toBeInTheDocument();
     expect(screen.getByRole('menuitem', { name: '회원 탈퇴' })).toBeInTheDocument();
+  });
+
+  it('내 차량 관리 메뉴를 누르면 차량 관리 화면으로 이동한다', async () => {
+    const user = userEvent.setup();
+    useAuthStore.getState().setAccessToken('mock-access-token');
+    renderHeaderUser();
+
+    await user.click(screen.getByRole('button', { name: '프로필 메뉴 열기' }));
+    await user.click(screen.getByRole('menuitem', { name: '내 차량 관리' }));
+
+    expect(push).toHaveBeenCalledWith('/profile/cars');
   });
 
   it('로그아웃 메뉴를 누르면 오류 영역을 확보한 neutral 확인 Dialog를 열고 취소로 닫는다', async () => {
