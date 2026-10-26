@@ -5,11 +5,17 @@ export {
   type ChatListPageState,
   type ChatListPageStates,
 } from './model/chat-list-state';
+export {
+  parseChatListRouteState,
+  type ChatListRouteParams,
+  type ChatListRouteState,
+} from './model/chat-list-route';
 export { ChatListPage, type ChatListPageProps } from './ui/ChatListPage';
 export {
   ChatListPageContent,
   ChatListPageContentWithQuery,
   type ChatListPageContentProps,
+  type ChatListPageContentWithQueryProps,
   type ChatListPagePaginationState,
   type ChatListPagePaginationStates,
 } from './ui/chat-list-page-content';

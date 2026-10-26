@@ -118,13 +118,21 @@ function ChatRoomListQueryContent() {
   );
 }
 
-export function ChatListPageContentWithQuery() {
+export type ChatListPageContentWithQueryProps = {
+  initialChatTab?: ChatCarpoolTab;
+  initialRequestDirection?: CarpoolRequestDirection;
+};
+
+export function ChatListPageContentWithQuery({
+  initialChatTab = 'chat',
+  initialRequestDirection = 'SENT',
+}: ChatListPageContentWithQueryProps) {
   const router = useRouter();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const currentUserQuery = useCurrentUserQuery();
   const viewerId = currentUserQuery.data?.data.id ?? null;
-  const [activeTab, setActiveTab] = useState<ChatCarpoolTab>('chat');
-  const [direction, setDirection] = useState<CarpoolRequestDirection>('SENT');
+  const [activeTab, setActiveTab] = useState<ChatCarpoolTab>(initialChatTab);
+  const [direction, setDirection] = useState<CarpoolRequestDirection>(initialRequestDirection);
 
   return (
     <section aria-label="채팅과 카풀 요청" className="flex min-h-0 flex-1 flex-col">

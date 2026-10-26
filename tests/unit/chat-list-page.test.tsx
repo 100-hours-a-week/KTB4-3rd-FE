@@ -6,6 +6,7 @@ import {
   ChatListPageLoading,
   ChatListPageContent,
   ChatListPageContentLoading,
+  parseChatListRouteState,
   type ChatListPageStates,
 } from '@/_pages/chat-list';
 
@@ -23,6 +24,21 @@ const chatRooms = [
 ];
 
 afterEach(cleanup);
+
+describe('ChatList route state', () => {
+  it('카풀 받은 요청 딥링크를 카풀 탭과 받은 요청 탭으로 해석한다', () => {
+    expect(parseChatListRouteState({ tab: 'carpool', direction: 'RECEIVED' })).toEqual({
+      chatTab: 'carpool',
+      requestDirection: 'RECEIVED',
+    });
+  });
+
+  it('알 수 없는 쿼리는 기본 채팅 탭과 보낸 요청 탭으로 처리한다', () => {
+    expect(parseChatListRouteState({ tab: 'unknown', direction: ['UNKNOWN', 'RECEIVED'] })).toEqual(
+      { chatTab: 'chat', requestDirection: 'SENT' },
+    );
+  });
+});
 
 describe('ChatListPageContent', () => {
   it('응답 목록이 있으면 채팅방 목록을 표시한다', () => {
