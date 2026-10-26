@@ -3,12 +3,7 @@ import { apiFetch } from '@/shared/api/client';
 import type {
   CreateCommunityPostCommentPayload,
   CreateCommunityPostCommentResponse,
-} from '@/entities/post';
-
-export type {
-  CreateCommunityPostCommentPayload,
-  CreateCommunityPostCommentResponse,
-} from '@/entities/post';
+} from './create-community-post-comment.types';
 
 export function createCommunityPostComment(
   accessToken: string,

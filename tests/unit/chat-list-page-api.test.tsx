@@ -2,7 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { type ReactNode } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { ChatListPage } from '@/_pages/chat-list';
@@ -76,7 +76,7 @@ describe('ChatListPage API 연결', () => {
     vi.stubGlobal('IntersectionObserver', MockIntersectionObserver);
   });
 
-  it('커뮤니티와 매칭 탭의 kind에 맞는 목록을 렌더링한다', async () => {
+  it('택시팟·카풀·커뮤니티 탭의 kind에 맞는 목록을 렌더링한다', async () => {
     const requestedKinds: string[] = [];
     const user = userEvent.setup();
 
@@ -84,16 +84,31 @@ describe('ChatListPage API 연결', () => {
       http.get('*/chat-rooms', ({ request }) => {
         const kind = new URL(request.url).searchParams.get('kind');
         requestedKinds.push(kind ?? '');
+        const isTaxiPot = kind === 'TAXI_POT';
+        const isCarpool = kind === 'CARPOOL';
+        let id = 501;
+        let companionId = 10;
+        let title = '커뮤니티 채팅방';
+
+        if (isTaxiPot) {
+          id = 599;
+          companionId = 30;
+          title = '택시팟 채팅방';
+        } else if (isCarpool) {
+          id = 700;
+          companionId = 51;
+          title = '카풀 채팅방';
+        }
 
         return HttpResponse.json({
           message: '조회에 성공했습니다',
           data: {
             items: [
               {
-                id: kind === 'TAXI_POT' ? 599 : 501,
-                companion_id: kind === 'TAXI_POT' ? 30 : 10,
+                id,
+                companion_id: companionId,
                 kind,
-                title: kind === 'TAXI_POT' ? '매칭 채팅방' : '커뮤니티 채팅방',
+                title,
                 host: { profile_image_url: null },
                 current_count: 2,
                 capacity: 4,
@@ -110,11 +125,14 @@ describe('ChatListPage API 연결', () => {
 
     expect(await screen.findByRole('button', { name: /커뮤니티 채팅방/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    await user.click(screen.getByRole('tab', { name: '택시팟' }));
 
-    expect(await screen.findByRole('button', { name: /매칭 채팅방/ })).toBeInTheDocument();
+    expect(await screen.findByRole('button', { name: /택시팟 채팅방/ })).toBeInTheDocument();
+    const chatListTabs = within(screen.getByRole('tablist', { name: '채팅 목록 필터' }));
+    await user.click(chatListTabs.getByRole('tab', { name: '카풀' }));
+    expect(await screen.findByRole('button', { name: /카풀 채팅방/ })).toBeInTheDocument();
     await waitFor(() => {
-      expect(requestedKinds).toEqual(expect.arrayContaining(['COMPANION', 'TAXI_POT']));
+      expect(requestedKinds).toEqual(expect.arrayContaining(['COMPANION', 'TAXI_POT', 'CARPOOL']));
     });
   });
 
@@ -187,7 +205,7 @@ describe('ChatListPage API 연결', () => {
     expect(navigation.push).toHaveBeenCalledWith('/');
   });
 
-  it('매칭 탭이 비어 있으면 매칭하러가기 클릭 시 매칭 페이지로 이동한다', async () => {
+  it('택시팟 탭이 비어 있으면 택시팟 찾으러가기 클릭 시 매칭 페이지로 이동한다', async () => {
     const user = userEvent.setup();
 
     server.use(
@@ -202,8 +220,8 @@ describe('ChatListPage API 연결', () => {
     render(<ChatListPage />, { wrapper: createWrapper() });
 
     expect(await screen.findByTestId('chat-list-empty')).toBeInTheDocument();
-    await user.click(screen.getByRole('tab', { name: '매칭' }));
-    await user.click(screen.getByRole('button', { name: '매칭하러가기' }));
+    await user.click(screen.getByRole('tab', { name: '택시팟' }));
+    await user.click(screen.getByRole('button', { name: '택시팟 찾으러가기' }));
 
     expect(navigation.push).toHaveBeenCalledWith('/matching');
   });
@@ -266,7 +284,7 @@ describe('ChatListPage API 연결', () => {
 
     expect(await screen.findByRole('button', { name: /첫 커뮤니티 채팅방/ })).toBeInTheDocument();
 
-    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    await user.click(screen.getByRole('tab', { name: '택시팟' }));
     expect(await screen.findByRole('button', { name: /첫 매칭 채팅방/ })).toBeInTheDocument();
 
     MockIntersectionObserver.trigger();
