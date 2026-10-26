@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe('AuthBootstrapProvider', () => {
-  it('인증 복원 중에는 초안을 유지하고 비로그인이 확정된 뒤 초기화한다', async () => {
+  it('인증 복원 중에도 children을 렌더링하고 비로그인이 확정된 뒤 초안을 초기화한다', async () => {
     let finishRefresh!: () => void;
     const refreshGate = new Promise<void>((resolve) => (finishRefresh = resolve));
     useCarpoolCreateStore.getState().setOrigin({ name: '서울역', lat: 37.55, lng: 126.97 });
@@ -42,7 +42,8 @@ describe('AuthBootstrapProvider', () => {
     );
 
     expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
-    expect(screen.queryByText('anonymous')).not.toBeInTheDocument();
+    expect(screen.getByText('anonymous')).toBeInTheDocument();
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
 
     await act(async () => finishRefresh());
     await waitFor(() => expect(useCarpoolCreateStore.getState().draft.origin).toBeNull());
