@@ -4,6 +4,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 
 import { NotificationPage, NotificationPageView } from '@/_pages/notification';
+import type { Notification } from '@/entities/notification';
 import {
   useMarkAllNotificationsReadMutation,
   useMarkNotificationReadMutation,
@@ -61,6 +62,17 @@ const notifications = [
   },
 ];
 
+const carpoolRequestNotification: Notification = {
+  id: 3,
+  type: 'CARPOOL_REQUEST_RECEIVED',
+  event_id: 90,
+  target_chat_room_id: 301,
+  target_post_id: null,
+  content: '이루디님이 카풀을 요청했어요',
+  read_at: null,
+  created_at: '2026-09-04T09:02:00',
+};
+
 afterEach(() => {
   cleanup();
   navigation.push.mockReset();
@@ -69,8 +81,11 @@ afterEach(() => {
   mockUseNotificationListQuery.mockReset();
 });
 
-function mockNotificationQuery(tab: 'all' | 'unread') {
-  const items = tab === 'unread' ? [notifications[0]] : notifications;
+function mockNotificationQuery(
+  tab: 'all' | 'unread',
+  queryNotifications: readonly Notification[] = notifications,
+) {
+  const items = tab === 'unread' ? [queryNotifications[0]] : queryNotifications;
 
   mockUseNotificationListQuery.mockReturnValue({
     data: {
@@ -246,5 +261,18 @@ describe('NotificationPage', () => {
 
     expect(markNotificationRead).toHaveBeenCalledWith(notifications[1].id);
     expect(navigation.push).toHaveBeenCalledWith('/chatroom/11');
+  });
+
+  it('받은 카풀 요청 알림을 클릭하면 카풀 받은 요청 탭으로 이동한다', async () => {
+    const user = userEvent.setup();
+    const markNotificationRead = mockMarkNotificationReadMutation();
+    mockMarkAllNotificationsReadMutation();
+    mockNotificationQuery('all', [...notifications, carpoolRequestNotification]);
+    render(<NotificationPage />);
+
+    await user.click(screen.getByRole('button', { name: /이루디님이 카풀을 요청했어요/ }));
+
+    expect(markNotificationRead).toHaveBeenCalledWith(carpoolRequestNotification.id);
+    expect(navigation.push).toHaveBeenCalledWith('/chat?tab=carpool&direction=RECEIVED');
   });
 });
