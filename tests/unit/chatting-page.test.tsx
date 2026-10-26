@@ -1015,7 +1015,7 @@ describe('ChattingPage', () => {
 
     navigation.push.mockImplementation((path) => {
       requests.push('navigate');
-      expect(path).toBe('/');
+      expect(path).toBe('/chat');
     });
 
     server.use(
@@ -1033,9 +1033,12 @@ describe('ChattingPage', () => {
     renderChattingPage('501');
     await screen.findByRole('heading', { name: '8시 판교역' });
 
-    await user.click(screen.getByRole('link', { name: '뒤로가기' }));
+    const backLink = screen.getByRole('link', { name: '뒤로가기' });
+    expect(backLink).toHaveAttribute('href', '/chat');
 
-    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    await user.click(backLink);
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chat'));
     expect(requests).toEqual(['read-marker', 'navigate']);
   });
 
