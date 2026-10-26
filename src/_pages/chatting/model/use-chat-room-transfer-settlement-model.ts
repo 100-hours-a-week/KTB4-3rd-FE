@@ -81,38 +81,21 @@ export function useChatRoomTransferSettlementModel({
   }, [transferAnalysisQuery.error, transferAnalysisQuery.isError, transferAnalysisSettlementId]);
 
   const handleViewTransferProof = useCallback(
-    async (targetSettlementId: number, nickname: string) => {
+    (targetSettlementId: number, userId: number) => {
       if (!isTaxiPotHost) {
         return;
       }
 
-      try {
-        const response = await queryClient.fetchQuery(settlementQueries.status(targetSettlementId));
-        const matchingParticipants = response.data.participants.filter(
-          (participant) => participant.name === nickname,
-        );
-
-        if (matchingParticipants.length !== 1) {
-          useSnackbarStore
-            .getState()
-            .showSnackbar('송금자를 확인할 수 없어 인증 사진을 열지 못했어요', 'critical');
-          return;
-        }
-
-        setTransferProofTarget({
-          settlementId: targetSettlementId,
-          userId: matchingParticipants[0].user_id,
-        });
-      } catch (error) {
+      if (!Number.isSafeInteger(userId) || userId <= 0) {
         useSnackbarStore
           .getState()
-          .showSnackbar(
-            error instanceof Error ? error.message : '송금 내역을 불러오지 못했어요',
-            'critical',
-          );
+          .showSnackbar('송금자를 확인할 수 없어 인증 사진을 열지 못했어요', 'critical');
+        return;
       }
+
+      setTransferProofTarget({ settlementId: targetSettlementId, userId });
     },
-    [isTaxiPotHost, queryClient],
+    [isTaxiPotHost],
   );
 
   const handleRegisterTransferPhotoPicker = useCallback(

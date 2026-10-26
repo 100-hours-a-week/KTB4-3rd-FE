@@ -38,10 +38,16 @@ type MockChatMessage =
       type:
         | 'SYSTEM_METER_REQUESTED'
         | 'SYSTEM_SETTLEMENT_COMPLETED'
-        | 'SYSTEM_TRANSFER_DONE'
         | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
         | 'SYSTEM_TRANSFER_UNVERIFIED';
       content: string;
+      sender?: never;
+      settlement?: never;
+    })
+  | (MockChatMessageBase & {
+      type: 'SYSTEM_TRANSFER_DONE';
+      content: string;
+      user_id: number;
       sender?: never;
       settlement?: never;
     })
@@ -115,6 +121,7 @@ const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
     id: 1463,
     type: 'SYSTEM_TRANSFER_DONE',
     content: '애롱롱님이 송금을 완료했어요! 금액 13,000원',
+    user_id: 8,
     created_at: '2026-09-05T08:24:00.000Z',
   },
   {
