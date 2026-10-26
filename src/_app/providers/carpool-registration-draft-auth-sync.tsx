@@ -6,12 +6,22 @@ import { useAuthStore } from '@/entities/auth';
 import { getCurrentUser } from '@/entities/user';
 import { resetCarpoolRegistrationDraft } from '@/features/carpool-registration';
 
-export function CarpoolRegistrationDraftAuthSync() {
+type CarpoolRegistrationDraftAuthSyncProps = {
+  isBootstrapComplete?: boolean;
+};
+
+export function CarpoolRegistrationDraftAuthSync({
+  isBootstrapComplete = true,
+}: CarpoolRegistrationDraftAuthSyncProps) {
   const accessToken = useAuthStore((state) => state.accessToken);
   const currentUserIdRef = useRef<number | null>(null);
   const previousAccessTokenRef = useRef(accessToken);
 
   useEffect(() => {
+    if (!isBootstrapComplete) {
+      return;
+    }
+
     if (accessToken === null) {
       const hadAuthenticatedSession = previousAccessTokenRef.current !== null;
       previousAccessTokenRef.current = null;
@@ -47,7 +57,7 @@ export function CarpoolRegistrationDraftAuthSync() {
     return () => {
       isCurrentCheck = false;
     };
-  }, [accessToken]);
+  }, [accessToken, isBootstrapComplete]);
 
   return null;
 }

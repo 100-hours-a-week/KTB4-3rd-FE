@@ -21,7 +21,7 @@ afterEach(() => {
 });
 
 describe('AuthBootstrapProvider', () => {
-  it('인증 복원 중과 비로그인 확정 후에도 카풀 초안을 유지한다', async () => {
+  it('인증 복원 중과 비로그인 확정 후에도 익명 홈과 카풀 초안을 유지한다', async () => {
     let finishRefresh!: () => void;
     const refreshGate = new Promise<void>((resolve) => (finishRefresh = resolve));
     useCarpoolCreateStore.getState().setOrigin({ name: '서울역', lat: 37.55, lng: 126.97 });
@@ -42,7 +42,8 @@ describe('AuthBootstrapProvider', () => {
     );
 
     expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
-    expect(screen.queryByText('anonymous')).not.toBeInTheDocument();
+    expect(screen.getByText('anonymous')).toBeInTheDocument();
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
 
     await act(async () => finishRefresh());
     await waitFor(() => expect(screen.getByText('anonymous')).toBeInTheDocument());

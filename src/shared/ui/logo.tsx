@@ -30,7 +30,7 @@ const logoAssets: Record<LogoVariant, { height: number; src: string; width: numb
   },
   text: {
     height: 120,
-    src: '/logos/logo_text.svg',
+    src: '/logos/logo_text.webp',
     width: 272,
   },
   symbol: {
@@ -48,10 +48,26 @@ function resolveLogoSize(size: LogoSize): CSSProperties['height'] {
   return logoSizeTokens[size as LogoSizePreset] ?? size;
 }
 
+function resolveLogoImageSizes(size: LogoSize, width: number, height: number) {
+  const resolvedSize = resolveLogoSize(size);
+  let numericSize: number | string | undefined;
+
+  if (typeof resolvedSize === 'number') {
+    numericSize = resolvedSize;
+  } else if (typeof resolvedSize === 'string') {
+    numericSize = /^([0-9]+(?:\.[0-9]+)?)px$/.exec(resolvedSize)?.[1];
+  }
+
+  return numericSize === undefined
+    ? undefined
+    : `${Math.ceil(Number(numericSize) * (width / height))}px`;
+}
+
 export function Logo({ variant = 'full', size = 'md', href, alt, className, style }: LogoProps) {
   const asset = logoAssets[variant];
   const isLink = typeof href === 'string';
   const resolvedAlt = alt ?? (isLink ? '모여타' : '');
+  const imageSizes = resolveLogoImageSizes(size, asset.width, asset.height);
   const imageStyle: CSSProperties = {
     display: 'block',
     height: resolveLogoSize(size),
@@ -63,8 +79,9 @@ export function Logo({ variant = 'full', size = 'md', href, alt, className, styl
       aria-hidden={resolvedAlt === '' ? true : undefined}
       alt={resolvedAlt}
       height={asset.height}
-      unoptimized
+      unoptimized={asset.src.endsWith('.svg')}
       src={asset.src}
+      sizes={imageSizes}
       style={imageStyle}
       width={asset.width}
     />
