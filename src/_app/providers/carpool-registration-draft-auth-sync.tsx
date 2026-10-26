@@ -9,13 +9,22 @@ import { resetCarpoolRegistrationDraft } from '@/features/carpool-registration';
 export function CarpoolRegistrationDraftAuthSync() {
   const accessToken = useAuthStore((state) => state.accessToken);
   const currentUserIdRef = useRef<number | null>(null);
+  const previousAccessTokenRef = useRef(accessToken);
 
   useEffect(() => {
     if (accessToken === null) {
-      resetCarpoolRegistrationDraft();
+      const hadAuthenticatedSession = previousAccessTokenRef.current !== null;
+      previousAccessTokenRef.current = null;
+      currentUserIdRef.current = null;
+
+      if (hadAuthenticatedSession) {
+        resetCarpoolRegistrationDraft();
+      }
+
       return;
     }
 
+    previousAccessTokenRef.current = accessToken;
     let isCurrentCheck = true;
 
     void getCurrentUser(accessToken)
