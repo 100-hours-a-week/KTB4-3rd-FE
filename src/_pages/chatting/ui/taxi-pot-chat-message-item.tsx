@@ -36,7 +36,7 @@ export type TaxiPotTransferMessageProps = {
   onSendTransferPhoto?: (settlementId: number, file: File) => void;
   transferPhotoDisabled?: boolean;
   onRegisterTransferPhotoPicker?: (settlementId: number, openPicker: (() => void) | null) => void;
-  onViewTransferProof?: (settlementId: number, nickname: string) => void;
+  onViewTransferProof?: (settlementId: number, userId: number) => void;
   transferAmount?: number;
   transferSettlementId?: number;
   uploadingTransferPhoto?: boolean;
@@ -181,10 +181,11 @@ export function TaxiPotChatMessageItem({
         onViewReceipt={
           transfer?.isTaxiPotHost &&
           transferSettlementId !== undefined &&
+          message.transferUserId !== undefined &&
           transfer.onViewTransferProof
             ? () => {
                 if (transferSettlementId !== undefined) {
-                  transfer.onViewTransferProof?.(transferSettlementId, nickname);
+                  transfer.onViewTransferProof?.(transferSettlementId, message.transferUserId);
                 }
               }
             : undefined

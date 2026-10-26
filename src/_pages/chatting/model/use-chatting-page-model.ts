@@ -206,7 +206,7 @@ export function useChattingPageModel(roomId: string) {
       }
     }
 
-    router.push('/');
+    router.push('/chat');
   }, [lastMessageId, readMarkerMutation, roomId, router]);
 
   return {
