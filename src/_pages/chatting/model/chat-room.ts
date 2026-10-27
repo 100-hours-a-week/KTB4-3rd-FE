@@ -15,6 +15,18 @@ type ChatRoomNoticeMessage = {
   variant?: ChatNoticeVariant;
 };
 
+type ChatRoomSystemNoticeMessage = ChatRoomNoticeMessage & {
+  systemType?: Exclude<ChatSystemMessageType, 'SYSTEM_TRANSFER_DONE' | 'SYSTEM_TRANSFER_REQUESTED'>;
+  settlement?: never;
+  transferUserId?: never;
+};
+
+type ChatRoomTransferDoneMessage = ChatRoomNoticeMessage & {
+  systemType: 'SYSTEM_TRANSFER_DONE';
+  settlement?: never;
+  transferUserId: number;
+};
+
 export type ChatRoomMessage =
   | {
       id: string;
@@ -27,10 +39,8 @@ export type ChatRoomMessage =
       layout?: 'default' | 'tall' | 'large';
       loading?: boolean;
     }
-  | (ChatRoomNoticeMessage & {
-      systemType?: ChatSystemMessageType;
-      settlement?: never;
-    })
+  | ChatRoomSystemNoticeMessage
+  | ChatRoomTransferDoneMessage
   | (ChatRoomNoticeMessage & {
       systemType: 'SYSTEM_TRANSFER_REQUESTED';
       settlement: ChatSettlementSnapshot;
@@ -170,6 +180,17 @@ export function createChatRoomMessageFromApi(
       content: getSystemMessageContent(message),
       settlement: message.settlement,
       systemType: message.type,
+      variant: 'system',
+    };
+  }
+
+  if (message.type === 'SYSTEM_TRANSFER_DONE') {
+    return {
+      id: String(message.id),
+      kind: 'notice',
+      content: getSystemMessageContent(message),
+      systemType: message.type,
+      transferUserId: message.user_id,
       variant: 'system',
     };
   }

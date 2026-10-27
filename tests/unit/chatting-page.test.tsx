@@ -4,7 +4,12 @@ import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-libra
 import { http, HttpResponse } from 'msw';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { ChattingPage, createChatRoom, generalChatRoom } from '@/_pages/chatting';
+import {
+  ChattingPage,
+  createChatRoom,
+  createChatRoomMessageFromApi,
+  generalChatRoom,
+} from '@/_pages/chatting';
 import { ChatRoomContent } from '@/_pages/chatting/ui/chat-room-content';
 import { ChatMessageItem } from '@/_pages/chatting/ui/chat-message-item';
 import { TaxiPotChatMessageItem } from '@/_pages/chatting/ui/taxi-pot-chat-message-item';
@@ -1015,7 +1020,7 @@ describe('ChattingPage', () => {
 
     navigation.push.mockImplementation((path) => {
       requests.push('navigate');
-      expect(path).toBe('/');
+      expect(path).toBe('/chat');
     });
 
     server.use(
@@ -1033,9 +1038,12 @@ describe('ChattingPage', () => {
     renderChattingPage('501');
     await screen.findByRole('heading', { name: '8시 판교역' });
 
-    await user.click(screen.getByRole('link', { name: '뒤로가기' }));
+    const backLink = screen.getByRole('link', { name: '뒤로가기' });
+    expect(backLink).toHaveAttribute('href', '/chat');
 
-    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/'));
+    await user.click(backLink);
+
+    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chat'));
     expect(requests).toEqual(['read-marker', 'navigate']);
   });
 
@@ -1876,6 +1884,36 @@ describe('ChattingPage', () => {
     expect(screen.getByRole('region', { name: '방장의 정산 요청' }).parentElement).toHaveClass(
       'self-start',
     );
+  });
+
+  it('동명이인 송금 완료 메시지는 메시지의 user_id로 인증 사진 조회 대상을 전달한다', async () => {
+    const user = userEvent.setup();
+    const onViewTransferProof = vi.fn<(settlementId: number, userId: number) => void>();
+    const duplicateNickname = '동승자';
+    const message = createChatRoomMessageFromApi({
+      id: 1702,
+      type: 'SYSTEM_TRANSFER_DONE',
+      content: `${duplicateNickname}님이 송금을 완료했어요! 금액 6,000원`,
+      user_id: 8,
+      created_at: '2026-09-05T08:31:00.000Z',
+    });
+
+    render(
+      <TaxiPotChatMessageItem
+        index={0}
+        message={message}
+        onReport={() => {}}
+        transfer={{
+          isTaxiPotHost: true,
+          onViewTransferProof,
+          transferSettlementId: 77,
+        }}
+      />,
+    );
+
+    await user.click(screen.getByRole('button', { name: '인증사진 보기' }));
+
+    expect(onViewTransferProof).toHaveBeenCalledWith(77, 8);
   });
 
   it('ChatNotice는 메시지 목록 중앙에 배치한다', () => {

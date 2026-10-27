@@ -131,6 +131,12 @@ afterEach(() => {
 });
 
 describe('TaxiPotCreatePage', () => {
+  it('매칭 탭에서 진입한 등록 화면의 뒤로가기는 매칭 화면으로 이동한다', () => {
+    render(<TaxiPotCreatePage />, { wrapper: createQueryWrapper() });
+
+    expect(screen.getByRole('link', { name: '뒤로가기' })).toHaveAttribute('href', '/matching');
+  });
+
   it('계좌가 등록되지 않은 사용자가 진입하면 계좌 등록 Dialog를 표시한다', async () => {
     useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
