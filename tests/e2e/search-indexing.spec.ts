@@ -30,6 +30,34 @@ for (const path of indexablePaths) {
   });
 }
 
+test('/는 기본 SEO 메타데이터를 제공한다', async ({ request }) => {
+  const response = await request.get('/');
+
+  expect(response.ok()).toBe(true);
+  const html = await response.text();
+
+  expect(html).toContain('<title>모여타 | 지도 기반 동행 매칭 서비스</title>');
+  expect(html).toContain('name="description"');
+  expect(html).toContain('rel="canonical"');
+  expect(html).toContain('property="og:title"');
+  expect(html).toContain('name="twitter:card"');
+});
+
+test('/about는 서비스 JSON-LD를 제공한다', async ({ page }) => {
+  await page.goto('/about');
+
+  const jsonLdScript = page.locator('script[type="application/ld+json"]');
+  await expect(jsonLdScript).toHaveCount(1, { timeout: 10_000 });
+
+  const jsonLd = JSON.parse((await jsonLdScript.textContent()) ?? '') as {
+    '@graph': { '@type': string }[];
+  };
+
+  expect(jsonLd['@graph'].map((item) => item['@type'])).toEqual(
+    expect.arrayContaining(['Organization', 'WebSite', 'Service', 'WebPage']),
+  );
+});
+
 for (const path of excludedPaths) {
   test(`${path}는 검색 색인을 제외한다`, async ({ request }) => {
     const response = await request.get(path);
