@@ -10,7 +10,7 @@ type AuthBootstrapProviderProps = {
 };
 
 export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) {
-  const [isReady, setIsReady] = useState(false);
+  const [isBootstrapComplete, setIsBootstrapComplete] = useState(false);
   const bootstrapPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
@@ -29,7 +29,7 @@ export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) 
 
     void bootstrapPromise.finally(() => {
       if (isMounted) {
-        setIsReady(true);
+        setIsBootstrapComplete(true);
       }
     });
 
@@ -38,10 +38,10 @@ export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) 
     };
   }, []);
 
-  return isReady ? (
+  return (
     <>
-      <CarpoolRegistrationDraftAuthSync />
+      <CarpoolRegistrationDraftAuthSync isBootstrapComplete={isBootstrapComplete} />
       {children}
     </>
-  ) : null;
+  );
 }
