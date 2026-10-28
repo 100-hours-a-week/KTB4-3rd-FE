@@ -65,6 +65,14 @@ describe('Dialog', () => {
     );
   });
 
+  it('secondary 버튼 variant를 선택할 수 있다', () => {
+    render(<Dialog buttons="primarySecondary" defaultOpen secondaryVariant="ghost" title="제목" />);
+
+    expect(screen.getByRole('button', { name: '취소' })).toHaveClass(
+      'bg-[var(--color-bg-transparent)]',
+    );
+  });
+
   it('noChildren 변형은 본문 없이 footer만 렌더링한다', () => {
     render(<Dialog defaultOpen title="제목" />);
 

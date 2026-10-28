@@ -109,7 +109,14 @@ export function TaxiPotConfirmationPage() {
     }
 
     taxiPotMatchingMutation.mutate(payload, {
-      onSuccess: ({ data }) => router.push(`/chatroom/${data.chat_room_id}`),
+      onSuccess: ({ data }) => {
+        if (data.status === 'MATCHING') {
+          router.replace('/taxi-pots/matching');
+          return;
+        }
+
+        router.replace(`/chatroom/${data.chat_room_id}`);
+      },
       onError: (error) => {
         useSnackbarStore
           .getState()

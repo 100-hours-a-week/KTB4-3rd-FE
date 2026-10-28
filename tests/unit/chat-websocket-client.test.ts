@@ -5,7 +5,10 @@ import {
   getChatWebSocketUrl,
   type ChatWebSocketMessage,
 } from '@/entities/chat';
-import { emitMockSettlementAnalysisFinished } from '@/shared/api/mocks/chat-room-websocket.handlers';
+import {
+  emitMockSettlementAnalysisFinished,
+  emitMockTaxiPotMatched,
+} from '@/shared/api/mocks/chat-room-websocket.handlers';
 import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 
 const clients: ChatWebSocketClient[] = [];
@@ -104,6 +107,24 @@ describe('ChatWebSocketClient', () => {
         remaining_transfer_attempts: 1,
       },
     ]);
+  });
+
+  it('택시팟 매칭 완료 이벤트를 매칭 콜백으로 전달한다', async () => {
+    const matchedMessages: unknown[] = [];
+    const client = new ChatWebSocketClient({
+      accessToken: MOCK_ACCESS_TOKEN,
+      onTaxiPotMatched: (message) => matchedMessages.push(message),
+      subscribeTaxiPotMatching: true,
+    });
+    clients.push(client);
+
+    await client.connect();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    emitMockTaxiPotMatched({ type: 'MATCHED', taxi_pot_id: 7, chat_room_id: 9 });
+
+    await waitForFinishedMessages(matchedMessages, 1);
+
+    expect(matchedMessages).toEqual([{ type: 'MATCHED', taxi_pot_id: 7, chat_room_id: 9 }]);
   });
 
   it('API base path를 포함한 웹소켓 주소를 파생한다', () => {

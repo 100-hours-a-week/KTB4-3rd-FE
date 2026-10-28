@@ -618,7 +618,7 @@ describe('TaxiPotConfirmationPage', () => {
     );
   });
 
-  it('매칭 시작에 성공하면 응답의 채팅방으로 이동한다', async () => {
+  it('매칭 시작에 성공하면 매칭 중 페이지로 이동한다', async () => {
     useAuthStore.getState().setAccessToken('mock-access-token');
     const store = useMatchingRegistrationStore.getState();
     store.setOrigin({ name: '판교역', lat: 37.3945678, lng: 127.11123456 });
@@ -629,7 +629,7 @@ describe('TaxiPotConfirmationPage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: '매칭 시작하기' }));
 
-    await waitFor(() => expect(navigation.push).toHaveBeenCalledWith('/chatroom/599'));
+    await waitFor(() => expect(navigation.replace).toHaveBeenCalledWith('/taxi-pots/matching'));
   });
 
   it('등록 필드가 누락되면 API 요청 없이 누락된 영역을 안내한다', () => {
