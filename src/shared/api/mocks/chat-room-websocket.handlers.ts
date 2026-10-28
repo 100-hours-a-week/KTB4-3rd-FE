@@ -142,6 +142,10 @@ const settlementSubscriptions = new Map<
   string,
   { client: WebSocketHandlerConnection['client']; subscriptionId: string }
 >();
+const taxiPotSubscriptions = new Map<
+  string,
+  { client: WebSocketHandlerConnection['client']; subscriptionId: string }
+>();
 const processedMessages = new Map<string, MockChatMessage>();
 const pendingMessages = new Map<string, MockChatMessage[]>();
 const previewTimers = new Map<string, ReturnType<typeof setTimeout>[]>();
@@ -250,6 +254,11 @@ function removeClientSubscriptions(client: WebSocketHandlerConnection['client'])
       settlementSubscriptions.delete(subscriptionKey);
     }
   }
+  for (const [subscriptionKey, subscription] of taxiPotSubscriptions) {
+    if (subscription.client.id === client.id) {
+      taxiPotSubscriptions.delete(subscriptionKey);
+    }
+  }
 }
 
 function sendMessageToSubscription(subscription: ChatRoomSubscription, message: MockChatMessage) {
@@ -319,6 +328,27 @@ export function emitMockSettlementAnalysisFinished(message: MockSettlementAnalys
   }
 }
 
+export function emitMockTaxiPotMatched(message: {
+  type: 'MATCHED';
+  taxi_pot_id: number;
+  chat_room_id: number;
+}) {
+  for (const [key, subscription] of taxiPotSubscriptions) {
+    subscription.client.send(
+      createFrame(
+        'MESSAGE',
+        {
+          destination: '/user/sub/taxi-pot',
+          subscription: subscription.subscriptionId,
+          'message-id': key,
+          'content-type': 'application/json',
+        },
+        JSON.stringify(message),
+      ),
+    );
+  }
+}
+
 function scheduleChatUiPreview(subscription: ChatRoomSubscription) {
   if (subscription.roomId !== MOCK_CHAT_UI_PREVIEW_ROOM_ID) {
     return;
@@ -370,6 +400,10 @@ function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: St
     settlementSubscriptions.set(`${client.id}:${subscriptionId}`, { client, subscriptionId });
     return;
   }
+  if (destination === '/user/sub/taxi-pot') {
+    taxiPotSubscriptions.set(`${client.id}:${subscriptionId}`, { client, subscriptionId });
+    return;
+  }
   if (destination === '/user/sub/errors') {
     return;
   }
@@ -403,6 +437,7 @@ function handleUnsubscribe(client: WebSocketHandlerConnection['client'], frame: 
   if (subscriptionId) {
     subscriptions.delete(`${client.id}:${subscriptionId}`);
     settlementSubscriptions.delete(`${client.id}:${subscriptionId}`);
+    taxiPotSubscriptions.delete(`${client.id}:${subscriptionId}`);
   }
 }
 
