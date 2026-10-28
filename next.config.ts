@@ -34,6 +34,11 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  experimental: {
+    // 홈 초기 렌더링에서 CSS 요청을 기다리지 않도록 production CSS를 head에 인라인한다.
+    // Next.js 16에서는 production build에서만 적용된다.
+    inlineCss: true,
+  },
   env: {
     NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
   },
