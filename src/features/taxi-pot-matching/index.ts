@@ -8,3 +8,7 @@ export { taxiPotMatchingQueries } from './api/taxi-pot-matching.queries';
 export { useCancelTaxiPotMatchingMutation } from './model/use-cancel-taxi-pot-matching';
 export { useCurrentTaxiPotQuery } from './model/use-current-taxi-pot-query';
 export { useTaxiPotMatchingWebSocket } from './model/use-taxi-pot-matching-websocket';
+export {
+  TaxiPotMatchingDialog,
+  type TaxiPotMatchingDialogProps,
+} from './ui/taxi-pot-matching-dialog';
