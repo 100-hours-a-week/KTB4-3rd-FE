@@ -97,7 +97,7 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute bottom-0 left-1/2 -ml-[59.5px] h-[73px] w-[119px] origin-bottom transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+          'pointer-events-none absolute bottom-0 left-1/2 -ml-[59.5px] h-[73px] w-[119px] origin-bottom transition-[opacity,transform] duration-300 ease-[cubic-bezier(0.22,2.1,0.36,1)] motion-reduce:transition-none',
           isSelected
             ? 'scale-x-100 scale-y-100 opacity-100'
             : 'scale-x-[0.286] scale-y-[0.466] opacity-0',
@@ -111,12 +111,18 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
           unoptimized
           width={CONGESTION_PIN_SELECTED_WIDTH}
         />
+      </span>
+
+      <span
+        aria-hidden="true"
+        className={cn(
+          'pointer-events-none absolute bottom-0 left-1/2 -ml-[59.5px] h-[73px] w-[119px] transition-opacity duration-100 ease-out motion-reduce:transition-none',
+          isSelected ? 'opacity-100 delay-200' : 'opacity-0 delay-0',
+        )}
+      >
         <Text
           as="span"
-          className={cn(
-            'absolute top-4 left-[10px] text-left whitespace-pre-line text-black transition-opacity duration-150 ease-out motion-reduce:transition-none',
-            isSelected ? 'opacity-100 delay-75' : 'opacity-0',
-          )}
+          className="absolute top-4 left-[10px] text-left whitespace-pre-line text-black"
           variant="t1Regular"
         >
           {selectedMessage}
