@@ -62,8 +62,7 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
       aria-label={ariaLabel}
       aria-pressed={isSelected}
       className={cn(
-        'relative block h-[34px] w-[34px] shrink-0 origin-bottom overflow-visible border-0 bg-transparent p-0 transition-[width,height] duration-200 ease-out motion-reduce:transition-none',
-        isSelected && 'h-[73px] w-[119px]',
+        'relative block h-[34px] w-[34px] shrink-0 origin-bottom overflow-visible border-0 bg-transparent p-0',
         className,
       )}
       data-congestion-pin={variant}
@@ -73,8 +72,8 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
       <span
         aria-hidden="true"
         className={cn(
-          'absolute bottom-0 left-1/2 h-[34px] w-[34px] -translate-x-1/2 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
-          isSelected ? 'scale-75 opacity-0' : 'scale-100 opacity-100',
+          'absolute inset-0 h-[34px] w-[34px] transition-opacity duration-200 ease-out motion-reduce:transition-none',
+          isSelected ? 'opacity-0' : 'opacity-100',
         )}
       >
         <Image
@@ -98,8 +97,10 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
       <span
         aria-hidden="true"
         className={cn(
-          'absolute inset-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
-          isSelected ? 'scale-100 opacity-100' : 'pointer-events-none scale-75 opacity-0',
+          'pointer-events-none absolute bottom-0 left-1/2 -ml-[59.5px] h-[73px] w-[119px] origin-bottom transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+          isSelected
+            ? 'scale-x-100 scale-y-100 opacity-100'
+            : 'scale-x-[0.286] scale-y-[0.466] opacity-0',
         )}
       >
         <Image
@@ -112,7 +113,10 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
         />
         <Text
           as="span"
-          className="absolute top-4 left-[10px] text-left whitespace-pre-line text-black"
+          className={cn(
+            'absolute top-4 left-[10px] text-left whitespace-pre-line text-black transition-opacity duration-150 ease-out motion-reduce:transition-none',
+            isSelected ? 'opacity-100 delay-75' : 'opacity-0',
+          )}
           variant="t1Regular"
         >
           {selectedMessage}
