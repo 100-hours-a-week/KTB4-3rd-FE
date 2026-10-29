@@ -42,6 +42,13 @@ export const Delayed: Story = {
   },
 };
 
+export const Selected: Story = {
+  args: {
+    isSelected: true,
+    variant: 'delayed',
+  },
+};
+
 export const Accident: Story = {
   args: {
     variant: 'accident',

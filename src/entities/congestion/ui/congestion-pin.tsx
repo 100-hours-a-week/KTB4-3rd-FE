@@ -1,4 +1,4 @@
-import type { HTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes } from 'react';
 import Image from 'next/image';
 
 import { cn } from '@/shared/lib/cn';
@@ -13,12 +13,16 @@ export const congestionPinVariants = [
 ] as const;
 export type CongestionPinVariant = (typeof congestionPinVariants)[number];
 
-export type CongestionPinProps = Omit<HTMLAttributes<HTMLSpanElement>, 'children'> & {
+export type CongestionPinProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children'> & {
+  isSelected?: boolean;
+  selectedMessage?: string;
   variant?: CongestionPinVariant;
 };
 
 const CONGESTION_PIN_VECTOR_HEIGHT = 32.5826;
 const CONGESTION_PIN_WIDTH = 34;
+const CONGESTION_PIN_SELECTED_HEIGHT = 70.9258;
+const CONGESTION_PIN_SELECTED_WIDTH = 119;
 
 const congestionPinSources: Record<CongestionPinVariant, string> = {
   accident: '/map-pins/congestion/accident.svg',
@@ -45,32 +49,75 @@ const congestionPinTextColors: Record<CongestionPinVariant, 'fg.neutral' | 'fg.n
 };
 
 export function CongestionPin({ className, variant = 'busy', ...props }: CongestionPinProps) {
-  const ariaLabel = props['aria-label'];
+  const {
+    isSelected = false,
+    'aria-label': ariaLabel = `${congestionPinLabels[variant]} 혼잡도 핀`,
+    selectedMessage = '퇴근길 인파로 지연이\n5분정도 있어요',
+    ...buttonProps
+  } = props;
 
   return (
-    <span
-      {...props}
-      aria-hidden={ariaLabel ? undefined : (props['aria-hidden'] ?? true)}
-      className={cn('relative block h-[34px] w-[34px] shrink-0', className)}
+    <button
+      {...buttonProps}
+      aria-label={ariaLabel}
+      aria-pressed={isSelected}
+      className={cn(
+        'relative block h-[34px] w-[34px] shrink-0 origin-bottom overflow-visible border-0 bg-transparent p-0 transition-[width,height] duration-200 ease-out motion-reduce:transition-none',
+        isSelected && 'h-[73px] w-[119px]',
+        className,
+      )}
       data-congestion-pin={variant}
+      data-congestion-pin-state={isSelected ? 'selected' : 'default'}
+      type="button"
     >
-      <Image
-        alt=""
+      <span
         aria-hidden="true"
-        className="absolute top-0 left-0 block max-w-none"
-        height={CONGESTION_PIN_VECTOR_HEIGHT}
-        src={congestionPinSources[variant]}
-        unoptimized
-        width={CONGESTION_PIN_WIDTH}
-      />
-      <Text
-        as="span"
-        className="absolute top-[5px] left-[6px] whitespace-nowrap"
-        color={congestionPinTextColors[variant]}
-        variant="t2Regular"
+        className={cn(
+          'absolute bottom-0 left-1/2 h-[34px] w-[34px] -translate-x-1/2 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+          isSelected ? 'scale-75 opacity-0' : 'scale-100 opacity-100',
+        )}
       >
-        {congestionPinLabels[variant]}
-      </Text>
-    </span>
+        <Image
+          alt=""
+          className="absolute top-0 left-0 block max-w-none"
+          height={CONGESTION_PIN_VECTOR_HEIGHT}
+          src={congestionPinSources[variant]}
+          unoptimized
+          width={CONGESTION_PIN_WIDTH}
+        />
+        <Text
+          as="span"
+          className="absolute top-[5px] left-[6px] whitespace-nowrap"
+          color={congestionPinTextColors[variant]}
+          variant="t2Regular"
+        >
+          {congestionPinLabels[variant]}
+        </Text>
+      </span>
+
+      <span
+        aria-hidden="true"
+        className={cn(
+          'absolute inset-0 transition-[opacity,transform] duration-200 ease-out motion-reduce:transition-none',
+          isSelected ? 'scale-100 opacity-100' : 'pointer-events-none scale-75 opacity-0',
+        )}
+      >
+        <Image
+          alt=""
+          className="absolute top-0 left-0 block max-w-none"
+          height={CONGESTION_PIN_SELECTED_HEIGHT}
+          src="/map-pins/congestion/delayed-selected.svg"
+          unoptimized
+          width={CONGESTION_PIN_SELECTED_WIDTH}
+        />
+        <Text
+          as="span"
+          className="absolute top-4 left-[10px] text-left whitespace-pre-line text-black"
+          variant="t1Regular"
+        >
+          {selectedMessage}
+        </Text>
+      </span>
+    </button>
   );
 }
