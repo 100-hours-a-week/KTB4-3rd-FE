@@ -1,7 +1,11 @@
 import type { Metadata } from 'next';
 
+import { PostLocationPage } from '@/_pages/post-location';
+
 export const metadata: Metadata = {
   title: '게시글 위치 선택',
 };
 
-export { PostLocationPage as default } from '@/_pages/post-location';
+export default function PostLocationRoute() {
+  return <PostLocationPage />;
+}
