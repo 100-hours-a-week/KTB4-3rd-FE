@@ -58,7 +58,7 @@ export function CongestionToggle({
       <button
         aria-pressed={isSelected}
         className={cn(
-          'absolute top-0 flex h-[34px] items-center justify-center whitespace-nowrap border-0 bg-transparent p-0',
+          'absolute top-0 flex h-[34px] items-center justify-center whitespace-nowrap border-0 bg-transparent p-0 transition-[left,width] duration-200 ease-out motion-reduce:transition-none',
           optionPositionClassNames[selectedValue][option],
         )}
         onClick={() => handleValueChange(option)}
@@ -89,7 +89,7 @@ export function CongestionToggle({
       <div
         aria-hidden="true"
         className={cn(
-          'absolute top-0 flex h-[34px] items-center rounded-[30px] bg-[var(--color-bg-brand-solid)]',
+          'absolute top-0 flex h-[34px] items-center rounded-[30px] bg-[var(--color-bg-brand-solid)] transition-[left,width] duration-200 ease-out motion-reduce:transition-none',
           selectedBackgroundClassNames[selectedValue],
         )}
       />
