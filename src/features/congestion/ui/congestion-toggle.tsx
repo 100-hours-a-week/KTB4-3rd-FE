@@ -1,3 +1,7 @@
+'use client';
+
+import { useState } from 'react';
+
 import { cn } from '@/shared/lib/cn';
 import { Text } from '@/shared/ui/text';
 
@@ -7,6 +11,7 @@ export type CongestionToggleValue = (typeof congestionToggleValues)[number];
 export type CongestionToggleProps = {
   className?: string;
   defaultValue?: CongestionToggleValue;
+  onValueChange?: (value: CongestionToggleValue) => void;
   value?: CongestionToggleValue;
 };
 
@@ -32,19 +37,32 @@ const optionPositionClassNames: Record<
 export function CongestionToggle({
   className,
   defaultValue = 'congestion',
+  onValueChange,
   value,
 }: CongestionToggleProps) {
-  const selectedValue = value ?? defaultValue;
+  const [uncontrolledValue, setUncontrolledValue] = useState(defaultValue);
+  const selectedValue = value ?? uncontrolledValue;
+
+  const handleValueChange = (nextValue: CongestionToggleValue) => {
+    if (value === undefined) {
+      setUncontrolledValue(nextValue);
+    }
+
+    onValueChange?.(nextValue);
+  };
 
   const renderOption = (option: CongestionToggleValue, label: string) => {
     const isSelected = selectedValue === option;
 
     return (
-      <span
+      <button
+        aria-pressed={isSelected}
         className={cn(
-          'absolute top-0 flex h-[34px] items-center justify-center whitespace-nowrap',
+          'absolute top-0 flex h-[34px] items-center justify-center whitespace-nowrap border-0 bg-transparent p-0',
           optionPositionClassNames[selectedValue][option],
         )}
+        onClick={() => handleValueChange(option)}
+        type="button"
       >
         <Text
           as="span"
@@ -54,7 +72,7 @@ export function CongestionToggle({
         >
           {label}
         </Text>
-      </span>
+      </button>
     );
   };
 
