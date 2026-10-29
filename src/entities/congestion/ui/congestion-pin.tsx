@@ -72,7 +72,7 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
       <span
         aria-hidden="true"
         className={cn(
-          'absolute inset-0 h-[34px] w-[34px]',
+          'absolute inset-0 h-[34px] w-[34px] transition-opacity duration-200 ease-out motion-reduce:transition-none',
           isSelected ? 'opacity-0' : 'opacity-100',
         )}
       >
@@ -97,8 +97,9 @@ export function CongestionPin({ className, variant = 'busy', ...props }: Congest
       <span
         aria-hidden="true"
         className={cn(
-          'pointer-events-none absolute bottom-0 left-1/2 -ml-[59.5px] h-[73px] w-[119px] origin-bottom transition-transform duration-300 ease-[cubic-bezier(0.22,2.1,0.36,1)] motion-reduce:transition-none',
+          'pointer-events-none absolute bottom-0 left-1/2 -ml-[59.5px] h-[73px] w-[119px] origin-bottom transition-[opacity,transform] duration-300 motion-reduce:transition-none',
           isSelected ? 'scale-x-100 scale-y-100' : 'scale-x-[0.286] scale-y-[0.466] opacity-0',
+          isSelected ? 'ease-[cubic-bezier(0.22,2.1,0.36,1)]' : 'ease-out',
         )}
       >
         <Image
