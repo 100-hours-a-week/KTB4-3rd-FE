@@ -7,6 +7,7 @@ import { Text } from '@/shared/ui/text';
 
 export const congestionToggleValues = ['congestion', 'community'] as const;
 export type CongestionToggleValue = (typeof congestionToggleValues)[number];
+export const CONGESTION_TOGGLE_TRANSITION_DURATION_MS = 200;
 
 export type CongestionToggleProps = {
   className?: string;

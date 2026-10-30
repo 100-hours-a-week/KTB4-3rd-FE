@@ -1,4 +1,5 @@
 export {
+  CONGESTION_TOGGLE_TRANSITION_DURATION_MS,
   CongestionToggle,
   congestionToggleValues,
   type CongestionToggleProps,
