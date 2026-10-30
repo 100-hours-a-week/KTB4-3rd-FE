@@ -1,3 +1,4 @@
+export { congestionQueries } from './api/congestion.queries';
 export {
   CONGESTION_TOGGLE_TRANSITION_DURATION_MS,
   CongestionToggle,
