@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const indexablePaths = ['/', '/posts/1?type=community'];
+const indexablePaths = ['/', '/congestion', '/matching', '/posts/1?type=community'];
 const excludedPaths = [
   '/login',
   '/signup',
@@ -8,7 +8,6 @@ const excludedPaths = [
   '/chat',
   '/chatting',
   '/chatroom/101',
-  '/matching',
   '/matching/location',
   '/matching/location/adjust?field=destination',
   '/matching/time',
