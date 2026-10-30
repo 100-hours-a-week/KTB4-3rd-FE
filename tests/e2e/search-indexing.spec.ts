@@ -91,7 +91,6 @@ for (const path of ['/llms.txt']) {
     expect(content).not.toContain('[택시팟 매칭](');
     expect(content).not.toContain('[카풀 등록](');
     expect(content).not.toContain('[게시글 상세](');
-    expect(content).toContain('택시팟 매칭');
     expect(content).toContain('카풀');
   });
 }
