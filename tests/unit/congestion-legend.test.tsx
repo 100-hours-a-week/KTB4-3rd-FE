@@ -20,4 +20,21 @@ describe('CongestionLegend', () => {
     expect(screen.getByText('사고')).toBeInTheDocument();
     expect(container.querySelectorAll('[data-congestion-legend-marker]')).toHaveLength(5);
   });
+
+  it('화면별 제목과 혼잡도 구간을 전달할 수 있다', () => {
+    const { container } = render(
+      <CongestionLegend
+        heading="혼잡도"
+        items={[
+          { color: '#CCE9FF', label: '원활·여유', range: '0~40' },
+          { color: '#FBDC65', label: '혼잡', range: '41~70' },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('heading', { name: '혼잡도' })).toBeInTheDocument();
+    expect(screen.getByText('0~40')).toBeInTheDocument();
+    expect(screen.getByText('41~70')).toBeInTheDocument();
+    expect(container.querySelectorAll('[data-congestion-legend-marker]')).toHaveLength(2);
+  });
 });
