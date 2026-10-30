@@ -21,5 +21,3 @@ await assertExists(publicSource, 'public');
 
 await cp(staticSource, resolve(standaloneRoot, '.next/static'), { recursive: true, force: true });
 await cp(publicSource, resolve(standaloneRoot, 'public'), { recursive: true, force: true });
-
-console.log('Standalone 정적 파일 준비 완료');
