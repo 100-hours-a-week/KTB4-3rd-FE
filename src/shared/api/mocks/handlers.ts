@@ -10,6 +10,7 @@ import { carpoolRequestsHandlers } from './carpool-requests.handlers';
 import { carpoolCreateHandlers } from './carpool-create.handlers';
 import { carpoolLeaveHandlers } from './carpool-leave.handlers';
 import { communityCommentsHandlers } from './community-comments.handlers';
+import { congestionHandlers } from './congestion.handlers';
 import { healthHandlers } from './health.handlers';
 import { homeHandlers } from './home.handlers';
 import { joinCompanionHandlers } from './join-companion.handlers';
@@ -34,6 +35,7 @@ export const handlers = [
   ...carpoolCreateHandlers,
   ...carpoolLeaveHandlers,
   ...communityCommentsHandlers,
+  ...congestionHandlers,
   ...notificationHandlers,
   ...pushTokenHandlers,
   ...carpoolRequestDecisionHandlers,
