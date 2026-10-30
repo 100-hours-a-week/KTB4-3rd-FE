@@ -71,7 +71,7 @@ class FakeMap implements KakaoMap {
 }
 
 class FakeMarker implements KakaoMarker {
-  constructor(options: { position: KakaoLatLng; title?: string }) {
+  constructor(options: { position: KakaoLatLng; title?: string; zIndex?: number }) {
     markerOptions.push(options);
   }
 
@@ -93,7 +93,7 @@ const clusterClickHandlers: ((cluster: KakaoCluster) => void)[] = [];
 const boundsChangedHandlers: (() => void)[] = [];
 let mapEventHandlers: Record<string, (() => void)[]> = {};
 const clustererOptions: { styles?: KakaoMarkerClustererStyle[] }[] = [];
-const markerOptions: { position: KakaoLatLng; title?: string }[] = [];
+const markerOptions: { position: KakaoLatLng; title?: string; zIndex?: number }[] = [];
 const markerImageSources: string[] = [];
 const markerImageOptions: { height: number; offsetX: number; offsetY: number; width: number }[] =
   [];
@@ -532,6 +532,34 @@ describe('Map', () => {
     expect(fakeMap.panTo).toHaveBeenCalledOnce();
   });
 
+  it('does not move the map when marker focus on click is disabled', async () => {
+    const onMarkerClick = vi.fn<(marker: MapMarker) => void>();
+
+    render(
+      <Map
+        apiKey="test-key"
+        markerFocusOnClick={false}
+        markers={[{ id: 'post-1', position: { lat: 37.51, lng: 127.02 }, title: '게시글' }]}
+        onMarkerClick={onMarkerClick}
+      />,
+    );
+
+    await waitFor(() => expect(markerClickHandlers).toHaveLength(1));
+    markerClickHandlers[0]?.();
+
+    expect(onMarkerClick).toHaveBeenCalledWith({
+      id: 'post-1',
+      position: { lat: 37.51, lng: 127.02 },
+      title: '게시글',
+    });
+    expect(fakeMap.setLevel).not.toHaveBeenCalled();
+    expect(fakeMap.panTo).not.toHaveBeenCalled();
+
+    clusterClickHandlers[0]?.({ getCenter: () => new FakeLatLng(37.52, 127.03) });
+
+    expect(fakeMap.setLevel).not.toHaveBeenCalled();
+  });
+
   it('uses a custom marker image when one is provided', async () => {
     render(
       <Map
@@ -551,6 +579,19 @@ describe('Map', () => {
     );
 
     await waitFor(() => expect(markerImageSources).toContain('/map-pins/accompany-marker.svg'));
+  });
+
+  it('passes the marker z-index to Kakao markers', async () => {
+    render(
+      <Map
+        apiKey="test-key"
+        markers={[{ id: 'post-1', position: { lat: 37.51, lng: 127.02 }, zIndex: 10 }]}
+      />,
+    );
+
+    await waitFor(() => expect(markerOptions).toHaveLength(1));
+
+    expect(markerOptions[0]?.zIndex).toBe(10);
   });
 
   it('scales a selected marker while keeping its map position anchored', async () => {
