@@ -8,8 +8,9 @@
   ],
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
+    "build": "next build && pnpm prepare:standalone",
+    "prepare:standalone": "node scripts/prepare-standalone.mjs",
+    "start": "pnpm prepare:standalone && node .next/standalone/server.js",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint .",
     "format": "oxfmt .",
@@ -46,6 +47,7 @@
   },
   "devDependencies": {
     "@chromatic-com/storybook": "^5.3.1",
+    "@next/bundle-analyzer": "^16.4.3",
     "@playwright/test": "^1.63.0",
     "@storybook/nextjs-vite": "^10.6.0",
     "@tailwindcss/postcss": "^4.3.3",

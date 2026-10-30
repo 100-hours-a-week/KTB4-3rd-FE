@@ -9,14 +9,10 @@ import {
   ClarityProvider,
   LoginRequiredProvider,
   MockApiProvider,
+  PushNotificationClickHandler,
   QueryProvider,
   SnackbarProvider,
 } from '@/_app/providers';
-import {
-  PushNotificationClickHandler,
-  PushNotificationForegroundListener,
-  PushTokenRegistrationSync,
-} from '@/features/push-token';
 
 import './globals.css';
 
@@ -57,8 +53,6 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <CarpoolRequestAuthCacheSync />
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
-                    <PushTokenRegistrationSync />
-                    <PushNotificationForegroundListener />
                     <PushNotificationClickHandler />
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
                   </AuthBootstrapProvider>

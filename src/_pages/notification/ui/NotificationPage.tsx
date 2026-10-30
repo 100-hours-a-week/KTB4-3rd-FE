@@ -13,7 +13,7 @@ import {
   useMarkNotificationReadMutation,
   useNotificationListQuery,
 } from '@/features/notification-center';
-import { PushNotificationPlatformGuide } from '@/features/push-token';
+import { NotificationPushBootstrap, PushNotificationPlatformGuide } from '@/features/push-token';
 import { BackButton } from '@/shared/ui/back-button';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Button } from '@/shared/ui/button';
@@ -263,19 +263,22 @@ export function NotificationPage() {
   );
 
   return (
-    <NotificationPageView
-      activeTab={activeTab}
-      hasNextPage={hasNextPage}
-      isError={isError && notifications.length === 0}
-      isFetchingNextPage={isFetchingNextPage}
-      isMarkingAllRead={isMarkingAllRead}
-      isLoading={isLoading}
-      notifications={notifications}
-      onLoadMore={onLoadMore}
-      onMarkAllRead={onMarkAllRead}
-      onNotificationClick={onNotificationClick}
-      onRetry={() => void refetch()}
-      onTabChange={setActiveTab}
-    />
+    <>
+      <NotificationPushBootstrap />
+      <NotificationPageView
+        activeTab={activeTab}
+        hasNextPage={hasNextPage}
+        isError={isError && notifications.length === 0}
+        isFetchingNextPage={isFetchingNextPage}
+        isMarkingAllRead={isMarkingAllRead}
+        isLoading={isLoading}
+        notifications={notifications}
+        onLoadMore={onLoadMore}
+        onMarkAllRead={onMarkAllRead}
+        onNotificationClick={onNotificationClick}
+        onRetry={() => void refetch()}
+        onTabChange={setActiveTab}
+      />
+    </>
   );
 }

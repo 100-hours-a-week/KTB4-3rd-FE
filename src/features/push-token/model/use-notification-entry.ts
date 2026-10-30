@@ -2,7 +2,6 @@
 
 import { useCallback, useState } from 'react';
 
-import { getFcmRegistrationToken } from './get-fcm-registration-token';
 import { useRegisterPushTokenMutation } from './use-register-push-token-mutation';
 
 type UseNotificationEntryOptions = {
@@ -32,7 +31,8 @@ export function useNotificationEntry({ onOpenNotifications }: UseNotificationEnt
         void Notification.requestPermission()
           .then((permission) => {
             if (permission === 'granted') {
-              void getFcmRegistrationToken()
+              void import('./get-fcm-registration-token')
+                .then(({ getFcmRegistrationToken }) => getFcmRegistrationToken())
                 .then((token) => (token ? mutateAsync({ token }) : undefined))
                 .catch(() => {
                   // Push registration is best-effort; it must not block notification inbox access.
