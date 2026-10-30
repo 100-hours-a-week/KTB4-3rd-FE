@@ -49,6 +49,16 @@ export const Selected: Story = {
   },
 };
 
+export const SelectedAll: Story = {
+  render: () => (
+    <div className="flex items-center gap-4">
+      {congestionPinVariants.map((variant) => (
+        <CongestionPin key={variant} isSelected variant={variant} />
+      ))}
+    </div>
+  ),
+};
+
 export const Accident: Story = {
   args: {
     variant: 'accident',

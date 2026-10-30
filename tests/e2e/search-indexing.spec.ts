@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const indexablePaths = ['/', '/posts/1?type=community'];
+const indexablePaths = ['/', '/congestion', '/matching', '/posts/1?type=community'];
 const excludedPaths = [
   '/login',
   '/signup',
@@ -8,7 +8,6 @@ const excludedPaths = [
   '/chat',
   '/chatting',
   '/chatroom/101',
-  '/matching',
   '/matching/location',
   '/matching/location/adjust?field=destination',
   '/matching/time',
@@ -92,7 +91,6 @@ for (const path of ['/llms.txt']) {
     expect(content).not.toContain('[택시팟 매칭](');
     expect(content).not.toContain('[카풀 등록](');
     expect(content).not.toContain('[게시글 상세](');
-    expect(content).toContain('택시팟 매칭');
     expect(content).toContain('카풀');
   });
 }

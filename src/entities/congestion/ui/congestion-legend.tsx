@@ -3,7 +3,13 @@ import type { HTMLAttributes } from 'react';
 import { cn } from '@/shared/lib/cn';
 import { Text } from '@/shared/ui/text';
 
-const congestionLegendItems = [
+export type CongestionLegendItem = {
+  color: string;
+  label: string;
+  range: string;
+};
+
+const defaultCongestionLegendItems: readonly CongestionLegendItem[] = [
   {
     label: '원활·여유',
     range: '대기 없음',
@@ -31,9 +37,17 @@ const congestionLegendItems = [
   },
 ] as const;
 
-export type CongestionLegendProps = HTMLAttributes<HTMLDivElement>;
+export type CongestionLegendProps = HTMLAttributes<HTMLDivElement> & {
+  heading?: string;
+  items?: readonly CongestionLegendItem[];
+};
 
-export function CongestionLegend({ className, ...props }: CongestionLegendProps) {
+export function CongestionLegend({
+  className,
+  heading = '범례',
+  items = defaultCongestionLegendItems,
+  ...props
+}: CongestionLegendProps) {
   return (
     <div
       aria-label="혼잡도 범례"
@@ -47,11 +61,11 @@ export function CongestionLegend({ className, ...props }: CongestionLegendProps)
     >
       <div className="flex flex-col gap-2">
         <Text as="h2" color="fg.neutral" fontSize="t2" fontWeight="bold" lineHeight="t3">
-          범례
+          {heading}
         </Text>
 
         <div className="flex flex-col gap-[7px]">
-          {congestionLegendItems.map(({ color, label, range }) => (
+          {items.map(({ color, label, range }) => (
             <div className="flex h-[15px] items-center" key={label}>
               <div className="flex items-center gap-1">
                 <span

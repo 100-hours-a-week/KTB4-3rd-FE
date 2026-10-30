@@ -77,6 +77,7 @@ export type MapProps = {
   defaultLevel?: number;
   locateOnMount?: boolean;
   markerFocusOffset?: { x?: number; y?: number };
+  markerFocusOnClick?: boolean;
   markerFocusLevel?: number;
   markers?: readonly MapMarker[];
   onLoadError?: (error: MapLoadError) => void;
@@ -176,6 +177,7 @@ function MapComponent(
     defaultLevel = DEFAULT_LEVEL,
     locateOnMount = false,
     markerFocusOffset,
+    markerFocusOnClick = true,
     markerFocusLevel,
     markers = [],
     onLoadError,
@@ -231,6 +233,7 @@ function MapComponent(
   const onLoadErrorRef = useRef(onLoadError);
   const onMarkerClickRef = useRef(onMarkerClick);
   const markerFocusOffsetRef = useRef(markerFocusOffset);
+  const markerFocusOnClickRef = useRef(markerFocusOnClick);
   const markerFocusLevelRef = useRef(markerFocusLevel);
   const onUserLocationChangeRef = useRef(onUserLocationChange);
   const onUserLocationErrorRef = useRef(onUserLocationError);
@@ -241,6 +244,7 @@ function MapComponent(
     onLoadErrorRef.current = onLoadError;
     onMarkerClickRef.current = onMarkerClick;
     markerFocusOffsetRef.current = markerFocusOffset;
+    markerFocusOnClickRef.current = markerFocusOnClick;
     markerFocusLevelRef.current = markerFocusLevel;
     onUserLocationChangeRef.current = onUserLocationChange;
     onUserLocationErrorRef.current = onUserLocationError;
@@ -250,6 +254,7 @@ function MapComponent(
     onLoadError,
     onMarkerClick,
     markerFocusOffset,
+    markerFocusOnClick,
     markerFocusLevel,
     onUserLocationChange,
     onUserLocationError,
@@ -622,32 +627,35 @@ function MapComponent(
           : createMarkerImage(kakao.maps, 'post', markerScale),
         position,
         title: markerData.title,
+        zIndex: markerData.zIndex ?? 0,
       });
 
       kakao.maps.event.addListener(marker, 'click', () => {
-        const focusOffset = markerFocusOffsetRef.current;
-        const targetLevel = Math.min(
-          Math.max(markerFocusLevelRef.current ?? map.getLevel() - 1, 1),
-          14,
-        );
-        const shouldChangeLevel =
-          markerFocusLevelRef.current === undefined || map.getLevel() !== targetLevel;
+        if (markerFocusOnClickRef.current) {
+          const focusOffset = markerFocusOffsetRef.current;
+          const targetLevel = Math.min(
+            Math.max(markerFocusLevelRef.current ?? map.getLevel() - 1, 1),
+            14,
+          );
+          const shouldChangeLevel =
+            markerFocusLevelRef.current === undefined || map.getLevel() !== targetLevel;
 
-        runMapMovement('selection', () => {
-          if (shouldChangeLevel) {
-            pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
-            map.setLevel(targetLevel, {
-              anchor: position,
-              animate: !focusOffset,
-            });
-          }
+          runMapMovement('selection', () => {
+            if (shouldChangeLevel) {
+              pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+              map.setLevel(targetLevel, {
+                anchor: position,
+                animate: !focusOffset,
+              });
+            }
 
-          if (focusOffset) {
-            map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
-          } else {
-            map.panTo(position);
-          }
-        });
+            if (focusOffset) {
+              map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
+            } else {
+              map.panTo(position);
+            }
+          });
+        }
 
         onMarkerClickRef.current?.(markerData);
       });
@@ -664,6 +672,10 @@ function MapComponent(
       });
 
       kakao.maps.event.addListener(clusterer, 'clusterclick', (cluster) => {
+        if (!markerFocusOnClickRef.current) {
+          return;
+        }
+
         const nextLevel = Math.max(map.getLevel() - 1, 1);
 
         runMapMovement('zoom', () => {
