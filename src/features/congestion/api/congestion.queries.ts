@@ -1,6 +1,5 @@
 import { queryOptions } from '@tanstack/react-query';
 
-import { getAccessToken } from '@/entities/auth';
 import {
   getCongestionSpotDetail,
   getCongestionSpots,
@@ -43,7 +42,7 @@ export const congestionQueries = {
           throw new Error('혼잡도 조회 영역이 없습니다.');
         }
 
-        return getCongestionSpots(conditions, await getAccessToken(), signal);
+        return getCongestionSpots(conditions, signal);
       },
     });
   },
@@ -57,7 +56,7 @@ export const congestionQueries = {
           throw new Error('혼잡도 지점이 없어 상세를 조회할 수 없습니다.');
         }
 
-        return getCongestionSpotDetail(spotId, await getAccessToken(), signal);
+        return getCongestionSpotDetail(spotId, signal);
       },
     }),
 };

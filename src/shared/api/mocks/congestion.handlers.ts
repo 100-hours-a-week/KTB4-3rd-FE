@@ -1,6 +1,6 @@
 import { http, HttpResponse } from 'msw';
 
-import { errorResponse, getBearerToken, MOCK_ACCESS_TOKEN } from './mock-utils';
+import { errorResponse } from './mock-utils';
 
 type MockCongestionStatus = 'SMOOTH' | 'CONGESTED' | 'CROWDED' | 'DELAYED' | 'ACCIDENT';
 type ViewportField = 'sw_lat' | 'sw_lng' | 'ne_lat' | 'ne_lng';
@@ -93,10 +93,6 @@ const congestionSpotDetails = new Map([
   ],
 ]);
 
-function unauthorizedResponse() {
-  return errorResponse('인증이 필요합니다', 'UNAUTHORIZED', null, 401);
-}
-
 function invalidViewportResponse(field: ViewportField | null) {
   return HttpResponse.json(
     {
@@ -158,11 +154,7 @@ function getDetailMessage(detail: { analyzing: boolean; reason: string | null })
 }
 
 export const congestionHandlers = [
-  http.get('*/congestion/spots/:spotId', ({ params, request }) => {
-    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
-      return unauthorizedResponse();
-    }
-
+  http.get('*/congestion/spots/:spotId', ({ params }) => {
     const spotId = Number(params.spotId);
 
     if (spotId === 500) {
@@ -181,10 +173,6 @@ export const congestionHandlers = [
     });
   }),
   http.get('*/congestion/spots', ({ request }) => {
-    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
-      return unauthorizedResponse();
-    }
-
     const viewport = parseViewport(request);
 
     if (viewport instanceof Response) {
