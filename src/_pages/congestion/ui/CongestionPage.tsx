@@ -213,6 +213,7 @@ export function CongestionPage() {
       <BottomNav
         activeItem="home"
         className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2"
+        prefetch={false}
       />
     </div>
   );
