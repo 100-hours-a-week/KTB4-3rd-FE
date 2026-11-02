@@ -44,7 +44,7 @@ function LocationSelectionPreview(args: ComponentProps<typeof Map>) {
     const apiKey = args.apiKey ?? process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? '';
 
     loadKakaoMaps(apiKey)
-      .then(() => loadKakaoServices())
+      .then(() => loadKakaoServices(apiKey))
       .then((services) => {
         const geocoder = new services.Geocoder();
 

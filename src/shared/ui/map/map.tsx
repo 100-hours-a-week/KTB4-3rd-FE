@@ -2,6 +2,7 @@
 
 import { Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
+import { preconnect, preload } from 'react-dom';
 import {
   useCallback,
   useEffect,
@@ -21,6 +22,7 @@ import { cn } from '@/shared/lib/cn';
 import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 
+import { getKakaoMapSdkUrl } from './model/kakao-map-sdk-url';
 import { loadKakaoMaps } from './model/map-loader';
 import {
   DEFAULT_MAP_CENTER,
@@ -51,6 +53,27 @@ import { MyLocation } from './my-location';
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
 const SELECTED_MARKER_SCALE = 1.15;
+
+function getSdkBootstrapScript(sdkUrl: string) {
+  const safeUrl = JSON.stringify(sdkUrl).replace(/</g, '\\u003c');
+
+  return `(() => {
+    if (window.kakao?.maps || document.querySelector('script[data-moyeota-kakao-map]')) return;
+    const script = document.createElement('script');
+    script.setAttribute('data-moyeota-kakao-map', 'true');
+    script.async = true;
+    script.onload = () => {
+      try {
+        if (!window.kakao?.maps) throw new Error('Kakao Maps SDK is unavailable');
+        window.kakao.maps.load(() => {});
+      } catch { script.remove(); }
+    };
+    script.onerror = () => script.remove();
+    script.src = ${safeUrl};
+    document.head.appendChild(script);
+  })();`;
+}
+
 const BRAND_CLUSTER_STYLE = {
   background:
     'radial-gradient(circle, var(--color-bg-brand-solid) 0%, var(--color-bg-brand-solid) 42%, var(--transparent) 100%)',
@@ -195,6 +218,12 @@ function MapComponent(
   }: MapProps,
   ref: ForwardedRef<MapRef>,
 ) {
+  if (apiKey) {
+    preload(getKakaoMapSdkUrl(apiKey), { as: 'script' });
+    preconnect('https://t1.kakaocdn.net');
+    preconnect('https://mts.kakaocdn.net');
+  }
+
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<KakaoMap | null>(null);
   const kakaoRef = useRef<KakaoNamespace | null>(null);
@@ -870,6 +899,12 @@ function MapComponent(
       className={cn('relative min-h-[320px] w-full overflow-hidden bg-[#e9eef2]', className)}
       data-testid="map"
     >
+      {apiKey ? (
+        <script
+          data-kakao-map-bootstrap
+          dangerouslySetInnerHTML={{ __html: getSdkBootstrapScript(getKakaoMapSdkUrl(apiKey)) }}
+        />
+      ) : null}
       <div
         aria-label="지도"
         className="absolute inset-0"
