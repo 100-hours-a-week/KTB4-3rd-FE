@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
 import { pretendard } from './fonts';
@@ -7,6 +6,7 @@ import {
   AuthBootstrapProvider,
   CarpoolRequestAuthCacheSync,
   ClarityProvider,
+  GoogleAnalytics,
   LoginRequiredProvider,
   MockApiProvider,
   PushNotificationClickHandler,

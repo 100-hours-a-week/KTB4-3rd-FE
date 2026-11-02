@@ -9,6 +9,11 @@ let kakaoServicesPromise: Promise<NonNullable<KakaoNamespace['maps']['services']
 
 declare global {
   var kakao: KakaoNamespace | undefined;
+  // Window's interface must be augmented for same-origin iframe access.
+  // eslint-disable-next-line typescript/consistent-type-definitions
+  interface Window {
+    kakao?: KakaoNamespace;
+  }
 }
 
 function loadKakaoNamespace(
