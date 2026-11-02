@@ -16,8 +16,23 @@ const createKakaoNamespace = (withServices = true): KakaoNamespace =>
     },
   }) as unknown as KakaoNamespace;
 
+function getServicesFrame() {
+  const frame = document.querySelector<HTMLIFrameElement>('iframe[data-moyeota-kakao-services]');
+  const frameWindow = frame?.contentWindow;
+  const script = frame?.contentDocument?.querySelector('script');
+
+  if (!frameWindow || !script) {
+    throw new Error('카카오 서비스 SDK 프레임이 생성되지 않았습니다.');
+  }
+
+  return { frameWindow, script };
+}
+
 afterEach(() => {
   document.head.innerHTML = '';
+  document
+    .querySelectorAll('iframe[data-moyeota-kakao-services]')
+    .forEach((frame) => frame.remove());
   delete window.kakao;
   vi.resetModules();
 });
@@ -27,7 +42,7 @@ describe('map-loader', () => {
     delete window.kakao;
   });
 
-  it('services와 clusterer 라이브러리를 지도 SDK와 함께 로드한다', async () => {
+  it('지도 SDK는 clusterer만 로드한다', async () => {
     const { loadKakaoMaps } = await import('@/shared/ui/map/model/map-loader');
     const loadPromise = loadKakaoMaps('javascript-key');
     const script = document.querySelector<HTMLScriptElement>(
@@ -39,9 +54,8 @@ describe('map-loader', () => {
       throw new Error('Kakao Maps SDK script가 생성되지 않았습니다.');
     }
 
-    expect(new URL(script.src).searchParams.get('libraries')).toBe('services,clusterer');
-    expect(script.src).toContain('libraries=services,clusterer');
-    expect(document.querySelector('script[data-moyeota-kakao-services]')).toBeNull();
+    expect(new URL(script.src).searchParams.get('libraries')).toBe('clusterer');
+    expect(document.querySelector('iframe[data-moyeota-kakao-services]')).toBeNull();
 
     window.kakao = createKakaoNamespace();
     script.dispatchEvent(new Event('load'));
@@ -102,10 +116,38 @@ describe('map-loader', () => {
     }
   });
 
-  it('services 라이브러리가 없으면 원인을 포함한 오류를 반환한다', async () => {
+  it('services는 요청할 때 별도 문서에서 한 번만 로드한다', async () => {
     const { loadKakaoServices } = await import('@/shared/ui/map/model/map-loader');
     window.kakao = createKakaoNamespace(false);
+    const first = loadKakaoServices('javascript-key');
+    const second = loadKakaoServices('javascript-key');
+    const { frameWindow, script } = getServicesFrame();
 
-    await expect(loadKakaoServices()).rejects.toThrow('services 라이브러리를 확인하세요.');
+    expect(first).toBe(second);
+    expect(new URL(script.src).searchParams.get('libraries')).toBe('services');
+    expect(window.kakao.maps.services).toBeUndefined();
+
+    const kakao = createKakaoNamespace();
+    frameWindow.kakao = kakao;
+    script.dispatchEvent(new Event('load'));
+
+    await expect(first).resolves.toBe(kakao.maps.services);
+    expect(window.kakao.maps.services).toBeUndefined();
+  });
+
+  it('services 로딩이 실패하면 프레임을 제거하고 재시도할 수 있다', async () => {
+    const { loadKakaoServices } = await import('@/shared/ui/map/model/map-loader');
+    const first = loadKakaoServices('javascript-key');
+    getServicesFrame().script.dispatchEvent(new Event('error'));
+
+    await expect(first).rejects.toThrow('카카오 장소 조회 서비스를 불러오지 못했습니다.');
+    expect(document.querySelector('iframe[data-moyeota-kakao-services]')).toBeNull();
+
+    const second = loadKakaoServices('javascript-key');
+    const { frameWindow, script } = getServicesFrame();
+    const kakao = createKakaoNamespace();
+    frameWindow.kakao = kakao;
+    script.dispatchEvent(new Event('load'));
+    await expect(second).resolves.toBe(kakao.maps.services);
   });
 });

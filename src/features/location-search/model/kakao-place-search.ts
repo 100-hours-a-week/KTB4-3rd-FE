@@ -20,7 +20,7 @@ function toLocationSearchResult(place: KakaoPlace): LocationSearchResult {
 export async function searchKakaoPlaces(keyword: string): Promise<LocationSearchResult[]> {
   const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? '';
   await loadKakaoMaps(apiKey);
-  const services = await loadKakaoServices();
+  const services = await loadKakaoServices(apiKey);
 
   return new Promise((resolve, reject) => {
     const places = new services.Places();
