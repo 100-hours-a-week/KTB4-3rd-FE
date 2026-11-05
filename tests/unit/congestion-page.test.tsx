@@ -116,6 +116,7 @@ describe('CongestionPage', () => {
               items: [
                 {
                   id: 5,
+                  type: 'STATION',
                   name: '판교역',
                   lat: 37.3947,
                   lng: 127.1112,
@@ -124,6 +125,7 @@ describe('CongestionPage', () => {
                 },
                 {
                   id: 12,
+                  type: 'STATION',
                   name: '정자역',
                   lat: 37.3667,
                   lng: 127.108,
