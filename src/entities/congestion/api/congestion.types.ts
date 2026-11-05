@@ -2,6 +2,8 @@ import type { ApiResponse } from '@/shared/api/types';
 
 export type CongestionSpotStatus = 'SMOOTH' | 'CONGESTED' | 'CROWDED' | 'DELAYED' | 'ACCIDENT';
 
+export type CongestionSpotType = 'ROUTE' | 'STATION';
+
 export type CongestionViewport = {
   sw_lat: number;
   sw_lng: number;
@@ -11,6 +13,7 @@ export type CongestionViewport = {
 
 export type CongestionSpot = {
   id: number;
+  type: CongestionSpotType;
   name: string;
   lat: number;
   lng: number;
@@ -27,6 +30,8 @@ export type CongestionSpotsData = {
 export type CongestionSpotsResponse = ApiResponse<CongestionSpotsData>;
 
 export type CongestionSpotDetail = {
+  id: number;
+  type: CongestionSpotType;
   name: string;
   lat: number;
   lng: number;

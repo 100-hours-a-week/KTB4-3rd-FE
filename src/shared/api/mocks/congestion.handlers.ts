@@ -11,6 +11,7 @@ const VIEWPORT_FIELDS: ViewportField[] = ['sw_lat', 'sw_lng', 'ne_lat', 'ne_lng'
 const congestionSpots = [
   {
     id: 5,
+    type: 'STATION' as const,
     name: '판교역',
     lat: 37.3947,
     lng: 127.1112,
@@ -19,6 +20,7 @@ const congestionSpots = [
   },
   {
     id: 12,
+    type: 'STATION' as const,
     name: '정자역',
     lat: 37.3667,
     lng: 127.108,
@@ -27,6 +29,7 @@ const congestionSpots = [
   },
   {
     id: 18,
+    type: 'STATION' as const,
     name: '강남역',
     lat: 37.4979,
     lng: 127.0276,
@@ -35,6 +38,7 @@ const congestionSpots = [
   },
 ] satisfies readonly {
   id: number;
+  type: 'ROUTE' | 'STATION';
   name: string;
   lat: number;
   lng: number;
@@ -46,6 +50,8 @@ const congestionSpotDetails = new Map([
   [
     5,
     {
+      id: 5,
+      type: 'STATION' as const,
       name: '판교역',
       lat: 37.3947,
       lng: 127.1112,
@@ -58,6 +64,8 @@ const congestionSpotDetails = new Map([
   [
     12,
     {
+      id: 12,
+      type: 'STATION' as const,
       name: '정자역',
       lat: 37.3667,
       lng: 127.108,
@@ -70,6 +78,8 @@ const congestionSpotDetails = new Map([
   [
     13,
     {
+      id: 13,
+      type: 'STATION' as const,
       name: '판교역',
       lat: 37.3947,
       lng: 127.1112,
@@ -82,12 +92,28 @@ const congestionSpotDetails = new Map([
   [
     14,
     {
+      id: 14,
+      type: 'STATION' as const,
       name: '판교역',
       lat: 37.3947,
       lng: 127.1112,
       status: null,
       reason: null,
       window_end: null,
+      analyzing: false,
+    },
+  ],
+  [
+    18,
+    {
+      id: 18,
+      type: 'STATION' as const,
+      name: '강남역',
+      lat: 37.4979,
+      lng: 127.0276,
+      status: 'SMOOTH' as const,
+      reason: null,
+      window_end: '2026-10-27T08:10:00',
       analyzing: false,
     },
   ],
@@ -164,7 +190,7 @@ export const congestionHandlers = [
     const detail = congestionSpotDetails.get(spotId);
 
     if (!Number.isSafeInteger(spotId) || spotId <= 0 || !detail) {
-      return errorResponse('정보를 불러오지 못했어요', 'NOT_FOUND', null, 404);
+      return errorResponse('정보를 불러오지 못했어요', 'SPOT_NOT_FOUND', null, 404);
     }
 
     return HttpResponse.json({

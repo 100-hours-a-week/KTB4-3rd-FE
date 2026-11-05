@@ -50,6 +50,7 @@ describe('혼잡도 조회 API', () => {
         items: [
           {
             id: 5,
+            type: 'STATION',
             name: '판교역',
             lat: 37.3947,
             lng: 127.1112,
@@ -58,6 +59,7 @@ describe('혼잡도 조회 API', () => {
           },
           {
             id: 12,
+            type: 'STATION',
             name: '정자역',
             lat: 37.3667,
             lng: 127.108,
@@ -66,6 +68,7 @@ describe('혼잡도 조회 API', () => {
           },
           {
             id: 18,
+            type: 'STATION',
             name: '강남역',
             lat: 37.4979,
             lng: 127.0276,
@@ -117,6 +120,8 @@ describe('혼잡도 조회 API', () => {
     expect(response).toEqual({
       message: '조회에 성공했습니다',
       data: {
+        id: 5,
+        type: 'STATION',
         name: '판교역',
         lat: 37.3947,
         lng: 127.1112,
@@ -135,7 +140,7 @@ describe('혼잡도 조회 API', () => {
 
     expect(withoutReason).toMatchObject({
       message: '혼잡 원인 정보 없음',
-      data: { status: 'CONGESTED', reason: null, analyzing: false },
+      data: { id: 12, type: 'STATION', status: 'CONGESTED', reason: null, analyzing: false },
     });
     expect(analyzing).toMatchObject({
       message: '혼잡 원인 분석 중',
@@ -143,7 +148,20 @@ describe('혼잡도 조회 API', () => {
     });
     expect(expired).toMatchObject({
       message: '혼잡 원인 정보 없음',
-      data: { status: null, reason: null, window_end: null, analyzing: false },
+      data: {
+        id: 14,
+        type: 'STATION',
+        status: null,
+        reason: null,
+        window_end: null,
+        analyzing: false,
+      },
+    });
+
+    const smooth = await getCongestionSpotDetail(18);
+
+    expect(smooth).toMatchObject({
+      data: { id: 18, type: 'STATION', status: 'SMOOTH', reason: null },
     });
   });
 
@@ -151,7 +169,7 @@ describe('혼잡도 조회 API', () => {
     await expect(getCongestionSpotDetail(999)).rejects.toMatchObject({
       name: 'ApiError',
       status: 404,
-      code: 'NOT_FOUND',
+      code: 'SPOT_NOT_FOUND',
       field: null,
     });
   });
@@ -173,6 +191,8 @@ describe('혼잡도 조회 API', () => {
         return HttpResponse.json({
           message: '조회에 성공했습니다',
           data: {
+            id: 5,
+            type: 'STATION',
             name: '판교역',
             lat: 37.3947,
             lng: 127.1112,
