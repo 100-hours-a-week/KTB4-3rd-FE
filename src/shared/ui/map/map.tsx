@@ -74,6 +74,38 @@ function getSdkBootstrapScript(sdkUrl: string) {
   })();`;
 }
 
+// The early bootstrap and React effect coordinate through the container to create one map.
+type MapBootstrapContainer = HTMLDivElement & {
+  __moyeotaMapBootstrap?: { claimed: boolean; map?: KakaoMap };
+};
+
+function getEarlyMapBootstrapScript(center: MapCoordinate, level: number) {
+  const options = JSON.stringify({ center, level }).replace(/</g, '\\u003c');
+
+  return `(() => {
+    const container = document.currentScript?.previousElementSibling;
+    if (!container) return;
+    const state = container.__moyeotaMapBootstrap ||= { claimed: false };
+    const createMap = () => {
+      try {
+        window.kakao.maps.load(() => {
+          if (state.claimed || state.map || !container.isConnected) return;
+          try {
+            const options = ${options};
+            const maps = window.kakao.maps;
+            state.map = new maps.Map(container, {
+              center: new maps.LatLng(options.center.lat, options.center.lng),
+              level: options.level,
+            });
+          } catch { container.replaceChildren(); }
+        });
+      } catch {}
+    };
+    if (window.kakao?.maps) createMap();
+    else document.querySelector('script[data-moyeota-kakao-map]')?.addEventListener('load', createMap, { once: true });
+  })();`;
+}
+
 const BRAND_CLUSTER_STYLE = {
   background:
     'radial-gradient(circle, var(--color-bg-brand-solid) 0%, var(--color-bg-brand-solid) 42%, var(--transparent) 100%)',
@@ -90,6 +122,7 @@ type MapStatus = 'loading' | 'ready' | 'error';
 
 export type MapProps = {
   apiKey?: string;
+  bootstrapEarly?: boolean;
   center?: MapCoordinate;
   children?: ReactNode;
   className?: string;
@@ -190,6 +223,7 @@ function getMarkerFocusCenter(
 function MapComponent(
   {
     apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
+    bootstrapEarly = false,
     center,
     centerChangeSource = 'programmatic',
     children,
@@ -224,7 +258,7 @@ function MapComponent(
     preconnect('https://mts.kakaocdn.net');
   }
 
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  const mapContainerRef = useRef<MapBootstrapContainer>(null);
   const mapRef = useRef<KakaoMap | null>(null);
   const kakaoRef = useRef<KakaoNamespace | null>(null);
   const clustererRef = useRef<KakaoMarkerClusterer | null>(null);
@@ -433,6 +467,12 @@ function MapComponent(
     awaitingIdleSequenceRef.current = null;
     isDraggingRef.current = false;
 
+    const container = mapContainerRef.current;
+    if (bootstrapEarly && container) {
+      const state = (container.__moyeotaMapBootstrap ??= { claimed: false });
+      state.claimed = true;
+    }
+
     loadKakaoMaps(apiKey ?? '')
       .then((kakao) => {
         if (cancelled || !mapContainerRef.current) {
@@ -440,10 +480,16 @@ function MapComponent(
         }
 
         const maps = kakao.maps;
-        const map = new maps.Map(mapContainerRef.current, {
-          center: new maps.LatLng(initialCenterRef.current.lat, initialCenterRef.current.lng),
-          level: defaultLevel,
-        });
+        const state = bootstrapEarly ? mapContainerRef.current.__moyeotaMapBootstrap : undefined;
+        const map =
+          state?.map ??
+          new maps.Map(mapContainerRef.current, {
+            center: new maps.LatLng(initialCenterRef.current.lat, initialCenterRef.current.lng),
+            level: defaultLevel,
+          });
+        if (state) {
+          delete state.map;
+        }
 
         mapRef.current = map;
         kakaoRef.current = kakao;
@@ -586,6 +632,7 @@ function MapComponent(
   }, [
     apiKey,
     beginMapMovement,
+    bootstrapEarly,
     defaultLevel,
     emitInitialMapState,
     runMapMovement,
@@ -905,13 +952,27 @@ function MapComponent(
           dangerouslySetInnerHTML={{ __html: getSdkBootstrapScript(getKakaoMapSdkUrl(apiKey)) }}
         />
       ) : null}
+      {/* Kakao owns this subtree; React must not reconcile tiles created before hydration. */}
       <div
         aria-label="지도"
         className="absolute inset-0"
+        dangerouslySetInnerHTML={bootstrapEarly ? { __html: '' } : undefined}
         data-testid="map-container"
         ref={mapContainerRef}
         role="application"
+        suppressHydrationWarning={bootstrapEarly}
       />
+      {apiKey && bootstrapEarly ? (
+        <script
+          data-kakao-map-early-bootstrap
+          dangerouslySetInnerHTML={{
+            __html: getEarlyMapBootstrapScript(
+              center ?? defaultCenter ?? markerLocation ?? DEFAULT_MAP_CENTER,
+              defaultLevel,
+            ),
+          }}
+        />
+      ) : null}
 
       {status === 'ready' && userLocationPoint ? (
         <MyLocation

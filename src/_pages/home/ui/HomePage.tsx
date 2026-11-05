@@ -91,6 +91,7 @@ export function HomePage() {
 
         <main className="relative h-[calc(100dvh-72px)] min-h-0">
           <Map
+            bootstrapEarly
             center={map.center}
             className="h-full"
             clusterMarkers

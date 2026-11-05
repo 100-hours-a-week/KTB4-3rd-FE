@@ -13,6 +13,12 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
   },
+  argTypes: {
+    bootstrapEarly: {
+      control: 'boolean',
+      description: '지도 컨테이너를 React hydration 전에 초기화합니다.',
+    },
+  },
 } satisfies Meta<typeof Map>;
 
 export default meta;
