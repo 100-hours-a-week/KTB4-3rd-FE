@@ -95,6 +95,7 @@ export function HomePage() {
             center={map.center}
             className="h-full"
             clusterMarkers
+            preloadBackground
             markerFocusLevel={2}
             markerFocusOffset={{ y: 160 }}
             markers={map.markers}

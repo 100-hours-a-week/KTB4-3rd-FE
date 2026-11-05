@@ -18,6 +18,10 @@ const meta = {
       control: 'boolean',
       description: '지도 컨테이너를 React hydration 전에 초기화합니다.',
     },
+    preloadBackground: {
+      control: 'boolean',
+      description: '화면 해상도에 맞는 카카오 지도 배경 이미지를 높은 우선순위로 preload합니다.',
+    },
   },
 } satisfies Meta<typeof Map>;
 

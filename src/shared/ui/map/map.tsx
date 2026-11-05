@@ -53,6 +53,8 @@ import { MyLocation } from './my-location';
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
 const SELECTED_MARKER_SCALE = 1.15;
+const KAKAO_MAP_BACKGROUND_IMAGE_1X = '//t1.kakaocdn.net/mapjsapi/images/bg_tile.png';
+const KAKAO_MAP_BACKGROUND_IMAGE_2X = '//t1.kakaocdn.net/mapjsapi/images/2x/bg_tile.png';
 
 function getSdkBootstrapScript(sdkUrl: string) {
   const safeUrl = JSON.stringify(sdkUrl).replace(/</g, '\\u003c');
@@ -123,6 +125,7 @@ type MapStatus = 'loading' | 'ready' | 'error';
 export type MapProps = {
   apiKey?: string;
   bootstrapEarly?: boolean;
+  preloadBackground?: boolean;
   center?: MapCoordinate;
   children?: ReactNode;
   className?: string;
@@ -224,6 +227,7 @@ function MapComponent(
   {
     apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
     bootstrapEarly = false,
+    preloadBackground = false,
     center,
     centerChangeSource = 'programmatic',
     children,
@@ -254,6 +258,18 @@ function MapComponent(
 ) {
   if (apiKey) {
     preload(getKakaoMapSdkUrl(apiKey), { as: 'script' });
+    if (preloadBackground) {
+      preload(KAKAO_MAP_BACKGROUND_IMAGE_1X, {
+        as: 'image',
+        fetchPriority: 'high',
+        media: '(max-resolution: 1.49dppx)',
+      });
+      preload(KAKAO_MAP_BACKGROUND_IMAGE_2X, {
+        as: 'image',
+        fetchPriority: 'high',
+        media: '(min-resolution: 1.5dppx)',
+      });
+    }
     preconnect('https://t1.kakaocdn.net');
     preconnect('https://mts.kakaocdn.net');
   }
