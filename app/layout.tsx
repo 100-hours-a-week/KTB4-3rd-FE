@@ -13,6 +13,7 @@ import {
   QueryProvider,
   SnackbarProvider,
 } from '@/_app/providers';
+import { NotificationPushBootstrap } from '@/features/push-token';
 
 import './globals.css';
 
@@ -54,6 +55,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
                     <PushNotificationClickHandler />
+                    <NotificationPushBootstrap />
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
                   </AuthBootstrapProvider>
                 </SnackbarProvider>
