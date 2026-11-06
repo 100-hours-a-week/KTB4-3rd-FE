@@ -7,5 +7,6 @@ export type {
   CongestionSpotsData,
   CongestionSpotsResponse,
   CongestionSpotStatus,
+  CongestionSpotType,
   CongestionViewport,
 } from './congestion.types';

@@ -2,9 +2,7 @@ import { QueryClient } from '@tanstack/react-query';
 import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
-import { useAuthStore } from '@/entities/auth';
 import { congestionQueries } from '@/features/congestion';
-import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
 import { server } from '@/shared/api/mocks/server';
 
 const viewport = { sw_lat: 37.3, sw_lng: 127, ne_lat: 37.6, ne_lng: 127.2 };
@@ -20,7 +18,6 @@ function createQueryClient() {
 afterEach(() => {
   clients.forEach((queryClient) => queryClient.clear());
   clients.length = 0;
-  useAuthStore.getState().clearTokens();
   server.resetHandlers();
 });
 
@@ -36,11 +33,9 @@ describe('혼잡도 query factory', () => {
     expect(congestionQueries.detail(null).enabled).toBe(false);
   });
 
-  it('인증 토큰을 사용해 혼잡도 핀 목록을 조회한다', async () => {
-    let authorization: string | null = null;
+  it('인증 없이 혼잡도 핀 목록을 조회한다', async () => {
     server.use(
-      http.get('*/congestion/spots', ({ request }) => {
-        authorization = request.headers.get('authorization');
+      http.get('*/congestion/spots', () => {
         return HttpResponse.json({
           message: '조회에 성공했습니다',
           data: {
@@ -60,17 +55,13 @@ describe('혼잡도 query factory', () => {
         });
       }),
     );
-    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
 
     const response = await createQueryClient().fetchQuery(congestionQueries.spots(viewport));
 
-    expect(authorization).toBe(`Bearer ${MOCK_ACCESS_TOKEN}`);
     expect(response.data.items[0]?.id).toBe(5);
   });
 
-  it('인증 토큰을 사용해 혼잡도 핀 상세를 조회한다', async () => {
-    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
-
+  it('인증 없이 혼잡도 핀 상세를 조회한다', async () => {
     const response = await createQueryClient().fetchQuery(congestionQueries.detail(5));
 
     expect(response.data).toMatchObject({

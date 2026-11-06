@@ -4,7 +4,6 @@ import type { CongestionSpotsResponse, CongestionViewport } from './congestion.t
 
 export function getCongestionSpots(
   query: CongestionViewport,
-  accessToken: string,
   signal?: AbortSignal,
 ): Promise<CongestionSpotsResponse> {
   const searchParams = new URLSearchParams({
@@ -16,6 +15,5 @@ export function getCongestionSpots(
 
   return apiFetch<CongestionSpotsResponse>(`/congestion/spots?${searchParams.toString()}`, {
     signal,
-    token: accessToken,
   });
 }
