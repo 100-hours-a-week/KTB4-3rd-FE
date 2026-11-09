@@ -1,4 +1,4 @@
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
@@ -38,15 +38,60 @@ describe('ChatItem', () => {
 
     expect(screen.getByText('8시 판교역')).toBeInTheDocument();
     expect(screen.getByText('3명 참여')).toBeInTheDocument();
-    expect(screen.getByRole('img', { name: '방장 프로필 이미지' })).toHaveAttribute(
-      'src',
-      '/avatars/chat-avatar-placeholder.svg',
-    );
+    expect(
+      new URL(
+        screen.getByRole('img', { name: '방장 프로필 이미지' }).getAttribute('src') ?? '',
+        'http://localhost',
+      ).pathname,
+    ).toBe('/avatars/chat-avatar-placeholder.svg');
   });
 
   it('방장 프로필 이미지가 있으면 전달받은 이미지를 표시한다', () => {
     render(<ChatItem chatRoom={secondChatRoom} />);
 
+    expect(
+      new URL(
+        screen.getByRole('img', { name: '방장 프로필 이미지' }).getAttribute('src') ?? '',
+        'http://localhost',
+      ).pathname,
+    ).toBe('/avatars/avatar-default.svg');
+  });
+
+  it.each(['dev', 'prod'])(
+    '%s S3 프로필 이미지를 작은 Next.js 이미지로 요청한다',
+    (environment) => {
+      const src = `https://moyeota-${environment}-images.s3.ap-northeast-2.amazonaws.com/profile/avatar.jpg`;
+      render(<ChatItem chatRoom={{ ...chatRoom, host: { profile_image_url: src } }} />);
+
+      const image = screen.getByRole('img', { name: '방장 프로필 이미지' });
+      const optimizedUrl = new URL(image.getAttribute('src') ?? '', 'http://localhost');
+      expect(optimizedUrl.pathname).toBe('/_next/image');
+      expect(optimizedUrl.searchParams.get('url')).toBe(src);
+      expect(Number(optimizedUrl.searchParams.get('w'))).toBeLessThanOrEqual(128);
+      expect(image).toHaveAttribute('srcset', expect.stringContaining('w=48'));
+    },
+  );
+
+  it('허용되지 않은 외부 이미지 주소는 기존처럼 직접 표시한다', () => {
+    const src = 'https://example.com/profile.jpg';
+    render(<ChatItem chatRoom={{ ...chatRoom, host: { profile_image_url: src } }} />);
+
+    expect(screen.getByRole('img', { name: '방장 프로필 이미지' })).toHaveAttribute('src', src);
+  });
+
+  it('이미지 로딩에 실패하면 기본 이미지를 표시하고 주소가 바뀌면 새 이미지를 표시한다', () => {
+    const src = 'https://moyeota-prod-images.s3.ap-northeast-2.amazonaws.com/profile/avatar.jpg';
+    const { rerender } = render(
+      <ChatItem chatRoom={{ ...chatRoom, host: { profile_image_url: src } }} />,
+    );
+
+    fireEvent.error(screen.getByRole('img', { name: '방장 프로필 이미지' }));
+    expect(screen.getByRole('img', { name: '방장 프로필 이미지' })).toHaveAttribute(
+      'src',
+      '/avatars/chat-avatar-placeholder.svg',
+    );
+
+    rerender(<ChatItem chatRoom={secondChatRoom} />);
     expect(screen.getByRole('img', { name: '방장 프로필 이미지' })).toHaveAttribute(
       'src',
       '/avatars/avatar-default.svg',
