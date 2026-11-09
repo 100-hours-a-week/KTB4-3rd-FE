@@ -3,6 +3,23 @@ import { describe, expect, it } from 'vitest';
 import nextConfig from '@/../next.config';
 
 describe('Next.js 보안 설정', () => {
+  it('프로필 이미지 최적화는 개발 및 운영 S3 버킷에만 허용한다', () => {
+    expect(nextConfig.images?.remotePatterns).toEqual([
+      {
+        protocol: 'https',
+        hostname: 'moyeota-dev-images.s3.ap-northeast-2.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'moyeota-prod-images.s3.ap-northeast-2.amazonaws.com',
+        port: '',
+        pathname: '/**',
+      },
+    ]);
+  });
+
   it('x-powered-by 헤더를 비활성화한다', () => {
     expect(nextConfig.poweredByHeader).toBe(false);
   });

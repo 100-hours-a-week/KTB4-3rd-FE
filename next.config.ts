@@ -1,6 +1,8 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
+import { PROFILE_IMAGE_HOSTNAMES } from './src/shared/lib/profile-image-optimization';
+
 const KAKAO_MAP_SDK_PROXY_PATH = '/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js';
 const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || 'http://dev.moyeota.com').replace(
   /\/$/,
@@ -34,6 +36,14 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: PROFILE_IMAGE_HOSTNAMES.map((hostname) => ({
+      protocol: 'https',
+      hostname,
+      port: '',
+      pathname: '/**',
+    })),
+  },
   env: {
     NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
   },
