@@ -30,8 +30,16 @@ export function HomePage() {
     onOpenNotifications: () => router.push('/notification'),
   });
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
-  const { currentUser, map, mapControls, mapPinsError, mapRef, nearbyPosts, postDetailModal } =
-    useHomePageModel();
+  const {
+    currentUser,
+    map,
+    mapControls,
+    mapPinsError,
+    mapPinsStatus,
+    mapRef,
+    nearbyPosts,
+    postDetailModal,
+  } = useHomePageModel();
 
   useEffect(
     () => () => {
@@ -89,7 +97,11 @@ export function HomePage() {
           }
         />
 
-        <main className="relative h-[calc(100dvh-72px)] min-h-0">
+        <main
+          aria-busy={mapPinsStatus.isFetching}
+          className="relative h-[calc(100dvh-72px)] min-h-0"
+          data-map-pins-range={mapPinsStatus.isShowingPreviousRange ? 'previous' : 'current'}
+        >
           <Map
             bootstrapEarly
             center={map.center}
