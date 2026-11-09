@@ -83,7 +83,11 @@ function getSdkBootstrapScript(sdkUrl: string) {
 
 // The early bootstrap and React effect coordinate through the container to create one map.
 type MapBootstrapContainer = HTMLDivElement & {
-  __moyeotaMapBootstrap?: { claimed: boolean; map?: KakaoMap };
+  __moyeotaMapBootstrap?: {
+    claimed: boolean;
+    location?: MapCoordinate;
+    map?: KakaoMap;
+  };
 };
 
 function getEarlyMapBootstrapScript(center: MapCoordinate, level: number) {
@@ -93,6 +97,23 @@ function getEarlyMapBootstrapScript(center: MapCoordinate, level: number) {
     const container = document.currentScript?.previousElementSibling;
     if (!container) return;
     const state = container.__moyeotaMapBootstrap ||= { claimed: false };
+    const requestGrantedLocation = async () => {
+      if (!navigator.geolocation || !navigator.permissions?.query) return;
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        if (permission.state !== 'granted') return;
+        navigator.geolocation.getCurrentPosition(({ coords }) => {
+          if (state.claimed) return;
+          const location = { lat: coords.latitude, lng: coords.longitude };
+          if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return;
+          state.location = location;
+          if (state.map && window.kakao?.maps) {
+            state.map.setCenter(new window.kakao.maps.LatLng(location.lat, location.lng));
+          }
+        }, () => {}, { enableHighAccuracy: false, maximumAge: 300000, timeout: 1500 });
+      } catch {}
+    };
+    void requestGrantedLocation();
     const createMap = () => {
       try {
         window.kakao.maps.load(() => {
@@ -100,8 +121,9 @@ function getEarlyMapBootstrapScript(center: MapCoordinate, level: number) {
           try {
             const options = ${options};
             const maps = window.kakao.maps;
+            const initialCenter = state.location ?? options.center;
             state.map = new maps.Map(container, {
-              center: new maps.LatLng(options.center.lat, options.center.lng),
+              center: new maps.LatLng(initialCenter.lat, initialCenter.lng),
               level: options.level,
             });
           } catch { container.replaceChildren(); }
@@ -504,10 +526,11 @@ function MapComponent(
 
         const maps = kakao.maps;
         const state = bootstrapEarly ? mapContainerRef.current.__moyeotaMapBootstrap : undefined;
+        const initialCenter = state?.location ?? initialCenterRef.current;
         const map =
           state?.map ??
           new maps.Map(mapContainerRef.current, {
-            center: new maps.LatLng(initialCenterRef.current.lat, initialCenterRef.current.lng),
+            center: new maps.LatLng(initialCenter.lat, initialCenter.lng),
             level: defaultLevel,
           });
         if (state) {
