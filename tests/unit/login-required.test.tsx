@@ -116,6 +116,8 @@ describe('useRequireAuth', () => {
     '/chat',
     '/chatting',
     '/chatroom/101',
+    '/notification',
+    '/notification/',
     '/post/create/type',
     '/posts/write',
   ])('비로그인 사용자가 보호된 경로(%s)에 접근하면 로그인 유도 Dialog를 보여준다', (pathname) => {
@@ -130,7 +132,7 @@ describe('useRequireAuth', () => {
     expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeInTheDocument();
   });
 
-  it.each(['/', '/chatty', '/post/123', '/taxi-pots/newer', '/taxi-pots/news/'])(
+  it.each(['/', '/chatty', '/notifications', '/post/123', '/taxi-pots/newer', '/taxi-pots/news/'])(
     '공개 경로(%s)에서는 Dialog를 보여주지 않는다',
     (pathname) => {
       navigation.pathname = pathname;
@@ -144,6 +146,19 @@ describe('useRequireAuth', () => {
       expect(screen.queryByRole('dialog', { name: '로그인이 필요해요' })).not.toBeInTheDocument();
     },
   );
+
+  it('로그인 사용자는 알림 페이지에서 로그인 안내를 보지 않는다', () => {
+    navigation.pathname = '/notification';
+    useAuthStore.getState().setAccessToken('mock-access-token');
+
+    render(
+      <LoginRequiredProvider>
+        <div>알림 페이지</div>
+      </LoginRequiredProvider>,
+    );
+
+    expect(screen.queryByRole('dialog', { name: '로그인이 필요해요' })).not.toBeInTheDocument();
+  });
 
   it('매칭 홈은 공개 경로라서 로그인 안내를 보여주지 않는다', () => {
     navigation.pathname = '/matching';
