@@ -53,6 +53,11 @@ import { MyLocation } from './my-location';
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
 const SELECTED_MARKER_SCALE = 1.15;
+// Kakao's SDK discovers these required scripts sequentially. Keep these versions
+// aligned with the requests made by the current Kakao Maps SDK.
+const KAKAO_MAP_CORE_SCRIPT_URL = '//t1.kakaocdn.net/mapjsapi/js/main/4.5.31/kakao.js';
+const KAKAO_MAP_CLUSTERER_SCRIPT_URL =
+  '//t1.kakaocdn.net/mapjsapi/js/libs/clusterer/1.1.5/clusterer.js';
 const KAKAO_MAP_BACKGROUND_IMAGE_1X = '//t1.kakaocdn.net/mapjsapi/images/bg_tile.png';
 const KAKAO_MAP_BACKGROUND_IMAGE_2X = '//t1.kakaocdn.net/mapjsapi/images/2x/bg_tile.png';
 
@@ -258,6 +263,8 @@ function MapComponent(
 ) {
   if (apiKey) {
     preload(getKakaoMapSdkUrl(apiKey), { as: 'script' });
+    preload(KAKAO_MAP_CORE_SCRIPT_URL, { as: 'script', fetchPriority: 'high' });
+    preload(KAKAO_MAP_CLUSTERER_SCRIPT_URL, { as: 'script', fetchPriority: 'high' });
     if (preloadBackground) {
       preload(KAKAO_MAP_BACKGROUND_IMAGE_1X, {
         as: 'image',
