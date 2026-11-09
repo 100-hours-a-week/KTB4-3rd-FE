@@ -1,22 +1,30 @@
 'use client';
 
+import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import {
   CONGESTION_PIN_ANIMATION_DURATION_MS,
   CongestionLegend,
   getCongestionPinMarkerImage,
+  type CongestionPinVariant,
   type CongestionLegendItem,
+  type CongestionSpotDetailResponse,
+  type CongestionSpotStatus,
 } from '@/entities/congestion';
 import { NotificationButton } from '@/entities/notification';
-import { CONGESTION_TOGGLE_TRANSITION_DURATION_MS, CongestionToggle } from '@/features/congestion';
+import {
+  CONGESTION_TOGGLE_TRANSITION_DURATION_MS,
+  congestionQueries,
+  CongestionToggle,
+} from '@/features/congestion';
 import { HeaderUser } from '@/features/header-user';
 import { useCurrentUserQuery } from '@/features/user-profile';
 import { BottomNav } from '@/shared/ui/BottomNav';
 import { Header } from '@/shared/ui/header';
 import { Logo } from '@/shared/ui/logo';
-import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+import { Map, MyLocationButton, type MapRef, type MapViewport } from '@/shared/ui/map';
 
 const congestionLegendItems: readonly CongestionLegendItem[] = [
   { color: '#CCE9FF', label: '원활·여유', range: '0~40' },
@@ -28,43 +36,26 @@ const congestionLegendItems: readonly CongestionLegendItem[] = [
 
 const pangyoStationCoordinate = { lat: 37.394512, lng: 127.111235 };
 
-const congestionPinOverlays = [
-  {
-    ariaLabel: '여유 혼잡도 핀',
-    id: 'available',
-    position: { lat: 37.3961, lng: 127.1126 },
-    selectedMessage: '현재 여유로운 상태예요',
-    variant: 'available',
-  },
-  {
-    ariaLabel: '사고 혼잡도 핀',
-    id: 'accident',
-    position: { lat: 37.3929, lng: 127.1121 },
-    selectedMessage: '사고 제보가 접수됐어요',
-    variant: 'accident',
-  },
-  {
-    ariaLabel: '지연 혼잡도 핀',
-    id: 'delayed',
-    position: { lat: 37.3937, lng: 127.1083 },
-    selectedMessage: '퇴근길 인파로 지연이\n5분정도 있어요',
-    variant: 'delayed',
-  },
-  {
-    ariaLabel: '붐빔 혼잡도 핀',
-    id: 'busy',
-    position: { lat: 37.3971, lng: 127.1098 },
-    selectedMessage: '탑승 대기 인원이 많아요',
-    variant: 'busy',
-  },
-  {
-    ariaLabel: '혼잡 혼잡도 핀',
-    id: 'congested',
-    position: { lat: 37.3954, lng: 127.1151 },
-    selectedMessage: '혼잡한 상태예요',
-    variant: 'congested',
-  },
-] as const;
+const congestionStatusToPinVariant: Record<CongestionSpotStatus, CongestionPinVariant> = {
+  SMOOTH: 'available',
+  CONGESTED: 'congested',
+  CROWDED: 'busy',
+  DELAYED: 'delayed',
+  ACCIDENT: 'accident',
+};
+
+function toCongestionViewport(viewport: MapViewport) {
+  return {
+    sw_lat: viewport.southWest.lat,
+    sw_lng: viewport.southWest.lng,
+    ne_lat: viewport.northEast.lat,
+    ne_lng: viewport.northEast.lng,
+  };
+}
+
+function getSelectedMessage(detail: CongestionSpotDetailResponse | undefined) {
+  return detail?.data.reason ?? detail?.message ?? '';
+}
 
 type CongestionPinTransition = {
   id: string;
@@ -76,8 +67,22 @@ function CongestionMap() {
   const mapRef = useRef<MapRef>(null);
   const pinTransitionTimerRef = useRef<number | null>(null);
   const pinTransitionKeyRef = useRef(0);
-  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const [mapViewport, setMapViewport] = useState<ReturnType<typeof toCongestionViewport> | null>(
+    null,
+  );
+  const [selectedPinId, setSelectedPinId] = useState<number | null>(null);
   const [pinTransition, setPinTransition] = useState<CongestionPinTransition | null>(null);
+  const spotsQuery = useQuery(congestionQueries.spots(mapViewport));
+  const spots = useMemo(() => spotsQuery.data?.data.items ?? [], [spotsQuery.data]);
+  const visibleSelectedPinId =
+    selectedPinId !== null && spots.some((spot) => spot.id === selectedPinId)
+      ? selectedPinId
+      : null;
+  const detailQuery = useQuery(congestionQueries.detail(visibleSelectedPinId));
+
+  const handleViewportChange = useCallback((viewport: MapViewport) => {
+    setMapViewport(toCongestionViewport(viewport));
+  }, []);
 
   useEffect(
     () => () => {
@@ -90,23 +95,33 @@ function CongestionMap() {
 
   const markers = useMemo(
     () =>
-      congestionPinOverlays.map(({ ariaLabel, id, position, selectedMessage, variant }) => ({
-        id,
-        image: getCongestionPinMarkerImage(variant, {
-          animation: pinTransition?.id === id ? pinTransition.type : undefined,
-          animationKey: pinTransition?.id === id ? pinTransition.key : undefined,
-          isSelected: id === selectedPinId,
-          selectedMessage,
-        }),
-        position,
-        title: ariaLabel,
-        zIndex: id === selectedPinId ? 1 : 0,
-      })),
-    [pinTransition, selectedPinId],
+      spots.map((spot) => {
+        const variant = congestionStatusToPinVariant[spot.status];
+        const isSelected = spot.id === visibleSelectedPinId;
+
+        return {
+          id: spot.id,
+          image: getCongestionPinMarkerImage(variant, {
+            animation: pinTransition?.id === String(spot.id) ? pinTransition.type : undefined,
+            animationKey: pinTransition?.id === String(spot.id) ? pinTransition.key : undefined,
+            isSelected,
+            selectedMessage: getSelectedMessage(isSelected ? detailQuery.data : undefined),
+          }),
+          position: { lat: spot.lat, lng: spot.lng },
+          title: `${spot.name} 혼잡도 핀`,
+          zIndex: isSelected ? 1 : 0,
+        };
+      }),
+    [detailQuery.data, pinTransition, spots, visibleSelectedPinId],
   );
 
   return (
-    <div className="relative h-full min-h-0 w-full" data-testid="congestion-map">
+    <div
+      className="relative h-full min-h-0 w-full"
+      data-congestion-map
+      data-congestion-query-status={spotsQuery.status}
+      data-testid="congestion-map"
+    >
       <Map
         className="h-full"
         clusterMarkers
@@ -115,7 +130,7 @@ function CongestionMap() {
         markerFocusOnClick={false}
         markers={markers}
         onMarkerClick={({ id }) => {
-          const nextPinId = String(id);
+          const nextPinId = Number(id);
           const nextTransitionType = selectedPinId === nextPinId ? 'collapse' : 'expand';
 
           if (pinTransitionTimerRef.current !== null) {
@@ -124,7 +139,7 @@ function CongestionMap() {
 
           pinTransitionKeyRef.current += 1;
           setPinTransition({
-            id: nextPinId,
+            id: String(nextPinId),
             key: pinTransitionKeyRef.current,
             type: nextTransitionType,
           });
@@ -134,9 +149,11 @@ function CongestionMap() {
             pinTransitionTimerRef.current = null;
           }, CONGESTION_PIN_ANIMATION_DURATION_MS);
         }}
+        onViewportChange={handleViewportChange}
         ref={mapRef}
         showCurrentLocationButton={false}
         showZoomControls={false}
+        viewportDebounceMs={300}
       >
         <MyLocationButton
           aria-label="현재 위치로 이동"
