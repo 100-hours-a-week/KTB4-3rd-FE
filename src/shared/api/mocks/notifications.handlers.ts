@@ -16,6 +16,7 @@ const notificationTypes: NotificationType[] = [
   'CARPOOL_REQUEST_RECEIVED',
   'CARPOOL_REQUEST_ACCEPTED',
   'SETTLEMENT_REQUESTED',
+  'SETTLEMENT_COMPLETION_REMINDER',
   'MATCHING_COMPLETED',
 ];
 
@@ -24,6 +25,7 @@ const notificationContents: Record<NotificationType, string> = {
   CARPOOL_REQUEST_RECEIVED: '민준님이 동승을 요청했어요',
   CARPOOL_REQUEST_ACCEPTED: '루디님이 동승 요청을 수락했어요',
   SETTLEMENT_REQUESTED: '정산 요청이 도착했어요',
+  SETTLEMENT_COMPLETION_REMINDER: '정산 완료를 확인해주세요',
   MATCHING_COMPLETED: '매칭이 완료됐어요',
 };
 
