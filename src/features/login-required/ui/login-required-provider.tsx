@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useCallback, useState, type ReactNode } from 'react';
 
-import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
+import { selectIsAuthenticated, useAuthBootstrapComplete, useAuthStore } from '@/entities/auth';
 import {
   RequireAuthContextProvider,
   type AuthenticatedAction,
@@ -18,6 +18,7 @@ type LoginRequiredProviderProps = {
 
 type RouteLoginRequiredDialogProps = {
   isActionDialogOpen: boolean;
+  isAuthBootstrapComplete: boolean;
   isForcedDialogOpen: boolean;
   isAuthenticated: boolean;
   pathname: string | null;
@@ -27,6 +28,7 @@ type RouteLoginRequiredDialogProps = {
 
 function RouteLoginRequiredDialog({
   isActionDialogOpen,
+  isAuthBootstrapComplete,
   isForcedDialogOpen,
   isAuthenticated,
   pathname,
@@ -35,9 +37,13 @@ function RouteLoginRequiredDialog({
 }: RouteLoginRequiredDialogProps) {
   const [isRouteDialogDismissed, setIsRouteDialogDismissed] = useState(false);
   const isRouteDialogOpen =
-    !isAuthenticated && isLoginRequiredPath(pathname) && !isRouteDialogDismissed;
+    isAuthBootstrapComplete &&
+    !isAuthenticated &&
+    isLoginRequiredPath(pathname) &&
+    !isRouteDialogDismissed;
   const isDialogOpen =
-    isForcedDialogOpen || (!isAuthenticated && (isActionDialogOpen || isRouteDialogOpen));
+    isForcedDialogOpen ||
+    (isAuthBootstrapComplete && !isAuthenticated && (isActionDialogOpen || isRouteDialogOpen));
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -55,6 +61,7 @@ function RouteLoginRequiredDialog({
 }
 
 export function LoginRequiredProvider({ children }: LoginRequiredProviderProps) {
+  const isAuthBootstrapComplete = useAuthBootstrapComplete();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const accessToken = useAuthStore((state) => state.accessToken);
   const pathname = usePathname();
@@ -90,6 +97,7 @@ export function LoginRequiredProvider({ children }: LoginRequiredProviderProps) 
       {children}
       <RouteLoginRequiredDialog
         isActionDialogOpen={isActionDialogOpen}
+        isAuthBootstrapComplete={isAuthBootstrapComplete}
         isForcedDialogOpen={isForcedDialogOpen}
         isAuthenticated={isAuthenticated}
         key={pathname ?? 'unknown'}
