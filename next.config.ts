@@ -1,6 +1,8 @@
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
+import { PROFILE_IMAGE_HOSTNAMES } from './src/shared/lib/profile-image-optimization';
+
 const KAKAO_MAP_SDK_PROXY_PATH = '/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js';
 const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || 'http://dev.moyeota.com').replace(
   /\/$/,
@@ -34,6 +36,14 @@ const SECURITY_HEADERS = [
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: PROFILE_IMAGE_HOSTNAMES.map((hostname) => ({
+      protocol: 'https',
+      hostname,
+      port: '',
+      pathname: '/**',
+    })),
+  },
   experimental: {
     // 홈 초기 렌더링에서 CSS 요청을 기다리지 않도록 production CSS를 head에 인라인한다.
     // Next.js 16에서는 production build에서만 적용된다.
