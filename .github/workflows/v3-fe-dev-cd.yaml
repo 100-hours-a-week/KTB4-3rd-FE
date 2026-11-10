@@ -1,0 +1,89 @@
+name: FE V3 Dev CD
+
+# 이미지 digest를 CLOUD 저장소 v3/helm/app-values/dev에 커밋해 EKS에 배포한다.
+# 통합 브랜치 CI가 만든 dev-<sha> digest를 그대로 반영한다.
+
+on:
+  workflow_run:
+    workflows:
+      - FE CI
+    types:
+      - completed
+    branches:
+      - develop
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: frontend-v3-cd-dev
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy to EKS (dev)
+    if: >-
+      github.event.workflow_run.conclusion == 'success' &&
+      (github.event.workflow_run.event == 'push' || github.event.workflow_run.event == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment:
+      name: dev
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+      ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+
+    steps:
+      - name: Download release manifest
+        uses: actions/download-artifact@v4
+        with:
+          name: release-manifest
+          path: release-manifest
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ github.token }}
+
+      - name: Resolve immutable image
+        id: release
+        run: |
+          set -Eeuo pipefail
+
+          manifest="release-manifest/release-manifest.json"
+          image_tag="$(jq -r '.image_tag' "$manifest")"
+          image_digest="$(jq -r '.image_digest' "$manifest")"
+
+          [[ "$image_tag" == dev-* ]]
+          [[ "$image_digest" == sha256:* ]]
+
+          {
+            echo "image_ref=${ECR_REGISTRY}/${ECR_REPOSITORY}@${image_digest}"
+            echo "image_digest=$image_digest"
+            echo "image_tag=$image_tag"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitOps token
+        id: gitops-token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.GITOPS_APP_ID }}
+          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: KTB4-3rd-CLOUD
+
+      - name: Checkout deploy action
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/actions
+          persist-credentials: false
+
+      - name: Deploy with Argo CD
+        uses: ./.github/actions/gitops-deploy
+        with:
+          stage: dev
+          app: fe
+          image-digest: ${{ steps.release.outputs.image_digest }}
+          release-id: ${{ steps.release.outputs.image_tag }}
+          applications: dev-frontend
+          token: ${{ steps.gitops-token.outputs.token }}
+          timeout-minutes: '20'
