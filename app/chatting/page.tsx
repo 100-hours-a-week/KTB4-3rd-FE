@@ -6,5 +6,5 @@ export const metadata: Metadata = {
 };
 
 export default function ChattingRoute() {
-  redirect('/chatroom/101');
+  redirect('/chat');
 }

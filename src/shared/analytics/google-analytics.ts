@@ -1,6 +1,6 @@
 'use client';
 
-import { sendGAEvent } from '@next/third-parties/google';
+type AnalyticsWindow = Window & { dataLayer?: unknown[] };
 
 export type AnalyticsParams = Record<string, boolean | number | string>;
 
@@ -40,9 +40,11 @@ export type GaEventName =
   | 'congestion_spot_click';
 
 export function sendAnalyticsEvent(name: GaEventName, params?: AnalyticsParams): void {
-  if (!process.env.NEXT_PUBLIC_GA_ID) {
+  if (!process.env.NEXT_PUBLIC_GA_ID || typeof window === 'undefined') {
     return;
   }
 
-  sendGAEvent('event', name, params ?? {});
+  const analyticsWindow = window as AnalyticsWindow;
+  analyticsWindow.dataLayer ??= [];
+  analyticsWindow.dataLayer.push(['event', name, params ?? {}]);
 }

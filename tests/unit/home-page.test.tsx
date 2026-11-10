@@ -110,6 +110,7 @@ afterEach(() => {
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
   vi.unstubAllGlobals();
+  vi.useRealTimers();
 });
 
 beforeEach(() => {
@@ -214,6 +215,23 @@ describe('HomePage', () => {
     await user.click(screen.getByRole('button', { hidden: true, name: '글쓰기' }));
 
     expect(navigation.push).toHaveBeenCalledWith('/post/create/location');
+  });
+
+  it('혼잡도 토글을 누르면 혼잡도 페이지로 이동한다', async () => {
+    vi.useFakeTimers();
+
+    renderHomePage();
+
+    fireEvent.click(screen.getByRole('button', { name: '혼잡도' }));
+
+    expect(screen.getByRole('button', { name: '혼잡도' })).toHaveAttribute('aria-pressed', 'true');
+    expect(navigation.push).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(200);
+    });
+
+    expect(navigation.push).toHaveBeenCalledWith('/congestion');
   });
 
   it('현재 위치 버튼을 누르면 지도에 현재 위치 조회를 요청한다', async () => {

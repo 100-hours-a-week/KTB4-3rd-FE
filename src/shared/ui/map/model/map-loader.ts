@@ -1,15 +1,19 @@
 import type { KakaoNamespace } from './kakao-map.types';
+import { getKakaoMapSdkUrl, KAKAO_MAP_LIBRARIES } from './kakao-map-sdk-url';
 
 const KAKAO_MAP_SCRIPT_ATTRIBUTE = 'data-moyeota-kakao-map';
-const KAKAO_MAP_SCRIPT_URL = 'https://dapi.kakao.com/v2/maps/sdk.js';
-const KAKAO_MAP_SDK_URL = process.env.NEXT_PUBLIC_KAKAO_MAP_SDK_URL ?? KAKAO_MAP_SCRIPT_URL;
-const KAKAO_MAP_LIBRARIES = 'services,clusterer';
 const KAKAO_MAP_LOAD_TIMEOUT_MS = 10_000;
 
 let kakaoMapsPromise: Promise<KakaoNamespace> | null = null;
+let kakaoServicesPromise: Promise<NonNullable<KakaoNamespace['maps']['services']>> | null = null;
 
 declare global {
   var kakao: KakaoNamespace | undefined;
+  // Window's interface must be augmented for same-origin iframe access.
+  // eslint-disable-next-line typescript/consistent-type-definitions
+  interface Window {
+    kakao?: KakaoNamespace;
+  }
 }
 
 function loadKakaoNamespace(
@@ -94,17 +98,7 @@ export function loadKakaoMaps(apiKey: string): Promise<KakaoNamespace> {
     mapScript.addEventListener('error', handleError, { once: true });
 
     if (!canReuseExistingScript) {
-      const scriptUrl = new URL(KAKAO_MAP_SDK_URL, window.location.href);
-
-      scriptUrl.searchParams.set('appkey', apiKey);
-      scriptUrl.searchParams.set('autoload', 'false');
-      scriptUrl.searchParams.set('libraries', KAKAO_MAP_LIBRARIES);
-      mapScript.src = scriptUrl
-        .toString()
-        .replace(
-          `libraries=${encodeURIComponent(KAKAO_MAP_LIBRARIES)}`,
-          `libraries=${KAKAO_MAP_LIBRARIES}`,
-        );
+      mapScript.src = getKakaoMapSdkUrl(apiKey);
       mapScript.async = false;
       mapScript.setAttribute(KAKAO_MAP_SCRIPT_ATTRIBUTE, 'true');
       document.head.appendChild(mapScript);
@@ -118,16 +112,81 @@ export function loadKakaoMaps(apiKey: string): Promise<KakaoNamespace> {
   return kakaoMapsPromise;
 }
 
-export function loadKakaoServices(): Promise<NonNullable<KakaoNamespace['maps']['services']>> {
+export function loadKakaoServices(
+  apiKey: string,
+): Promise<NonNullable<KakaoNamespace['maps']['services']>> {
   const existingServices = window.kakao?.maps?.services;
 
   if (existingServices) {
     return Promise.resolve(existingServices);
   }
 
-  return Promise.reject(
-    new Error(
-      '카카오 장소 조회 서비스를 초기화할 수 없습니다. Kakao Maps SDK의 services 라이브러리를 확인하세요.',
-    ),
-  );
+  if (!apiKey) {
+    return Promise.reject(new Error('NEXT_PUBLIC_KAKAO_MAP_APP_KEY가 설정되지 않았습니다.'));
+  }
+
+  if (kakaoServicesPromise) {
+    return kakaoServicesPromise;
+  }
+
+  // SDK가 초기화된 뒤에는 라이브러리를 추가할 수 없어 별도의 문서에서 공식 SDK를 로드한다.
+  kakaoServicesPromise = new Promise<NonNullable<KakaoNamespace['maps']['services']>>(
+    (resolve, reject) => {
+      const frame = document.createElement('iframe');
+      frame.hidden = true;
+      frame.tabIndex = -1;
+      frame.setAttribute('aria-hidden', 'true');
+      frame.setAttribute('data-moyeota-kakao-services', 'true');
+      document.body.appendChild(frame);
+
+      const frameWindow = frame.contentWindow;
+      const frameDocument = frame.contentDocument;
+      const timeoutId = window.setTimeout(
+        () => fail(new Error('카카오 장소 조회 서비스 초기화 시간이 초과되었습니다.')),
+        KAKAO_MAP_LOAD_TIMEOUT_MS,
+      );
+
+      function fail(error: Error) {
+        window.clearTimeout(timeoutId);
+        frame.remove();
+        reject(error);
+      }
+
+      if (!frameWindow || !frameDocument) {
+        fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+        return;
+      }
+
+      const script = frameDocument.createElement('script');
+      script.src = getKakaoMapSdkUrl(apiKey, 'services');
+      script.onerror = () => fail(new Error('카카오 장소 조회 서비스를 불러오지 못했습니다.'));
+      script.onload = () => {
+        try {
+          const maps = frameWindow.kakao?.maps;
+          if (!maps) {
+            fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+            return;
+          }
+
+          maps.load(() => {
+            if (!maps.services) {
+              fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+              return;
+            }
+
+            window.clearTimeout(timeoutId);
+            resolve(maps.services);
+          });
+        } catch {
+          fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+        }
+      };
+      frameDocument.head.appendChild(script);
+    },
+  ).catch((error: unknown) => {
+    kakaoServicesPromise = null;
+    throw error;
+  });
+
+  return kakaoServicesPromise;
 }

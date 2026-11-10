@@ -72,6 +72,7 @@ export function ChatComposer({
           disabled={disabled}
           disableFocusBorder
           inputClassName="!pr-[44px] !text-[length:var(--font-size-t5)] !leading-[var(--line-height-t5)] !font-[var(--font-weight-regular)] placeholder:!text-[var(--color-fg-neutral-muted)]"
+          maxLength={MAX_MESSAGE_LENGTH}
           onValueChange={handleValueChange}
           placeholder={placeholder}
           value={currentValue}

@@ -213,7 +213,7 @@ describe('CommunityPostDetail', () => {
       'outline-none',
     );
     expect(input).not.toHaveClass('focus-visible:ring-2');
-    expect(input).not.toHaveAttribute('maxLength');
+    expect(input).toHaveAttribute('maxLength', '280');
     expect(screen.getByTestId('character-count')).toHaveClass('mr-[10px]');
     expect(submitButton).toHaveClass('size-[30px]');
     expect(submitButton).toBeDisabled();

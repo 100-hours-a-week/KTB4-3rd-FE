@@ -1,3 +1,4 @@
+import bundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
 
@@ -43,6 +44,11 @@ const nextConfig: NextConfig = {
       port: '',
       pathname: '/**',
     })),
+  },
+  experimental: {
+    // 홈 초기 렌더링에서 CSS 요청을 기다리지 않도록 production CSS를 head에 인라인한다.
+    // Next.js 16에서는 production build에서만 적용된다.
+    inlineCss: true,
   },
   env: {
     NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
@@ -92,18 +98,25 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 };
 
-export default withSentryConfig(nextConfig, {
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: true,
-  widenClientFileUpload: true,
-  webpack: {
-    autoInstrumentAppDirectory: true,
-    autoInstrumentMiddleware: true,
-    autoInstrumentServerFunctions: true,
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false,
 });
+
+export default withBundleAnalyzer(
+  withSentryConfig(nextConfig, {
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: true,
+    widenClientFileUpload: true,
+    webpack: {
+      autoInstrumentAppDirectory: true,
+      autoInstrumentMiddleware: true,
+      autoInstrumentServerFunctions: true,
+      treeshake: {
+        removeDebugLogging: true,
+      },
+    },
+  }),
+);
