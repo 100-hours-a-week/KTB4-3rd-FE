@@ -68,15 +68,6 @@ jobs:
             echo "image_tag=$image_tag"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create GitOps token
-        id: gitops-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.GITOPS_APP_ID }}
-          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: KTB4-3rd-CLOUD
-
       - name: Checkout deploy action
         uses: actions/checkout@v4
         with:
@@ -91,7 +82,7 @@ jobs:
           image-digest: ${{ steps.release.outputs.image_digest }}
           release-id: ${{ steps.release.outputs.image_tag }}
           applications: stg-frontend
-          token: ${{ steps.gitops-token.outputs.token }}
+          token: ${{ secrets.GITOPS_TOKEN }}
           timeout-minutes: '40'
 
   # Deploy Role은 ECR 권한이 없으므로(검증된 digest를 서비스에 반영만 함) 태그 기록은 CI Role로 한다.

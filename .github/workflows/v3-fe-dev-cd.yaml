@@ -62,15 +62,6 @@ jobs:
             echo "image_tag=$image_tag"
           } >> "$GITHUB_OUTPUT"
 
-      - name: Create GitOps token
-        id: gitops-token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.GITOPS_APP_ID }}
-          private-key: ${{ secrets.GITOPS_APP_PRIVATE_KEY }}
-          owner: ${{ github.repository_owner }}
-          repositories: KTB4-3rd-CLOUD
-
       - name: Checkout deploy action
         uses: actions/checkout@v4
         with:
@@ -85,5 +76,5 @@ jobs:
           image-digest: ${{ steps.release.outputs.image_digest }}
           release-id: ${{ steps.release.outputs.image_tag }}
           applications: dev-frontend
-          token: ${{ steps.gitops-token.outputs.token }}
+          token: ${{ secrets.GITOPS_TOKEN }}
           timeout-minutes: '20'
