@@ -19,13 +19,32 @@ const createKakaoNamespace = (withServices = true): KakaoNamespace =>
 function getServicesFrame() {
   const frame = document.querySelector<HTMLIFrameElement>('iframe[data-moyeota-kakao-services]');
   const frameWindow = frame?.contentWindow;
-  const script = frame?.contentDocument?.querySelector('script');
 
-  if (!frameWindow || !script) {
+  if (!frame || !frameWindow) {
     throw new Error('카카오 서비스 SDK 프레임이 생성되지 않았습니다.');
   }
 
-  return { frameWindow, script };
+  return { frame, frameWindow };
+}
+
+function loadServicesScript(frame: HTMLIFrameElement) {
+  const frameDocument = frame.contentDocument;
+
+  if (!frameDocument) {
+    throw new Error('카카오 서비스 SDK 문서를 생성하지 못했습니다.');
+  }
+
+  frameDocument.open();
+  frameDocument.write('<!doctype html><html><head></head><body></body></html>');
+  frameDocument.close();
+  frame.dispatchEvent(new Event('load'));
+  const script = frameDocument.querySelector<HTMLScriptElement>('script');
+
+  if (!script) {
+    throw new Error('카카오 서비스 SDK script가 생성되지 않았습니다.');
+  }
+
+  return script;
 }
 
 afterEach(() => {
@@ -121,9 +140,12 @@ describe('map-loader', () => {
     window.kakao = createKakaoNamespace(false);
     const first = loadKakaoServices('javascript-key');
     const second = loadKakaoServices('javascript-key');
-    const { frameWindow, script } = getServicesFrame();
+    const { frame, frameWindow } = getServicesFrame();
 
     expect(first).toBe(second);
+    expect(new URL(frame.src).origin).toBe(window.location.origin);
+    expect(new URL(frame.src).pathname).toBe('/kakao-services-frame.html');
+    const script = loadServicesScript(frame);
     expect(new URL(script.src).searchParams.get('libraries')).toBe('services');
     expect(window.kakao.maps.services).toBeUndefined();
 
@@ -138,13 +160,15 @@ describe('map-loader', () => {
   it('services 로딩이 실패하면 프레임을 제거하고 재시도할 수 있다', async () => {
     const { loadKakaoServices } = await import('@/shared/ui/map/model/map-loader');
     const first = loadKakaoServices('javascript-key');
-    getServicesFrame().script.dispatchEvent(new Event('error'));
+    const { frame } = getServicesFrame();
+    loadServicesScript(frame).dispatchEvent(new Event('error'));
 
     await expect(first).rejects.toThrow('카카오 장소 조회 서비스를 불러오지 못했습니다.');
     expect(document.querySelector('iframe[data-moyeota-kakao-services]')).toBeNull();
 
     const second = loadKakaoServices('javascript-key');
-    const { frameWindow, script } = getServicesFrame();
+    const { frame: secondFrame, frameWindow } = getServicesFrame();
+    const script = loadServicesScript(secondFrame);
     const kakao = createKakaoNamespace();
     frameWindow.kakao = kakao;
     script.dispatchEvent(new Event('load'));
