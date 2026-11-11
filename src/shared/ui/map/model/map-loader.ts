@@ -2,6 +2,7 @@ import type { KakaoNamespace } from './kakao-map.types';
 import { getKakaoMapSdkUrl, KAKAO_MAP_LIBRARIES } from './kakao-map-sdk-url';
 
 const KAKAO_MAP_SCRIPT_ATTRIBUTE = 'data-moyeota-kakao-map';
+const KAKAO_SERVICES_FRAME_URL = '/kakao-services-frame.html';
 const KAKAO_MAP_LOAD_TIMEOUT_MS = 10_000;
 
 let kakaoMapsPromise: Promise<KakaoNamespace> | null = null;
@@ -137,10 +138,6 @@ export function loadKakaoServices(
       frame.tabIndex = -1;
       frame.setAttribute('aria-hidden', 'true');
       frame.setAttribute('data-moyeota-kakao-services', 'true');
-      document.body.appendChild(frame);
-
-      const frameWindow = frame.contentWindow;
-      const frameDocument = frame.contentDocument;
       const timeoutId = window.setTimeout(
         () => fail(new Error('카카오 장소 조회 서비스 초기화 시간이 초과되었습니다.')),
         KAKAO_MAP_LOAD_TIMEOUT_MS,
@@ -148,40 +145,50 @@ export function loadKakaoServices(
 
       function fail(error: Error) {
         window.clearTimeout(timeoutId);
+        frame.removeEventListener('load', handleFrameLoad);
         frame.remove();
         reject(error);
       }
 
-      if (!frameWindow || !frameDocument) {
-        fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
-        return;
-      }
+      function handleFrameLoad() {
+        const frameWindow = frame.contentWindow;
+        const frameDocument = frame.contentDocument;
 
-      const script = frameDocument.createElement('script');
-      script.src = getKakaoMapSdkUrl(apiKey, 'services');
-      script.onerror = () => fail(new Error('카카오 장소 조회 서비스를 불러오지 못했습니다.'));
-      script.onload = () => {
-        try {
-          const maps = frameWindow.kakao?.maps;
-          if (!maps) {
-            fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
-            return;
-          }
+        if (!frameWindow || !frameDocument?.head) {
+          fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+          return;
+        }
 
-          maps.load(() => {
-            if (!maps.services) {
+        const script = frameDocument.createElement('script');
+        script.src = getKakaoMapSdkUrl(apiKey, 'services');
+        script.onerror = () => fail(new Error('카카오 장소 조회 서비스를 불러오지 못했습니다.'));
+        script.onload = () => {
+          try {
+            const maps = frameWindow.kakao?.maps;
+            if (!maps) {
               fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
               return;
             }
 
-            window.clearTimeout(timeoutId);
-            resolve(maps.services);
-          });
-        } catch {
-          fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
-        }
-      };
-      frameDocument.head.appendChild(script);
+            maps.load(() => {
+              if (!maps.services) {
+                fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+                return;
+              }
+
+              window.clearTimeout(timeoutId);
+              resolve(maps.services);
+            });
+          } catch {
+            fail(new Error('카카오 장소 조회 서비스를 초기화할 수 없습니다.'));
+          }
+        };
+        frameDocument.head.appendChild(script);
+      }
+
+      frame.addEventListener('load', handleFrameLoad, { once: true });
+      frame.src = new URL(KAKAO_SERVICES_FRAME_URL, window.location.origin).toString();
+      document.body.appendChild(frame);
     },
   ).catch((error: unknown) => {
     kakaoServicesPromise = null;
