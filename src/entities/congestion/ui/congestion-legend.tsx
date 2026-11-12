@@ -6,33 +6,28 @@ import { Text } from '@/shared/ui/text';
 export type CongestionLegendItem = {
   color: string;
   label: string;
-  range: string;
+  range?: string;
 };
 
 const defaultCongestionLegendItems: readonly CongestionLegendItem[] = [
   {
-    label: '원활·여유',
-    range: '대기 없음',
+    label: '여유',
     color: '#CCE9FF',
   },
   {
-    label: '혼잡',
-    range: '줄 서서 대기',
+    label: '다소 혼잡',
     color: '#FBDC65',
   },
   {
-    label: '붐빔·만석',
-    range: '탑승 실패·통제',
+    label: '매우 혼잡',
     color: '#FA342C',
   },
   {
     label: '지연',
-    range: '제보 기반',
     color: '#FA9D2C',
   },
   {
     label: '사고',
-    range: '제보 기반',
     color: '#111111',
   },
 ] as const;
@@ -84,16 +79,18 @@ export function CongestionLegend({
                   {label}
                 </Text>
               </div>
-              <Text
-                align="right"
-                className="ml-auto w-[70px] whitespace-nowrap"
-                color="fg.neutralSubtle"
-                fontSize="t1"
-                lineHeight="t1"
-                whiteSpace="nowrap"
-              >
-                {range}
-              </Text>
+              {range && (
+                <Text
+                  align="right"
+                  className="ml-auto w-[70px] whitespace-nowrap"
+                  color="fg.neutralSubtle"
+                  fontSize="t1"
+                  lineHeight="t1"
+                  whiteSpace="nowrap"
+                >
+                  {range}
+                </Text>
+              )}
             </div>
           ))}
         </div>

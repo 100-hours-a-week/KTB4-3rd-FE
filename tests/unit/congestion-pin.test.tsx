@@ -9,6 +9,21 @@ afterEach(() => {
 });
 
 describe('CongestionPin', () => {
+  it.each([
+    ['available', '여유', 34],
+    ['congested', '다소 혼잡', 64],
+    ['busy', '매우 혼잡', 64],
+  ] as const)('%s 기본 핀과 지도 마커에 같은 문구를 표시한다', (variant, label, width) => {
+    render(<CongestionPin variant={variant} />);
+    const pin = screen.getByRole('button', { name: `${label} 혼잡도 핀` });
+    const svg = decodeURIComponent(getCongestionPinMarkerImage(variant).src.split(',')[1] ?? '');
+
+    expect(pin).toHaveTextContent(label);
+    expect(pin).toHaveStyle({ width: `${width}px` });
+    expect(svg).toContain(`>${label}</text>`);
+    expect(svg).toContain(`x="${width / 2}" y="18" text-anchor="middle"`);
+  });
+
   it('선택 상태에서 피그마 안내 문구와 선택 상태를 표시한다', () => {
     render(<CongestionPin isSelected variant="delayed" />);
 
