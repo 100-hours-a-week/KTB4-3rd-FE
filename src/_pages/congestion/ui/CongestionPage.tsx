@@ -27,11 +27,11 @@ import { Logo } from '@/shared/ui/logo';
 import { Map, MyLocationButton, type MapRef, type MapViewport } from '@/shared/ui/map';
 
 const congestionLegendItems: readonly CongestionLegendItem[] = [
-  { color: '#CCE9FF', label: '원활·여유', range: '0~40' },
-  { color: '#FBDC65', label: '혼잡', range: '41~70' },
-  { color: '#FA342C', label: '붐빔·만석', range: '71~100' },
-  { color: '#FA9D2C', label: '지연', range: '5분 이상' },
-  { color: '#111111', label: '사고', range: '다중 제보' },
+  { color: '#CCE9FF', label: '여유' },
+  { color: '#FBDC65', label: '다소 혼잡' },
+  { color: '#FA342C', label: '매우 혼잡' },
+  { color: '#FA9D2C', label: '지연' },
+  { color: '#111111', label: '사고' },
 ];
 
 const pangyoStationCoordinate = { lat: 37.394512, lng: 127.111235 };

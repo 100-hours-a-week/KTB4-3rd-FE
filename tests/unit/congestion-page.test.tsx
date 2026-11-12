@@ -99,6 +99,20 @@ afterEach(() => {
 });
 
 describe('CongestionPage', () => {
+  it('범례에 상태만 표시하고 구간 및 제보 설명은 표시하지 않는다', () => {
+    renderCongestionPage();
+
+    const legend = screen.getByRole('group', { name: '혼잡도 범례' });
+    expect(legend).toHaveTextContent('여유');
+    expect(legend).toHaveTextContent('다소 혼잡');
+    expect(legend).toHaveTextContent('매우 혼잡');
+    expect(legend).toHaveTextContent('지연');
+    expect(legend).toHaveTextContent('사고');
+    for (const description of ['0~40', '41~70', '71~100', '5분 이상', '다중 제보']) {
+      expect(legend).not.toHaveTextContent(description);
+    }
+  });
+
   it('지도 viewport로 혼잡도 핀 목록을 조회해 marker를 렌더링한다', async () => {
     const requestedViewport: Record<string, string | null> = {};
     server.use(
