@@ -3,10 +3,12 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
+import { useEffect, useRef } from 'react';
 import { useHomePageModel } from '@/_pages/home/model/use-home-page-model';
 
 import { NotificationButton } from '@/entities/notification';
 import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
+import { CONGESTION_TOGGLE_TRANSITION_DURATION_MS, CongestionToggle } from '@/features/congestion';
 import { HeaderUser } from '@/features/header-user';
 import { PostCreateFab } from '@/features/post-create';
 import { PushNotificationPermissionDialog, useNotificationEntry } from '@/features/push-token';
@@ -23,12 +25,35 @@ import { PostDetailModal } from './PostDetailModal';
 
 export function HomePage() {
   const router = useRouter();
+  const congestionNavigationTimerRef = useRef<number | null>(null);
   const notificationEntry = useNotificationEntry({
     onOpenNotifications: () => router.push('/notification'),
   });
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
   const { currentUser, map, mapControls, mapPinsError, mapRef, nearbyPosts, postDetailModal } =
     useHomePageModel();
+
+  useEffect(
+    () => () => {
+      if (congestionNavigationTimerRef.current !== null) {
+        window.clearTimeout(congestionNavigationTimerRef.current);
+      }
+    },
+    [],
+  );
+
+  const handleCongestionToggle = (value: 'congestion' | 'community') => {
+    if (value === 'congestion') {
+      if (congestionNavigationTimerRef.current !== null) {
+        window.clearTimeout(congestionNavigationTimerRef.current);
+      }
+
+      congestionNavigationTimerRef.current = window.setTimeout(() => {
+        router.push('/congestion');
+        congestionNavigationTimerRef.current = null;
+      }, CONGESTION_TOGGLE_TRANSITION_DURATION_MS);
+    }
+  };
 
   return (
     <>
@@ -52,6 +77,7 @@ export function HomePage() {
                 aria-label="모여타 소개"
                 className="rounded-md px-1.5 py-2 text-xs font-medium text-[var(--color-fg-neutral-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
                 href="/about"
+                prefetch={false}
               >
                 소개
               </Link>
@@ -65,9 +91,11 @@ export function HomePage() {
 
         <main className="relative h-[calc(100dvh-72px)] min-h-0">
           <Map
+            bootstrapEarly
             center={map.center}
             className="h-full"
             clusterMarkers
+            preloadBackground
             markerFocusLevel={2}
             markerFocusOffset={{ y: 160 }}
             markers={map.markers}
@@ -86,6 +114,12 @@ export function HomePage() {
           className="pointer-events-none fixed inset-x-0 bottom-0 z-40 mx-auto h-dvh w-full max-w-[393px]"
           data-testid="home-map-controls"
         >
+          <CongestionToggle
+            className="pointer-events-auto absolute top-[70px] left-5"
+            defaultValue="community"
+            onValueChange={handleCongestionToggle}
+          />
+
           <PostCreateFab
             className="pointer-events-auto absolute right-4 bottom-[calc(72px+env(safe-area-inset-bottom,0px)+190px)]"
             leftSlot={<Icon name="plus" size={24} />}
@@ -104,7 +138,10 @@ export function HomePage() {
 
         <PostDetailModal {...postDetailModal} />
 
-        <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
+        <BottomNav
+          className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2"
+          prefetch={false}
+        />
       </div>
       {typeof document === 'undefined'
         ? null

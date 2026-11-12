@@ -33,6 +33,7 @@ export function ChatListPage({
           <ChatListPageContent states={states} />
         ) : (
           <ChatListPageContentWithQuery
+            key={`${initialChatTab}:${initialRequestDirection}`}
             initialChatTab={initialChatTab}
             initialRequestDirection={initialRequestDirection}
           />

@@ -1,11 +1,8 @@
 'use client';
 
-import { onMessage } from 'firebase/messaging';
 import { useEffect, useRef, useState } from 'react';
 
 import { useAuthStore } from '@/entities/auth';
-
-import { getFcmMessaging } from './get-fcm-registration-token';
 
 const MAX_REMEMBERED_NOTIFICATIONS = 100;
 const FOREGROUND_NOTIFICATION_DURATION = 5000;
@@ -32,6 +29,10 @@ export function PushNotificationForegroundListener() {
 
     const subscribeToMessages = async () => {
       try {
+        const [{ getFcmMessaging }, { onMessage }] = await Promise.all([
+          import('./get-fcm-registration-token'),
+          import('firebase/messaging'),
+        ]);
         const messaging = await getFcmMessaging();
 
         if (!messaging || !isActive) {

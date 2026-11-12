@@ -3,6 +3,7 @@ export type NotificationType =
   | 'CARPOOL_REQUEST_RECEIVED'
   | 'CARPOOL_REQUEST_ACCEPTED'
   | 'SETTLEMENT_REQUESTED'
+  | 'SETTLEMENT_COMPLETION_REMINDER'
   | 'MATCHING_COMPLETED';
 
 export type Notification = {
@@ -21,5 +22,6 @@ export const notificationCategoryLabels: Record<NotificationType, '커뮤' | '�
   CARPOOL_REQUEST_RECEIVED: '카풀',
   CARPOOL_REQUEST_ACCEPTED: '카풀',
   SETTLEMENT_REQUESTED: '택시',
+  SETTLEMENT_COMPLETION_REMINDER: '택시',
   MATCHING_COMPLETED: '택시',
 };

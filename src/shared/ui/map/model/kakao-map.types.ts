@@ -130,6 +130,7 @@ export type KakaoMapsApi = {
     image?: KakaoMarkerImage;
     position: KakaoLatLng;
     title?: string;
+    zIndex?: number;
   }) => KakaoMarker;
   MarkerClusterer: new (options: {
     averageCenter: boolean;
