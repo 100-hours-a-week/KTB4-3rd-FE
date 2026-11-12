@@ -27,11 +27,11 @@ import { Logo } from '@/shared/ui/logo';
 import { Map, MyLocationButton, type MapRef, type MapViewport } from '@/shared/ui/map';
 
 const congestionLegendItems: readonly CongestionLegendItem[] = [
-  { color: '#CCE9FF', label: '원활·여유', range: '0~40' },
-  { color: '#FBDC65', label: '혼잡', range: '41~70' },
-  { color: '#FA342C', label: '붐빔·만석', range: '71~100' },
-  { color: '#FA9D2C', label: '지연', range: '5분 이상' },
-  { color: '#111111', label: '사고', range: '다중 제보' },
+  { color: '#CCE9FF', label: '여유' },
+  { color: '#FBDC65', label: '다소 혼잡' },
+  { color: '#FA342C', label: '매우 혼잡' },
+  { color: '#FA9D2C', label: '지연' },
+  { color: '#111111', label: '사고' },
 ];
 
 const pangyoStationCoordinate = { lat: 37.394512, lng: 127.111235 };
@@ -57,6 +57,30 @@ function getSelectedMessage(detail: CongestionSpotDetailResponse | undefined) {
   return detail?.data.reason ?? detail?.message ?? '';
 }
 
+function formatUpdatedAt(value: string | null | undefined, now: number) {
+  if (!value) {
+    return undefined;
+  }
+
+  const timestamp = new Date(/[zZ]|[+-]\d{2}:?\d{2}$/.test(value) ? value : `${value}+09:00`);
+  if (Number.isNaN(timestamp.getTime())) {
+    return undefined;
+  }
+
+  const minutes = Math.max(0, Math.floor((now - timestamp.getTime()) / 60_000));
+  if (minutes < 1) {
+    return '방금 전 갱신됨';
+  }
+  if (minutes < 60) {
+    return `${minutes}분 전 갱신됨`;
+  }
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) {
+    return `${hours}시간 전 갱신됨`;
+  }
+  return `${Math.floor(hours / 24)}일 전 갱신됨`;
+}
+
 type CongestionPinTransition = {
   id: string;
   key: number;
@@ -72,6 +96,7 @@ function CongestionMap() {
   );
   const [selectedPinId, setSelectedPinId] = useState<number | null>(null);
   const [pinTransition, setPinTransition] = useState<CongestionPinTransition | null>(null);
+  const [now, setNow] = useState(Date.now);
   const spotsQuery = useQuery(congestionQueries.spots(mapViewport));
   const spots = useMemo(() => spotsQuery.data?.data.items ?? [], [spotsQuery.data]);
   const visibleSelectedPinId =
@@ -79,6 +104,15 @@ function CongestionMap() {
       ? selectedPinId
       : null;
   const detailQuery = useQuery(congestionQueries.detail(visibleSelectedPinId));
+
+  useEffect(() => {
+    if (visibleSelectedPinId === null || !detailQuery.data?.data.window_end) {
+      return;
+    }
+
+    const timer = window.setInterval(() => setNow(Date.now()), 60_000);
+    return () => window.clearInterval(timer);
+  }, [visibleSelectedPinId, detailQuery.data?.data.window_end]);
 
   const handleViewportChange = useCallback((viewport: MapViewport) => {
     setMapViewport(toCongestionViewport(viewport));
@@ -106,13 +140,16 @@ function CongestionMap() {
             animationKey: pinTransition?.id === String(spot.id) ? pinTransition.key : undefined,
             isSelected,
             selectedMessage: getSelectedMessage(isSelected ? detailQuery.data : undefined),
+            updatedAtLabel: isSelected
+              ? formatUpdatedAt(detailQuery.data?.data.window_end, now)
+              : undefined,
           }),
           position: { lat: spot.lat, lng: spot.lng },
           title: `${spot.name} 혼잡도 핀`,
           zIndex: isSelected ? 1 : 0,
         };
       }),
-    [detailQuery.data, pinTransition, spots, visibleSelectedPinId],
+    [detailQuery.data, now, pinTransition, spots, visibleSelectedPinId],
   );
 
   return (
@@ -130,6 +167,7 @@ function CongestionMap() {
         markerFocusOnClick={false}
         markers={markers}
         onMarkerClick={({ id }) => {
+          setNow(Date.now());
           const nextPinId = Number(id);
           const nextTransitionType = selectedPinId === nextPinId ? 'collapse' : 'expand';
 
