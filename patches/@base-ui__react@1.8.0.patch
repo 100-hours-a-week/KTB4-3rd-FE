@@ -1,0 +1,204 @@
+diff --git a/drawer/popup/DrawerPopup.js b/drawer/popup/DrawerPopup.js
+index 7e0247ed635a933b5e795ddbd7045452a46dfa1c..9f12edec38f0ea34a4c70c42603826e79a262d21 100644
+--- a/drawer/popup/DrawerPopup.js
++++ b/drawer/popup/DrawerPopup.js
+@@ -179,15 +179,15 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+       (0, _error.error)(`${message}${ownerStackMessage}`);
+     }, [swipe]);
+   }
+-  const measureHeight = (0, _useStableCallback.useStableCallback)(() => {
++  const measureHeight = (0, _useStableCallback.useStableCallback)(measuredHeight => {
+     const popupElement = popupRef.current;
+     if (!popupElement) {
+       return;
+     }
+-    const offsetHeight = popupElement.offsetHeight;
++    const nextHeight = measuredHeight ?? popupElement.offsetHeight;
+
+     // Only skip while the element is still actually stretched beyond its last measured height.
+-    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && offsetHeight > popupHeightRef.current) {
++    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && nextHeight > popupHeightRef.current) {
+       return;
+     }
+     const keepHeightWhileNested = popupHeightRef.current > 0 && hasNestedDrawer;
+@@ -197,7 +197,6 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+       onPopupHeightChange(oldHeight);
+       return;
+     }
+-    const nextHeight = offsetHeight;
+     if (nextHeight === popupHeightRef.current) {
+       return;
+     }
+@@ -217,11 +216,18 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+       return undefined;
+     }
+     removeCSSVariableInheritance();
+-    measureHeight();
+     if (typeof ResizeObserver !== 'function') {
++      measureHeight();
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureHeight);
++    const resizeObserver = new ResizeObserver(entries => {
++      const entry = entries.find(item => item.target === popupElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(popupElement);
+     return () => {
+       resizeObserver.disconnect();
+diff --git a/drawer/popup/DrawerPopup.mjs b/drawer/popup/DrawerPopup.mjs
+index 388efbb32bd6257a1767b3588e05a3a1acd45fa4..9b82fdef2ea32e1411e8cf83a1f1176f4348d905 100644
+--- a/drawer/popup/DrawerPopup.mjs
++++ b/drawer/popup/DrawerPopup.mjs
+@@ -174,15 +174,15 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+       error(`${message}${ownerStackMessage}`);
+     }, [swipe]);
+   }
+-  const measureHeight = useStableCallback(() => {
++  const measureHeight = useStableCallback((measuredHeight) => {
+     const popupElement = popupRef.current;
+     if (!popupElement) {
+       return;
+     }
+-    const offsetHeight = popupElement.offsetHeight;
++    const nextHeight = measuredHeight ?? popupElement.offsetHeight;
+
+     // Only skip while the element is still actually stretched beyond its last measured height.
+-    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && offsetHeight > popupHeightRef.current) {
++    if (popupHeightRef.current > 0 && frontmostHeight > popupHeightRef.current && nextHeight > popupHeightRef.current) {
+       return;
+     }
+     const keepHeightWhileNested = popupHeightRef.current > 0 && hasNestedDrawer;
+@@ -192,7 +192,6 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+       onPopupHeightChange(oldHeight);
+       return;
+     }
+-    const nextHeight = offsetHeight;
+     if (nextHeight === popupHeightRef.current) {
+       return;
+     }
+@@ -212,11 +211,18 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+       return undefined;
+     }
+     removeCSSVariableInheritance();
+-    measureHeight();
+     if (typeof ResizeObserver !== 'function') {
++      measureHeight();
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureHeight);
++    const resizeObserver = new ResizeObserver((entries) => {
++      const entry = entries.find((item) => item.target === popupElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(popupElement);
+     return () => {
+       resizeObserver.disconnect();
+diff --git a/drawer/root/useDrawerSnapPoints.js b/drawer/root/useDrawerSnapPoints.js
+index 983dee44f7acca8c014dbb52ada24d16d8934e33..715e9978661b2c1890c1c9849067e089c2785128 100644
+--- a/drawer/root/useDrawerSnapPoints.js
++++ b/drawer/root/useDrawerSnapPoints.js
+@@ -77,21 +77,31 @@ function useDrawerSnapPoints() {
+   const viewportElement = store.useState('viewportElement');
+   const [viewportHeight, setViewportHeight] = React.useState(0);
+   const [rootFontSize, setRootFontSize] = React.useState(16);
+-  const measureViewportHeight = (0, _useStableCallback.useStableCallback)(() => {
++  const measureViewportHeight = (0, _useStableCallback.useStableCallback)(measuredHeight => {
+     const doc = (0, _owner.ownerDocument)(viewportElement);
+     const html = doc.documentElement;
+-    setViewportHeight(viewportElement ? viewportElement.offsetHeight : html.clientHeight);
++    setViewportHeight(measuredHeight ?? (viewportElement ? viewportElement.offsetHeight : html.clientHeight));
+     const fontSize = parseFloat(getComputedStyle(html).fontSize);
+     if (Number.isFinite(fontSize)) {
+       setRootFontSize(fontSize);
+     }
+   });
+   (0, _useIsoLayoutEffect.useIsoLayoutEffect)(() => {
+-    measureViewportHeight();
+-    if (!viewportElement || typeof ResizeObserver !== 'function') {
++    if (!viewportElement) {
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureViewportHeight);
++    if (typeof ResizeObserver !== 'function') {
++      measureViewportHeight();
++      return undefined;
++    }
++    const resizeObserver = new ResizeObserver(entries => {
++      const entry = entries.find(item => item.target === viewportElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureViewportHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(viewportElement);
+     return () => {
+       resizeObserver.disconnect();
+diff --git a/drawer/root/useDrawerSnapPoints.mjs b/drawer/root/useDrawerSnapPoints.mjs
+index 1a0f9d7b9a2ddd68f3b4a19038af9720cf2c3544..51f73354cc6224c74ff99b2d1f38fa7e3bf72d76 100644
+--- a/drawer/root/useDrawerSnapPoints.mjs
++++ b/drawer/root/useDrawerSnapPoints.mjs
+@@ -69,21 +69,31 @@ export function useDrawerSnapPoints() {
+   const viewportElement = store.useState('viewportElement');
+   const [viewportHeight, setViewportHeight] = React.useState(0);
+   const [rootFontSize, setRootFontSize] = React.useState(16);
+-  const measureViewportHeight = useStableCallback(() => {
++  const measureViewportHeight = useStableCallback((measuredHeight) => {
+     const doc = ownerDocument(viewportElement);
+     const html = doc.documentElement;
+-    setViewportHeight(viewportElement ? viewportElement.offsetHeight : html.clientHeight);
++    setViewportHeight(measuredHeight ?? (viewportElement ? viewportElement.offsetHeight : html.clientHeight));
+     const fontSize = parseFloat(getComputedStyle(html).fontSize);
+     if (Number.isFinite(fontSize)) {
+       setRootFontSize(fontSize);
+     }
+   });
+   useIsoLayoutEffect(() => {
+-    measureViewportHeight();
+-    if (!viewportElement || typeof ResizeObserver !== 'function') {
++    if (!viewportElement) {
+       return undefined;
+     }
+-    const resizeObserver = new ResizeObserver(measureViewportHeight);
++    if (typeof ResizeObserver !== 'function') {
++      measureViewportHeight();
++      return undefined;
++    }
++    const resizeObserver = new ResizeObserver((entries) => {
++      const entry = entries.find((item) => item.target === viewportElement);
++      if (!entry) {
++        return;
++      }
++      const borderBox = Array.isArray(entry.borderBoxSize) ? entry.borderBoxSize[0] : entry.borderBoxSize;
++      measureViewportHeight(borderBox?.blockSize ?? entry.contentRect.height);
++    });
+     resizeObserver.observe(viewportElement);
+     return () => {
+       resizeObserver.disconnect();
+diff --git a/drawer/popup/DrawerPopup.js b/drawer/popup/DrawerPopup.js
+--- a/drawer/popup/DrawerPopup.js
++++ b/drawer/popup/DrawerPopup.js
+@@ -278,4 +278,5 @@ const DrawerPopup = exports.DrawerPopup = /*#__PURE__*/React.forwardRef(function
+   (0, _useOpenChangeComplete.useOpenChangeComplete)({
++    enabled: store.context.onOpenChangeComplete != null,
+     open,
+     ref: popupRef,
+     onComplete() {
+diff --git a/drawer/popup/DrawerPopup.mjs b/drawer/popup/DrawerPopup.mjs
+--- a/drawer/popup/DrawerPopup.mjs
++++ b/drawer/popup/DrawerPopup.mjs
+@@ -273,4 +273,5 @@ export const DrawerPopup = /*#__PURE__*/React.forwardRef(function DrawerPopup(co
+   useOpenChangeComplete({
++    enabled: store.context.onOpenChangeComplete != null,
+     open,
+     ref: popupRef,
+     onComplete() {

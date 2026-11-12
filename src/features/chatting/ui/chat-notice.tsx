@@ -21,7 +21,7 @@ export function ChatNotice({ children, className, variant = 'system', ...props }
     <div
       {...props}
       className={cn(
-        'inline-flex w-fit max-w-full items-center rounded-full px-3 py-1 text-[length:var(--font-size-t4)]',
+        'mb-[44px] inline-flex w-fit max-w-full items-center rounded-full px-3 py-1 text-[length:var(--font-size-t4)]',
         variantClassNames[variant],
         className,
       )}

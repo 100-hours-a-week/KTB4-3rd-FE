@@ -1,9 +1,10 @@
 import type { ApiResponse } from '@/shared/api/types';
+import type { ChatSettlementSnapshot } from '@/entities/chat';
 
 export type ChatRoomDetailData = {
   id: number;
   companion_id: number;
-  kind: 'GENERAL' | 'TAXI_POT';
+  kind: 'GENERAL' | 'TAXI_POT' | 'CARPOOL';
   title: string;
   host_id: number;
   origin_name: string | null;
@@ -11,7 +12,8 @@ export type ChatRoomDetailData = {
   departure_at: string | null;
   current_count: number;
   capacity: number;
-  companion_status: string;
+  companion_status: 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+  rated?: boolean;
   closed_at: string | null;
   last_read_message_id: number | null;
   participants?: readonly ChatRoomParticipantData[];
@@ -41,22 +43,50 @@ export type ChatRoomMessageLeaver = {
   name: string;
 };
 
-export type ChatRoomMessageData = {
+type ChatRoomMessageDataBase = {
   id: number;
-  type:
-    | 'TEXT'
-    | 'SYSTEM_JOIN'
-    | 'SYSTEM_LEAVE'
-    | 'SYSTEM_RIDE_START_REQUESTED'
-    | 'SYSTEM_RIDE_STARTED'
-    | 'SYSTEM_RIDE_END_REQUESTED'
-    | 'SYSTEM_RIDE_ENDED';
   content?: string | null;
   sender?: ChatRoomMessageSender;
   joiner?: ChatRoomMessageJoiner;
   leaver?: ChatRoomMessageLeaver;
   created_at: string;
 };
+
+export type ChatRoomMessageData =
+  | (ChatRoomMessageDataBase & {
+      type:
+        | 'TEXT'
+        | 'SYSTEM_JOIN'
+        | 'SYSTEM_LEAVE'
+        | 'SYSTEM_RIDE_START_REQUESTED'
+        | 'SYSTEM_RIDE_STARTED'
+        | 'SYSTEM_RIDE_END_REQUESTED'
+        | 'SYSTEM_RIDE_ENDED';
+      settlement?: never;
+    })
+  | (ChatRoomMessageDataBase & {
+      type:
+        | 'SYSTEM_METER_REQUESTED'
+        | 'SYSTEM_SETTLEMENT_COMPLETED'
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
+        | 'SYSTEM_TRANSFER_UNVERIFIED';
+      content: string;
+      sender?: never;
+      settlement?: never;
+    })
+  | (ChatRoomMessageDataBase & {
+      type: 'SYSTEM_TRANSFER_DONE';
+      content: string;
+      user_id: number;
+      sender?: never;
+      settlement?: never;
+    })
+  | (ChatRoomMessageDataBase & {
+      type: 'SYSTEM_TRANSFER_REQUESTED';
+      content: string;
+      settlement: ChatSettlementSnapshot;
+      sender?: never;
+    });
 
 export type ChatRoomMessagesData = {
   items: ChatRoomMessageData[];

@@ -5,8 +5,7 @@
 :root {
   /* Font family */
   --font-family-system: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-family-pretendard: 'Pretendard';
-  --font-family-web: var(--font-family-pretendard), var(--font-family-system);
+  --font-family-web: var(--font-pretendard), var(--font-family-system);
 
   /* Foundation: font-size */
   --font-size-t1: 11px;

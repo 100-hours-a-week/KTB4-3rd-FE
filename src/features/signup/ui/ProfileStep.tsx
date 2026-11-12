@@ -14,7 +14,7 @@ import { NicknameField } from './NicknameField';
 import { ProfileImageField } from './ProfileImageField';
 
 export function ProfileStep() {
-  const { control } = useFormContext<SignupFormValues>();
+  const { control, formState, trigger } = useFormContext<SignupFormValues>();
 
   return (
     <VStack data-clarity-mask="true" gap="dimension-x6">
@@ -25,7 +25,12 @@ export function ProfileStep() {
           <ProfileImageField
             errorMessage={fieldState.error?.message}
             invalid={fieldState.invalid}
-            onChange={field.onChange}
+            onChange={(value) => {
+              field.onChange(value);
+              if (fieldState.error) {
+                void trigger('profile_image_key');
+              }
+            }}
             required={false}
             value={field.value}
           />
@@ -39,7 +44,12 @@ export function ProfileStep() {
           <NicknameField
             errorMessage={fieldState.error?.message}
             invalid={fieldState.invalid}
-            onChange={field.onChange}
+            onChange={(value) => {
+              field.onChange(value);
+              if (fieldState.error) {
+                void trigger('nickname');
+              }
+            }}
             value={field.value}
           />
         )}
@@ -52,7 +62,12 @@ export function ProfileStep() {
           <GenderSelectField
             errorMessage={fieldState.error?.message}
             invalid={fieldState.invalid}
-            onChange={field.onChange}
+            onChange={(value) => {
+              field.onChange(value);
+              if (fieldState.error) {
+                void trigger('gender');
+              }
+            }}
             value={field.value as GenderCode | null}
           />
         )}
@@ -65,7 +80,12 @@ export function ProfileStep() {
           <BankSelectField
             errorMessage={fieldState.error?.message}
             invalid={fieldState.invalid}
-            onChange={field.onChange}
+            onChange={(value) => {
+              field.onChange(value);
+              if (fieldState.error || formState.errors.account_no) {
+                void trigger(['bank_name', 'account_no']);
+              }
+            }}
             value={field.value as BankCode | null}
           />
         )}
@@ -78,7 +98,12 @@ export function ProfileStep() {
           <AccountNumberField
             errorMessage={fieldState.error?.message}
             invalid={fieldState.invalid}
-            onChange={field.onChange}
+            onChange={(value) => {
+              field.onChange(value);
+              if (fieldState.error || formState.errors.bank_name) {
+                void trigger(['bank_name', 'account_no']);
+              }
+            }}
             value={field.value}
           />
         )}

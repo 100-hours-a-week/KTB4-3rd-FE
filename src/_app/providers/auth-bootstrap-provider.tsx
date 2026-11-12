@@ -1,14 +1,16 @@
 'use client';
 
-import { refreshAccessToken, useAuthStore } from '@/entities/auth';
+import { AuthBootstrapCompleteProvider, refreshAccessToken, useAuthStore } from '@/entities/auth';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
+
+import { CarpoolRegistrationDraftAuthSync } from './carpool-registration-draft-auth-sync';
 
 type AuthBootstrapProviderProps = {
   children: ReactNode;
 };
 
 export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) {
-  const [isReady, setIsReady] = useState(false);
+  const [isBootstrapComplete, setIsBootstrapComplete] = useState(false);
   const bootstrapPromiseRef = useRef<Promise<void> | null>(null);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) 
 
     void bootstrapPromise.finally(() => {
       if (isMounted) {
-        setIsReady(true);
+        setIsBootstrapComplete(true);
       }
     });
 
@@ -36,5 +38,10 @@ export function AuthBootstrapProvider({ children }: AuthBootstrapProviderProps) 
     };
   }, []);
 
-  return isReady ? children : null;
+  return (
+    <AuthBootstrapCompleteProvider isComplete={isBootstrapComplete}>
+      <CarpoolRegistrationDraftAuthSync isBootstrapComplete={isBootstrapComplete} />
+      {children}
+    </AuthBootstrapCompleteProvider>
+  );
 }

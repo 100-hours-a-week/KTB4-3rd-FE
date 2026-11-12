@@ -1,5 +1,5 @@
-export {
-  createCommunityPostComment,
-  type CreateCommunityPostCommentPayload,
-  type CreateCommunityPostCommentResponse,
-} from './create-community-post-comment';
+export { createCommunityPostComment } from './create-community-post-comment';
+export type {
+  CreateCommunityPostCommentPayload,
+  CreateCommunityPostCommentResponse,
+} from './create-community-post-comment.types';

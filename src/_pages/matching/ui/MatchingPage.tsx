@@ -1,201 +1,347 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useInfiniteQuery, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
-import { StartPin } from '@/entities/map-pin';
-import type { LocationSearchResult } from '@/features/location-search';
-import { useMatchingRegistrationStore } from '@/features/matching-registration';
-import { reverseGeocodeLocation } from '@/features/post-location';
-import { BankAccountDialog, useCurrentUserQuery } from '@/features/user-profile';
-import {
-  createCurrentLocation,
-  CURRENT_LOCATION_ID,
-  SEOUL_STATION_COORDINATE,
-  SEOUL_STATION_LOCATION,
-  useMatchingStore,
-} from '@/_pages/matching/model/matching-store';
-import { BackButton } from '@/shared/ui/back-button';
-import { LocationInputButton } from '@/shared/ui/location-input-button';
-import { Map, MyLocationButton, type MapRef } from '@/shared/ui/map';
+import { useMatchingEntry } from '../model/use-matching-entry';
+import { useMatchingMapState } from '../model/use-matching-map-state';
+import { MatchingPageView } from './matching-page-view';
+import { CarPoolList, type CarPoolListItem } from '@/entities/carpool';
+import { getCarpoolPinMarkerImage } from '@/entities/map-pin';
+import { useCurrentUserQuery } from '@/features/user-profile';
+import { ApiError } from '@/shared/api/client';
+import { carpoolQueries } from '@/shared/api/carpool';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
+import { Map } from '@/shared/ui/map';
+import { SnackbarViewport } from '@/shared/ui/snackbar-viewport';
+import { Text } from '@/shared/ui/text';
+import { CarpoolDetailModal, type CarpoolSelection } from './carpool-detail-modal';
 
-const MATCHING_LOCATION_ROUTE = '/matching/location';
-
-function getLocationRoute(field: 'departure' | 'destination') {
-  return `${MATCHING_LOCATION_ROUTE}?field=${field}`;
-}
-
-function toRegistrationLocation(location: LocationSearchResult) {
-  return {
-    name: location.placeName,
-    lat: location.latitude ?? null,
-    lng: location.longitude ?? null,
-  };
-}
-
-function getDepartureValue(departure: LocationSearchResult | null) {
-  if (!departure) {
-    return null;
-  }
-
-  if (departure.id === CURRENT_LOCATION_ID) {
-    return departure.placeName ? `현위치: ${departure.placeName}` : null;
-  }
-
-  return departure.placeName || null;
+function setScrollTop(element: HTMLElement, scrollTop: number) {
+  element.scrollTop = scrollTop;
 }
 
 export function MatchingPage() {
-  const router = useRouter();
-  const mapRef = useRef<MapRef>(null);
-  const geocodingRequestIdRef = useRef(0);
-  const [isBankAccountDialogDismissed, setIsBankAccountDialogDismissed] = useState(false);
-  const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const queryClient = useQueryClient();
   const currentUserQuery = useCurrentUserQuery();
-  const departure = useMatchingStore((state) => state.departure);
-  const destination = useMatchingStore((state) => state.destination);
-  const setLocation = useMatchingStore((state) => state.setLocation);
-  const setOrigin = useMatchingRegistrationStore((state) => state.setOrigin);
-  const setDestination = useMatchingRegistrationStore((state) => state.setDestination);
-
-  const currentUser = currentUserQuery.data?.data;
-  const shouldShowBankAccountDialog =
-    currentUser?.has_bank_account === false && !isBankAccountDialogDismissed;
-  const canLocateOnMount =
-    !isAuthenticated || (currentUserQuery.isFetched && !currentUserQuery.isFetching);
-  const shouldLocateOnMount =
-    departure?.id === SEOUL_STATION_LOCATION.id && canLocateOnMount && !shouldShowBankAccountDialog;
-
-  useEffect(() => {
-    setOrigin(
-      departure
+  const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const [selection, setSelection] = useState<CarpoolSelection | null>(null);
+  const [isScrollRestoring, setIsScrollRestoring] = useState(false);
+  const selectionRequestRef = useRef<(next: CarpoolSelection | null) => void>(() => undefined);
+  const scrollSnapshotRef = useRef<{ queryKey: string; scrollTop: number } | null>(null);
+  const pendingFocusIdRef = useRef<number | null>(null);
+  const previousListQueryKeyRef = useRef<string | null>(null);
+  const { fabContainerRef, isFabOpen, onCarpoolClick, onFabOpenChange, onTaxipotClick } =
+    useMatchingEntry();
+  const {
+    distanceOrigin,
+    isListReady,
+    mapRef,
+    mapViewport,
+    onCurrentLocationClick,
+    onUserLocationChange,
+    onViewportChange,
+  } = useMatchingMapState();
+  const showSnackbar = useSnackbarStore((state) => state.showSnackbar);
+  const queryViewport = useMemo(
+    () =>
+      mapViewport
         ? {
-            name: departure.placeName,
-            lat: departure.latitude ?? null,
-            lng: departure.longitude ?? null,
+            sw_lat: mapViewport.southWest.lat,
+            sw_lng: mapViewport.southWest.lng,
+            ne_lat: mapViewport.northEast.lat,
+            ne_lng: mapViewport.northEast.lng,
           }
         : null,
-    );
-    setDestination(
-      destination
-        ? {
-            name: destination.placeName,
-            lat: destination.latitude ?? null,
-            lng: destination.longitude ?? null,
-          }
-        : null,
-    );
-  }, [departure, destination, setDestination, setOrigin]);
+    [mapViewport],
+  );
+  const nearbyQueryOptions = useMemo(
+    () =>
+      carpoolQueries.nearby(
+        queryViewport
+          ? { ...queryViewport, lat: distanceOrigin.lat, lng: distanceOrigin.lng }
+          : null,
+      ),
+    [distanceOrigin, queryViewport],
+  );
+  const nearbyQuery = useInfiniteQuery(nearbyQueryOptions);
+  const pinsQuery = useQuery(carpoolQueries.pins(queryViewport));
+  const refetchPins = pinsQuery.refetch;
+  const carpools = useMemo<CarPoolListItem[]>(
+    () => nearbyQuery.data?.pages.flatMap((page) => page.data.items) ?? [],
+    [nearbyQuery.data],
+  );
+  const pins = useMemo(() => pinsQuery.data?.data.items ?? [], [pinsQuery.data]);
+  const listQueryKey = useMemo(
+    () => JSON.stringify({ viewport: queryViewport, origin: distanceOrigin }),
+    [distanceOrigin, queryViewport],
+  );
+  const markers = useMemo(
+    () =>
+      pins.map((pin) => ({
+        id: pin.id,
+        image: getCarpoolPinMarkerImage(),
+        isSelected: selection?.id === pin.id,
+        position: { lat: pin.lat, lng: pin.lng },
+        title: `카풀 게시글 ${pin.id}`,
+      })),
+    [pins, selection?.id],
+  );
+  const {
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchingNextPage,
+    isFetchNextPageError,
+    isError: isNearbyError,
+    fetchStatus: nearbyFetchStatus,
+    isFetching: isNearbyFetching,
+    error: nearbyError,
+    errorUpdatedAt: nearbyErrorUpdatedAt,
+    data: nearbyData,
+    refetch: refetchNearby,
+  } = nearbyQuery;
+  const handleLoadMore = useCallback(() => {
+    if (selection !== null || !hasNextPage || isFetching) {
+      return;
+    }
+    void fetchNextPage();
+  }, [fetchNextPage, hasNextPage, isFetching, selection]);
 
-  const mapCenter =
-    departure?.latitude !== undefined && departure.longitude !== undefined
-      ? { lat: departure.latitude, lng: departure.longitude }
-      : SEOUL_STATION_COORDINATE;
-
-  const handleUserLocationChange = useCallback(
-    (coordinate: { lat: number; lng: number }) => {
-      const requestId = ++geocodingRequestIdRef.current;
-      const provisionalLocation = createCurrentLocation(coordinate, {
-        placeName: null,
-        roadAddress: null,
-      });
-
-      setLocation('departure', provisionalLocation);
-      setOrigin(toRegistrationLocation(provisionalLocation));
-
-      reverseGeocodeLocation(coordinate)
-        .then((details) => {
-          if (requestId !== geocodingRequestIdRef.current) {
-            return;
-          }
-
-          const resolvedLocation = createCurrentLocation(coordinate, details);
-
-          setLocation('departure', resolvedLocation);
-          setOrigin(toRegistrationLocation(resolvedLocation));
-        })
-        .catch(() => {
-          // 주소 조회에 실패해도 현재 좌표를 출발지로 유지합니다.
-        });
+  const applySelection = useCallback(
+    (nextSelection: CarpoolSelection | null) => {
+      if (nextSelection && selection === null && scrollRoot) {
+        scrollSnapshotRef.current = { queryKey: listQueryKey, scrollTop: scrollRoot.scrollTop };
+      }
+      if (nextSelection === null && selection !== null) {
+        pendingFocusIdRef.current = selection.id;
+      }
+      setSelection(nextSelection);
     },
-    [setLocation, setOrigin],
+    [listQueryKey, scrollRoot, selection],
   );
 
-  const handleUserLocationError = useCallback(() => {
-    const currentDeparture = useMatchingStore.getState().departure;
+  const requestSelection = useCallback((nextSelection: CarpoolSelection | null) => {
+    selectionRequestRef.current(nextSelection);
+  }, []);
 
-    if (!currentDeparture || currentDeparture.id === SEOUL_STATION_LOCATION.id) {
-      setLocation('departure', SEOUL_STATION_LOCATION);
+  const handlePinClick = useCallback(
+    (marker: { id: string | number }) => {
+      const pin = pins.find((candidate) => candidate.id === Number(marker.id));
+      requestSelection({
+        id: Number(marker.id),
+        position: pin ? { lat: pin.lat, lng: pin.lng } : null,
+      });
+    },
+    [pins, requestSelection],
+  );
+
+  const handleListCarpoolClick = useCallback(
+    (carpoolId: number) => {
+      const pin = pins.find((candidate) => candidate.id === carpoolId);
+      requestSelection({ id: carpoolId, position: pin ? { lat: pin.lat, lng: pin.lng } : null });
+    },
+    [pins, requestSelection],
+  );
+
+  useEffect(() => {
+    if (previousListQueryKeyRef.current === null) {
+      previousListQueryKeyRef.current = listQueryKey;
+      return;
     }
-  }, [setLocation]);
+    if (previousListQueryKeyRef.current === listQueryKey) {
+      return;
+    }
+    previousListQueryKeyRef.current = listQueryKey;
+    scrollSnapshotRef.current = null;
+    if (scrollRoot) {
+      setScrollTop(scrollRoot, 0);
+    }
+  }, [listQueryKey, scrollRoot]);
 
-  const departureValue = getDepartureValue(departure);
+  useLayoutEffect(() => {
+    if (selection !== null || !scrollRoot) {
+      return;
+    }
+    const snapshot = scrollSnapshotRef.current;
+    if (!snapshot) {
+      return;
+    }
+    setIsScrollRestoring(true);
+    const frame = requestAnimationFrame(() => {
+      if (scrollSnapshotRef.current === snapshot && scrollRoot.isConnected) {
+        setScrollTop(scrollRoot, snapshot.queryKey === listQueryKey ? snapshot.scrollTop : 0);
+      }
+      const pendingFocusId = pendingFocusIdRef.current;
+      if (pendingFocusId !== null && scrollRoot.isConnected) {
+        scrollRoot
+          .querySelector<HTMLButtonElement>(`button[data-carpool-id="${pendingFocusId}"]`)
+          ?.focus();
+        pendingFocusIdRef.current = null;
+      }
+      scrollSnapshotRef.current = null;
+      setIsScrollRestoring(false);
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [listQueryKey, nearbyQuery.data, scrollRoot, selection]);
+
+  const handledCursorErrorRef = useRef<number | null>(null);
+  useEffect(() => {
+    if (!isFetchNextPageError || !nearbyError) {
+      return;
+    }
+    if (nearbyError instanceof ApiError && nearbyError.code === 'INVALID_CURSOR') {
+      if (handledCursorErrorRef.current === nearbyErrorUpdatedAt) {
+        return;
+      }
+      handledCursorErrorRef.current = nearbyErrorUpdatedAt;
+      void queryClient.resetQueries({ queryKey: nearbyQueryOptions.queryKey, exact: true });
+      showSnackbar('카풀 목록을 처음부터 다시 불러오고 있어요.', 'critical');
+      return;
+    }
+    showSnackbar('카풀 목록을 더 불러오지 못했어요. 다시 시도해주세요.', 'critical', {
+      children: '다시 시도',
+      onClick: () => {
+        if (selection === null && !isFetching && hasNextPage) {
+          void fetchNextPage();
+        }
+      },
+    });
+  }, [
+    fetchNextPage,
+    hasNextPage,
+    isFetching,
+    isFetchNextPageError,
+    nearbyError,
+    nearbyErrorUpdatedAt,
+    nearbyQueryOptions.queryKey,
+    queryClient,
+    selection,
+    showSnackbar,
+  ]);
+
+  useEffect(() => {
+    if (isNearbyError && carpools.length > 0) {
+      showSnackbar('카풀 목록을 새로고침하지 못했어요.', 'critical');
+    }
+  }, [carpools.length, isNearbyError, showSnackbar]);
+
+  useEffect(() => {
+    if (pinsQuery.isError) {
+      showSnackbar('지도 카풀 핀을 불러오지 못했어요.', 'critical', {
+        children: '다시 시도',
+        onClick: () => void refetchPins(),
+      });
+    } else if (pinsQuery.data?.data.limit_exceeded) {
+      showSnackbar('표시 가능한 핀 수를 초과해 일부 카풀이 보이지 않을 수 있어요.', 'default');
+    }
+  }, [
+    pinsQuery.data?.data.limit_exceeded,
+    pinsQuery.errorUpdatedAt,
+    pinsQuery.isError,
+    refetchPins,
+    showSnackbar,
+  ]);
+
+  let listContent;
+  if (!isListReady) {
+    listContent = (
+      <div className="px-4 py-6 text-center">
+        <Text color="fg.neutralSubtle" variant="t3Regular">
+          지도를 준비하고 있어요.
+        </Text>
+      </div>
+    );
+  } else if (nearbyData === undefined && nearbyFetchStatus === 'paused') {
+    listContent = (
+      <div className="px-4 py-6 text-center" role="status">
+        <Text color="fg.neutralSubtle" variant="t3Regular">
+          인터넷 연결을 기다리고 있어요.
+        </Text>
+      </div>
+    );
+  } else if (nearbyData === undefined && isNearbyFetching) {
+    listContent = <CarPoolList status="loading" />;
+  } else if (nearbyData === undefined && isNearbyError) {
+    listContent = <CarPoolList status="error" onRetry={() => void refetchNearby()} />;
+  } else if (nearbyData !== undefined && carpools.length === 0) {
+    listContent = <CarPoolList status="empty" />;
+  } else if (nearbyData === undefined) {
+    listContent = (
+      <div className="px-4 py-6 text-center">
+        <Text color="fg.neutralSubtle" variant="t3Regular">
+          주변 카풀을 확인할 준비가 되었어요.
+        </Text>
+      </div>
+    );
+  } else {
+    listContent = (
+      <CarPoolList
+        canLoadMore={
+          selection === null &&
+          hasNextPage &&
+          !isFetching &&
+          !isFetchNextPageError &&
+          !isScrollRestoring
+        }
+        hasNextPage={hasNextPage}
+        isLoadingMore={isFetchingNextPage}
+        items={carpools}
+        loadMoreError={isFetchNextPageError}
+        onCarpoolClick={handleListCarpoolClick}
+        onLoadMore={handleLoadMore}
+        scrollRoot={scrollRoot}
+        status="content"
+      />
+    );
+  }
 
   return (
-    <div
-      aria-label="택시팟 등록"
-      className="relative mx-auto h-dvh min-h-[780px] w-full max-w-[393px] overflow-hidden bg-[var(--color-bg-layer-fill)]"
-    >
-      <main className="relative h-[780px]" aria-label="택시팟 등록 지도">
-        <Map
-          className="absolute inset-0 h-[780px]"
-          clusterMarkers={false}
-          defaultCenter={mapCenter}
-          locateOnMount={shouldLocateOnMount}
-          onUserLocationChange={handleUserLocationChange}
-          onUserLocationError={handleUserLocationError}
-          showCurrentLocationButton={false}
-          showZoomControls={false}
-          ref={mapRef}
-        >
-          <div className="pointer-events-none absolute inset-0 z-30">
-            <div className="absolute top-[44.1%] left-1/2 -translate-x-1/2">
-              <StartPin aria-label="출발 위치" />
-            </div>
+    <>
+      <MatchingPageView
+        fabContainerRef={fabContainerRef}
+        isFabOpened={isFabOpen}
+        map={
+          <div
+            aria-label="매칭 지도"
+            className="h-full"
+            data-list-ready={isListReady}
+            role="region"
+          >
+            <Map
+              center={selection?.position ?? undefined}
+              className="h-full"
+              markerFocusLevel={2}
+              markerFocusOffset={{ y: 160 }}
+              markers={markers}
+              locateOnMount
+              onMarkerClick={handlePinClick}
+              onUserLocationChange={onUserLocationChange}
+              onViewportChange={onViewportChange}
+              ref={mapRef}
+              showCurrentLocationButton={false}
+              showZoomControls={false}
+            />
           </div>
-          <MyLocationButton
-            className="absolute right-[9px] bottom-[159px] z-30"
-            onClick={() => mapRef.current?.requestCurrentLocation()}
-          />
-        </Map>
-      </main>
-
-      <div
-        className="fixed inset-x-0 bottom-0 z-40 mx-auto flex h-[calc(205px+env(safe-area-inset-bottom,0px))] w-full max-w-[393px] flex-col gap-3 overflow-hidden rounded-t-[20px] bg-[var(--color-bg-layer-default)] px-5 pt-10 pb-[env(safe-area-inset-bottom,0px)]"
-        data-testid="matching-location-panel"
-      >
-        <LocationInputButton
-          aria-label="출발지"
-          clearButton={false}
-          placeholder="출발지"
-          prefix={null}
-          value={departureValue}
-          onClick={() => router.push(getLocationRoute('departure'))}
-        />
-        <LocationInputButton
-          aria-label="도착지"
-          clearButton={false}
-          placeholder="어디로 갈까요?"
-          prefix={null}
-          value={destination?.placeName ?? null}
-          onClick={() => router.push(getLocationRoute('destination'))}
-        />
-      </div>
-
-      <header className="fixed top-0 left-1/2 z-50 h-14 w-full max-w-[393px] -translate-x-1/2">
-        <BackButton className="absolute top-1.5 left-1.5" href="/" />
-      </header>
-
-      <BankAccountDialog
-        open={shouldShowBankAccountDialog}
-        onDismiss={() => router.push('/')}
-        onOpenChange={(open) => {
-          if (!open) {
-            setIsBankAccountDialogDismissed(true);
-          }
-        }}
+        }
+        onCarpoolClick={onCarpoolClick}
+        onCurrentLocationClick={onCurrentLocationClick}
+        onFabOpenChange={onFabOpenChange}
+        nearbyCarpools={listContent}
+        isListOpen={selection === null}
+        onScrollElementChange={setScrollRoot}
+        scrollContentKey={`${listQueryKey}:${pins.length}`}
+        onTaxipotClick={onTaxipotClick}
+        user={currentUserQuery.data?.data}
       />
-    </div>
+      <CarpoolDetailModal
+        onSelectionChange={applySelection}
+        onSelectionRequest={(callback) => {
+          selectionRequestRef.current = callback;
+        }}
+        selection={selection}
+      />
+      <SnackbarViewport className="fixed inset-x-0 bottom-4 z-[2147483647] mx-auto max-w-[393px] px-5" />
+    </>
   );
 }

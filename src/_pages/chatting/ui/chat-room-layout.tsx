@@ -33,7 +33,7 @@ export function ChatRoomLayout({
           className="z-20"
           leftSlot={
             <BackButton
-              href="/"
+              href="/chat"
               onClick={
                 onBack
                   ? (event) => {

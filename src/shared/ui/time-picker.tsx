@@ -144,14 +144,14 @@ function getColumnValue(value: TimePickerValue, name: TimePickerColumnName) {
 
 function getColumnLayout(name: TimePickerColumnName) {
   if (name === 'period') {
-    return { left: '41px', width: '102px' };
+    return { left: '11.6%', width: '28.9%' };
   }
 
   if (name === 'hour') {
-    return { left: '135px', width: '82px' };
+    return { left: '38.2%', width: '23.2%' };
   }
 
-  return { left: '199px', width: '98px' };
+  return { left: '56.4%', width: '27.8%' };
 }
 
 function TimePickerColumn({
@@ -233,7 +233,7 @@ export function TimePicker({
     <div
       aria-label={ariaLabel}
       className={cn(
-        'relative h-[224px] w-[353px] overflow-hidden rounded-[16px] bg-[var(--color-bg-layer-default)]',
+        'relative h-[224px] w-full max-w-[353px] overflow-hidden rounded-[16px] bg-[var(--color-bg-layer-default)]',
         disabled && 'cursor-not-allowed opacity-60',
         className,
       )}
@@ -242,13 +242,13 @@ export function TimePicker({
     >
       <div
         aria-hidden="true"
-        className="absolute top-[90px] left-[12px] z-0 h-[44px] w-[329px] rounded-[12px] bg-[#eaecf0]"
+        className="absolute top-[90px] right-[3.4%] left-[3.4%] z-0 h-[44px] rounded-[12px] bg-[#eaecf0]"
       />
 
       <WheelPickerWrapper className="time-picker-wheel-wrapper absolute inset-0 z-10">
         <TimePickerColumn
           aria-label="오전 또는 오후"
-          className="left-[41px] w-[102px]"
+          className="left-[11.6%] w-[28.9%]"
           disabled={disabled}
           name="period"
           onValueChange={(nextValue) => updateColumnValue('period', nextValue)}
@@ -257,7 +257,7 @@ export function TimePicker({
         />
         <TimePickerColumn
           aria-label="시"
-          className="left-[135px] w-[82px]"
+          className="left-[38.2%] w-[23.2%]"
           disabled={disabled}
           infinite
           name="hour"
@@ -267,7 +267,7 @@ export function TimePicker({
         />
         <TimePickerColumn
           aria-label="분"
-          className="left-[199px] w-[98px]"
+          className="left-[56.4%] w-[27.8%]"
           disabled={disabled}
           infinite
           name="minute"

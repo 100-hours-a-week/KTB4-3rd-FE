@@ -61,6 +61,10 @@ const iconRegistry = {
     type: 'mask',
     source: '/icons/seed/icon_chatbubble_text_fill.svg',
   },
+  notificationEmpty: {
+    type: 'mask',
+    source: '/icons/seed/icon_horizline2_vertical_chatbubble_rectangular_right_line.svg',
+  },
   calendarDays: { type: 'lucide', component: CalendarDays },
   clock3: { type: 'lucide', component: Clock3 },
   copy: { type: 'lucide', component: Copy },

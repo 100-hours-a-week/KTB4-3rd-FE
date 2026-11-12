@@ -22,6 +22,7 @@ describe('ChatNotice', () => {
       'rounded-full',
       'px-3',
       'py-1',
+      'mb-[44px]',
     );
   });
 

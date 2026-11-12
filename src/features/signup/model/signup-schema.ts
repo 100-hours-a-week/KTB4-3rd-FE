@@ -31,7 +31,8 @@ export const signupSchema = z
     nickname: z
       .string()
       .trim()
-      .regex(/^[가-힣A-Za-z0-9]{2,12}$/, '한글, 영문, 숫자만 사용할 수 있어요.'),
+      .max(12, '2~12자로 입력해주세요')
+      .regex(/^[가-힣A-Za-z0-9]{2,}$/, '한글, 영문, 숫자만 사용할 수 있어요.'),
     gender: z
       .enum(GenderCode)
       .nullable()

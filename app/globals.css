@@ -1,7 +1,6 @@
 @import '@ncdai/react-wheel-picker/style.css';
 @import 'tailwindcss';
 @import '../src/shared/styles/color-tokens.css';
-@import '../src/shared/styles/font-faces.css';
 @import '../src/shared/styles/spacing-tokens.css';
 @import '../src/shared/styles/typography-tokens.css';
 

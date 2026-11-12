@@ -18,6 +18,7 @@ export type MapMarker = {
   isSelected?: boolean;
   position: MapCoordinate;
   title?: string;
+  zIndex?: number;
 };
 
 export type MapViewport = {
@@ -26,6 +27,16 @@ export type MapViewport = {
   southEast: MapCoordinate;
   southWest: MapCoordinate;
 };
+
+export type MapViewportChangeSource =
+  | 'initial'
+  | 'drag'
+  | 'zoom'
+  | 'selection'
+  | 'locate'
+  | 'programmatic';
+
+export type MapCenterChangeSource = Extract<MapViewportChangeSource, 'selection' | 'programmatic'>;
 
 export type MapLoadError = {
   message: string;

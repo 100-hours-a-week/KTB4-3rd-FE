@@ -5,7 +5,7 @@ import type { ChatRoomListItem } from '@/entities/chat';
 import { ChatListPage, type ChatListPageStates } from '@/_pages/chat-list';
 import { ChatListPageLoading } from './chat-list-page-loading';
 
-const chatRooms: ChatRoomListItem[] = Array.from({ length: 6 }, (_, index) => ({
+const taxiPotChatRooms: ChatRoomListItem[] = Array.from({ length: 6 }, (_, index) => ({
   id: 501 + index,
   companion_id: 10 + index,
   kind: 'TAXI_POT',
@@ -16,19 +16,53 @@ const chatRooms: ChatRoomListItem[] = Array.from({ length: 6 }, (_, index) => ({
   has_unread: index === 0,
 }));
 
+const carpoolChatRooms: ChatRoomListItem[] = [
+  {
+    id: 601,
+    companion_id: 20,
+    kind: 'CARPOOL',
+    title: '판교역 → 강남역 카풀',
+    host: { profile_image_url: null },
+    current_count: 3,
+    capacity: 4,
+    has_unread: true,
+  },
+];
+
+const communityChatRooms: ChatRoomListItem[] = [
+  {
+    id: 701,
+    companion_id: 30,
+    kind: 'COMPANION',
+    title: '출퇴근 정보 나눔',
+    host: { profile_image_url: null },
+    current_count: 2,
+    capacity: 4,
+    has_unread: false,
+  },
+];
+
 const successStates: ChatListPageStates = {
-  matching: {
+  taxiPot: {
     status: 'success',
-    data: { items: [], next_cursor: null },
+    data: { items: taxiPotChatRooms, next_cursor: null },
+  },
+  carpool: {
+    status: 'success',
+    data: { items: carpoolChatRooms, next_cursor: null },
   },
   community: {
     status: 'success',
-    data: { items: chatRooms, next_cursor: null },
+    data: { items: communityChatRooms, next_cursor: null },
   },
 };
 
 const emptyStates: ChatListPageStates = {
-  matching: {
+  taxiPot: {
+    status: 'success',
+    data: { items: [], next_cursor: null },
+  },
+  carpool: {
     status: 'success',
     data: { items: [], next_cursor: null },
   },
@@ -39,7 +73,8 @@ const emptyStates: ChatListPageStates = {
 };
 
 const errorStates: ChatListPageStates = {
-  matching: { status: 'error' },
+  taxiPot: { status: 'error' },
+  carpool: { status: 'error' },
   community: { status: 'error' },
 };
 

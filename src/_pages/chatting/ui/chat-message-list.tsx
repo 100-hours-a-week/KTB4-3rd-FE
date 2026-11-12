@@ -5,7 +5,7 @@ import { Icon } from '@/shared/ui/icon';
 import type { ChatRoomMessage } from '@/_pages/chatting/model/chat-room';
 
 import { ChatMessageItem } from './chat-message-item';
-import type { ChatReportTarget } from './chat-message-menu';
+import type { ChatReportTarget } from '@/_pages/chatting/model/chat-report-target';
 
 type ChatMessageListProps = {
   roomId: string;
@@ -23,6 +23,7 @@ type ChatMessageListProps = {
   hasNewMessages?: boolean;
   liveMessageCount?: number;
   bottomContent?: ReactNode;
+  renderMessage?: (message: ChatRoomMessage, index: number) => ReactNode;
 };
 
 type LoadDirection = 'before' | 'after';
@@ -72,6 +73,7 @@ export function ChatMessageList({
   hasNewMessages = false,
   liveMessageCount = 0,
   bottomContent,
+  renderMessage,
 }: ChatMessageListProps) {
   const messagesRef = useRef<HTMLDivElement>(null);
   const previousMessagesRef = useRef<HTMLDivElement>(null);
@@ -315,9 +317,15 @@ export function ChatMessageList({
             {previousMessagesStatus}
           </div>
         ) : null}
-        {messages.map((message, index) => (
-          <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
-        ))}
+        {messages.map((message, index) =>
+          renderMessage ? (
+            <span className="contents" key={message.id}>
+              {renderMessage(message, index)}
+            </span>
+          ) : (
+            <ChatMessageItem index={index} key={message.id} message={message} onReport={onReport} />
+          ),
+        )}
         {hasNewerMessages && onLoadNewerMessages ? (
           <div
             aria-busy={isFetchingNewerMessages}

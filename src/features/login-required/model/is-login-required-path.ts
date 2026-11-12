@@ -1,8 +1,10 @@
 const LOGIN_REQUIRED_PATH_PREFIXES = [
-  '/matching',
+  '/carpools/new',
+  '/taxi-pots/new',
   '/chat',
   '/chatting',
   '/chatroom',
+  '/notification',
   '/post/create',
   '/posts/write',
 ] as const;

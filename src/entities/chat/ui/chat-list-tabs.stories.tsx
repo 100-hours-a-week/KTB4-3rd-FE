@@ -19,8 +19,14 @@ export const CommunitySelected: Story = {
   },
 };
 
-export const MatchingSelected: Story = {
+export const TaxiPotSelected: Story = {
   args: {
-    defaultValue: 'matching',
+    defaultValue: 'taxiPot',
+  },
+};
+
+export const CarpoolSelected: Story = {
+  args: {
+    defaultValue: 'carpool',
   },
 };

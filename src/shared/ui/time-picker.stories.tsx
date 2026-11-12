@@ -41,3 +41,11 @@ export const Disabled: Story = {
     disabled: true,
   },
 };
+
+export const NarrowLayout: Story = {
+  render: (args) => (
+    <div className="w-[280px]">
+      <ControlledTimePicker {...args} />
+    </div>
+  ),
+};

@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useCallback, useState, type ReactNode } from 'react';
 
-import { selectIsAuthenticated, useAuthStore } from '@/entities/auth';
+import { selectIsAuthenticated, useAuthBootstrapComplete, useAuthStore } from '@/entities/auth';
 import {
   RequireAuthContextProvider,
   type AuthenticatedAction,
@@ -18,21 +18,32 @@ type LoginRequiredProviderProps = {
 
 type RouteLoginRequiredDialogProps = {
   isActionDialogOpen: boolean;
+  isAuthBootstrapComplete: boolean;
+  isForcedDialogOpen: boolean;
   isAuthenticated: boolean;
   pathname: string | null;
   onActionDialogOpenChange: (open: boolean) => void;
+  onForcedDialogOpenChange: (open: boolean) => void;
 };
 
 function RouteLoginRequiredDialog({
   isActionDialogOpen,
+  isAuthBootstrapComplete,
+  isForcedDialogOpen,
   isAuthenticated,
   pathname,
   onActionDialogOpenChange,
+  onForcedDialogOpenChange,
 }: RouteLoginRequiredDialogProps) {
   const [isRouteDialogDismissed, setIsRouteDialogDismissed] = useState(false);
   const isRouteDialogOpen =
-    !isAuthenticated && isLoginRequiredPath(pathname) && !isRouteDialogDismissed;
-  const isDialogOpen = !isAuthenticated && (isActionDialogOpen || isRouteDialogOpen);
+    isAuthBootstrapComplete &&
+    !isAuthenticated &&
+    isLoginRequiredPath(pathname) &&
+    !isRouteDialogDismissed;
+  const isDialogOpen =
+    isForcedDialogOpen ||
+    (isAuthBootstrapComplete && !isAuthenticated && (isActionDialogOpen || isRouteDialogOpen));
 
   const handleOpenChange = useCallback(
     (open: boolean) => {
@@ -41,17 +52,22 @@ function RouteLoginRequiredDialog({
       }
 
       onActionDialogOpenChange(open);
+      onForcedDialogOpenChange(open);
     },
-    [isRouteDialogOpen, onActionDialogOpenChange],
+    [isRouteDialogOpen, onActionDialogOpenChange, onForcedDialogOpenChange],
   );
 
   return <LoginRequiredDialog open={isDialogOpen} onOpenChange={handleOpenChange} />;
 }
 
 export function LoginRequiredProvider({ children }: LoginRequiredProviderProps) {
+  const isAuthBootstrapComplete = useAuthBootstrapComplete();
   const isAuthenticated = useAuthStore(selectIsAuthenticated);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const pathname = usePathname();
   const [isActionDialogOpen, setIsActionDialogOpen] = useState(false);
+  const [forcedDialogToken, setForcedDialogToken] = useState<string | null>(null);
+  const isForcedDialogOpen = forcedDialogToken !== null && accessToken === forcedDialogToken;
 
   const requireAuth = useCallback(
     (action: AuthenticatedAction) => {
@@ -65,15 +81,29 @@ export function LoginRequiredProvider({ children }: LoginRequiredProviderProps) 
     [isAuthenticated],
   );
 
+  const showLoginRequiredDialog = useCallback(() => {
+    setForcedDialogToken(useAuthStore.getState().accessToken);
+  }, []);
+
+  const handleForcedDialogOpenChange = useCallback(
+    (open: boolean) => {
+      setForcedDialogToken(open ? accessToken : null);
+    },
+    [accessToken],
+  );
+
   return (
-    <RequireAuthContextProvider value={{ requireAuth }}>
+    <RequireAuthContextProvider value={{ requireAuth, showLoginRequiredDialog }}>
       {children}
       <RouteLoginRequiredDialog
         isActionDialogOpen={isActionDialogOpen}
+        isAuthBootstrapComplete={isAuthBootstrapComplete}
+        isForcedDialogOpen={isForcedDialogOpen}
         isAuthenticated={isAuthenticated}
         key={pathname ?? 'unknown'}
         pathname={pathname}
         onActionDialogOpenChange={setIsActionDialogOpen}
+        onForcedDialogOpenChange={handleForcedDialogOpenChange}
       />
     </RequireAuthContextProvider>
   );

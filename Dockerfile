@@ -10,6 +10,7 @@ FROM node:26.3.1-alpine AS deps
 WORKDIR /app
 
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches ./patches
 
 # Node 25 부터 corepack 이 공식 이미지에 포함되지 않는다.
 # package.json 의 packageManager 핀을 단일 출처로 삼아 그 버전을 그대로 설치한다.

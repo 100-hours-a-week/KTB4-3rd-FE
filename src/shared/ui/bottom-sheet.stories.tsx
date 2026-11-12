@@ -112,3 +112,56 @@ export const WithViewAll: Story = {
     children: <PostList count={4} />,
   },
 };
+
+function ScrollElementStory({ children, ...props }: ComponentProps<typeof BottomSheet>) {
+  const [open, setOpen] = useState(false);
+  const [scrollElement, setScrollElement] = useState<HTMLElement | null>(null);
+  return (
+    <div className="min-h-dvh bg-[var(--color-bg-layer-fill)] p-5">
+      <button
+        className="rounded-lg bg-[var(--color-bg-neutral-solid)] px-4 py-3 text-white"
+        onClick={() => setOpen(true)}
+        type="button"
+      >
+        바텀시트 열기
+      </button>
+      <button
+        className="ml-3 rounded-lg border px-4 py-3 disabled:opacity-40"
+        disabled={!scrollElement}
+        onClick={() =>
+          scrollElement?.scrollTo({ top: scrollElement.scrollHeight, behavior: 'instant' })
+        }
+        type="button"
+      >
+        목록 맨 아래로 이동
+      </button>
+      <p className="mt-3" role="status">
+        {scrollElement ? '스크롤 영역 연결됨' : '스크롤 영역 없음'}
+      </p>
+      <BottomSheet
+        {...props}
+        dismissible
+        open={open}
+        onOpenChange={setOpen}
+        onScrollElementChange={setScrollElement}
+      >
+        {children}
+      </BottomSheet>
+    </div>
+  );
+}
+
+export const ScrollElement: Story = {
+  name: '부모에서 스크롤 요소 사용',
+  args: {
+    bottomOffset: '72px',
+    title: '스크롤 요소 연결',
+    description: 'Escape로 닫으면 참조를 해제합니다.',
+    showBackdrop: false,
+    modal: false,
+    defaultSnapPoint: 0.7,
+    showScrollFog: true,
+    children: <PostList count={20} />,
+  },
+  render: (args) => <ScrollElementStory {...args} />,
+};

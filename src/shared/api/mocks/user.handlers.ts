@@ -1,6 +1,15 @@
 import { http, HttpResponse } from 'msw';
 
-import { getBearerToken, MOCK_ACCESS_TOKEN } from './mock-utils';
+import { revokeAllMockSessions } from './auth.handlers';
+import { errorResponse, getBearerToken, MOCK_ACCESS_TOKEN } from './mock-utils';
+
+export const MOCK_WITHDRAWAL_SCENARIOS = {
+  ACTIVE_HOST_EXISTS: '__mock_active_host_exists__',
+  ACTIVE_TAXI_POT_EXISTS: '__mock_active_taxi_pot_exists__',
+  INTERNAL_SERVER_ERROR: '__mock_internal_server_error__',
+} as const;
+
+const REFRESH_TOKEN_COOKIE_CLEAR = 'refresh_token=; Max-Age=0; Path=/api/auth; HttpOnly';
 
 const MOCK_BANK_CODES = new Set(['kb', 'shinhan', 'woori', 'hana', 'nh', 'ibk', 'kakao', 'toss']);
 
@@ -16,6 +25,7 @@ type MockBankAccount = {
 };
 
 let mockBankAccount: MockBankAccount | null = null;
+let withdrawnAt: string | null = null;
 
 function unauthorizedResponse() {
   return HttpResponse.json(
@@ -47,6 +57,8 @@ function isObject(value: unknown): value is Record<string, unknown> {
 function getMockUser() {
   return {
     ...MOCK_USER,
+    nickname: withdrawnAt ? `탈퇴한사용자_${MOCK_USER.id}` : MOCK_USER.nickname,
+    profile_image_url: withdrawnAt ? null : MOCK_USER.profile_image_url,
     has_bank_account: mockBankAccount !== null,
   };
 }
@@ -56,6 +68,44 @@ function maskAccountNumber(accountNo: string) {
 }
 
 export const userHandlers = [
+  http.delete('*/users/me', ({ request }) => {
+    const token = getBearerToken(request);
+
+    if (token === MOCK_WITHDRAWAL_SCENARIOS.ACTIVE_HOST_EXISTS) {
+      return errorResponse(
+        '방장으로 진행 중인 동행이 있어 탈퇴할 수 없습니다',
+        'ACTIVE_HOST_EXISTS',
+        null,
+        409,
+      );
+    }
+
+    if (token === MOCK_WITHDRAWAL_SCENARIOS.ACTIVE_TAXI_POT_EXISTS) {
+      return errorResponse(
+        '참여 중인 택시팟이 있어 탈퇴할 수 없습니다',
+        'ACTIVE_TAXI_POT_EXISTS',
+        null,
+        409,
+      );
+    }
+
+    if (token === MOCK_WITHDRAWAL_SCENARIOS.INTERNAL_SERVER_ERROR) {
+      return errorResponse('서버 오류가 발생했습니다', 'INTERNAL_SERVER_ERROR', null, 500);
+    }
+
+    if (token !== MOCK_ACCESS_TOKEN) {
+      return unauthorizedResponse();
+    }
+
+    withdrawnAt ??= new Date().toISOString();
+    mockBankAccount = null;
+    revokeAllMockSessions();
+
+    return new HttpResponse(null, {
+      status: 204,
+      headers: { 'Set-Cookie': REFRESH_TOKEN_COOKIE_CLEAR },
+    });
+  }),
   http.get('*/users/me', ({ request }) => {
     if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
       return unauthorizedResponse();
@@ -113,4 +163,5 @@ export const userHandlers = [
 
 export function resetUserMockState() {
   mockBankAccount = null;
+  withdrawnAt = null;
 }

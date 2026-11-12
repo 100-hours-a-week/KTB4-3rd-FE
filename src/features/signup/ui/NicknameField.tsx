@@ -35,7 +35,6 @@ export function NicknameField({
       invalid={invalid}
       label="닉네임"
       maxCharacterCount={MAX_NICKNAME_LENGTH}
-      maxLength={MAX_NICKNAME_LENGTH}
       name="nickname"
       onValueChange={onChange}
       placeholder="닉네임을 입력해주세요"
