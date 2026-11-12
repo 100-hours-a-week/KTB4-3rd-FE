@@ -9,6 +9,21 @@ afterEach(() => {
 });
 
 describe('CongestionPin', () => {
+  it.each([
+    ['available', '여유', 34],
+    ['congested', '다소 혼잡', 64],
+    ['busy', '매우 혼잡', 64],
+  ] as const)('%s 기본 핀과 지도 마커에 같은 문구를 표시한다', (variant, label, width) => {
+    render(<CongestionPin variant={variant} />);
+    const pin = screen.getByRole('button', { name: `${label} 혼잡도 핀` });
+    const svg = decodeURIComponent(getCongestionPinMarkerImage(variant).src.split(',')[1] ?? '');
+
+    expect(pin).toHaveTextContent(label);
+    expect(pin).toHaveStyle({ width: `${width}px` });
+    expect(svg).toContain(`>${label}</text>`);
+    expect(svg).toContain(`x="${width / 2}" y="18" text-anchor="middle"`);
+  });
+
   it('선택 상태에서 피그마 안내 문구와 선택 상태를 표시한다', () => {
     render(<CongestionPin isSelected variant="delayed" />);
 
@@ -86,6 +101,25 @@ describe('CongestionPin', () => {
 
     expect(twoLineMarker.height - oneLineMarker.height).toBe(15);
     expect(twoLineMarker.offset?.y).toBe(twoLineMarker.height);
+  });
+
+  it('갱신 시각을 본문과 구분해 오른쪽 아래에 표시하고 핀 높이를 늘린다', () => {
+    const options = { isSelected: true, selectedMessage: '상세 설명' };
+    const withoutTime = getCongestionPinMarkerImage('busy', options);
+    const withTime = getCongestionPinMarkerImage('busy', {
+      ...options,
+      updatedAtLabel: '3분 전 갱신됨',
+    });
+    const svg = decodeURIComponent(withTime.src.split(',')[1] ?? '');
+    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const updatedAtText = document.querySelector('text[text-anchor="end"]');
+
+    expect(withTime.height - withoutTime.height).toBe(19);
+    expect(updatedAtText?.getAttribute('x')).toBe('109');
+    expect(Number(updatedAtText?.getAttribute('y'))).toBeCloseTo(withTime.height - 10.2029 - 8);
+    expect(updatedAtText?.getAttribute('fill-opacity')).toBe('0.8');
+    expect(updatedAtText?.getAttribute('font-size')).toBe('9');
+    expect(updatedAtText?.textContent).toBe('3분 전 갱신됨');
   });
 
   it('지도에서 확장·축소 marker에 스토리북과 같은 CSS 애니메이션을 포함한다', () => {
