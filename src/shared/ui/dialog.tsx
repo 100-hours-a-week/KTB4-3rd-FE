@@ -22,6 +22,7 @@ export type DialogProps = {
   primaryLabel?: ReactNode;
   primaryVariant?: 'brand-solid' | 'neutral-solid' | 'critical-solid';
   secondaryLabel?: ReactNode;
+  secondaryVariant?: 'brand-solid' | 'neutral-solid' | 'critical-solid' | 'neutral-weak' | 'ghost';
   primaryButtonProps?: DialogButtonProps;
   secondaryButtonProps?: DialogButtonProps;
 
@@ -64,7 +65,7 @@ function DialogActionButton({
   actionProps?: DialogButtonProps;
   label: ReactNode;
   onClose: () => void;
-  variant: 'brand-solid' | 'neutral-solid' | 'critical-solid' | 'neutral-weak';
+  variant: 'brand-solid' | 'neutral-solid' | 'critical-solid' | 'neutral-weak' | 'ghost';
 }) {
   const handleClick: NonNullable<DialogButtonProps['onClick']> = (event) => {
     actionProps?.onClick?.(event);
@@ -103,6 +104,7 @@ export function Dialog({
   primaryLabel = '확인',
   primaryVariant = 'brand-solid',
   secondaryLabel = '취소',
+  secondaryVariant = 'neutral-weak',
   primaryButtonProps,
   secondaryButtonProps,
   showCloseButton = true,
@@ -264,7 +266,7 @@ export function Dialog({
                     actionProps={secondaryButtonProps}
                     label={secondaryLabel}
                     onClose={() => actionsRef.current?.close()}
-                    variant="neutral-weak"
+                    variant={secondaryVariant}
                   />
                 ) : null}
               </footer>

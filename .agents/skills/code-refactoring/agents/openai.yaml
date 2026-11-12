@@ -1,0 +1,4 @@
+interface:
+  display_name: '코드 리팩터링'
+  short_description: '책임과 기능 경계에 따라 프론트엔드 코드를 리팩터링합니다'
+  default_prompt: '$code-refactoring을 사용해 UI, 모델, API, 동작의 경계를 명확히 하면서 프론트엔드 코드를 리팩터링합니다.'

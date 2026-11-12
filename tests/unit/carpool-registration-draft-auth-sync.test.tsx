@@ -41,6 +41,21 @@ afterEach(() => {
 });
 
 describe('CarpoolRegistrationDraftAuthSync', () => {
+  it('초기 비로그인 상태에서는 새로고침으로 복원된 초안을 유지하고 로그인 완료 후에도 이어간다', async () => {
+    setDraft();
+    getCurrentUserMock.mockResolvedValue(currentUser(1));
+    render(<CarpoolRegistrationDraftAuthSync />);
+
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+
+    act(() => useAuthStore.getState().setAccessToken('session-a'));
+    await resolveIdentity(0);
+
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+    expect(useCarpoolCreateStore.getState().pendingLocation?.location.name).toBe('임시 장소');
+    expect(useCarpoolCreateStore.getState().searchQuery).toBe('서울역');
+  });
+
   it('사용자 ID가 확인되지 않으면 실패하더라도 초안을 유지한다', async () => {
     const request = deferred<ReturnType<typeof currentUser>>();
     getCurrentUserMock.mockReturnValue(request.promise);

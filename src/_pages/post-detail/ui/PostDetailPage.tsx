@@ -2,31 +2,23 @@
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 
 import {
   PostDetailSkeleton,
-  type CommunityPost,
-  type CommunityPostDetail,
-  type CompanionPostDetail,
-  type PostComment,
   type PostDetail,
-  toPostComments,
+  toCompanionPostDetail,
+  toCommunityPostDetail,
 } from '@/entities/post';
 import {
   CompanionPostDetail as CompanionPostDetailView,
   CommunityPostDetail as CommunityPostDetailView,
-  type CommunityPostCommentFeedback,
 } from '@/features/post-detail';
+import { useJoinCompanionWorkflow } from '@/features/join-companion';
 import { useRequireAuth } from '@/features/login-required';
-import { useJoinCompanionMutation } from '@/features/join-companion';
-import { useCreateCommunityPostCommentMutation } from '@/features/post-comment';
+import { useCommunityPostCommentWorkflow } from '@/features/post-comment';
+import { useCompanionPostDetailQuery } from '@/_pages/post-detail/api/companion-posts';
 import {
-  type CompanionPostDetailData,
-  useCompanionPostDetailQuery,
-} from '@/_pages/post-detail/api/companion-posts';
-import {
-  type CommunityPostDetailData,
   communityPostQueries,
   useCommunityPostCommentsQuery,
   useCommunityPostDetailQuery,
@@ -69,50 +61,6 @@ function parsePostType(value: string | null): PostRouteType | null {
     : null;
 }
 
-function toCompanionPostDetail(data: CompanionPostDetailData): CompanionPostDetail {
-  return {
-    type: 'COMPANION',
-    id: data.id,
-    title: data.title,
-    description: data.content,
-    author: { nickname: data.author.nickname, profile_image_url: null },
-    transport_type: data.transport_type,
-    distance_m: 0,
-    current_count: data.current_count,
-    capacity: data.capacity,
-    departure_at: data.departure_at,
-    departure_location: data.origin_name,
-    destination: data.dest_name,
-    is_expired: data.is_expired,
-    participants: (data.participants ?? []).map((participant, index) => ({
-      id: index + 1,
-      nickname: participant.nickname,
-      profile_image_url: participant.profile_image_url,
-    })),
-  };
-}
-
-function toCommunityPostDetail(
-  data: CommunityPostDetailData,
-  comments: readonly PostComment[],
-): CommunityPostDetail {
-  const post: CommunityPost = {
-    type: 'COMMUNITY',
-    id: data.id,
-    title: data.title,
-    author: { nickname: data.author.nickname, profile_image_url: null },
-    distance_m: 0,
-    comment_count: data.comment_count,
-    created_at: data.created_at,
-  };
-
-  return {
-    ...post,
-    description: data.content,
-    comments,
-  };
-}
-
 function getErrorMessage(error: unknown) {
   return error instanceof Error ? error.message : POST_ERROR_DESCRIPTION;
 }
@@ -139,9 +87,6 @@ export function PostDetailPage() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const { requireAuth } = useRequireAuth();
-  const [commentFeedback, setCommentFeedback] = useState<CommunityPostCommentFeedback | null>(null);
-  const [commentIdToScroll, setCommentIdToScroll] = useState<number | null>(null);
-  const [joinErrorMessage, setJoinErrorMessage] = useState<string | null>(null);
 
   const postId = parsePostId(params.postId);
   const requestedType = parsePostType(searchParams.get('type'));
@@ -153,14 +98,16 @@ export function PostDetailPage() {
   const communityCommentsQuery = useCommunityPostCommentsQuery(
     communityDetailQuery.data ? communityPostId : null,
   );
-  const joinCompanionMutation = useJoinCompanionMutation();
-  const createCommentMutation = useCreateCommunityPostCommentMutation();
-
-  const communityComments = useMemo(
-    () =>
-      toPostComments(communityCommentsQuery.data?.pages.flatMap((page) => page.data.items) ?? []),
-    [communityCommentsQuery.data],
-  );
+  const commentWorkflow = useCommunityPostCommentWorkflow({
+    commentsQuery: communityCommentsQuery,
+    onCommentCreated: (createdPostId) => {
+      void queryClient.invalidateQueries({
+        queryKey: communityPostQueries.detail(createdPostId).queryKey,
+      });
+    },
+    postId: communityPostId,
+    requireAuth,
+  });
 
   const selectedDetail: PostDetail | null = useMemo(() => {
     if (companionDetailQuery.data) {
@@ -168,11 +115,17 @@ export function PostDetailPage() {
     }
 
     if (communityDetailQuery.data) {
-      return toCommunityPostDetail(communityDetailQuery.data.data, communityComments);
+      return toCommunityPostDetail(communityDetailQuery.data.data, commentWorkflow.comments);
     }
 
     return null;
-  }, [communityComments, communityDetailQuery.data, companionDetailQuery.data]);
+  }, [commentWorkflow.comments, communityDetailQuery.data, companionDetailQuery.data]);
+
+  const joinWorkflow = useJoinCompanionWorkflow({
+    companionId: selectedDetail?.type === 'COMPANION' ? selectedDetail.id : null,
+    onJoined: (chatRoomId) => router.push(`/chatroom/${chatRoomId}`),
+    requireAuth,
+  });
 
   const isLoading =
     postId !== null &&
@@ -190,81 +143,6 @@ export function PostDetailPage() {
     companionDetailQuery.error,
     communityDetailQuery.error,
   );
-
-  const handleJoinCompanion = () => {
-    if (selectedDetail?.type !== 'COMPANION') {
-      return;
-    }
-
-    requireAuth(() => {
-      setJoinErrorMessage(null);
-      joinCompanionMutation.mutate(selectedDetail.id, {
-        onError: (error) => {
-          setJoinErrorMessage(
-            error instanceof Error ? error.message : '채팅방 참여에 실패했어요. 다시 시도해주세요.',
-          );
-        },
-        onSuccess: ({ data }) => {
-          router.push(`/chatroom/${data.chat_room_id}`);
-        },
-      });
-    });
-  };
-
-  const handleLoadMoreComments = () => {
-    if (
-      !communityCommentsQuery.hasNextPage ||
-      communityCommentsQuery.isFetchingNextPage ||
-      communityCommentsQuery.isError
-    ) {
-      return;
-    }
-
-    void communityCommentsQuery.fetchNextPage();
-  };
-
-  const handleCommentSubmit = (content: string) => {
-    if (selectedDetail?.type !== 'COMMUNITY') {
-      return;
-    }
-
-    requireAuth(() => {
-      createCommentMutation.mutate(
-        { payload: { content }, postId: selectedDetail.id },
-        {
-          onError: (error) => {
-            setCommentFeedback({
-              description: getErrorMessage(error),
-              type: 'critical',
-            });
-          },
-          onSuccess: async ({ data }) => {
-            setCommentFeedback({ description: '댓글이 등록되었어요', type: 'positive' });
-
-            let commentsResult = await communityCommentsQuery.refetch();
-            let hasCreatedComment = commentsResult.data?.pages.some((page) =>
-              page.data.items.some((comment) => comment.id === data.id),
-            );
-
-            while (!hasCreatedComment && commentsResult.data?.pages.at(-1)?.data.next_cursor) {
-              commentsResult = await communityCommentsQuery.fetchNextPage();
-              hasCreatedComment = commentsResult.data?.pages.some((page) =>
-                page.data.items.some((comment) => comment.id === data.id),
-              );
-            }
-
-            if (hasCreatedComment) {
-              setCommentIdToScroll(data.id);
-            }
-
-            void queryClient.invalidateQueries({
-              queryKey: communityPostQueries.detail(selectedDetail.id).queryKey,
-            });
-          },
-        },
-      );
-    });
-  };
 
   return (
     <div className="relative mx-auto min-h-dvh w-full max-w-[393px] bg-[var(--color-bg-layer-default)]">
@@ -286,28 +164,28 @@ export function PostDetailPage() {
         ) : null}
         {selectedDetail?.type === 'COMPANION' ? (
           <CompanionPostDetailView
-            isJoining={joinCompanionMutation.isPending}
-            joinErrorMessage={joinErrorMessage}
+            isJoining={joinWorkflow.isJoining}
+            joinErrorMessage={joinWorkflow.joinErrorMessage}
             layout="page"
-            onJoinClick={handleJoinCompanion}
-            onJoinErrorDismiss={() => setJoinErrorMessage(null)}
+            onJoinClick={joinWorkflow.onJoinClick}
+            onJoinErrorDismiss={joinWorkflow.onJoinErrorDismiss}
             post={selectedDetail}
           />
         ) : null}
         {selectedDetail?.type === 'COMMUNITY' ? (
           <CommunityPostDetailView
-            commentFeedback={commentFeedback}
-            commentIdToScroll={commentIdToScroll}
-            commentsError={communityCommentsQuery.isError}
-            commentsLoading={communityCommentsQuery.isPending}
-            hasMoreComments={communityCommentsQuery.hasNextPage}
-            isCommentSubmitting={createCommentMutation.isPending}
-            isLoadingMoreComments={communityCommentsQuery.isFetchingNextPage}
+            commentFeedback={commentWorkflow.commentFeedback}
+            commentIdToScroll={commentWorkflow.commentIdToScroll}
+            commentsError={commentWorkflow.commentsError}
+            commentsLoading={commentWorkflow.commentsLoading}
+            hasMoreComments={commentWorkflow.hasMoreComments}
+            isCommentSubmitting={commentWorkflow.isCommentSubmitting}
+            isLoadingMoreComments={commentWorkflow.isLoadingMoreComments}
             layout="page"
-            onCommentFeedbackDismiss={() => setCommentFeedback(null)}
-            onCommentScrolled={() => setCommentIdToScroll(null)}
-            onCommentSubmit={handleCommentSubmit}
-            onLoadMoreComments={handleLoadMoreComments}
+            onCommentFeedbackDismiss={commentWorkflow.onCommentFeedbackDismiss}
+            onCommentScrolled={commentWorkflow.onCommentScrolled}
+            onCommentSubmit={commentWorkflow.onCommentSubmit}
+            onLoadMoreComments={commentWorkflow.onLoadMoreComments}
             post={selectedDetail}
           />
         ) : null}

@@ -5,10 +5,13 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useRequireAuth } from '@/features/login-required';
 import { resetCarpoolRegistrationDraft } from '@/features/carpool-registration';
+import { useCurrentTaxiPotQuery } from '@/features/taxi-pot-matching';
+import { useSnackbarStore } from '@/shared/model/stores/snackbar-store';
 
 export function useMatchingEntry() {
   const router = useRouter();
   const { requireAuth } = useRequireAuth();
+  const { refetch: refetchCurrentTaxiPot } = useCurrentTaxiPotQuery({ enabled: false });
   const [isFabOpen, setIsFabOpen] = useState(false);
   const fabContainerRef = useRef<HTMLDivElement>(null);
 
@@ -40,21 +43,50 @@ export function useMatchingEntry() {
     };
   }, [isFabOpen]);
 
-  const openRegistration = useCallback(
-    (path: '/carpools/new' | '/taxi-pots/new') => {
-      setIsFabOpen(false);
-      requireAuth(() => {
-        if (path === '/carpools/new') {
-          resetCarpoolRegistrationDraft();
-        }
-        router.push(path);
-      });
-    },
-    [requireAuth, router],
-  );
+  const openCarpoolRegistration = useCallback(() => {
+    setIsFabOpen(false);
+    requireAuth(() => {
+      resetCarpoolRegistrationDraft();
+      router.push('/carpools/new');
+    });
+  }, [requireAuth, router]);
 
-  const onCarpoolClick = useCallback(() => openRegistration('/carpools/new'), [openRegistration]);
-  const onTaxipotClick = useCallback(() => openRegistration('/taxi-pots/new'), [openRegistration]);
+  const openTaxiPotRegistration = useCallback(() => {
+    setIsFabOpen(false);
+    requireAuth(() => {
+      void refetchCurrentTaxiPot()
+        .then(({ data, error }) => {
+          if (error || data === undefined) {
+            useSnackbarStore
+              .getState()
+              .showSnackbar('현재 택시팟 정보를 확인하지 못했어요. 다시 시도해주세요.', 'critical');
+            return;
+          }
+
+          const currentTaxiPot = data.data;
+
+          if (currentTaxiPot === null || currentTaxiPot === undefined) {
+            router.push('/taxi-pots/new');
+            return;
+          }
+
+          if (currentTaxiPot.status === 'MATCHING') {
+            router.push('/taxi-pots/matching');
+            return;
+          }
+
+          router.push(`/chatroom/${currentTaxiPot.chat_room_id}`);
+        })
+        .catch(() => {
+          useSnackbarStore
+            .getState()
+            .showSnackbar('현재 택시팟 정보를 확인하지 못했어요. 다시 시도해주세요.', 'critical');
+        });
+    });
+  }, [refetchCurrentTaxiPot, requireAuth, router]);
+
+  const onCarpoolClick = openCarpoolRegistration;
+  const onTaxipotClick = openTaxiPotRegistration;
 
   return {
     fabContainerRef,

@@ -4,11 +4,12 @@ import { useState } from 'react';
 
 import { ChipTabs, type ChipTabOption } from '@/shared/ui/chip-tabs';
 
-export const chatListTabValues = ['matching', 'community'] as const;
+export const chatListTabValues = ['taxiPot', 'carpool', 'community'] as const;
 export type ChatListTabValue = (typeof chatListTabValues)[number];
 
 const CHAT_LIST_TAB_OPTIONS: readonly ChipTabOption<ChatListTabValue>[] = [
-  { label: '매칭', value: 'matching', widthClassName: 'w-[68px]' },
+  { label: '택시팟', value: 'taxiPot', widthClassName: 'w-[68px]' },
+  { label: '카풀', value: 'carpool', widthClassName: 'w-[56px]' },
   { label: '커뮤니티', value: 'community', widthClassName: 'w-[80px]' },
 ];
 

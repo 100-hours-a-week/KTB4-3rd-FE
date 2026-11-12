@@ -5,7 +5,7 @@ import { PostDetailInfoRow } from './post-detail-info-row';
 
 export type MovementDetailInfoProps = Pick<
   CompanionPostDetail,
-  'capacity' | 'current_count' | 'departure_at' | 'departure_location' | 'destination'
+  'capacity' | 'current_count' | 'departure_at' | 'origin_name' | 'dest_name'
 > & {
   className?: string;
   layout?: 'modal' | 'page';
@@ -38,8 +38,8 @@ export function MovementDetailInfo({
   className,
   current_count,
   departure_at,
-  departure_location,
-  destination,
+  origin_name,
+  dest_name,
   layout = 'modal',
 }: MovementDetailInfoProps) {
   const isPageLayout = layout === 'page';
@@ -57,8 +57,8 @@ export function MovementDetailInfo({
         label="출발 시간"
         value={formatDepartureAt(departure_at)}
       />
-      <PostDetailInfoRow layout={layout} label="출발지" value={departure_location} />
-      <PostDetailInfoRow layout={layout} label="목적지" value={destination} />
+      <PostDetailInfoRow layout={layout} label="출발지" value={origin_name} />
+      <PostDetailInfoRow layout={layout} label="목적지" value={dest_name} />
       <PostDetailInfoRow
         layout={layout}
         label="현재 인원"

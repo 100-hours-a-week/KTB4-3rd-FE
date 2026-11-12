@@ -12,7 +12,8 @@ export type ChatRoomDetailData = {
   departure_at: string | null;
   current_count: number;
   capacity: number;
-  companion_status: string;
+  companion_status: 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+  rated?: boolean;
   closed_at: string | null;
   last_read_message_id: number | null;
   participants?: readonly ChatRoomParticipantData[];
@@ -67,9 +68,16 @@ export type ChatRoomMessageData =
       type:
         | 'SYSTEM_METER_REQUESTED'
         | 'SYSTEM_SETTLEMENT_COMPLETED'
-        | 'SYSTEM_TRANSFER_DONE'
-        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
+        | 'SYSTEM_TRANSFER_UNVERIFIED';
       content: string;
+      sender?: never;
+      settlement?: never;
+    })
+  | (ChatRoomMessageDataBase & {
+      type: 'SYSTEM_TRANSFER_DONE';
+      content: string;
+      user_id: number;
       sender?: never;
       settlement?: never;
     })

@@ -48,8 +48,38 @@ async function mockSession(page: Page) {
 async function openReceivedRequests(page: Page) {
   await page.getByRole('tab', { name: '카풀' }).first().click();
   await page.getByRole('tab', { name: '받은 요청' }).first().click();
-  await page.getByRole('button', { name: '수락' }).click();
+  await page.getByRole('button', { name: '이루디님의 카풀 요청 상세 보기' }).click();
 }
+
+test('받은 요청 딥링크로 진입하면 카풀 받은 요청 탭을 바로 연다', async ({ page }) => {
+  await mockSession(page);
+  await page.route('**/api/users/me/carpool-requests**', async (route) => {
+    const direction = new URL(route.request().url()).searchParams.get('direction');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({
+        message: '조회에 성공했습니다',
+        data: {
+          direction,
+          items: direction === 'RECEIVED' ? [receivedRequest] : [],
+          next_cursor: null,
+        },
+      }),
+    });
+  });
+
+  await page.goto('/chat?tab=carpool&direction=RECEIVED');
+
+  await expect(page.getByRole('tab', { name: '카풀' })).toHaveAttribute('aria-selected', 'true');
+  await expect(page.getByRole('tab', { name: '받은 요청' })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  );
+  await expect(page.getByRole('button', { name: '이루디님의 카풀 요청 상세 보기' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '수락' })).toBeVisible();
+  await expect(page.getByRole('button', { name: '거절' })).toBeVisible();
+});
 
 test('받은 요청 목록 미리보기로 상세 요청 없이 수락하고 목록에서 제거한다', async ({ page }) => {
   await mockSession(page);
@@ -224,17 +254,21 @@ test('긴 받은 요청 메시지는 모바일 상세에서 읽을 수 있고 �
 
   const dialog = page.getByRole('dialog', { name: '카풀 요청 확인' });
   const closeButton = dialog.getByRole('button', { name: '닫기' });
+  const messageInput = dialog.locator('textarea');
   const rejectButton = dialog.getByRole('button', { name: '거절' });
   const acceptButton = dialog.getByRole('button', { name: '수락' });
   await expect(dialog.getByText(longContent)).toBeVisible();
+  await expect(messageInput).toBeVisible();
   await expect(rejectButton).toBeVisible();
   await expect(acceptButton).toBeVisible();
 
   await closeButton.focus();
   await page.keyboard.press('Tab');
-  await expect(rejectButton).toBeFocused();
+  await expect(messageInput).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(acceptButton).toBeFocused();
+  await page.keyboard.press('Tab');
+  await expect(rejectButton).toBeFocused();
   await page.keyboard.press('Tab');
   await expect(closeButton).toBeFocused();
 });

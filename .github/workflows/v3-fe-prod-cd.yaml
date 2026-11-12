@@ -1,14 +1,7 @@
-name: FE Prod CD
+name: FE V3 Prod CD
 
-# main 브랜치 → Prod ECS 클러스터(moyeota-v2-prod) 승인 배포
-#   브랜치 흐름: develop → release/vX.Y.Z (Stg 검증) → main (Prod 승인 배포)
-#             main → hotfix/vX.Y.Z (긴급 수정, Stg 미경유) → main (Prod 승인 배포)
-#   1) resolve : main 머지 커밋의 원본 PR 브랜치로 승격할 digest를 찾는다. (재빌드 금지)
-#                release/vX.Y.Z → Stg CD가 남긴 stg-vX.Y.Z-<sha> (Stg와 동일 digest)
-#                hotfix/vX.Y.Z  → hotfix CI가 push한 hf-vX.Y.Z-<sha> (리뷰·테스트한 커밋의 digest)
-#   2) deploy  : production environment 승인 후 frontend에 digest를 반영한다.
-#   3) promote : 배포가 끝난 digest에 prod-vX.Y.Z-<sha> 태그를 남긴다.
-#   4) backmerge: main → develop(hotfix면 진행 중인 release/*도) 역병합 PR을 연다.
+# 이미지 digest를 CLOUD 저장소 v3/helm/app-values/prod에 커밋해 EKS에 배포한다.
+# release는 stg- digest, hotfix는 hf- digest를 승격한다. production 승인 후 digest를 커밋하고, Argo CD 수동 sync가 끝나면 prod- 태그와 역병합 PR을 남긴다.
 
 on:
   workflow_run:
@@ -26,7 +19,7 @@ permissions:
   pull-requests: read
 
 concurrency:
-  group: frontend-cd-prod
+  group: frontend-v3-cd-prod
   cancel-in-progress: false
 
 jobs:
@@ -177,41 +170,32 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
   deploy:
-    name: Deploy frontend (prod)
+    name: Deploy to EKS (prod)
     needs: resolve
     runs-on: ubuntu-latest
-    timeout-minutes: 40
+    timeout-minutes: 260
     # production environment의 required reviewers 승인 전까지 대기한다.
     environment:
       name: production
       url: https://moyeota.com
-    env:
-      AWS_REGION: ${{ vars.AWS_REGION }}
-      ECS_CLUSTER: ${{ vars.ECS_CLUSTER || 'moyeota-v2-prod' }}
-      ECS_SERVICE: frontend
 
     steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v6.3.0
-        with:
-          aws-region: ${{ env.AWS_REGION }}
-          role-to-assume: ${{ secrets.ECS_DEPLOY_ROLE_ARN_PROD }}
-          role-session-name: frontend-prod-cd-${{ github.run_id }}
-
       - name: Checkout deploy action
         uses: actions/checkout@v4
         with:
           sparse-checkout: .github/actions
           persist-credentials: false
 
-      - name: Deploy to ECS
-        uses: ./.github/actions/ecs-deploy
+      - name: Deploy with Argo CD
+        uses: ./.github/actions/gitops-deploy
         with:
-          cluster: ${{ env.ECS_CLUSTER }}
-          service: ${{ env.ECS_SERVICE }}
-          image: ${{ needs.resolve.outputs.image_ref }}
+          stage: prod
+          app: fe
+          image-digest: ${{ needs.resolve.outputs.image_digest }}
           release-id: ${{ needs.resolve.outputs.promote_tag }}
-          timeout-seconds: '1800'
+          applications: prod-frontend
+          token: ${{ secrets.GITOPS_TOKEN }}
+          timeout-minutes: '240'
 
   promote:
     name: Promote image tag

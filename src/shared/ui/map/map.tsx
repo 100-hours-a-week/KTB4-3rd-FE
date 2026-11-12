@@ -2,6 +2,7 @@
 
 import { Minus, Plus } from 'lucide-react';
 import Image from 'next/image';
+import { preconnect, preload } from 'react-dom';
 import {
   useCallback,
   useEffect,
@@ -21,6 +22,7 @@ import { cn } from '@/shared/lib/cn';
 import { Dialog } from '@/shared/ui/dialog';
 import { Icon } from '@/shared/ui/icon';
 
+import { getKakaoMapSdkUrl } from './model/kakao-map-sdk-url';
 import { loadKakaoMaps } from './model/map-loader';
 import {
   DEFAULT_MAP_CENTER,
@@ -51,6 +53,88 @@ import { MyLocation } from './my-location';
 const DEFAULT_LEVEL = 5;
 const DEFAULT_VIEWPORT_DEBOUNCE_MS = 300;
 const SELECTED_MARKER_SCALE = 1.15;
+// Kakao's SDK discovers these required scripts sequentially. Keep these versions
+// aligned with the requests made by the current Kakao Maps SDK.
+const KAKAO_MAP_CORE_SCRIPT_URL = '//t1.kakaocdn.net/mapjsapi/js/main/4.5.31/kakao.js';
+const KAKAO_MAP_CLUSTERER_SCRIPT_URL =
+  '//t1.kakaocdn.net/mapjsapi/js/libs/clusterer/1.1.5/clusterer.js';
+const KAKAO_MAP_BACKGROUND_IMAGE_1X = '//t1.kakaocdn.net/mapjsapi/images/bg_tile.png';
+const KAKAO_MAP_BACKGROUND_IMAGE_2X = '//t1.kakaocdn.net/mapjsapi/images/2x/bg_tile.png';
+
+function getSdkBootstrapScript(sdkUrl: string) {
+  const safeUrl = JSON.stringify(sdkUrl).replace(/</g, '\\u003c');
+
+  return `(() => {
+    if (window.kakao?.maps || document.querySelector('script[data-moyeota-kakao-map]')) return;
+    const script = document.createElement('script');
+    script.setAttribute('data-moyeota-kakao-map', 'true');
+    script.async = true;
+    script.onload = () => {
+      try {
+        if (!window.kakao?.maps) throw new Error('Kakao Maps SDK is unavailable');
+        window.kakao.maps.load(() => {});
+      } catch { script.remove(); }
+    };
+    script.onerror = () => script.remove();
+    script.src = ${safeUrl};
+    document.head.appendChild(script);
+  })();`;
+}
+
+// The early bootstrap and React effect coordinate through the container to create one map.
+type MapBootstrapContainer = HTMLDivElement & {
+  __moyeotaMapBootstrap?: {
+    claimed: boolean;
+    location?: MapCoordinate;
+    map?: KakaoMap;
+  };
+};
+
+function getEarlyMapBootstrapScript(center: MapCoordinate, level: number) {
+  const options = JSON.stringify({ center, level }).replace(/</g, '\\u003c');
+
+  return `(() => {
+    const container = document.currentScript?.previousElementSibling;
+    if (!container) return;
+    const state = container.__moyeotaMapBootstrap ||= { claimed: false };
+    const requestGrantedLocation = async () => {
+      if (!navigator.geolocation || !navigator.permissions?.query) return;
+      try {
+        const permission = await navigator.permissions.query({ name: 'geolocation' });
+        if (permission.state !== 'granted') return;
+        navigator.geolocation.getCurrentPosition(({ coords }) => {
+          if (state.claimed) return;
+          const location = { lat: coords.latitude, lng: coords.longitude };
+          if (!Number.isFinite(location.lat) || !Number.isFinite(location.lng)) return;
+          state.location = location;
+          if (state.map && window.kakao?.maps) {
+            state.map.setCenter(new window.kakao.maps.LatLng(location.lat, location.lng));
+          }
+        }, () => {}, { enableHighAccuracy: false, maximumAge: 300000, timeout: 1500 });
+      } catch {}
+    };
+    void requestGrantedLocation();
+    const createMap = () => {
+      try {
+        window.kakao.maps.load(() => {
+          if (state.claimed || state.map || !container.isConnected) return;
+          try {
+            const options = ${options};
+            const maps = window.kakao.maps;
+            const initialCenter = state.location ?? options.center;
+            state.map = new maps.Map(container, {
+              center: new maps.LatLng(initialCenter.lat, initialCenter.lng),
+              level: options.level,
+            });
+          } catch { container.replaceChildren(); }
+        });
+      } catch {}
+    };
+    if (window.kakao?.maps) createMap();
+    else document.querySelector('script[data-moyeota-kakao-map]')?.addEventListener('load', createMap, { once: true });
+  })();`;
+}
+
 const BRAND_CLUSTER_STYLE = {
   background:
     'radial-gradient(circle, var(--color-bg-brand-solid) 0%, var(--color-bg-brand-solid) 42%, var(--transparent) 100%)',
@@ -67,6 +151,8 @@ type MapStatus = 'loading' | 'ready' | 'error';
 
 export type MapProps = {
   apiKey?: string;
+  bootstrapEarly?: boolean;
+  preloadBackground?: boolean;
   center?: MapCoordinate;
   children?: ReactNode;
   className?: string;
@@ -77,6 +163,7 @@ export type MapProps = {
   defaultLevel?: number;
   locateOnMount?: boolean;
   markerFocusOffset?: { x?: number; y?: number };
+  markerFocusOnClick?: boolean;
   markerFocusLevel?: number;
   markers?: readonly MapMarker[];
   onLoadError?: (error: MapLoadError) => void;
@@ -166,6 +253,8 @@ function getMarkerFocusCenter(
 function MapComponent(
   {
     apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY,
+    bootstrapEarly = false,
+    preloadBackground = false,
     center,
     centerChangeSource = 'programmatic',
     children,
@@ -176,6 +265,7 @@ function MapComponent(
     defaultLevel = DEFAULT_LEVEL,
     locateOnMount = false,
     markerFocusOffset,
+    markerFocusOnClick = true,
     markerFocusLevel,
     markers = [],
     onLoadError,
@@ -193,7 +283,27 @@ function MapComponent(
   }: MapProps,
   ref: ForwardedRef<MapRef>,
 ) {
-  const mapContainerRef = useRef<HTMLDivElement>(null);
+  if (apiKey) {
+    preload(getKakaoMapSdkUrl(apiKey), { as: 'script' });
+    preload(KAKAO_MAP_CORE_SCRIPT_URL, { as: 'script', fetchPriority: 'high' });
+    preload(KAKAO_MAP_CLUSTERER_SCRIPT_URL, { as: 'script', fetchPriority: 'high' });
+    if (preloadBackground) {
+      preload(KAKAO_MAP_BACKGROUND_IMAGE_1X, {
+        as: 'image',
+        fetchPriority: 'high',
+        media: '(max-resolution: 1.49dppx)',
+      });
+      preload(KAKAO_MAP_BACKGROUND_IMAGE_2X, {
+        as: 'image',
+        fetchPriority: 'high',
+        media: '(min-resolution: 1.5dppx)',
+      });
+    }
+    preconnect('https://t1.kakaocdn.net');
+    preconnect('https://mts.kakaocdn.net');
+  }
+
+  const mapContainerRef = useRef<MapBootstrapContainer>(null);
   const mapRef = useRef<KakaoMap | null>(null);
   const kakaoRef = useRef<KakaoNamespace | null>(null);
   const clustererRef = useRef<KakaoMarkerClusterer | null>(null);
@@ -231,6 +341,7 @@ function MapComponent(
   const onLoadErrorRef = useRef(onLoadError);
   const onMarkerClickRef = useRef(onMarkerClick);
   const markerFocusOffsetRef = useRef(markerFocusOffset);
+  const markerFocusOnClickRef = useRef(markerFocusOnClick);
   const markerFocusLevelRef = useRef(markerFocusLevel);
   const onUserLocationChangeRef = useRef(onUserLocationChange);
   const onUserLocationErrorRef = useRef(onUserLocationError);
@@ -241,6 +352,7 @@ function MapComponent(
     onLoadErrorRef.current = onLoadError;
     onMarkerClickRef.current = onMarkerClick;
     markerFocusOffsetRef.current = markerFocusOffset;
+    markerFocusOnClickRef.current = markerFocusOnClick;
     markerFocusLevelRef.current = markerFocusLevel;
     onUserLocationChangeRef.current = onUserLocationChange;
     onUserLocationErrorRef.current = onUserLocationError;
@@ -250,6 +362,7 @@ function MapComponent(
     onLoadError,
     onMarkerClick,
     markerFocusOffset,
+    markerFocusOnClick,
     markerFocusLevel,
     onUserLocationChange,
     onUserLocationError,
@@ -399,6 +512,12 @@ function MapComponent(
     awaitingIdleSequenceRef.current = null;
     isDraggingRef.current = false;
 
+    const container = mapContainerRef.current;
+    if (bootstrapEarly && container) {
+      const state = (container.__moyeotaMapBootstrap ??= { claimed: false });
+      state.claimed = true;
+    }
+
     loadKakaoMaps(apiKey ?? '')
       .then((kakao) => {
         if (cancelled || !mapContainerRef.current) {
@@ -406,10 +525,17 @@ function MapComponent(
         }
 
         const maps = kakao.maps;
-        const map = new maps.Map(mapContainerRef.current, {
-          center: new maps.LatLng(initialCenterRef.current.lat, initialCenterRef.current.lng),
-          level: defaultLevel,
-        });
+        const state = bootstrapEarly ? mapContainerRef.current.__moyeotaMapBootstrap : undefined;
+        const initialCenter = state?.location ?? initialCenterRef.current;
+        const map =
+          state?.map ??
+          new maps.Map(mapContainerRef.current, {
+            center: new maps.LatLng(initialCenter.lat, initialCenter.lng),
+            level: defaultLevel,
+          });
+        if (state) {
+          delete state.map;
+        }
 
         mapRef.current = map;
         kakaoRef.current = kakao;
@@ -552,6 +678,7 @@ function MapComponent(
   }, [
     apiKey,
     beginMapMovement,
+    bootstrapEarly,
     defaultLevel,
     emitInitialMapState,
     runMapMovement,
@@ -622,32 +749,35 @@ function MapComponent(
           : createMarkerImage(kakao.maps, 'post', markerScale),
         position,
         title: markerData.title,
+        zIndex: markerData.zIndex ?? 0,
       });
 
       kakao.maps.event.addListener(marker, 'click', () => {
-        const focusOffset = markerFocusOffsetRef.current;
-        const targetLevel = Math.min(
-          Math.max(markerFocusLevelRef.current ?? map.getLevel() - 1, 1),
-          14,
-        );
-        const shouldChangeLevel =
-          markerFocusLevelRef.current === undefined || map.getLevel() !== targetLevel;
+        if (markerFocusOnClickRef.current) {
+          const focusOffset = markerFocusOffsetRef.current;
+          const targetLevel = Math.min(
+            Math.max(markerFocusLevelRef.current ?? map.getLevel() - 1, 1),
+            14,
+          );
+          const shouldChangeLevel =
+            markerFocusLevelRef.current === undefined || map.getLevel() !== targetLevel;
 
-        runMapMovement('selection', () => {
-          if (shouldChangeLevel) {
-            pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
-            map.setLevel(targetLevel, {
-              anchor: position,
-              animate: !focusOffset,
-            });
-          }
+          runMapMovement('selection', () => {
+            if (shouldChangeLevel) {
+              pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+              map.setLevel(targetLevel, {
+                anchor: position,
+                animate: !focusOffset,
+              });
+            }
 
-          if (focusOffset) {
-            map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
-          } else {
-            map.panTo(position);
-          }
-        });
+            if (focusOffset) {
+              map.panTo(getMarkerFocusCenter(kakao.maps, map, position, focusOffset));
+            } else {
+              map.panTo(position);
+            }
+          });
+        }
 
         onMarkerClickRef.current?.(markerData);
       });
@@ -664,6 +794,10 @@ function MapComponent(
       });
 
       kakao.maps.event.addListener(clusterer, 'clusterclick', (cluster) => {
+        if (!markerFocusOnClickRef.current) {
+          return;
+        }
+
         const nextLevel = Math.max(map.getLevel() - 1, 1);
 
         runMapMovement('zoom', () => {
@@ -858,13 +992,33 @@ function MapComponent(
       className={cn('relative min-h-[320px] w-full overflow-hidden bg-[#e9eef2]', className)}
       data-testid="map"
     >
+      {apiKey ? (
+        <script
+          data-kakao-map-bootstrap
+          dangerouslySetInnerHTML={{ __html: getSdkBootstrapScript(getKakaoMapSdkUrl(apiKey)) }}
+        />
+      ) : null}
+      {/* Kakao owns this subtree; React must not reconcile tiles created before hydration. */}
       <div
         aria-label="지도"
         className="absolute inset-0"
+        dangerouslySetInnerHTML={bootstrapEarly ? { __html: '' } : undefined}
         data-testid="map-container"
         ref={mapContainerRef}
         role="application"
+        suppressHydrationWarning={bootstrapEarly}
       />
+      {apiKey && bootstrapEarly ? (
+        <script
+          data-kakao-map-early-bootstrap
+          dangerouslySetInnerHTML={{
+            __html: getEarlyMapBootstrapScript(
+              center ?? defaultCenter ?? markerLocation ?? DEFAULT_MAP_CENTER,
+              defaultLevel,
+            ),
+          }}
+        />
+      ) : null}
 
       {status === 'ready' && userLocationPoint ? (
         <MyLocation

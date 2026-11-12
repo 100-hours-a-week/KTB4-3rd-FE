@@ -1,5 +1,5 @@
-import { getApp, getApps, initializeApp, type FirebaseOptions } from 'firebase/app';
-import { getMessaging, getToken, isSupported, type Messaging } from 'firebase/messaging';
+import type { FirebaseOptions } from 'firebase/app';
+import type { Messaging } from 'firebase/messaging';
 
 const PUSH_FIREBASE_APP_NAME = 'moyeota-push';
 
@@ -24,7 +24,16 @@ export async function getFcmMessaging(): Promise<Messaging | null> {
 
   const firebaseConfig = getFirebaseConfig();
 
-  if (!firebaseConfig || !(await isSupported())) {
+  if (!firebaseConfig) {
+    return null;
+  }
+
+  const [{ getApp, getApps, initializeApp }, { getMessaging, isSupported }] = await Promise.all([
+    import('firebase/app'),
+    import('firebase/messaging'),
+  ]);
+
+  if (!(await isSupported())) {
     return null;
   }
 
@@ -58,6 +67,8 @@ export async function getFcmRegistrationToken(): Promise<string | null> {
   const serviceWorkerRegistration = await navigator.serviceWorker.register(
     '/firebase-messaging-sw.js',
   );
+
+  const { getToken } = await import('firebase/messaging');
 
   return (await getToken(messaging, { vapidKey, serviceWorkerRegistration })) || null;
 }

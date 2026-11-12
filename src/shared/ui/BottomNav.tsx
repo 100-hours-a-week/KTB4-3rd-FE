@@ -11,6 +11,7 @@ import { Text } from './text';
 export type BottomNavProps = {
   activeItem?: BottomNavItem['key'] | null;
   className?: string;
+  prefetch?: boolean;
 };
 
 type BottomNavItem = {
@@ -64,7 +65,7 @@ function isActivePathname(pathname: string | null, href: string) {
   );
 }
 
-export function BottomNav({ activeItem, className }: BottomNavProps) {
+export function BottomNav({ activeItem, className, prefetch }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
@@ -94,6 +95,7 @@ export function BottomNav({ activeItem, className }: BottomNavProps) {
                 )}
                 data-nav-item={item.key}
                 href={item.href}
+                prefetch={prefetch}
               >
                 <Icon
                   color="currentColor"

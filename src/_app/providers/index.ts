@@ -4,4 +4,6 @@ export { LoginRequiredProvider } from './login-required-provider';
 export { AuthBootstrapProvider } from './auth-bootstrap-provider';
 export { CarpoolRequestAuthCacheSync } from './carpool-request-auth-cache-sync';
 export { ClarityProvider } from './clarity-provider';
+export { GoogleAnalytics } from './google-analytics';
+export { PushNotificationClickHandler } from './push-notification-click-handler';
 export { SnackbarProvider } from './snackbar-provider';
