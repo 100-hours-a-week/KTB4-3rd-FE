@@ -26,6 +26,7 @@ const CONGESTION_PIN_SELECTED_WIDTH = 119;
 const CONGESTION_PIN_SELECTED_CENTER_X = CONGESTION_PIN_SELECTED_WIDTH / 2;
 const CONGESTION_PIN_SELECTED_TEXT_MAX_CHARS = 9;
 const CONGESTION_PIN_SELECTED_TEXT_LINE_HEIGHT = 15;
+const CONGESTION_PIN_UPDATED_AT_HEIGHT = 19;
 const CONGESTION_PIN_SELECTED_BODY_BASE_HEIGHT = 30.7229;
 const CONGESTION_PIN_SELECTED_TAIL_HEIGHT = 10.2029;
 const CONGESTION_PIN_SELECTED_TAIL_POINT_OFFSET = 8.9766;
@@ -152,18 +153,24 @@ type CongestionPinLayout = {
   bodyHeight: number;
   markerHeight: number;
   textLines: string[];
+  updatedAtLabel?: string;
 };
 
-function getCongestionPinLayout(selectedMessage: string): CongestionPinLayout {
+function getCongestionPinLayout(
+  selectedMessage: string,
+  updatedAtLabel?: string,
+): CongestionPinLayout {
   const textLines = wrapSelectedText(selectedMessage);
   const bodyHeight =
     CONGESTION_PIN_SELECTED_BODY_BASE_HEIGHT +
-    textLines.length * CONGESTION_PIN_SELECTED_TEXT_LINE_HEIGHT;
+    textLines.length * CONGESTION_PIN_SELECTED_TEXT_LINE_HEIGHT +
+    (updatedAtLabel ? CONGESTION_PIN_UPDATED_AT_HEIGHT : 0);
 
   return {
     bodyHeight,
     markerHeight: bodyHeight + CONGESTION_PIN_SELECTED_TAIL_HEIGHT,
     textLines,
+    updatedAtLabel,
   };
 }
 
@@ -180,7 +187,8 @@ function getCongestionPinSelectedTailPath(bodyHeight: number) {
 
 type CongestionPinMarkerAnimation = 'expand' | 'collapse';
 
-function createSelectedPinText(variant: CongestionPinVariant, textLines: readonly string[]) {
+function createSelectedPinText(variant: CongestionPinVariant, layout: CongestionPinLayout) {
+  const { textLines, updatedAtLabel } = layout;
   const textContent = textLines
     .map(
       (line, index) =>
@@ -188,11 +196,15 @@ function createSelectedPinText(variant: CongestionPinVariant, textLines: readonl
     )
     .join('');
 
-  return `<text x="${CONGESTION_PIN_SELECTED_CENTER_X}" y="28" text-anchor="middle" fill="${congestionPinTextColorValues[variant]}" font-family="Pretendard, Arial, sans-serif" font-size="11" font-weight="400">${textContent}</text>`;
+  const updatedAtContent = updatedAtLabel
+    ? `<text x="${CONGESTION_PIN_SELECTED_WIDTH - 10}" y="${layout.bodyHeight - 8}" text-anchor="end" fill="${congestionPinTextColorValues[variant]}" fill-opacity="0.8" font-family="Pretendard, Arial, sans-serif" font-size="9" font-weight="400">${escapeSvgText(updatedAtLabel)}</text>`
+    : '';
+
+  return `<text x="${CONGESTION_PIN_SELECTED_CENTER_X}" y="28" text-anchor="middle" fill="${congestionPinTextColorValues[variant]}" font-family="Pretendard, Arial, sans-serif" font-size="11" font-weight="400">${textContent}</text>${updatedAtContent}`;
 }
 
 function createSelectedPinContent(variant: CongestionPinVariant, layout: CongestionPinLayout) {
-  return `<rect x="0" y="0" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.bodyHeight}" rx="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" ry="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" fill="${congestionPinBackgroundColors[variant]}"/><path d="${getCongestionPinSelectedTailPath(layout.bodyHeight)}" fill="${congestionPinBackgroundColors[variant]}"/>${createSelectedPinText(variant, layout.textLines)}`;
+  return `<rect x="0" y="0" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.bodyHeight}" rx="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" ry="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" fill="${congestionPinBackgroundColors[variant]}"/><path d="${getCongestionPinSelectedTailPath(layout.bodyHeight)}" fill="${congestionPinBackgroundColors[variant]}"/>${createSelectedPinText(variant, layout)}`;
 }
 
 function createDefaultPinContent(variant: CongestionPinVariant) {
@@ -204,17 +216,18 @@ function createDefaultPinContent(variant: CongestionPinVariant) {
 function createSelectedPinSource(
   variant: CongestionPinVariant,
   selectedMessage: string,
+  updatedAtLabel?: string,
   animation?: CongestionPinMarkerAnimation,
   animationKey?: number,
 ) {
-  const layout = getCongestionPinLayout(selectedMessage);
+  const layout = getCongestionPinLayout(selectedMessage, updatedAtLabel);
   const defaultTranslateY = getDefaultPinTranslateY(layout.markerHeight);
   const animationOriginY = layout.markerHeight;
   const selectedTailPath = getCongestionPinSelectedTailPath(layout.bodyHeight);
   const selectedPinContent = createSelectedPinContent(variant, layout);
   const animatedContent =
     animation === 'expand'
-      ? `<style>@keyframes congestion-pin-expand{from{transform:scale(0.286,0.466)}to{transform:scale(1,1)}}@keyframes congestion-pin-text-expand{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}.congestion-pin-expand{animation:congestion-pin-expand ${CONGESTION_PIN_ANIMATION_DURATION} cubic-bezier(0.22,2.1,0.36,1) forwards;transform-origin:0 0}.congestion-pin-text-expand{animation:congestion-pin-text-expand ${CONGESTION_PIN_TEXT_ANIMATION_DURATION} ease-out ${CONGESTION_PIN_TEXT_ANIMATION_DELAY} both;transform-origin:0 0}</style><rect class="congestion-pin-body" x="${getDefaultPinTranslateX(variant)}" y="${defaultTranslateY}" width="${getDefaultPinWidth(variant)}" height="${CONGESTION_PIN_VECTOR_HEIGHT}" rx="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" ry="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" fill="${congestionPinBackgroundColors[variant]}"><animate attributeName="x" from="${getDefaultPinTranslateX(variant)}" to="0" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="y" from="${defaultTranslateY}" to="0" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="width" from="${getDefaultPinWidth(variant)}" to="${CONGESTION_PIN_SELECTED_WIDTH}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="height" from="${CONGESTION_PIN_VECTOR_HEIGHT}" to="${layout.bodyHeight}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/></rect><g transform="translate(${CONGESTION_PIN_ANIMATION_ORIGIN_X} ${animationOriginY})"><g class="congestion-pin-expand"><g transform="translate(-${CONGESTION_PIN_ANIMATION_ORIGIN_X} -${animationOriginY})"><path d="${selectedTailPath}" fill="${congestionPinBackgroundColors[variant]}"/></g></g></g><g class="congestion-pin-text-expand">${createSelectedPinText(variant, layout.textLines)}</g>`
+      ? `<style>@keyframes congestion-pin-expand{from{transform:scale(0.286,0.466)}to{transform:scale(1,1)}}@keyframes congestion-pin-text-expand{from{opacity:0;transform:translateY(3px)}to{opacity:1;transform:translateY(0)}}.congestion-pin-expand{animation:congestion-pin-expand ${CONGESTION_PIN_ANIMATION_DURATION} cubic-bezier(0.22,2.1,0.36,1) forwards;transform-origin:0 0}.congestion-pin-text-expand{animation:congestion-pin-text-expand ${CONGESTION_PIN_TEXT_ANIMATION_DURATION} ease-out ${CONGESTION_PIN_TEXT_ANIMATION_DELAY} both;transform-origin:0 0}</style><rect class="congestion-pin-body" x="${getDefaultPinTranslateX(variant)}" y="${defaultTranslateY}" width="${getDefaultPinWidth(variant)}" height="${CONGESTION_PIN_VECTOR_HEIGHT}" rx="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" ry="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" fill="${congestionPinBackgroundColors[variant]}"><animate attributeName="x" from="${getDefaultPinTranslateX(variant)}" to="0" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="y" from="${defaultTranslateY}" to="0" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="width" from="${getDefaultPinWidth(variant)}" to="${CONGESTION_PIN_SELECTED_WIDTH}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="height" from="${CONGESTION_PIN_VECTOR_HEIGHT}" to="${layout.bodyHeight}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/></rect><g transform="translate(${CONGESTION_PIN_ANIMATION_ORIGIN_X} ${animationOriginY})"><g class="congestion-pin-expand"><g transform="translate(-${CONGESTION_PIN_ANIMATION_ORIGIN_X} -${animationOriginY})"><path d="${selectedTailPath}" fill="${congestionPinBackgroundColors[variant]}"/></g></g></g><g class="congestion-pin-text-expand">${createSelectedPinText(variant, layout)}</g>`
       : selectedPinContent;
   const animationKeyAttribute = animation ? ` data-animation-key="${animationKey ?? 0}"` : '';
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.markerHeight}" viewBox="0 0 ${CONGESTION_PIN_SELECTED_WIDTH} ${layout.markerHeight}" overflow="visible"${animationKeyAttribute}>${animatedContent}</svg>`;
@@ -225,14 +238,15 @@ function createSelectedPinSource(
 function createCollapsingPinSource(
   variant: CongestionPinVariant,
   selectedMessage: string,
+  updatedAtLabel?: string,
   animationKey?: number,
 ) {
-  const layout = getCongestionPinLayout(selectedMessage);
+  const layout = getCongestionPinLayout(selectedMessage, updatedAtLabel);
   const defaultTranslateY = getDefaultPinTranslateY(layout.markerHeight);
   const animationOriginY = layout.markerHeight;
   const selectedTailPath = getCongestionPinSelectedTailPath(layout.bodyHeight);
   const defaultPinContent = createDefaultPinContent(variant);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.markerHeight}" viewBox="0 0 ${CONGESTION_PIN_SELECTED_WIDTH} ${layout.markerHeight}" overflow="visible" data-animation-key="${animationKey ?? 0}"><style>@keyframes congestion-pin-collapse{from{opacity:1;transform:scale(1,1)}to{opacity:0;transform:scale(0.286,0.466)}}@keyframes congestion-pin-text-collapse{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(3px)}}.congestion-pin-collapse{animation:congestion-pin-collapse ${CONGESTION_PIN_ANIMATION_DURATION} cubic-bezier(0.22,2.1,0.36,1) forwards;transform-origin:0 0}.congestion-pin-text-collapse{animation:congestion-pin-text-collapse ${CONGESTION_PIN_TEXT_COLLAPSE_DURATION} ease-in ${CONGESTION_PIN_TEXT_COLLAPSE_DELAY} both;transform-origin:0 0}</style><rect class="congestion-pin-body" x="0" y="0" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.bodyHeight}" rx="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" ry="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" fill="${congestionPinBackgroundColors[variant]}"><animate attributeName="x" from="0" to="${getDefaultPinTranslateX(variant)}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="y" from="0" to="${defaultTranslateY}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="width" from="${CONGESTION_PIN_SELECTED_WIDTH}" to="${getDefaultPinWidth(variant)}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="height" from="${layout.bodyHeight}" to="${CONGESTION_PIN_VECTOR_HEIGHT}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/></rect><g transform="translate(${CONGESTION_PIN_ANIMATION_ORIGIN_X} ${animationOriginY})"><g class="congestion-pin-collapse"><g transform="translate(-${CONGESTION_PIN_ANIMATION_ORIGIN_X} -${animationOriginY})"><path d="${selectedTailPath}" fill="${congestionPinBackgroundColors[variant]}"/></g></g></g><g class="congestion-pin-text-collapse">${createSelectedPinText(variant, layout.textLines)}</g><g transform="translate(${getDefaultPinTranslateX(variant)} ${defaultTranslateY})">${defaultPinContent}</g></svg>`;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.markerHeight}" viewBox="0 0 ${CONGESTION_PIN_SELECTED_WIDTH} ${layout.markerHeight}" overflow="visible" data-animation-key="${animationKey ?? 0}"><style>@keyframes congestion-pin-collapse{from{opacity:1;transform:scale(1,1)}to{opacity:0;transform:scale(0.286,0.466)}}@keyframes congestion-pin-text-collapse{from{opacity:1;transform:translateY(0)}to{opacity:0;transform:translateY(3px)}}.congestion-pin-collapse{animation:congestion-pin-collapse ${CONGESTION_PIN_ANIMATION_DURATION} cubic-bezier(0.22,2.1,0.36,1) forwards;transform-origin:0 0}.congestion-pin-text-collapse{animation:congestion-pin-text-collapse ${CONGESTION_PIN_TEXT_COLLAPSE_DURATION} ease-in ${CONGESTION_PIN_TEXT_COLLAPSE_DELAY} both;transform-origin:0 0}</style><rect class="congestion-pin-body" x="0" y="0" width="${CONGESTION_PIN_SELECTED_WIDTH}" height="${layout.bodyHeight}" rx="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" ry="${CONGESTION_PIN_SELECTED_BODY_RADIUS}" fill="${congestionPinBackgroundColors[variant]}"><animate attributeName="x" from="0" to="${getDefaultPinTranslateX(variant)}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="y" from="0" to="${defaultTranslateY}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="width" from="${CONGESTION_PIN_SELECTED_WIDTH}" to="${getDefaultPinWidth(variant)}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/><animate attributeName="height" from="${layout.bodyHeight}" to="${CONGESTION_PIN_VECTOR_HEIGHT}" dur="${CONGESTION_PIN_ANIMATION_DURATION}" calcMode="spline" keySplines="0.22 0 0.36 1" fill="freeze"/></rect><g transform="translate(${CONGESTION_PIN_ANIMATION_ORIGIN_X} ${animationOriginY})"><g class="congestion-pin-collapse"><g transform="translate(-${CONGESTION_PIN_ANIMATION_ORIGIN_X} -${animationOriginY})"><path d="${selectedTailPath}" fill="${congestionPinBackgroundColors[variant]}"/></g></g></g><g class="congestion-pin-text-collapse">${createSelectedPinText(variant, layout)}</g><g transform="translate(${getDefaultPinTranslateX(variant)} ${defaultTranslateY})">${defaultPinContent}</g></svg>`;
 
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 }
@@ -251,14 +265,16 @@ export function getCongestionPinMarkerImage(
     animationKey,
     isSelected = false,
     selectedMessage = '퇴근길 인파로 지연이\n5분정도 있어요',
+    updatedAtLabel,
   }: {
     animation?: CongestionPinMarkerAnimation;
     animationKey?: number;
     isSelected?: boolean;
     selectedMessage?: string;
+    updatedAtLabel?: string;
   } = {},
 ): MapMarkerImage {
-  const layout = getCongestionPinLayout(selectedMessage);
+  const layout = getCongestionPinLayout(selectedMessage, updatedAtLabel);
 
   if (animation === 'collapse') {
     return {
@@ -267,7 +283,7 @@ export function getCongestionPinMarkerImage(
         x: CONGESTION_PIN_SELECTED_WIDTH / 2,
         y: layout.markerHeight,
       },
-      src: createCollapsingPinSource(variant, selectedMessage, animationKey),
+      src: createCollapsingPinSource(variant, selectedMessage, updatedAtLabel, animationKey),
       width: CONGESTION_PIN_SELECTED_WIDTH,
     };
   }
@@ -279,7 +295,13 @@ export function getCongestionPinMarkerImage(
         x: CONGESTION_PIN_SELECTED_WIDTH / 2,
         y: layout.markerHeight,
       },
-      src: createSelectedPinSource(variant, selectedMessage, animation, animationKey),
+      src: createSelectedPinSource(
+        variant,
+        selectedMessage,
+        updatedAtLabel,
+        animation,
+        animationKey,
+      ),
       width: CONGESTION_PIN_SELECTED_WIDTH,
     };
   }

@@ -103,6 +103,25 @@ describe('CongestionPin', () => {
     expect(twoLineMarker.offset?.y).toBe(twoLineMarker.height);
   });
 
+  it('갱신 시각을 본문과 구분해 오른쪽 아래에 표시하고 핀 높이를 늘린다', () => {
+    const options = { isSelected: true, selectedMessage: '상세 설명' };
+    const withoutTime = getCongestionPinMarkerImage('busy', options);
+    const withTime = getCongestionPinMarkerImage('busy', {
+      ...options,
+      updatedAtLabel: '3분 전 갱신됨',
+    });
+    const svg = decodeURIComponent(withTime.src.split(',')[1] ?? '');
+    const document = new DOMParser().parseFromString(svg, 'image/svg+xml');
+    const updatedAtText = document.querySelector('text[text-anchor="end"]');
+
+    expect(withTime.height - withoutTime.height).toBe(19);
+    expect(updatedAtText?.getAttribute('x')).toBe('109');
+    expect(Number(updatedAtText?.getAttribute('y'))).toBeCloseTo(withTime.height - 10.2029 - 8);
+    expect(updatedAtText?.getAttribute('fill-opacity')).toBe('0.8');
+    expect(updatedAtText?.getAttribute('font-size')).toBe('9');
+    expect(updatedAtText?.textContent).toBe('3분 전 갱신됨');
+  });
+
   it('지도에서 확장·축소 marker에 스토리북과 같은 CSS 애니메이션을 포함한다', () => {
     const expandedMarker = getCongestionPinMarkerImage('busy', {
       animation: 'expand',
