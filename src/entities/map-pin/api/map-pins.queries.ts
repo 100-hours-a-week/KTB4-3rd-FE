@@ -9,6 +9,8 @@ export const mapPinsQueries = {
     queryOptions({
       queryKey: [...mapPinsQueries.all(), 'list', query] as const,
       enabled: query !== null,
+      staleTime: 0,
+      refetchOnWindowFocus: true,
       queryFn: () => {
         if (!query) {
           throw new Error('지도 범위가 없어 지도 핀을 조회할 수 없습니다.');

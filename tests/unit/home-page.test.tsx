@@ -28,6 +28,12 @@ const mapControls = vi.hoisted(() => ({
   requestCurrentLocation: vi.fn<() => void>(),
 }));
 
+const mapHarness = vi.hoisted(() => ({
+  markerCounts: [] as number[],
+  onUserLocationChange: null as ((coordinate: MapCoordinate) => void) | null,
+  onViewportChange: null as ((viewport: MapViewport) => void) | null,
+}));
+
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => ({ push: navigation.push }),
@@ -67,6 +73,14 @@ vi.mock('@/shared/ui/map', () => ({
   Map: forwardRef<MockMapRef, MockMapProps>(
     ({ children, markers = [], onMarkerClick, onUserLocationChange, onViewportChange }, ref) => {
       useImperativeHandle(ref, () => mapControls, []);
+      mapHarness.markerCounts.push(markers.length);
+
+      useEffect(() => {
+        Object.assign(mapHarness, {
+          onUserLocationChange: onUserLocationChange ?? null,
+          onViewportChange: onViewportChange ?? null,
+        });
+      }, [onUserLocationChange, onViewportChange]);
 
       useEffect(() => {
         onUserLocationChange?.({ lat: 37.3945, lng: 127.1112 });
@@ -107,6 +121,9 @@ afterEach(() => {
   MockIntersectionObserver.callbacks = [];
   navigation.push.mockReset();
   mapControls.requestCurrentLocation.mockReset();
+  mapHarness.markerCounts = [];
+  mapHarness.onUserLocationChange = null;
+  mapHarness.onViewportChange = null;
   useAuthStore.getState().clearTokens();
   useSnackbarStore.getState().reset();
   vi.unstubAllGlobals();
@@ -249,6 +266,70 @@ describe('HomePage', () => {
 
     expect(await screen.findByTestId('map-marker-COMPANION-10')).toBeInTheDocument();
     expect(screen.getByTestId('map-marker-COMMUNITY-88')).toBeInTheDocument();
+  });
+
+  it('새 지도 범위의 핀을 조회하는 동안 Map에 전달하는 마커를 비우지 않는다', async () => {
+    let releaseNextRange!: () => void;
+    const nextRange = new Promise<void>((resolve) => {
+      releaseNextRange = resolve;
+    });
+
+    server.use(
+      http.get('*/map-pins', async ({ request }) => {
+        const isNextRange = new URL(request.url).searchParams.get('sw_lat') === '37.31';
+        if (isNextRange) {
+          await nextRange;
+        }
+
+        return HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            items: isNextRange
+              ? [{ type: 'COMMUNITY', id: 2, lat: 37.4, lng: 127.1 }]
+              : [{ type: 'COMMUNITY', id: 1, lat: 37.4, lng: 127.1 }],
+            limit: 500,
+            limit_exceeded: false,
+          },
+        });
+      }),
+    );
+
+    renderHomePage();
+    expect(await screen.findByTestId('map-marker-COMMUNITY-1')).toBeInTheDocument();
+    const firstShownIndex = mapHarness.markerCounts.findIndex((count) => count > 0);
+
+    act(() => {
+      mapHarness.onViewportChange?.({
+        northEast: { lat: 37.61, lng: 127.2 },
+        northWest: { lat: 37.61, lng: 127 },
+        southEast: { lat: 37.31, lng: 127.2 },
+        southWest: { lat: 37.31, lng: 127 },
+      });
+    });
+
+    expect(screen.getByTestId('map-marker-COMMUNITY-1')).toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('data-map-pins-range', 'previous');
+    expect(screen.getByRole('main')).toHaveAttribute('aria-busy', 'true');
+
+    act(() => {
+      mapHarness.onUserLocationChange?.({ lat: 37.3945, lng: 127.1112 });
+    });
+    expect(screen.getByTestId('map-marker-COMMUNITY-1')).toBeInTheDocument();
+
+    act(() => {
+      mapHarness.onViewportChange?.({
+        northEast: { lat: 37.61, lng: 127.2 },
+        northWest: { lat: 37.61, lng: 127 },
+        southEast: { lat: 37.31, lng: 127.2 },
+        southWest: { lat: 37.31, lng: 127 },
+      });
+    });
+    releaseNextRange();
+
+    expect(await screen.findByTestId('map-marker-COMMUNITY-2')).toBeInTheDocument();
+    expect(screen.queryByTestId('map-marker-COMMUNITY-1')).not.toBeInTheDocument();
+    expect(screen.getByRole('main')).toHaveAttribute('data-map-pins-range', 'current');
+    expect(mapHarness.markerCounts.slice(firstShownIndex)).not.toContain(0);
   });
 
   it('주변 게시글 API 응답을 바텀시트에 렌더링한다', async () => {
