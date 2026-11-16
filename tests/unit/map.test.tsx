@@ -73,6 +73,7 @@ class FakeMap implements KakaoMap {
 class FakeMarker implements KakaoMarker {
   constructor(options: { position: KakaoLatLng; title?: string; zIndex?: number }) {
     markerOptions.push(options);
+    markerInstances.push(this);
   }
 
   setMap = vi.fn<(map: KakaoMap | null) => void>();
@@ -81,9 +82,12 @@ class FakeMarker implements KakaoMarker {
 class FakeMarkerClusterer implements KakaoMarkerClusterer {
   constructor(options: { styles?: KakaoMarkerClustererStyle[] }) {
     clustererOptions.push(options);
+    clustererInstances.push(this);
   }
 
-  addMarkers = vi.fn<(markers: KakaoMarker[]) => void>();
+  addMarkers = vi.fn<(markers: KakaoMarker[], nodraw?: boolean) => void>();
+  removeMarkers = vi.fn<(markers: KakaoMarker[], nodraw?: boolean) => void>();
+  redraw = vi.fn<() => void>();
   clear = vi.fn<() => void>();
   setMap = vi.fn<(map: KakaoMap | null) => void>();
 }
@@ -93,6 +97,8 @@ const clusterClickHandlers: ((cluster: KakaoCluster) => void)[] = [];
 const boundsChangedHandlers: (() => void)[] = [];
 let mapEventHandlers: Record<string, (() => void)[]> = {};
 const clustererOptions: { styles?: KakaoMarkerClustererStyle[] }[] = [];
+const clustererInstances: FakeMarkerClusterer[] = [];
+const markerInstances: FakeMarker[] = [];
 const markerOptions: { position: KakaoLatLng; title?: string; zIndex?: number }[] = [];
 const markerImageSources: string[] = [];
 const markerImageOptions: { height: number; offsetX: number; offsetY: number; width: number }[] =
@@ -182,6 +188,8 @@ describe('Map', () => {
     boundsChangedHandlers.length = 0;
     mapEventHandlers = {};
     clustererOptions.length = 0;
+    clustererInstances.length = 0;
+    markerInstances.length = 0;
     markerOptions.length = 0;
     markerImageSources.length = 0;
     markerImageOptions.length = 0;
@@ -558,6 +566,74 @@ describe('Map', () => {
     clusterClickHandlers[0]?.({ getCenter: () => new FakeLatLng(37.52, 127.03) });
 
     expect(fakeMap.setLevel).not.toHaveBeenCalled();
+  });
+
+  it('keeps unchanged markers and updates only the markers that changed', async () => {
+    const first = { id: 'first', position: { lat: 37.51, lng: 127.02 }, title: '첫 핀' };
+    const second = { id: 'second', position: { lat: 37.52, lng: 127.03 }, title: '둘째 핀' };
+    const third = { id: 'third', position: { lat: 37.53, lng: 127.04 }, title: '셋째 핀' };
+    const onMarkerClick = vi.fn<(marker: MapMarker) => void>();
+    const { rerender } = render(
+      <Map apiKey="test-key" markers={[first, second]} onMarkerClick={onMarkerClick} />,
+    );
+
+    await waitFor(() => expect(markerInstances).toHaveLength(2));
+    const clusterer = clustererInstances[0];
+    const firstInstance = markerInstances[0];
+    const secondInstance = markerInstances[1];
+    if (!clusterer || !firstInstance || !secondInstance) {
+      throw new Error('마커 생성 실패');
+    }
+    clusterer.addMarkers.mockClear();
+    clusterer.redraw.mockClear();
+
+    rerender(
+      <Map
+        apiKey="test-key"
+        markers={[{ ...first }, { ...second }]}
+        onMarkerClick={onMarkerClick}
+      />,
+    );
+    expect(clusterer.redraw).not.toHaveBeenCalled();
+    expect(markerInstances).toHaveLength(2);
+
+    rerender(
+      <Map apiKey="test-key" markers={[{ ...first }, third]} onMarkerClick={onMarkerClick} />,
+    );
+    expect(markerInstances).toHaveLength(3);
+    expect(clustererInstances).toHaveLength(1);
+    expect(clusterer.removeMarkers).toHaveBeenCalledWith([secondInstance], true);
+    expect(clusterer.addMarkers).toHaveBeenCalledWith([markerInstances[2]], true);
+    expect(clusterer.redraw).toHaveBeenCalledTimes(1);
+    expect(firstInstance.setMap).not.toHaveBeenCalledWith(null);
+    markerClickHandlers[0]?.();
+    expect(onMarkerClick).toHaveBeenCalledWith(first);
+  });
+
+  it('updates changed marker properties without replacing unrelated standalone markers', async () => {
+    const first = { id: 1, position: { lat: 37.51, lng: 127.02 } };
+    const second = { id: 2, position: { lat: 37.52, lng: 127.03 } };
+    const { rerender } = render(
+      <Map apiKey="test-key" clusterMarkers={false} markers={[first, second]} />,
+    );
+    await waitFor(() => expect(markerInstances).toHaveLength(2));
+    const firstInstance = markerInstances[0];
+    const secondInstance = markerInstances[1];
+    if (!firstInstance || !secondInstance) {
+      throw new Error('마커 생성 실패');
+    }
+
+    rerender(
+      <Map
+        apiKey="test-key"
+        clusterMarkers={false}
+        markers={[first, { ...second, isSelected: true }]}
+      />,
+    );
+    expect(markerInstances).toHaveLength(3);
+    expect(firstInstance.setMap).not.toHaveBeenCalledWith(null);
+    expect(secondInstance.setMap).toHaveBeenCalledWith(null);
+    expect(markerInstances[2]?.setMap).toHaveBeenCalledWith(fakeMap);
   });
 
   it('uses a custom marker image when one is provided', async () => {

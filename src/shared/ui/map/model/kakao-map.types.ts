@@ -33,7 +33,9 @@ export type KakaoCluster = {
 };
 
 export type KakaoMarkerClusterer = {
-  addMarkers: (markers: KakaoMarker[]) => void;
+  addMarkers: (markers: KakaoMarker[], nodraw?: boolean) => void;
+  removeMarkers: (markers: KakaoMarker[], nodraw?: boolean) => void;
+  redraw: () => void;
   clear: () => void;
   setMap: (map: KakaoMap | null) => void;
 };
