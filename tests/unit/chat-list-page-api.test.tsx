@@ -226,6 +226,43 @@ describe('ChatListPage API 연결', () => {
     expect(navigation.push).toHaveBeenCalledWith('/matching');
   });
 
+  it('쿼리 파라미터 props가 바뀌면 카풀과 받은 요청 탭을 동기화한다', async () => {
+    server.use(
+      http.get('*/chat-rooms', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: { items: [], next_cursor: null },
+        }),
+      ),
+    );
+
+    const view = render(<ChatListPage initialChatTab="chat" initialRequestDirection="SENT" />, {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => expect(screen.getByTestId('chat-list-empty')).toBeInTheDocument());
+    const initialTabs = screen.getByRole('tablist', { name: '채팅 화면' });
+    expect(within(initialTabs).getByRole('tab', { name: '채팅' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    );
+    expect(screen.queryByRole('tab', { name: '받은 요청' })).not.toBeInTheDocument();
+
+    view.rerender(<ChatListPage initialChatTab="carpool" initialRequestDirection="RECEIVED" />);
+
+    await waitFor(() => {
+      const tabs = screen.getByRole('tablist', { name: '채팅 화면' });
+      expect(within(tabs).getByRole('tab', { name: '카풀' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+      expect(screen.getByRole('tab', { name: '받은 요청' })).toHaveAttribute(
+        'aria-selected',
+        'true',
+      );
+    });
+  });
+
   it('스크롤 하단에 도달하면 next_cursor로 다음 페이지를 이어서 렌더링한다', async () => {
     const requestedCursors: string[] = [];
     const user = userEvent.setup();

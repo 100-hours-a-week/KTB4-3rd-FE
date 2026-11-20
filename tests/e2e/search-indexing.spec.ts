@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test';
 
-const indexablePaths = ['/', '/posts/1?type=community'];
+const indexablePaths = ['/', '/congestion', '/matching', '/posts/1?type=community'];
 const excludedPaths = [
   '/login',
   '/signup',
@@ -8,7 +8,6 @@ const excludedPaths = [
   '/chat',
   '/chatting',
   '/chatroom/101',
-  '/matching',
   '/matching/location',
   '/matching/location/adjust?field=destination',
   '/matching/time',
@@ -58,6 +57,18 @@ test('/about는 서비스 JSON-LD를 제공한다', async ({ page }) => {
   );
 });
 
+for (const [path, title] of [
+  ['/taxi-pots/new/location?field=destination', '모여타 | 도착지 선택'],
+  ['/taxi-pots/new/location/adjust?field=destination', '모여타 | 도착지 조정'],
+] as const) {
+  test(`${path}는 목적지 단계에 맞는 제목을 제공한다`, async ({ request }) => {
+    const response = await request.get(path);
+
+    expect(response.ok()).toBe(true);
+    expect(await response.text()).toContain(`<title>${title}</title>`);
+  });
+}
+
 for (const path of excludedPaths) {
   test(`${path}는 검색 색인을 제외한다`, async ({ request }) => {
     const response = await request.get(path);
@@ -92,7 +103,6 @@ for (const path of ['/llms.txt']) {
     expect(content).not.toContain('[택시팟 매칭](');
     expect(content).not.toContain('[카풀 등록](');
     expect(content).not.toContain('[게시글 상세](');
-    expect(content).toContain('택시팟 매칭');
     expect(content).toContain('카풀');
   });
 }

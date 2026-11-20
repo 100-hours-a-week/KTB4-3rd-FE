@@ -4,7 +4,6 @@ import { useEffect, useRef } from 'react';
 
 import { useAuthStore } from '@/entities/auth';
 
-import { getFcmRegistrationToken } from './get-fcm-registration-token';
 import { useRegisterPushTokenMutation } from './use-register-push-token-mutation';
 
 export function PushTokenRegistrationSync() {
@@ -26,6 +25,7 @@ export function PushTokenRegistrationSync() {
 
     const registerToken = async () => {
       try {
+        const { getFcmRegistrationToken } = await import('./get-fcm-registration-token');
         const token = await getFcmRegistrationToken();
 
         if (!token || !isActive) {

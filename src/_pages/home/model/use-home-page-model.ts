@@ -208,6 +208,10 @@ export function useHomePageModel() {
       isError: mapPinsQuery.isError,
       onRetry: handleRetryMapPins,
     },
+    mapPinsStatus: {
+      isFetching: mapPinsQuery.isFetching,
+      isShowingPreviousRange: mapPinsQuery.isShowingPreviousRange,
+    },
     nearbyPosts: {
       hasNextPage: nearbyPostsQuery.hasNextPage,
       isError: nearbyPostsQuery.isError,

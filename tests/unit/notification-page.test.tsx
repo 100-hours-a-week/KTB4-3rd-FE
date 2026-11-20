@@ -263,6 +263,25 @@ describe('NotificationPage', () => {
     expect(navigation.push).toHaveBeenCalledWith('/chatroom/11');
   });
 
+  it('정산 완료 리마인더를 클릭하면 읽음 처리하고 채팅방으로 이동한다', async () => {
+    const user = userEvent.setup();
+    const reminder: Notification = {
+      ...notifications[1],
+      id: 4,
+      type: 'SETTLEMENT_COMPLETION_REMINDER',
+      content: '정산 완료를 확인해주세요',
+    };
+    const markNotificationRead = mockMarkNotificationReadMutation();
+    mockMarkAllNotificationsReadMutation();
+    mockNotificationQuery('all', [reminder]);
+    render(<NotificationPage />);
+
+    await user.click(screen.getByRole('button', { name: /정산 완료를 확인해주세요/ }));
+
+    expect(markNotificationRead).toHaveBeenCalledWith(reminder.id);
+    expect(navigation.push).toHaveBeenCalledWith('/chatroom/11');
+  });
+
   it('받은 카풀 요청 알림을 클릭하면 카풀 받은 요청 탭으로 이동한다', async () => {
     const user = userEvent.setup();
     const markNotificationRead = mockMarkNotificationReadMutation();

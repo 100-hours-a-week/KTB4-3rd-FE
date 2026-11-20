@@ -33,7 +33,9 @@ export type KakaoCluster = {
 };
 
 export type KakaoMarkerClusterer = {
-  addMarkers: (markers: KakaoMarker[]) => void;
+  addMarkers: (markers: KakaoMarker[], nodraw?: boolean) => void;
+  removeMarkers: (markers: KakaoMarker[], nodraw?: boolean) => void;
+  redraw: () => void;
   clear: () => void;
   setMap: (map: KakaoMap | null) => void;
 };
@@ -130,6 +132,7 @@ export type KakaoMapsApi = {
     image?: KakaoMarkerImage;
     position: KakaoLatLng;
     title?: string;
+    zIndex?: number;
   }) => KakaoMarker;
   MarkerClusterer: new (options: {
     averageCenter: boolean;

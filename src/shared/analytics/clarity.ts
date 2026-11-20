@@ -1,14 +1,20 @@
-import Clarity from '@microsoft/clarity';
+let initialization: Promise<void> | null = null;
 
-let isInitialized = false;
-
-export function initClarity(): void {
+export function initClarity(): Promise<void> {
   const projectId = process.env.NEXT_PUBLIC_CLARITY_PROJECT_ID;
 
-  if (isInitialized || !projectId) {
-    return;
+  if (!projectId || typeof window === 'undefined') {
+    return Promise.resolve();
   }
 
-  Clarity.init(projectId);
-  isInitialized = true;
+  if (!initialization) {
+    initialization = import('@microsoft/clarity')
+      .then(({ default: clarity }) => clarity.init(projectId))
+      .catch((error: unknown) => {
+        initialization = null;
+        throw error;
+      });
+  }
+
+  return initialization;
 }

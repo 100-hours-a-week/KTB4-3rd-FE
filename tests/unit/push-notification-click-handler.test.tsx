@@ -1,7 +1,7 @@
 import { render, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { PushNotificationClickHandler } from '@/features/push-token';
+import { PushNotificationClickHandler } from '@/_app/providers';
 
 const navigation = {
   replace: vi.fn<(path: string, options: { scroll: boolean }) => void>(),

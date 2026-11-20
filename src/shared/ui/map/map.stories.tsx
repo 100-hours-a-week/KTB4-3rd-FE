@@ -13,6 +13,16 @@ const meta = {
   parameters: {
     layout: 'fullscreen',
   },
+  argTypes: {
+    bootstrapEarly: {
+      control: 'boolean',
+      description: '지도 컨테이너를 React hydration 전에 초기화합니다.',
+    },
+    preloadBackground: {
+      control: 'boolean',
+      description: '화면 해상도에 맞는 카카오 지도 배경 이미지를 높은 우선순위로 preload합니다.',
+    },
+  },
 } satisfies Meta<typeof Map>;
 
 export default meta;
@@ -44,7 +54,7 @@ function LocationSelectionPreview(args: ComponentProps<typeof Map>) {
     const apiKey = args.apiKey ?? process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? '';
 
     loadKakaoMaps(apiKey)
-      .then(() => loadKakaoServices())
+      .then(() => loadKakaoServices(apiKey))
       .then((services) => {
         const geocoder = new services.Geocoder();
 
