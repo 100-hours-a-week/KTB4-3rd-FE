@@ -6,9 +6,13 @@ import type { BankAccountData, SaveBankAccountPayload, User } from '@/entities/u
 export type CurrentUserResponse = ApiResponse<User>;
 export type SaveBankAccountResponse = ApiResponse<BankAccountData>;
 
-export function getCurrentUser(accessToken: string): Promise<CurrentUserResponse> {
+export function getCurrentUser(
+  accessToken: string,
+  signal?: AbortSignal,
+): Promise<CurrentUserResponse> {
   return apiFetch<CurrentUserResponse>('/users/me', {
     token: accessToken,
+    signal,
   });
 }
 

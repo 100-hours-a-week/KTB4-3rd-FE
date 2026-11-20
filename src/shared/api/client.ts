@@ -1,17 +1,42 @@
 const apiBaseUrl = (process.env.NEXT_PUBLIC_API_BASE_URL || '/api').replace(/\/$/, '');
+const mockApiEnabled = process.env.NEXT_PUBLIC_USE_MOCK_API === 'true';
+
+let mockApiReady: Promise<void> | null = null;
+
+async function waitForMockApi() {
+  if (!mockApiEnabled || typeof window === 'undefined') {
+    return;
+  }
+
+  mockApiReady ??= import('./mocks/browser')
+    .then(({ startMockApi }) => startMockApi())
+    .catch((error: unknown) => {
+      mockApiReady = null;
+      throw error;
+    });
+
+  await mockApiReady;
+}
 
 export type ApiErrorBody = {
   message?: string;
   error?: {
     code?: string;
     field?: string | null;
+    details?: ApiErrorDetail[];
   };
+};
+
+export type ApiErrorDetail = {
+  field: string;
+  reason: string;
 };
 
 export class ApiError extends Error {
   readonly status: number;
   readonly code?: string;
   readonly field?: string | null;
+  readonly details?: ApiErrorDetail[];
 
   constructor(status: number, body?: ApiErrorBody) {
     super(body?.message ?? `API request failed with status ${status}`);
@@ -19,6 +44,7 @@ export class ApiError extends Error {
     this.status = status;
     this.code = body?.error?.code;
     this.field = body?.error?.field;
+    this.details = body?.error?.details;
   }
 }
 
@@ -28,6 +54,11 @@ export type ApiFetchOptions = RequestInit & {
 };
 
 export type AuthRefreshHandler = () => Promise<string>;
+
+export type ApiFetchResponse<T> = {
+  data: T;
+  status: number;
+};
 
 let authRefreshHandler: AuthRefreshHandler | null = null;
 let authRefreshRequest: Promise<string> | null = null;
@@ -45,11 +76,22 @@ async function readResponseBody(response: Response): Promise<unknown> {
 }
 
 export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): Promise<T> {
+  const { data } = await apiFetchWithStatus<T>(path, options);
+  return data;
+}
+
+export async function apiFetchWithStatus<T>(
+  path: string,
+  options: ApiFetchOptions = {},
+): Promise<ApiFetchResponse<T>> {
   const { token, skipAuthRefresh, ...init } = options;
   const response = await fetchApi(path, init, token);
 
   if (response.response.ok) {
-    return response.body as T;
+    return {
+      data: response.body as T,
+      status: response.response.status,
+    };
   }
 
   const refreshHandler = authRefreshHandler;
@@ -76,10 +118,15 @@ export async function apiFetch<T>(path: string, options: ApiFetchOptions = {}): 
     throwApiError(retriedResponse.response, retriedResponse.body);
   }
 
-  return retriedResponse.body as T;
+  return {
+    data: retriedResponse.body as T,
+    status: retriedResponse.response.status,
+  };
 }
 
 async function fetchApi(path: string, init: RequestInit, token?: string) {
+  await waitForMockApi();
+
   const headers = new Headers(init.headers);
   const isFormData = typeof FormData !== 'undefined' && init.body instanceof FormData;
 

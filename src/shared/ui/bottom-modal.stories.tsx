@@ -2,6 +2,7 @@ import type { Meta, StoryObj } from '@storybook/nextjs-vite';
 import { useState } from 'react';
 
 import { BottomModal } from './bottom-modal';
+import { Dialog } from './dialog';
 
 const meta = {
   title: 'Shared/BottomModal',
@@ -84,6 +85,7 @@ export const Default: Story = {
 };
 
 export const Controlled: Story = {
+  name: '부모에서 열림 여부 관리',
   args: {
     children: <ModalContent />,
     href: '/posts/1',
@@ -101,4 +103,74 @@ export const Scrollable: Story = {
       <BottomModal {...args} />
     </div>
   ),
+};
+
+export const WithoutExpand: Story = {
+  name: '크게보기 없이 사용',
+  args: { href: undefined, showExpand: false, children: <ModalContent /> },
+};
+
+export const CloseDisabled: Story = {
+  name: '닫기 차단',
+  args: { href: undefined, showExpand: false, closeDisabled: true, children: <ModalContent /> },
+};
+
+function FocusFlowStory() {
+  const [open, setOpen] = useState(false);
+  const [locked, setLocked] = useState(false);
+  const [confirmation, setConfirmation] = useState(false);
+  const [message, setMessage] = useState('작성한 내용은 확인 취소 시 유지됩니다.');
+  return (
+    <div className="min-h-dvh bg-[var(--color-bg-layer-fill)] p-5">
+      <button type="button" onClick={() => setOpen(true)}>
+        모달 열기
+      </button>
+      <BottomModal
+        open={open}
+        showExpand={false}
+        closeDisabled={locked || confirmation}
+        onOpenChange={setOpen}
+        bottomOffset="calc(72px + env(safe-area-inset-bottom, 0px))"
+      >
+        <div className="space-y-5 p-5">
+          <h2>키보드와 닫기 동작 확인</h2>
+          <label className="flex flex-col gap-2">
+            메시지
+            <textarea
+              className="min-h-24 rounded-lg border p-3"
+              value={message}
+              onChange={(event) => setMessage(event.target.value)}
+            />
+          </label>
+          <label className="flex gap-2">
+            <input
+              type="checkbox"
+              checked={locked}
+              onChange={(event) => setLocked(event.target.checked)}
+            />
+            닫기 차단
+          </label>
+          <button type="button" onClick={() => setConfirmation(true)}>
+            내용 삭제 확인
+          </button>
+          <p role="status">{locked ? '닫기 차단 중' : '닫기 허용'}</p>
+          <Dialog
+            open={confirmation}
+            onOpenChange={setConfirmation}
+            title="내용을 삭제할까요?"
+            description="계속 작성하거나 Escape를 누르면 기존 내용이 유지됩니다."
+            buttons="primarySecondary"
+            primaryLabel="삭제"
+            secondaryLabel="계속 작성"
+            primaryButtonProps={{ onClick: () => setMessage('') }}
+          />
+        </div>
+      </BottomModal>
+    </div>
+  );
+}
+
+export const FocusFlow: Story = {
+  name: '키보드·닫기 잠금·확인 창',
+  render: () => <FocusFlowStory />,
 };

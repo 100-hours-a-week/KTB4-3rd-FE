@@ -5,12 +5,23 @@ import { Map } from './map';
 import { loadKakaoMaps, loadKakaoServices } from './model/map-loader';
 import type { KakaoAddressResult } from './model/kakao-map.types';
 import type { MapCoordinate } from '@/shared/types/common';
+import type { MapCenterChangeSource, MapViewportChangeSource } from './model/map.types';
 
 const meta = {
   title: 'Shared/Map',
   component: Map,
   parameters: {
     layout: 'fullscreen',
+  },
+  argTypes: {
+    bootstrapEarly: {
+      control: 'boolean',
+      description: '지도 컨테이너를 React hydration 전에 초기화합니다.',
+    },
+    preloadBackground: {
+      control: 'boolean',
+      description: '화면 해상도에 맞는 카카오 지도 배경 이미지를 높은 우선순위로 preload합니다.',
+    },
   },
 } satisfies Meta<typeof Map>;
 
@@ -43,7 +54,7 @@ function LocationSelectionPreview(args: ComponentProps<typeof Map>) {
     const apiKey = args.apiKey ?? process.env.NEXT_PUBLIC_KAKAO_MAP_APP_KEY ?? '';
 
     loadKakaoMaps(apiKey)
-      .then(() => loadKakaoServices())
+      .then(() => loadKakaoServices(apiKey))
       .then((services) => {
         const geocoder = new services.Geocoder();
 
@@ -173,4 +184,55 @@ export const CustomSelectionMarker: Story = {
     },
     selectionMode: true,
   },
+};
+
+function ViewportMovementPreview(args: ComponentProps<typeof Map>) {
+  const [source, setSource] = useState<MapViewportChangeSource | null>(null);
+  const [center, setCenter] = useState<MapCoordinate>();
+  const [centerChangeSource, setCenterChangeSource] =
+    useState<MapCenterChangeSource>('programmatic');
+  const move = (nextSource: MapCenterChangeSource) => {
+    setCenterChangeSource(nextSource);
+    setCenter(
+      nextSource === 'selection' ? { lat: 37.5547, lng: 126.9707 } : { lat: 37.5665, lng: 126.978 },
+    );
+  };
+
+  return (
+    <div className="relative h-screen">
+      <Map
+        {...args}
+        center={center}
+        centerChangeSource={centerChangeSource}
+        className="h-full"
+        onViewportChange={(_, nextSource) => setSource(nextSource ?? null)}
+      />
+      <div className="absolute top-4 left-4 z-10 space-y-2 rounded-xl bg-[var(--color-bg-layer-default)] p-4 shadow-md">
+        <p aria-live="polite">마지막 지도 이동 원인: {source ?? '지도 준비 중'}</p>
+        <p className="text-sm">드래그·확대 버튼·현재 위치·아래 이동 버튼으로 원인을 확인하세요.</p>
+        <div className="flex gap-2">
+          <button
+            className="rounded border px-3 py-2"
+            type="button"
+            onClick={() => move('selection')}
+          >
+            선택 위치로 이동
+          </button>
+          <button
+            className="rounded border px-3 py-2"
+            type="button"
+            onClick={() => move('programmatic')}
+          >
+            코드로 이동
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export const ViewportMovement: Story = {
+  name: '지도 이동 원인 확인',
+  render: (args) => <ViewportMovementPreview {...args} />,
+  args: { clusterMarkers: false, markers: [] },
 };

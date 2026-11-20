@@ -5,3 +5,7 @@ export {
   type JoinCompanionResponse,
 } from './api/join-companion';
 export { useJoinCompanionMutation } from './model/use-join-companion';
+export {
+  useJoinCompanionWorkflow,
+  type JoinCompanionWorkflowOptions,
+} from './model/use-join-companion-workflow';

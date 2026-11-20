@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
-import { getMapPins } from '@/_pages/home/api/map-pins';
+import { getMapPins } from '@/entities/map-pin';
 
 describe('map pins API', () => {
   it('지도 영역의 남서쪽과 북동쪽 좌표로 지도 핀을 조회한다', async () => {

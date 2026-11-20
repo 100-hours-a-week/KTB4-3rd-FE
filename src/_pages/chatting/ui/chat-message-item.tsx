@@ -9,17 +9,21 @@ import { ChatMessageMenu, type ChatReportTarget } from './chat-message-menu';
 
 const initialMessageSpacing = ['', 'mt-[41px]', 'mt-[47px]', 'mt-[27px]', 'mt-[41px]'];
 
-type ChatMessageItemProps = {
+export type ChatMessageItemProps = {
   message: ChatRoomMessage;
   index: number;
   onReport: (target: ChatReportTarget) => void;
 };
 
-function getMessageClassName(message: ChatRoomMessage, index: number) {
+export function getMessageClassName(
+  message: ChatRoomMessage,
+  index: number,
+  noticeAlignment: 'center' | 'start' = 'center',
+) {
   const spacing = initialMessageSpacing[index] ?? 'mt-4';
 
   if (message.kind === 'notice') {
-    return cn(spacing, 'self-center');
+    return cn(spacing, noticeAlignment === 'start' ? 'self-start' : 'self-center');
   }
 
   return cn(spacing, message.variant === 'me' && 'self-end mr-[10px]');

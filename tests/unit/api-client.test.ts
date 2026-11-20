@@ -2,7 +2,7 @@ import { http, HttpResponse } from 'msw';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { useAuthStore } from '@/entities/auth';
-import { apiFetch } from '@/shared/api/client';
+import { apiFetch, apiFetchWithStatus } from '@/shared/api/client';
 import { server } from '@/shared/api/mocks/server';
 
 const EXPIRED_ACCESS_TOKEN = 'expired-access-token';
@@ -24,6 +24,24 @@ afterEach(() => {
 });
 
 describe('apiFetch 인증 토큰 재시도', () => {
+  it('성공 응답의 HTTP 상태 코드와 본문을 함께 반환한다', async () => {
+    server.use(
+      http.post('*/accepted-resource', () =>
+        HttpResponse.json(
+          { message: '처리를 시작했습니다', data: { status: 'ANALYZING' } },
+          { status: 202 },
+        ),
+      ),
+    );
+
+    const response = await apiFetchWithStatus<{ data: { status: string } }>('/accepted-resource', {
+      method: 'POST',
+    });
+
+    expect(response.status).toBe(202);
+    expect(response.data.data.status).toBe('ANALYZING');
+  });
+
   it('401 응답 후 토큰을 재발급받아 원래 요청을 한 번 재시도한다', async () => {
     const authorizationHeaders: string[] = [];
     const requestBodies: { content: string }[] = [];
@@ -162,5 +180,39 @@ describe('apiFetch 인증 토큰 재시도', () => {
     expect(protectedRequestCount).toBe(1);
     expect(refreshRequestCount).toBe(1);
     expect(useAuthStore.getState().accessToken).toBeNull();
+  });
+
+  it('토큰 갱신 뒤 실패한 요청도 서버 validation details를 보존한다', async () => {
+    server.use(
+      http.post('*/protected-validation', ({ request }) =>
+        request.headers.get('authorization') === `Bearer ${REFRESHED_ACCESS_TOKEN}`
+          ? HttpResponse.json(
+              {
+                message: '요청 값을 확인해주세요',
+                error: {
+                  code: 'VALIDATION_ERROR',
+                  field: 'content',
+                  details: [{ field: 'content', reason: 'LENGTH_OUT_OF_RANGE' }],
+                },
+              },
+              { status: 422 },
+            )
+          : unauthorizedResponse(),
+      ),
+      http.post('*/auth/tokens', () =>
+        HttpResponse.json({ data: { access_token: REFRESHED_ACCESS_TOKEN } }),
+      ),
+    );
+
+    useAuthStore.getState().setAccessToken(EXPIRED_ACCESS_TOKEN);
+
+    await expect(
+      apiFetch('/protected-validation', { method: 'POST', token: EXPIRED_ACCESS_TOKEN }),
+    ).rejects.toMatchObject({
+      status: 422,
+      code: 'VALIDATION_ERROR',
+      field: 'content',
+      details: [{ field: 'content', reason: 'LENGTH_OUT_OF_RANGE' }],
+    });
   });
 });

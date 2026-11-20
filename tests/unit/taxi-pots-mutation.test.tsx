@@ -46,10 +46,10 @@ describe('useTaxiPotMatchingMutation', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.data).toEqual({
-      id: 30,
-      chat_room_id: 599,
-      status: 'RECRUITING',
-      current_count: 2,
+      id: null,
+      chat_room_id: null,
+      status: 'MATCHING',
+      current_count: null,
       capacity: 4,
     });
   });

@@ -7,27 +7,35 @@ import {
   ChatWebSocketClient,
   type ChatWebSocketMessage,
   type ChatWebSocketStatus,
+  type SettlementAnalysisFinishedMessage,
 } from '@/entities/chat';
 
 export type UseChatRoomWebSocketOptions = {
   roomId: string;
   enabled?: boolean;
   onMessage?: (message: ChatWebSocketMessage) => void;
+  onSettlementAnalysisFinished?: (message: SettlementAnalysisFinishedMessage) => void;
 };
 
 export function useChatRoomWebSocket({
   roomId,
   enabled = true,
   onMessage,
+  onSettlementAnalysisFinished,
 }: UseChatRoomWebSocketOptions) {
   const [status, setStatus] = useState<ChatWebSocketStatus>(enabled ? 'connecting' : 'closed');
   const [error, setError] = useState<Error | null>(null);
   const clientRef = useRef<ChatWebSocketClient | null>(null);
   const onMessageRef = useRef(onMessage);
+  const onSettlementAnalysisFinishedRef = useRef(onSettlementAnalysisFinished);
 
   useEffect(() => {
     onMessageRef.current = onMessage;
   }, [onMessage]);
+
+  useEffect(() => {
+    onSettlementAnalysisFinishedRef.current = onSettlementAnalysisFinished;
+  }, [onSettlementAnalysisFinished]);
 
   useEffect(() => {
     if (!enabled) {
@@ -51,6 +59,8 @@ export function useChatRoomWebSocket({
             }
           },
           onMessage: (message) => onMessageRef.current?.(message),
+          onSettlementAnalysisFinished: (message) =>
+            onSettlementAnalysisFinishedRef.current?.(message),
           onStatusChange: (nextStatus) => {
             if (!disposed) {
               setStatus(nextStatus);

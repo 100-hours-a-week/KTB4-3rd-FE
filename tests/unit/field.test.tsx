@@ -75,6 +75,29 @@ describe('Field', () => {
     expect(screen.getByLabelText('글자 수')).toHaveTextContent('8 / 10');
   });
 
+  it('설정한 글자 수부터 counter를 표시하고 숨겨진 공간을 유지한다', () => {
+    const { rerender } = renderInputField({
+      characterCount: 179,
+      maxCharacterCount: 200,
+      characterCountShowFrom: 180,
+    });
+    const counter = screen.getByTestId('character-count');
+    expect(counter).toHaveAttribute('aria-hidden', 'true');
+    expect(counter).toHaveClass('invisible');
+    rerender(
+      <Field
+        inputSlot={<Input value="" onValueChange={() => {}} />}
+        label="댓글"
+        characterCount={180}
+        maxCharacterCount={200}
+        characterCountShowFrom={180}
+      />,
+    );
+    expect(counter).toHaveAttribute('aria-hidden', 'false');
+    expect(counter).not.toHaveClass('invisible');
+    expect(counter).toHaveTextContent('180 / 200');
+  });
+
   it('character count가 0이면 placeholder 색상으로 표시한다', () => {
     renderInputField({ characterCount: 0, maxCharacterCount: 10 });
 

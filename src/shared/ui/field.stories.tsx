@@ -145,3 +145,8 @@ export const Disabled: Story = {
     disabled: true,
   },
 };
+
+export const CounterFromThreshold: Story = {
+  args: { characterCount: 179, maxCharacterCount: 200, characterCountShowFrom: 180 },
+  argTypes: { characterCount: { control: 'number' } },
+};

@@ -61,16 +61,19 @@ export const signupHandlers = [
     const contentType = body.content_type;
     const contentLength = body.content_length;
 
-    if (body.purpose !== 'PROFILE') {
-      return errorResponse(
-        '회원가입 중에는 프로필 이미지만 올릴 수 있습니다',
-        'FORBIDDEN',
-        null,
-        403,
-      );
+    const purpose = body.purpose;
+    if (!['PROFILE', 'METER', 'TRANSFER'].includes(String(purpose))) {
+      return errorResponse('이미지 용도가 올바르지 않습니다', 'VALIDATION_ERROR', 'purpose', 422);
+    }
+    if (purpose !== 'PROFILE' && signupToken !== MOCK_ACCESS_TOKEN) {
+      return errorResponse('로그인이 필요합니다', 'FORBIDDEN', null, 403);
     }
 
-    if (contentType !== 'image/jpeg' && contentType !== 'image/png') {
+    if (
+      contentType !== 'image/jpeg' &&
+      contentType !== 'image/png' &&
+      !(purpose === 'PROFILE' && contentType === 'image/webp')
+    ) {
       return errorResponse('지원하지 않는 확장자입니다', 'VALIDATION_ERROR', 'content_type', 422);
     }
 
@@ -87,7 +90,10 @@ export const signupHandlers = [
       message: '이미지 업로드 URL이 발급되었습니다.',
       data: {
         upload_url: MOCK_PROFILE_UPLOAD_URL,
-        image_key: MOCK_PROFILE_IMAGE_KEY,
+        image_key:
+          purpose === 'PROFILE'
+            ? MOCK_PROFILE_IMAGE_KEY
+            : `tmp/${String(purpose).toLowerCase()}/mock-image.png`,
         expires_in: 300,
       },
     });
@@ -221,7 +227,6 @@ export const signupHandlers = [
       },
     );
   }),
-  http.delete('*/users/me', () => new HttpResponse(null, { status: 204 })),
 ];
 
 export function resetSignupMockState() {

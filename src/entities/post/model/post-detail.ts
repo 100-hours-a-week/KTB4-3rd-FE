@@ -11,14 +11,14 @@ export type PostComment = {
 };
 
 export type CompanionPostDetail = CompanionPost & {
-  description: string;
-  departure_location: string;
-  destination: string;
+  content: string;
+  origin_name: string;
+  dest_name: string;
   participants: readonly PostParticipant[];
 };
 
 export type CommunityPostDetail = CommunityPost & {
-  description: string;
+  content: string;
   comments: readonly PostComment[];
 };
 

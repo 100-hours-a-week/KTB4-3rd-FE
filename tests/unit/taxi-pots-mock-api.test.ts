@@ -54,27 +54,27 @@ async function readJson<T>(response: Response) {
 }
 
 describe('택시팟 매칭 시작 mock API', () => {
-  it('유효한 요청이면 매칭 정보와 Location을 반환한다', async () => {
+  it('유효한 요청이면 매칭 중 상태를 반환한다', async () => {
     const response = await postTaxiPot();
     const body = await readJson<
       MockApiResponse<{
-        id: number;
-        chat_room_id: number;
+        id: number | null;
+        chat_room_id: number | null;
         status: string;
-        current_count: number;
+        current_count: number | null;
         capacity: number;
       }>
     >(response);
 
-    expect(response.status).toBe(201);
-    expect(response.headers.get('location')).toBe('/taxi-pots/30');
+    expect(response.status).toBe(202);
+    expect(response.headers.get('location')).toBeNull();
     expect(body).toEqual({
       message: '매칭을 시작했습니다',
       data: {
-        id: 30,
-        chat_room_id: 599,
-        status: 'RECRUITING',
-        current_count: 2,
+        id: null,
+        chat_room_id: null,
+        status: 'MATCHING',
+        current_count: null,
         capacity: 4,
       },
     });

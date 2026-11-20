@@ -31,11 +31,3 @@ export type CommunityPost = {
 };
 
 export type Post = CompanionPost | CommunityPost;
-
-export type PostListResponse = {
-  message: string;
-  data: {
-    items: Post[];
-    next_cursor: string | null;
-  };
-};

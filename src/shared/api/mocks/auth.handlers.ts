@@ -2,6 +2,42 @@ import { http, HttpResponse } from 'msw';
 
 import { MOCK_ACCESS_TOKEN, MOCK_SIGNUP_TOKEN, errorResponse, getCookieValue } from './mock-utils';
 
+export const MOCK_LOGOUT_SCENARIOS = {
+  INTERNAL_SERVER_ERROR: '__mock_internal_server_error__',
+  ROTATED_REFRESH_TOKEN: 'mock-rotated-refresh-token',
+  OTHER_DEVICE_REFRESH_TOKEN: 'mock-other-device-refresh-token',
+} as const;
+
+const REFRESH_TOKEN_COOKIE_CLEAR = 'refresh_token=; Max-Age=0; Path=/api/auth; HttpOnly';
+const CURRENT_SESSION_ID = 'current-device';
+const OTHER_SESSION_ID = 'other-device';
+
+let revokedSessionIds = new Set<string>();
+let allSessionsRevoked = false;
+
+function getSessionId(refreshToken: string) {
+  if (
+    refreshToken === MOCK_ACCESS_TOKEN ||
+    refreshToken === 'mock-refresh-token' ||
+    refreshToken === MOCK_LOGOUT_SCENARIOS.ROTATED_REFRESH_TOKEN
+  ) {
+    return CURRENT_SESSION_ID;
+  }
+
+  return refreshToken === MOCK_LOGOUT_SCENARIOS.OTHER_DEVICE_REFRESH_TOKEN
+    ? OTHER_SESSION_ID
+    : refreshToken;
+}
+
+export function revokeAllMockSessions() {
+  allSessionsRevoked = true;
+}
+
+export function resetAuthMockState() {
+  revokedSessionIds = new Set<string>();
+  allSessionsRevoked = false;
+}
+
 export const authHandlers = [
   http.post('*/auth/kakao', async ({ request }) => {
     const body = (await request.json()) as { code?: unknown };
@@ -33,7 +69,9 @@ export const authHandlers = [
     );
   }),
   http.post('*/auth/tokens', ({ request }) => {
-    if (!getCookieValue(request, 'refresh_token')) {
+    const refreshToken = getCookieValue(request, 'refresh_token');
+
+    if (!refreshToken || allSessionsRevoked || revokedSessionIds.has(getSessionId(refreshToken))) {
       return errorResponse('인증이 필요합니다', 'UNAUTHORIZED', null, 401);
     }
 
@@ -44,11 +82,25 @@ export const authHandlers = [
       },
       {
         headers: {
-          'Set-Cookie':
-            'refresh_token=mock-refresh-token; Max-Age=604800; HttpOnly; SameSite=Strict',
+          'Set-Cookie': `refresh_token=${refreshToken === MOCK_LOGOUT_SCENARIOS.OTHER_DEVICE_REFRESH_TOKEN ? refreshToken : 'mock-refresh-token'}; Max-Age=604800; HttpOnly; SameSite=Strict`,
         },
       },
     );
   }),
-  http.delete('*/auth/sessions', () => new HttpResponse(null, { status: 204 })),
+  http.delete('*/auth/sessions', ({ request }) => {
+    const refreshToken = getCookieValue(request, 'refresh_token');
+
+    if (refreshToken === MOCK_LOGOUT_SCENARIOS.INTERNAL_SERVER_ERROR) {
+      return errorResponse('서버 오류가 발생했습니다', 'INTERNAL_SERVER_ERROR', null, 500);
+    }
+
+    if (refreshToken) {
+      revokedSessionIds.add(getSessionId(refreshToken));
+    }
+
+    return new HttpResponse(null, {
+      status: 204,
+      headers: { 'Set-Cookie': REFRESH_TOKEN_COOKIE_CLEAR },
+    });
+  }),
 ];

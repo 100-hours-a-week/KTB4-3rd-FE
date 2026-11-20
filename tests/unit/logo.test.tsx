@@ -22,9 +22,10 @@ describe('Logo', () => {
 
     const logo = screen.getByRole('img', { name: '모여타 텍스트' });
 
-    expect(logo).toHaveAttribute('src', '/logos/logo_text.svg');
+    expect(logo.getAttribute('src')).toContain('url=%2Flogos%2Flogo_text.webp');
     expect(logo).toHaveAttribute('width', '272');
     expect(logo).toHaveAttribute('height', '120');
+    expect(logo).toHaveAttribute('sizes', '164px');
     expect(logo).toHaveStyle({ height: '72px', width: 'auto' });
   });
 

@@ -1,6 +1,31 @@
+import type { ChatSettlementSnapshot } from '@/entities/chat';
 import type { BubbleVariant, ChatNoticeVariant } from '@/features/chatting';
 
 import type { ChatRoomDetailData, ChatRoomMessageData } from '@/_pages/chatting/api/chat-room';
+
+type ChatSystemMessageType = Exclude<
+  ChatRoomMessageData['type'],
+  'TEXT' | 'SYSTEM_TRANSFER_REQUESTED'
+>;
+
+type ChatRoomNoticeMessage = {
+  id: string;
+  kind: 'notice';
+  content: string;
+  variant?: ChatNoticeVariant;
+};
+
+type ChatRoomSystemNoticeMessage = ChatRoomNoticeMessage & {
+  systemType?: Exclude<ChatSystemMessageType, 'SYSTEM_TRANSFER_DONE' | 'SYSTEM_TRANSFER_REQUESTED'>;
+  settlement?: never;
+  transferUserId?: never;
+};
+
+type ChatRoomTransferDoneMessage = ChatRoomNoticeMessage & {
+  systemType: 'SYSTEM_TRANSFER_DONE';
+  settlement?: never;
+  transferUserId: number;
+};
 
 export type ChatRoomMessage =
   | {
@@ -14,15 +39,16 @@ export type ChatRoomMessage =
       layout?: 'default' | 'tall' | 'large';
       loading?: boolean;
     }
-  | {
-      id: string;
-      kind: 'notice';
-      content: string;
-      variant?: ChatNoticeVariant;
-    };
+  | ChatRoomSystemNoticeMessage
+  | ChatRoomTransferDoneMessage
+  | (ChatRoomNoticeMessage & {
+      systemType: 'SYSTEM_TRANSFER_REQUESTED';
+      settlement: ChatSettlementSnapshot;
+    });
 
 export type ChatRoom = {
   id: string;
+  kind: ChatRoomDetailData['kind'];
   lastReadMessageId: number | null;
   title: string;
   memberCount: number;
@@ -32,6 +58,7 @@ export type ChatRoom = {
 
 export const generalChatRoom: ChatRoom = {
   id: 'general-1',
+  kind: 'GENERAL',
   lastReadMessageId: null,
   title: '5시 판교역',
   memberCount: 1,
@@ -100,6 +127,25 @@ function getSystemMessageContent(message: ChatRoomMessageData) {
     return '운행이 종료됐어요';
   }
 
+  if (message.type === 'SYSTEM_METER_REQUESTED') {
+    return message.content ?? '택시 미터기 사진을 보내주세요';
+  }
+
+  if (message.type === 'SYSTEM_TRANSFER_REQUESTED') {
+    return message.content ?? '방장이 정산을 요청했어요';
+  }
+
+  if (message.type === 'SYSTEM_SETTLEMENT_COMPLETED') {
+    return message.content ?? '정산이 완료됐어요';
+  }
+
+  if (message.type === 'SYSTEM_TRANSFER_UNVERIFIED') {
+    return (
+      message.content ??
+      '송금 확인이 어려워요. 대면으로 송금 내역을 확인한 뒤 방장이 정산을 완료해주세요'
+    );
+  }
+
   if (message.type === 'SYSTEM_LEAVE') {
     return message.leaver ? `${message.leaver.name} 님이 퇴장하셨어요` : '새로운 멤버가 퇴장했어요';
   }
@@ -127,10 +173,33 @@ export function createChatRoomMessageFromApi(
     };
   }
 
+  if (message.type === 'SYSTEM_TRANSFER_REQUESTED') {
+    return {
+      id: String(message.id),
+      kind: 'notice',
+      content: getSystemMessageContent(message),
+      settlement: message.settlement,
+      systemType: message.type,
+      variant: 'system',
+    };
+  }
+
+  if (message.type === 'SYSTEM_TRANSFER_DONE') {
+    return {
+      id: String(message.id),
+      kind: 'notice',
+      content: getSystemMessageContent(message),
+      systemType: message.type,
+      transferUserId: message.user_id,
+      variant: 'system',
+    };
+  }
+
   return {
     id: String(message.id),
     kind: 'notice',
     content: getSystemMessageContent(message),
+    systemType: message.type,
     variant:
       message.type === 'SYSTEM_RIDE_STARTED' || message.type === 'SYSTEM_RIDE_ENDED'
         ? 'informative'
@@ -151,6 +220,7 @@ export function createChatRoomFromApi(
 
   return {
     id: String(detail.id),
+    kind: detail.kind,
     lastReadMessageId: detail.last_read_message_id,
     title: detail.title,
     memberCount: detail.current_count,

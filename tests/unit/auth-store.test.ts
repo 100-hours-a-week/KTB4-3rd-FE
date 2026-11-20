@@ -41,4 +41,23 @@ describe('useAuthStore', () => {
       state: { accessToken: null },
     });
   });
+
+  it('토큰이 바뀌면 검증된 사용자 ID를 초기화한다', () => {
+    useAuthStore.getState().setAccessToken('account-a-token');
+    useAuthStore.getState().setVerifiedViewerId('account-a-token', 7);
+
+    useAuthStore.getState().setAccessToken('account-b-token');
+
+    expect(useAuthStore.getState().verifiedViewerId).toBeNull();
+  });
+
+  it('현재 토큰에 해당하는 응답만 사용자 ID를 검증 상태로 저장한다', () => {
+    useAuthStore.getState().setAccessToken('account-b-token');
+
+    useAuthStore.getState().setVerifiedViewerId('account-a-token', 7);
+
+    expect(useAuthStore.getState().verifiedViewerId).toBeNull();
+    useAuthStore.getState().setVerifiedViewerId('account-b-token', 8);
+    expect(useAuthStore.getState().verifiedViewerId).toBe(8);
+  });
 });

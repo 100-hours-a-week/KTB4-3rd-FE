@@ -1,9 +1,10 @@
 import { http, HttpResponse } from 'msw';
-import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { AuthBootstrapProvider } from '@/_app/providers';
 import { useAuthStore } from '@/entities/auth';
+import { useCarpoolCreateStore } from '@/features/carpool-registration';
 import { server } from '@/shared/api/mocks/server';
 
 function AuthStateProbe() {
@@ -15,10 +16,40 @@ function AuthStateProbe() {
 afterEach(() => {
   cleanup();
   useAuthStore.getState().clearTokens();
+  useCarpoolCreateStore.getState().reset();
   server.resetHandlers();
 });
 
 describe('AuthBootstrapProvider', () => {
+  it('인증 복원 중과 비로그인 확정 후에도 익명 홈과 카풀 초안을 유지한다', async () => {
+    let finishRefresh!: () => void;
+    const refreshGate = new Promise<void>((resolve) => (finishRefresh = resolve));
+    useCarpoolCreateStore.getState().setOrigin({ name: '서울역', lat: 37.55, lng: 126.97 });
+    server.use(
+      http.post('*/auth/tokens', async () => {
+        await refreshGate;
+        return HttpResponse.json(
+          { message: '인증이 필요합니다', error: { code: 'UNAUTHORIZED', field: null } },
+          { status: 401 },
+        );
+      }),
+    );
+
+    render(
+      <AuthBootstrapProvider>
+        <AuthStateProbe />
+      </AuthBootstrapProvider>,
+    );
+
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+    expect(screen.getByText('anonymous')).toBeInTheDocument();
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+
+    await act(async () => finishRefresh());
+    await waitFor(() => expect(screen.getByText('anonymous')).toBeInTheDocument());
+    expect(useCarpoolCreateStore.getState().draft.origin?.name).toBe('서울역');
+  });
+
   it('refresh 쿠키로 access token을 복원한다', async () => {
     server.use(
       http.post('*/auth/tokens', () =>
