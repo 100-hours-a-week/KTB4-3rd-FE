@@ -149,9 +149,7 @@ export function HomePage() {
 
         <PostDetailModal {...postDetailModal} />
 
-        <BottomNav
-          className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2"
-        />
+        <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
       </div>
       {typeof document === 'undefined'
         ? null
