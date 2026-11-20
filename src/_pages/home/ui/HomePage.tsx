@@ -85,7 +85,6 @@ export function HomePage() {
                 aria-label="모여타 소개"
                 className="rounded-md px-1.5 py-2 text-xs font-medium text-[var(--color-fg-neutral-muted)] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[var(--color-stroke-focus-ring)]"
                 href="/about"
-                prefetch={false}
               >
                 소개
               </Link>
@@ -150,10 +149,7 @@ export function HomePage() {
 
         <PostDetailModal {...postDetailModal} />
 
-        <BottomNav
-          className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2"
-          prefetch={false}
-        />
+        <BottomNav className="!fixed !right-auto !bottom-0 !left-1/2 !w-full !max-w-[393px] !-translate-x-1/2" />
       </div>
       {typeof document === 'undefined'
         ? null
