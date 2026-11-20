@@ -7,7 +7,6 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
-  useMemo,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -235,6 +234,20 @@ function isSameCoordinate(left: MapCoordinate, right: MapCoordinate) {
   return left.lat === right.lat && left.lng === right.lng;
 }
 
+function isSameMarker(left: MapMarker, right: MapMarker) {
+  return (
+    isSameCoordinate(left.position, right.position) &&
+    left.title === right.title &&
+    left.zIndex === right.zIndex &&
+    left.isSelected === right.isSelected &&
+    left.image?.src === right.image?.src &&
+    left.image?.width === right.image?.width &&
+    left.image?.height === right.image?.height &&
+    left.image?.offset?.x === right.image?.offset?.x &&
+    left.image?.offset?.y === right.image?.offset?.y
+  );
+}
+
 function getMarkerFocusCenter(
   maps: KakaoMapsApi,
   map: KakaoMap,
@@ -307,6 +320,9 @@ function MapComponent(
   const mapRef = useRef<KakaoMap | null>(null);
   const kakaoRef = useRef<KakaoNamespace | null>(null);
   const clustererRef = useRef<KakaoMarkerClusterer | null>(null);
+  const markerInstancesRef = useRef(
+    new globalThis.Map<MapMarker['id'], { marker: KakaoMarker; data: MapMarker }>(),
+  );
   const viewportTimerRef = useRef<number | null>(null);
   const initialViewportTimerRef = useRef<number | null>(null);
   const viewportEventSequenceRef = useRef(0);
@@ -336,7 +352,6 @@ function MapComponent(
   const markerLocation = userLocation ?? currentLocation;
   const initialCenterRef = useRef(center ?? defaultCenter ?? markerLocation ?? DEFAULT_MAP_CENTER);
   const markerLocationRef = useRef<MapCoordinate | null>(markerLocation);
-  const markerList = useMemo(() => [...markers], [markers]);
 
   const onLoadErrorRef = useRef(onLoadError);
   const onMarkerClickRef = useRef(onMarkerClick);
@@ -739,8 +754,71 @@ function MapComponent(
       return;
     }
 
-    const markerInstances: KakaoMarker[] = [];
-    markerList.forEach((markerData) => {
+    const clusterer = clusterMarkers
+      ? new kakao.maps.MarkerClusterer({
+          averageCenter: true,
+          disableClickZoom: true,
+          map,
+          minLevel: clusterMinLevel,
+          styles: [BRAND_CLUSTER_STYLE],
+        })
+      : null;
+    const instances = markerInstancesRef.current;
+    clustererRef.current = clusterer;
+
+    if (clusterer) {
+      kakao.maps.event.addListener(clusterer, 'clusterclick', (cluster) => {
+        if (!markerFocusOnClickRef.current) {
+          return;
+        }
+
+        const nextLevel = Math.max(map.getLevel() - 1, 1);
+        runMapMovement('zoom', () => {
+          pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
+          map.setLevel(nextLevel, { anchor: cluster.getCenter(), animate: true });
+        });
+      });
+    }
+
+    return () => {
+      clusterer?.clear();
+      clusterer?.setMap(null);
+      instances.forEach(({ marker }) => marker.setMap(null));
+      instances.clear();
+      if (clustererRef.current === clusterer) {
+        clustererRef.current = null;
+      }
+    };
+  }, [clusterMarkers, clusterMinLevel, runMapMovement, status]);
+
+  useEffect(() => {
+    const map = mapRef.current;
+    const kakao = kakaoRef.current;
+
+    if (status !== 'ready' || !map || !kakao) {
+      return;
+    }
+
+    const instances = markerInstancesRef.current;
+    const nextMarkers = new globalThis.Map(markers.map((marker) => [marker.id, marker]));
+    const removed: KakaoMarker[] = [];
+    const added: KakaoMarker[] = [];
+
+    instances.forEach((entry, id) => {
+      const next = nextMarkers.get(id);
+      if (!next || !isSameMarker(entry.data, next)) {
+        removed.push(entry.marker);
+        instances.delete(id);
+      } else {
+        entry.data = next;
+      }
+    });
+
+    nextMarkers.forEach((markerData, id) => {
+      if (instances.has(id)) {
+        return;
+      }
+
       const position = new kakao.maps.LatLng(markerData.position.lat, markerData.position.lng);
       const markerScale = markerData.isSelected ? SELECTED_MARKER_SCALE : 1;
       const marker = new kakao.maps.Marker({
@@ -751,6 +829,7 @@ function MapComponent(
         title: markerData.title,
         zIndex: markerData.zIndex ?? 0,
       });
+      const entry = { marker, data: markerData };
 
       kakao.maps.event.addListener(marker, 'click', () => {
         if (markerFocusOnClickRef.current) {
@@ -765,10 +844,7 @@ function MapComponent(
           runMapMovement('selection', () => {
             if (shouldChangeLevel) {
               pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
-              map.setLevel(targetLevel, {
-                anchor: position,
-                animate: !focusOffset,
-              });
+              map.setLevel(targetLevel, { anchor: position, animate: !focusOffset });
             }
 
             if (focusOffset) {
@@ -779,48 +855,28 @@ function MapComponent(
           });
         }
 
-        onMarkerClickRef.current?.(markerData);
+        onMarkerClickRef.current?.(entry.data);
       });
-      markerInstances.push(marker);
+      instances.set(id, entry);
+      added.push(marker);
     });
 
-    if (clusterMarkers && markerInstances.length > 0) {
-      const clusterer = new kakao.maps.MarkerClusterer({
-        averageCenter: true,
-        disableClickZoom: true,
-        map,
-        minLevel: clusterMinLevel,
-        styles: [BRAND_CLUSTER_STYLE],
-      });
-
-      kakao.maps.event.addListener(clusterer, 'clusterclick', (cluster) => {
-        if (!markerFocusOnClickRef.current) {
-          return;
-        }
-
-        const nextLevel = Math.max(map.getLevel() - 1, 1);
-
-        runMapMovement('zoom', () => {
-          pendingProgrammaticZoomSequenceRef.current = viewportEventSequenceRef.current;
-          map.setLevel(nextLevel, {
-            anchor: cluster.getCenter(),
-            animate: true,
-          });
-        });
-      });
-      clusterer.addMarkers(markerInstances);
-      clustererRef.current = clusterer;
+    const clusterer = clustererRef.current;
+    if (clusterer) {
+      if (removed.length > 0) {
+        clusterer.removeMarkers(removed, true);
+      }
+      if (added.length > 0) {
+        clusterer.addMarkers(added, true);
+      }
+      if (removed.length > 0 || added.length > 0) {
+        clusterer.redraw();
+      }
     } else {
-      markerInstances.forEach((marker) => marker.setMap(map));
+      removed.forEach((marker) => marker.setMap(null));
+      added.forEach((marker) => marker.setMap(map));
     }
-
-    return () => {
-      markerInstances.forEach((marker) => marker.setMap(null));
-      clustererRef.current?.clear();
-      clustererRef.current?.setMap(null);
-      clustererRef.current = null;
-    };
-  }, [clusterMarkers, clusterMinLevel, markerList, runMapMovement, status]);
+  }, [clusterMarkers, clusterMinLevel, markers, runMapMovement, status]);
 
   useEffect(() => {
     currentLocationRef.current = currentLocation;
