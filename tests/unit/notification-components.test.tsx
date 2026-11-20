@@ -33,6 +33,7 @@ describe('NotificationItem', () => {
       ['CARPOOL_REQUEST_RECEIVED', '카풀'],
       ['CARPOOL_REQUEST_ACCEPTED', '카풀'],
       ['SETTLEMENT_REQUESTED', '택시'],
+      ['SETTLEMENT_COMPLETION_REMINDER', '택시'],
       ['MATCHING_COMPLETED', '택시'],
     ] as const;
 

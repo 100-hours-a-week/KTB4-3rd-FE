@@ -1,0 +1,135 @@
+name: GitOps deploy
+description: >-
+  검증된 이미지 digest를 CLOUD 저장소 main의 스테이지 values에 커밋하고,
+  Argo CD가 커밋 상태로 알려 주는 배포 결과를 기다린다.
+  동기화 실패, Degraded, 시간 초과는 모두 실패로 끝낸다.
+
+inputs:
+  stage:
+    description: 배포 스테이지 (dev / stg / prod)
+    required: true
+  app:
+    description: values 파일을 고르는 앱 종류 (be / fe / ai)
+    required: true
+  image-digest:
+    description: 배포할 이미지 digest (sha256:...)
+    required: true
+  release-id:
+    description: 커밋 메시지에 남길 릴리스 식별자 (이미지 태그)
+    required: true
+  applications:
+    description: 결과를 기다릴 Argo CD Application 이름 (공백 구분)
+    required: true
+  token:
+    description: CLOUD 저장소 contents 쓰기 권한이 있는 토큰
+    required: true
+  repository:
+    description: GitOps 저장소
+    required: false
+    default: 100-hours-a-week/KTB4-3rd-CLOUD
+  timeout-minutes:
+    description: 배포 결과 대기 시간(분)
+    required: false
+    default: '30'
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout GitOps repository
+      uses: actions/checkout@v4
+      with:
+        repository: ${{ inputs.repository }}
+        ref: main
+        token: ${{ inputs.token }}
+        path: .gitops
+        fetch-depth: 0
+
+    - name: Commit image digest
+      id: commit
+      shell: bash
+      working-directory: .gitops
+      env:
+        STAGE: ${{ inputs.stage }}
+        APP: ${{ inputs.app }}
+        IMAGE_DIGEST: ${{ inputs.image-digest }}
+        RELEASE_ID: ${{ inputs.release-id }}
+      run: |
+        set -Eeuo pipefail
+
+        path="$(bash v3/scripts/set-image-digest.sh "$STAGE" "$APP" "$IMAGE_DIGEST")"
+
+        if git diff --quiet -- "$path"; then
+          # 재실행이면 digest를 기록한 기존 커밋의 배포 결과를 본다.
+          echo "digest가 이미 반영되어 있다: $path"
+          echo "sha=$(git log -1 --format=%H -- "$path")" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        git config user.name 'moyeota-gitops[bot]'
+        git config user.email 'moyeota-gitops[bot]@users.noreply.github.com'
+        git add "$path"
+        git commit -m "[deploy] $STAGE $APP $RELEASE_ID"
+
+        # 다른 앱 저장소의 배포 커밋과 겹치면 다시 쌓아서 push한다.
+        pushed=false
+        for attempt in 1 2 3 4 5; do
+          if git pull --rebase origin main && git push origin HEAD:main; then
+            pushed=true
+            break
+          fi
+          sleep $((attempt * 3))
+        done
+        [[ "$pushed" == true ]]
+
+        echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+
+    - name: Wait for Argo CD result
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.token }}
+        REPOSITORY: ${{ inputs.repository }}
+        COMMIT_SHA: ${{ steps.commit.outputs.sha }}
+        APPLICATIONS: ${{ inputs.applications }}
+        TIMEOUT_MINUTES: ${{ inputs.timeout-minutes }}
+      run: |
+        set -Eeuo pipefail
+
+        deadline=$(( $(date +%s) + TIMEOUT_MINUTES * 60 ))
+        read -r -a pending <<< "$APPLICATIONS"
+
+        # 뒤이은 커밋까지 묶여 sync될 수 있으므로 digest 커밋 이후의 커밋을 최신순으로 본다.
+        latest_state() {
+          local context="argocd/$1" commit state
+          for commit in $(gh api "repos/${REPOSITORY}/compare/${COMMIT_SHA}...main" --jq '.commits | reverse | .[].sha') "$COMMIT_SHA"; do
+            state="$(gh api "repos/${REPOSITORY}/commits/${commit}/statuses?per_page=100" \
+              --jq "[.[] | select(.context == \"${context}\")][0].state // empty" || true)"
+            if [[ -n "$state" ]]; then
+              echo "$state"
+              return 0
+            fi
+          done
+        }
+
+        while (( ${#pending[@]} > 0 )); do
+          remaining=()
+          for application in "${pending[@]}"; do
+            state="$(latest_state "$application")"
+            case "$state" in
+              success) echo "배포 완료: $application" ;;
+              failure | error)
+                echo "::error title=Argo CD 배포 실패::$application ($state)"
+                exit 1
+                ;;
+              *) remaining+=("$application") ;;
+            esac
+          done
+          pending=("${remaining[@]+"${remaining[@]}"}")
+
+          if (( ${#pending[@]} > 0 )); then
+            if (( $(date +%s) >= deadline )); then
+              echo "::error title=Argo CD 대기 시간 초과::${pending[*]}"
+              exit 1
+            fi
+            sleep 30
+          fi
+        done

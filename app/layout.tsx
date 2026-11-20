@@ -1,5 +1,4 @@
 import type { Metadata, Viewport } from 'next';
-import { GoogleAnalytics } from '@next/third-parties/google';
 import type { ReactNode } from 'react';
 
 import { pretendard } from './fonts';
@@ -7,16 +6,14 @@ import {
   AuthBootstrapProvider,
   CarpoolRequestAuthCacheSync,
   ClarityProvider,
+  GoogleAnalytics,
   LoginRequiredProvider,
   MockApiProvider,
+  PushNotificationClickHandler,
   QueryProvider,
   SnackbarProvider,
 } from '@/_app/providers';
-import {
-  PushNotificationClickHandler,
-  PushNotificationForegroundListener,
-  PushTokenRegistrationSync,
-} from '@/features/push-token';
+import { NotificationPushBootstrap } from '@/features/push-token';
 
 import './globals.css';
 
@@ -57,9 +54,8 @@ export default function RootLayout({ children }: RootLayoutProps) {
                 <CarpoolRequestAuthCacheSync />
                 <SnackbarProvider>
                   <AuthBootstrapProvider>
-                    <PushTokenRegistrationSync />
-                    <PushNotificationForegroundListener />
                     <PushNotificationClickHandler />
+                    <NotificationPushBootstrap />
                     <LoginRequiredProvider>{children}</LoginRequiredProvider>
                   </AuthBootstrapProvider>
                 </SnackbarProvider>

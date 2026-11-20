@@ -35,12 +35,7 @@ export function CompanionPostDetail({
 
   return (
     <article className={cn(isPageLayout && 'min-h-[calc(100dvh-56px)] pb-[112px]', className)}>
-      <PostDetailInfo
-        description={post.description}
-        layout={layout}
-        title={post.title}
-        type={post.type}
-      />
+      <PostDetailInfo content={post.content} layout={layout} title={post.title} type={post.type} />
 
       <div className={isPageLayout ? 'px-6 pt-[26px]' : 'px-6 pb-5'}>
         <TransportTag
@@ -58,9 +53,9 @@ export function CompanionPostDetail({
         capacity={post.capacity}
         current_count={post.current_count}
         departure_at={post.departure_at}
-        departure_location={post.departure_location}
-        destination={post.destination}
+        dest_name={post.dest_name}
         layout={layout}
+        origin_name={post.origin_name}
       />
       <Divider
         className={isPageLayout ? 'mt-4' : 'my-5'}

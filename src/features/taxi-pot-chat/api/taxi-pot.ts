@@ -1,8 +1,9 @@
 import { getAccessToken } from '@/entities/auth';
+import type { TaxiPotActiveStatus } from '@/entities/taxi-pot';
 import { apiFetch } from '@/shared/api/client';
 import type { ApiResponse } from '@/shared/api/types';
 
-export type TaxiPotStatus = 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+export type TaxiPotStatus = TaxiPotActiveStatus;
 export type TaxiPotTransitionStatus = Exclude<TaxiPotStatus, 'RECRUITING'>;
 
 export type TaxiPotDetailData = {

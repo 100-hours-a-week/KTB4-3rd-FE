@@ -38,9 +38,16 @@ type MockChatMessage =
       type:
         | 'SYSTEM_METER_REQUESTED'
         | 'SYSTEM_SETTLEMENT_COMPLETED'
-        | 'SYSTEM_TRANSFER_DONE'
-        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
+        | 'SYSTEM_TRANSFER_UNVERIFIED';
       content: string;
+      sender?: never;
+      settlement?: never;
+    })
+  | (MockChatMessageBase & {
+      type: 'SYSTEM_TRANSFER_DONE';
+      content: string;
+      user_id: number;
       sender?: never;
       settlement?: never;
     })
@@ -67,7 +74,7 @@ type ChatRoomSubscription = {
   roomId: string;
 };
 
-const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601']);
+const MOCK_CHAT_ROOM_IDS = new Set(['101', '501', '599', '600', '601', '700']);
 const MOCK_TAXI_POT_ROOM_IDS = new Set(['599', '600', '601']);
 const MOCK_CHAT_UI_PREVIEW_ROOM_ID = '601';
 const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
@@ -114,6 +121,7 @@ const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
     id: 1463,
     type: 'SYSTEM_TRANSFER_DONE',
     content: '애롱롱님이 송금을 완료했어요! 금액 13,000원',
+    user_id: 8,
     created_at: '2026-09-05T08:24:00.000Z',
   },
   {
@@ -131,6 +139,10 @@ const MOCK_CHAT_UI_PREVIEW_MESSAGES: readonly MockChatMessage[] = [
 ];
 const subscriptions = new Map<string, ChatRoomSubscription>();
 const settlementSubscriptions = new Map<
+  string,
+  { client: WebSocketHandlerConnection['client']; subscriptionId: string }
+>();
+const taxiPotSubscriptions = new Map<
   string,
   { client: WebSocketHandlerConnection['client']; subscriptionId: string }
 >();
@@ -242,6 +254,11 @@ function removeClientSubscriptions(client: WebSocketHandlerConnection['client'])
       settlementSubscriptions.delete(subscriptionKey);
     }
   }
+  for (const [subscriptionKey, subscription] of taxiPotSubscriptions) {
+    if (subscription.client.id === client.id) {
+      taxiPotSubscriptions.delete(subscriptionKey);
+    }
+  }
 }
 
 function sendMessageToSubscription(subscription: ChatRoomSubscription, message: MockChatMessage) {
@@ -311,6 +328,27 @@ export function emitMockSettlementAnalysisFinished(message: MockSettlementAnalys
   }
 }
 
+export function emitMockTaxiPotMatched(message: {
+  type: 'MATCHED';
+  taxi_pot_id: number;
+  chat_room_id: number;
+}) {
+  for (const [key, subscription] of taxiPotSubscriptions) {
+    subscription.client.send(
+      createFrame(
+        'MESSAGE',
+        {
+          destination: '/user/sub/taxi-pot',
+          subscription: subscription.subscriptionId,
+          'message-id': key,
+          'content-type': 'application/json',
+        },
+        JSON.stringify(message),
+      ),
+    );
+  }
+}
+
 function scheduleChatUiPreview(subscription: ChatRoomSubscription) {
   if (subscription.roomId !== MOCK_CHAT_UI_PREVIEW_ROOM_ID) {
     return;
@@ -362,6 +400,10 @@ function handleSubscribe(client: WebSocketHandlerConnection['client'], frame: St
     settlementSubscriptions.set(`${client.id}:${subscriptionId}`, { client, subscriptionId });
     return;
   }
+  if (destination === '/user/sub/taxi-pot') {
+    taxiPotSubscriptions.set(`${client.id}:${subscriptionId}`, { client, subscriptionId });
+    return;
+  }
   if (destination === '/user/sub/errors') {
     return;
   }
@@ -395,6 +437,7 @@ function handleUnsubscribe(client: WebSocketHandlerConnection['client'], frame: 
   if (subscriptionId) {
     subscriptions.delete(`${client.id}:${subscriptionId}`);
     settlementSubscriptions.delete(`${client.id}:${subscriptionId}`);
+    taxiPotSubscriptions.delete(`${client.id}:${subscriptionId}`);
   }
 }
 

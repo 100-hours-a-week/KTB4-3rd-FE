@@ -47,6 +47,7 @@ jobs:
     timeout-minutes: 5
     permissions:
       contents: read
+      pull-requests: read
     env:
       INTEGRATION_BRANCH: develop
       IS_HOTFIX: ${{ startsWith(github.ref_name, 'hotfix/') || startsWith(github.head_ref, 'hotfix/') }}
@@ -56,8 +57,22 @@ jobs:
         if: github.event_name == 'pull_request' && github.base_ref == 'main'
         env:
           HEAD_REF: ${{ github.head_ref }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -Eeuo pipefail
+
+          # workflow 파일만 바꾸는 chore/*-main PR은 CD를 기본 브랜치에 반영하는 경로라 허용한다.
+          if [[ "$HEAD_REF" =~ ^chore/.+-main$ ]]; then
+            changed="$(gh api --paginate "/repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" --jq '.[].filename')"
+            if [[ -n "$changed" ]] && ! grep -qv '^\.github/' <<<"$changed"; then
+              echo "workflow 전용 PR: $HEAD_REF"
+              exit 0
+            fi
+            echo "::error title=main PR 원본 브랜치 오류::chore/*-main PR은 .github 아래 파일만 변경할 수 있다." >&2
+            exit 1
+          fi
+
           if [[ ! "$HEAD_REF" =~ ^(release|hotfix)/v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
             echo "::error title=main PR 원본 브랜치 오류::main은 release/vX.Y.Z 또는 hotfix/vX.Y.Z에서만 머지한다 (현재: ${HEAD_REF})"
             exit 1

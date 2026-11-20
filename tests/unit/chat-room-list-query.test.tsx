@@ -56,7 +56,7 @@ describe('useChatRoomListQuery', () => {
       }),
     );
 
-    const { result } = renderHook(() => useChatRoomListQuery('matching'), {
+    const { result } = renderHook(() => useChatRoomListQuery('taxiPot'), {
       wrapper: createWrapper(),
     });
 

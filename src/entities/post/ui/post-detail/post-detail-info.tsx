@@ -9,7 +9,7 @@ const postTypeLabels: Record<PostType, string> = {
 
 export type PostDetailInfoProps = {
   className?: string;
-  description: string;
+  content: string;
   layout?: 'modal' | 'page';
   title: string;
   type: PostType;
@@ -17,7 +17,7 @@ export type PostDetailInfoProps = {
 
 export function PostDetailInfo({
   className,
-  description,
+  content,
   layout = 'modal',
   title,
   type,
@@ -48,7 +48,7 @@ export function PostDetailInfo({
         color="fg.neutralMuted"
         variant={isPageLayout ? 't6Regular' : 't5Regular'}
       >
-        {description}
+        {content}
       </Text>
     </header>
   );

@@ -1,4 +1,3 @@
-import Image from 'next/image';
 import type { MouseEventHandler } from 'react';
 
 import { cn } from '@/shared/lib/cn';
@@ -6,8 +5,7 @@ import { Divider } from '@/shared/ui/divider';
 import { Text } from '@/shared/ui/text';
 
 import type { ChatRoomListItem } from '@/entities/chat/model/chat';
-
-const CHAT_AVATAR_PLACEHOLDER_SRC = '/avatars/chat-avatar-placeholder.svg';
+import { ChatItemAvatar } from './chat-item-avatar';
 
 export type ChatItemProps = {
   chatRoom: ChatRoomListItem;
@@ -30,14 +28,7 @@ export function ChatItem({ chatRoom, className, fullWidth = false, onClick }: Ch
         onClick={onClick}
         type="button"
       >
-        <Image
-          alt="방장 프로필 이미지"
-          className="size-12 shrink-0 rounded-full object-cover"
-          height={48}
-          src={chatRoom.host.profile_image_url || CHAT_AVATAR_PLACEHOLDER_SRC}
-          unoptimized
-          width={48}
-        />
+        <ChatItemAvatar src={chatRoom.host.profile_image_url} />
 
         <span className="flex min-w-0 flex-1 flex-col gap-1 pr-[34px] pl-4">
           <Text

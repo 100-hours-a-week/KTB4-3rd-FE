@@ -1,5 +1,8 @@
+import bundleAnalyzer from '@next/bundle-analyzer';
 import { withSentryConfig } from '@sentry/nextjs/config';
 import type { NextConfig } from 'next';
+
+import { PROFILE_IMAGE_HOSTNAMES } from './src/shared/lib/profile-image-optimization';
 
 const KAKAO_MAP_SDK_PROXY_PATH = '/moyeota-kakao-map-sdk/dapi.kakao.com/v2/maps/sdk.js';
 const API_PROXY_TARGET = (process.env.API_PROXY_TARGET || 'http://dev.moyeota.com').replace(
@@ -22,9 +25,31 @@ const CONTENT_SECURITY_POLICY = [
   ...(process.env.NODE_ENV === 'production' ? ['upgrade-insecure-requests'] : []),
 ].join('; ');
 
+const SECURITY_HEADERS = [
+  ...(process.env.NODE_ENV === 'development'
+    ? []
+    : [{ key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY }]),
+  { key: 'X-Content-Type-Options', value: 'nosniff' },
+  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+  { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+];
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  images: {
+    remotePatterns: PROFILE_IMAGE_HOSTNAMES.map((hostname) => ({
+      protocol: 'https',
+      hostname,
+      port: '',
+      pathname: '/**',
+    })),
+  },
+  experimental: {
+    // 홈 초기 렌더링에서 CSS 요청을 기다리지 않도록 production CSS를 head에 인라인한다.
+    // Next.js 16에서는 production build에서만 적용된다.
+    inlineCss: true,
+  },
   env: {
     NEXT_PUBLIC_KAKAO_MAP_SDK_URL: KAKAO_MAP_SDK_PROXY_PATH,
   },
@@ -32,12 +57,7 @@ const nextConfig: NextConfig = {
     return [
       {
         source: '/:path*',
-        headers: [
-          { key: 'Content-Security-Policy', value: CONTENT_SECURITY_POLICY },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-        ],
+        headers: SECURITY_HEADERS,
       },
     ];
   },
@@ -78,18 +98,25 @@ const nextConfig: NextConfig = {
   output: 'standalone',
 };
 
-export default withSentryConfig(nextConfig, {
-  authToken: process.env.SENTRY_AUTH_TOKEN,
-  org: process.env.SENTRY_ORG,
-  project: process.env.SENTRY_PROJECT,
-  silent: true,
-  widenClientFileUpload: true,
-  webpack: {
-    autoInstrumentAppDirectory: true,
-    autoInstrumentMiddleware: true,
-    autoInstrumentServerFunctions: true,
-    treeshake: {
-      removeDebugLogging: true,
-    },
-  },
+const withBundleAnalyzer = bundleAnalyzer({
+  enabled: process.env.ANALYZE === 'true',
+  openAnalyzer: false,
 });
+
+export default withBundleAnalyzer(
+  withSentryConfig(nextConfig, {
+    authToken: process.env.SENTRY_AUTH_TOKEN,
+    org: process.env.SENTRY_ORG,
+    project: process.env.SENTRY_PROJECT,
+    silent: true,
+    widenClientFileUpload: true,
+    webpack: {
+      autoInstrumentAppDirectory: true,
+      autoInstrumentMiddleware: true,
+      autoInstrumentServerFunctions: true,
+      treeshake: {
+        removeDebugLogging: true,
+      },
+    },
+  }),
+);

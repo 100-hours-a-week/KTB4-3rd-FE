@@ -22,5 +22,6 @@ export {
   type ChatSettlementSnapshot,
   type MeterAnalysisFinishedMessage,
   type SettlementAnalysisFinishedMessage,
+  type TaxiPotMatchedMessage,
   type TransferAnalysisFinishedMessage,
 } from './api/chat-websocket-client';

@@ -1,7 +1,7 @@
 export type {
-  CommunityPostDetailAuthor,
   CommunityPostDetailData,
   CommunityPostDetailResponse,
+  PostDetailAuthor,
 } from './community-posts.types';
 export { getCommunityPostComments } from '@/entities/post';
 export { getCommunityPostDetail } from './get-community-post-detail';

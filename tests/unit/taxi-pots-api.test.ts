@@ -22,12 +22,24 @@ describe('taxi pots API', () => {
     expect(response).toEqual<TaxiPotMatchingResponse>({
       message: '매칭을 시작했습니다',
       data: {
-        id: 30,
-        chat_room_id: 599,
-        status: 'RECRUITING',
-        current_count: 2,
+        id: null,
+        chat_room_id: null,
+        status: 'MATCHING',
+        current_count: null,
         capacity: 4,
       },
+    });
+  });
+
+  it('매칭 중 응답을 MATCHING 상태로 해석한다', async () => {
+    const response = await startTaxiPotMatching('mock-access-token', payload);
+
+    expect(response.data).toMatchObject({
+      id: null,
+      chat_room_id: null,
+      status: 'MATCHING',
+      current_count: null,
+      capacity: 4,
     });
   });
 

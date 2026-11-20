@@ -64,6 +64,16 @@ export const Taxi: Story = {
   },
 };
 
+export const SettlementCompletionReminder: Story = {
+  args: {
+    notification: {
+      ...notification,
+      type: 'SETTLEMENT_COMPLETION_REMINDER',
+      content: '정산 완료를 확인해주세요',
+    },
+  },
+};
+
 export const Loading: Story = {
   render: () => <NotificationItemSkeleton />,
 };

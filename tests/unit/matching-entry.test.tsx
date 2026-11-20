@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -7,8 +8,14 @@ import { useMatchingEntry } from '@/_pages/matching/model/use-matching-entry';
 import { useAuthStore } from '@/entities/auth';
 import { MatchingFab } from '@/features/matching-entry';
 import { useCarpoolCreateStore } from '@/features/carpool-registration';
+import { MOCK_ACCESS_TOKEN } from '@/shared/api/mocks/mock-utils';
+import { server } from '@/shared/api/mocks/server';
+import { HttpResponse, http } from 'msw';
 
-const navigation = vi.hoisted(() => ({ push: vi.fn<(path: string) => void>() }));
+const navigation = vi.hoisted(() => ({
+  push: vi.fn<(path: string) => void>(),
+  replace: vi.fn<(path: string) => void>(),
+}));
 vi.mock('next/navigation', () => ({
   usePathname: () => '/',
   useRouter: () => navigation,
@@ -33,10 +40,14 @@ function MatchingEntryFixture() {
 }
 
 function renderEntry() {
+  const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+
   return render(
-    <LoginRequiredProvider>
-      <MatchingEntryFixture />
-    </LoginRequiredProvider>,
+    <QueryClientProvider client={queryClient}>
+      <LoginRequiredProvider>
+        <MatchingEntryFixture />
+      </LoginRequiredProvider>
+    </QueryClientProvider>,
   );
 }
 
@@ -44,6 +55,8 @@ beforeEach(() => {
   useAuthStore.getState().clearTokens();
   useCarpoolCreateStore.getState().reset();
   navigation.push.mockReset();
+  navigation.replace.mockReset();
+  server.resetHandlers();
 });
 afterEach(() => {
   cleanup();
@@ -102,17 +115,17 @@ describe('매칭 등록 진입', () => {
     ['카풀 등록', '/carpools/new'],
     ['택시팟 찾기', '/taxi-pots/new'],
   ])('로그인 후 %s를 누르면 해당 등록 경로로 이동하고 메뉴를 닫는다', async (label, path) => {
-    useAuthStore.getState().setAccessToken('test-token');
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
     renderEntry();
     const user = await openMenu();
     await user.click(screen.getByRole('button', { name: label }));
-    expect(navigation.push).toHaveBeenCalledExactlyOnceWith(path);
+    await vi.waitFor(() => expect(navigation.push).toHaveBeenCalledExactlyOnceWith(path));
     expect(screen.getByRole('button', { name: '매칭 메뉴 열기' })).toBeVisible();
     expect(screen.queryByRole('dialog', { name: '로그인이 필요해요' })).not.toBeInTheDocument();
   });
 
   it('카풀 등록을 새로 시작할 때 초안과 임시 위치를 초기화한다', async () => {
-    useAuthStore.getState().setAccessToken('test-token');
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
     useCarpoolCreateStore.getState().setOrigin({ name: '서울역', lat: 37.55, lng: 126.97 });
     useCarpoolCreateStore.getState().setPendingLocation({
       field: 'departure',
@@ -142,7 +155,7 @@ describe('매칭 등록 진입', () => {
   );
 
   it('메뉴를 연 뒤 로그아웃하면 이전 로그인 상태로 등록하지 않는다', async () => {
-    useAuthStore.getState().setAccessToken('test-token');
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
     renderEntry();
     const user = await openMenu();
     act(() => useAuthStore.getState().clearTokens());
@@ -151,14 +164,64 @@ describe('매칭 등록 진입', () => {
     expect(screen.getByRole('dialog', { name: '로그인이 필요해요' })).toBeVisible();
   });
 
-  it('외부 클릭으로 닫은 후 다시 열어도 등록 버튼은 정상 동작한다', async () => {
-    useAuthStore.getState().setAccessToken('test-token');
+  it('현재 택시팟이 없으면 택시팟 등록 흐름으로 이동한다', async () => {
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
     renderEntry();
     const user = await openMenu();
-    await user.click(screen.getByRole('button', { name: '지도 영역' }));
-    await user.click(screen.getByRole('button', { name: '매칭 메뉴 열기' }));
     await user.click(screen.getByRole('button', { name: '택시팟 찾기' }));
-    expect(navigation.push).toHaveBeenCalledExactlyOnceWith('/taxi-pots/new');
+    await vi.waitFor(() =>
+      expect(navigation.push).toHaveBeenCalledExactlyOnceWith('/taxi-pots/new'),
+    );
+  });
+
+  it('매칭 중인 택시팟이 있으면 매칭 중 페이지로 이동한다', async () => {
+    server.use(
+      http.get('*/users/me/current-taxi-pot', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: null,
+            chat_room_id: null,
+            status: 'MATCHING',
+            current_count: null,
+            capacity: 4,
+          },
+        }),
+      ),
+    );
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+    renderEntry();
+    const user = await openMenu();
+    await user.click(screen.getByRole('button', { name: '택시팟 찾기' }));
+
+    await vi.waitFor(() =>
+      expect(navigation.push).toHaveBeenCalledExactlyOnceWith('/taxi-pots/matching'),
+    );
+  });
+
+  it('모집 중인 택시팟이 있으면 해당 채팅방으로 이동한다', async () => {
+    server.use(
+      http.get('*/users/me/current-taxi-pot', () =>
+        HttpResponse.json({
+          message: '조회에 성공했습니다',
+          data: {
+            id: 30,
+            chat_room_id: 599,
+            status: 'RECRUITING',
+            current_count: 2,
+            capacity: 4,
+          },
+        }),
+      ),
+    );
+    useAuthStore.getState().setAccessToken(MOCK_ACCESS_TOKEN);
+    renderEntry();
+    const user = await openMenu();
+    await user.click(screen.getByRole('button', { name: '택시팟 찾기' }));
+
+    await vi.waitFor(() =>
+      expect(navigation.push).toHaveBeenCalledExactlyOnceWith('/chatroom/599'),
+    );
   });
 
   it('메뉴 닫기와 unmount에서 전역 이벤트 리스너를 해제한다', async () => {

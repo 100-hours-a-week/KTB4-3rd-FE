@@ -44,6 +44,22 @@ type MockTaxiPot = {
   settlement_id?: number;
 };
 
+type MockCurrentTaxiPot =
+  | {
+      id: null;
+      chat_room_id: null;
+      status: 'MATCHING';
+      current_count: null;
+      capacity: number;
+    }
+  | {
+      id: number;
+      chat_room_id: number;
+      status: 'RECRUITING' | 'IN_PROGRESS' | 'COMPLETED';
+      current_count: number;
+      capacity: number;
+    };
+
 function createMockTaxiPots() {
   return new Map<number, MockTaxiPot>([
     [
@@ -114,9 +130,11 @@ function createMockTaxiPots() {
 }
 
 let mockTaxiPots = createMockTaxiPots();
+let mockCurrentTaxiPot: MockCurrentTaxiPot | null = null;
 
 export function resetTaxiPotMockState() {
   mockTaxiPots = createMockTaxiPots();
+  mockCurrentTaxiPot = null;
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -354,22 +372,51 @@ export const taxiPotsHandlers = [
       return errorResponse('서버 오류가 발생했습니다', 'INTERNAL_SERVER_ERROR', null, 500);
     }
 
+    mockCurrentTaxiPot = {
+      id: null,
+      chat_room_id: null,
+      status: 'MATCHING',
+      current_count: null,
+      capacity: 4,
+    };
+
     return HttpResponse.json(
       {
         message: '매칭을 시작했습니다',
         data: {
-          id: 30,
-          chat_room_id: 599,
-          status: 'RECRUITING',
-          current_count: 2,
+          id: null,
+          chat_room_id: null,
+          status: 'MATCHING',
+          current_count: null,
           capacity: 4,
         },
       },
       {
-        status: 201,
-        headers: { Location: '/taxi-pots/30' },
+        status: 202,
       },
     );
+  }),
+  http.get('*/users/me/current-taxi-pot', ({ request }) => {
+    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
+      return unauthorizedResponse();
+    }
+
+    return HttpResponse.json({
+      message: mockCurrentTaxiPot ? '조회에 성공했습니다' : '진행 중인 택시팟이 없습니다',
+      data: mockCurrentTaxiPot,
+    });
+  }),
+  http.delete('*/taxi-pots/match-requests/me', ({ request }) => {
+    if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {
+      return unauthorizedResponse();
+    }
+
+    if (mockCurrentTaxiPot === null) {
+      return errorResponse('진행 중인 매칭이 없습니다', 'MATCH_REQUEST_NOT_FOUND', null, 404);
+    }
+
+    mockCurrentTaxiPot = null;
+    return new HttpResponse(null, { status: 204 });
   }),
   http.get('*/taxi-pots/:companionId', ({ request, params }) => {
     if (getBearerToken(request) !== MOCK_ACCESS_TOKEN) {

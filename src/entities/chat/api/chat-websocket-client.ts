@@ -31,6 +31,12 @@ export type SettlementAnalysisFinishedMessage =
   | MeterAnalysisFinishedMessage
   | TransferAnalysisFinishedMessage;
 
+export type TaxiPotMatchedMessage = {
+  type: 'MATCHED';
+  taxi_pot_id: number;
+  chat_room_id: number;
+};
+
 type ChatWebSocketMessageBase = {
   id: number;
   content?: string | null;
@@ -66,9 +72,15 @@ export type ChatWebSocketMessage =
       type:
         | 'SYSTEM_METER_REQUESTED'
         | 'SYSTEM_SETTLEMENT_COMPLETED'
-        | 'SYSTEM_TRANSFER_DONE'
-        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED';
+        | 'SYSTEM_SETTLEMENT_CONFIRM_REQUESTED'
+        | 'SYSTEM_TRANSFER_UNVERIFIED';
       content: string;
+      sender?: never;
+    })
+  | (ChatWebSocketMessageBase & {
+      type: 'SYSTEM_TRANSFER_DONE';
+      content: string;
+      user_id: number;
       sender?: never;
     })
   | (ChatWebSocketMessageBase & {
@@ -81,11 +93,13 @@ export type ChatWebSocketMessage =
 export type ChatWebSocketStatus = 'connecting' | 'open' | 'closed' | 'error';
 
 export type ChatWebSocketClientOptions = {
-  roomId: string;
+  roomId?: string;
   accessToken: string;
   url?: string;
+  subscribeTaxiPotMatching?: boolean;
   onMessage?: (message: ChatWebSocketMessage) => void;
   onSettlementAnalysisFinished?: (message: SettlementAnalysisFinishedMessage) => void;
+  onTaxiPotMatched?: (message: TaxiPotMatchedMessage) => void;
   onStatusChange?: (status: ChatWebSocketStatus) => void;
   onError?: (error: Error) => void;
 };
@@ -225,6 +239,8 @@ export class ChatWebSocketClient {
 
   private readonly settlementSubscriptionId = `settlement-subscription-${createMessageId()}`;
 
+  private readonly taxiPotSubscriptionId = `taxi-pot-subscription-${createMessageId()}`;
+
   private readonly errorSubscriptionId = `error-subscription-${createMessageId()}`;
 
   constructor(options: ChatWebSocketClientOptions) {
@@ -256,7 +272,11 @@ export class ChatWebSocketClient {
   }
 
   sendMessage(content: string) {
-    if (!this.isStompConnected || this.socket?.readyState !== WebSocket.OPEN) {
+    if (
+      !this.options.roomId ||
+      !this.isStompConnected ||
+      this.socket?.readyState !== WebSocket.OPEN
+    ) {
       return false;
     }
 
@@ -333,18 +353,28 @@ export class ChatWebSocketClient {
     for (const frame of parseFrames(text)) {
       if (frame.command === 'CONNECTED') {
         this.isStompConnected = true;
-        this.socket?.send(
-          createFrame('SUBSCRIBE', {
-            id: this.subscriptionId,
-            destination: `/sub/chat/${this.options.roomId}`,
-          }),
-        );
-        this.socket?.send(
-          createFrame('SUBSCRIBE', {
-            id: this.settlementSubscriptionId,
-            destination: '/user/sub/settlement',
-          }),
-        );
+        if (this.options.roomId) {
+          this.socket?.send(
+            createFrame('SUBSCRIBE', {
+              id: this.subscriptionId,
+              destination: `/sub/chat/${this.options.roomId}`,
+            }),
+          );
+          this.socket?.send(
+            createFrame('SUBSCRIBE', {
+              id: this.settlementSubscriptionId,
+              destination: '/user/sub/settlement',
+            }),
+          );
+        }
+        if (this.options.subscribeTaxiPotMatching) {
+          this.socket?.send(
+            createFrame('SUBSCRIBE', {
+              id: this.taxiPotSubscriptionId,
+              destination: '/user/sub/taxi-pot',
+            }),
+          );
+        }
         this.socket?.send(
           createFrame('SUBSCRIBE', {
             id: this.errorSubscriptionId,
@@ -360,7 +390,12 @@ export class ChatWebSocketClient {
       if (frame.command === 'MESSAGE') {
         try {
           const message = JSON.parse(frame.body) as { type?: string };
-          if (message.type === 'METER_ANALYSIS_FINISHED' || message.type === 'TRANSFER_ANALYZED') {
+          if (message.type === 'MATCHED') {
+            this.options.onTaxiPotMatched?.(message as TaxiPotMatchedMessage);
+          } else if (
+            message.type === 'METER_ANALYSIS_FINISHED' ||
+            message.type === 'TRANSFER_ANALYZED'
+          ) {
             this.options.onSettlementAnalysisFinished?.(
               message as SettlementAnalysisFinishedMessage,
             );

@@ -270,3 +270,28 @@ test.describe('신고 E2E', () => {
     ]);
   });
 });
+
+test.describe('채팅방 뒤로가기', () => {
+  test('마지막 메시지를 읽음 처리한 뒤 채팅 목록으로 이동한다', async ({ page }) => {
+    await setupGeneralChat(page);
+
+    let readMarkerBody: Record<string, unknown> | undefined;
+    await page.route('**/api/chat-rooms/501/read-marker', async (route) => {
+      readMarkerBody = route.request().postDataJSON() as Record<string, unknown>;
+      await fulfillJson(route, {
+        message: '읽음 처리되었습니다',
+        data: { last_read_message_id: 1441, has_unread: false },
+      });
+    });
+
+    await page.goto('/chatroom/501', { waitUntil: 'domcontentloaded' });
+    await expect(page.getByText('3분 뒤 도착합니다')).toBeVisible({
+      timeout: APP_RENDER_TIMEOUT,
+    });
+
+    await page.getByRole('link', { name: '뒤로가기' }).click();
+
+    await expect(page).toHaveURL(/\/chat$/);
+    expect(readMarkerBody).toEqual({ last_read_message_id: '1441' });
+  });
+});

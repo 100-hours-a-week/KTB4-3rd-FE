@@ -18,6 +18,7 @@ export type MapMarker = {
   isSelected?: boolean;
   position: MapCoordinate;
   title?: string;
+  zIndex?: number;
 };
 
 export type MapViewport = {

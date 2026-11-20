@@ -6,7 +6,7 @@ const communityPost: CommunityPostDetailProps['post'] = {
   type: 'COMMUNITY',
   id: 88,
   title: '9007번 버스 줄 개김 ㅋㅋ',
-  description: '한 20명 있는듯??',
+  content: '한 20명 있는듯??',
   author: { nickname: '애롱롱', profile_image_url: null },
   distance_m: 540,
   comment_count: 3,

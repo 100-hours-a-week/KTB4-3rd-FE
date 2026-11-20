@@ -41,6 +41,8 @@ export type NotificationPageProps = {
   onTabChange?: (tab: NotificationTabValue) => void;
 };
 
+const CARPOOL_REQUEST_RECEIVED_ROUTE = '/chat?tab=carpool&direction=RECEIVED';
+
 const NOTIFICATION_TAB_OPTIONS: readonly ChipTabOption<NotificationTabValue>[] = [
   { label: '전체', value: 'all', widthClassName: 'w-[68px]' },
   { label: '안읽음', value: 'unread', widthClassName: 'w-[80px]' },
@@ -242,6 +244,11 @@ export function NotificationPage() {
   const onNotificationClick = useCallback(
     (notification: Notification) => {
       markNotificationRead(notification.id);
+
+      if (notification.type === 'CARPOOL_REQUEST_RECEIVED') {
+        router.push(CARPOOL_REQUEST_RECEIVED_ROUTE);
+        return;
+      }
 
       if (notification.target_post_id !== null) {
         router.push(`/posts/${notification.target_post_id}`);

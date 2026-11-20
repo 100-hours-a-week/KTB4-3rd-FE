@@ -6,6 +6,7 @@ import {
   ChatListPageLoading,
   ChatListPageContent,
   ChatListPageContentLoading,
+  parseChatListRouteState,
   type ChatListPageStates,
 } from '@/_pages/chat-list';
 
@@ -24,10 +25,26 @@ const chatRooms = [
 
 afterEach(cleanup);
 
+describe('ChatList route state', () => {
+  it('카풀 받은 요청 딥링크를 카풀 탭과 받은 요청 탭으로 해석한다', () => {
+    expect(parseChatListRouteState({ tab: 'carpool', direction: 'RECEIVED' })).toEqual({
+      chatTab: 'carpool',
+      requestDirection: 'RECEIVED',
+    });
+  });
+
+  it('알 수 없는 쿼리는 기본 채팅 탭과 보낸 요청 탭으로 처리한다', () => {
+    expect(parseChatListRouteState({ tab: 'unknown', direction: ['UNKNOWN', 'RECEIVED'] })).toEqual(
+      { chatTab: 'chat', requestDirection: 'SENT' },
+    );
+  });
+});
+
 describe('ChatListPageContent', () => {
   it('응답 목록이 있으면 채팅방 목록을 표시한다', () => {
     const states: ChatListPageStates = {
-      matching: { status: 'success', data: { items: [], next_cursor: null } },
+      taxiPot: { status: 'success', data: { items: [], next_cursor: null } },
+      carpool: { status: 'success', data: { items: [], next_cursor: null } },
       community: { status: 'success', data: { items: chatRooms, next_cursor: null } },
     };
 
@@ -56,7 +73,8 @@ describe('ChatListPageContent', () => {
 
   it('스크롤 위치와 콘텐츠 높이에 따라 스크롤 포그를 표시한다', async () => {
     const states: ChatListPageStates = {
-      matching: { status: 'success', data: { items: [], next_cursor: null } },
+      taxiPot: { status: 'success', data: { items: [], next_cursor: null } },
+      carpool: { status: 'success', data: { items: [], next_cursor: null } },
       community: { status: 'success', data: { items: chatRooms, next_cursor: null } },
     };
 
@@ -104,7 +122,8 @@ describe('ChatListPageContent', () => {
 
   it('목록이 비어 있으면 빈 상태를 표시한다', () => {
     const states: ChatListPageStates = {
-      matching: { status: 'success', data: { items: [], next_cursor: null } },
+      taxiPot: { status: 'success', data: { items: [], next_cursor: null } },
+      carpool: { status: 'success', data: { items: [], next_cursor: null } },
       community: { status: 'success', data: { items: [], next_cursor: null } },
     };
 
@@ -114,27 +133,29 @@ describe('ChatListPageContent', () => {
     expect(screen.getByText('참여중인 채팅방이 없어요')).toBeInTheDocument();
   });
 
-  it('매칭 탭이 비어 있으면 택시 매칭 빈 상태 문구를 표시한다', async () => {
+  it('택시팟 탭이 비어 있으면 택시팟 빈 상태 문구를 표시한다', async () => {
     const user = userEvent.setup();
     const states: ChatListPageStates = {
-      matching: { status: 'success', data: { items: [], next_cursor: null } },
+      taxiPot: { status: 'success', data: { items: [], next_cursor: null } },
+      carpool: { status: 'success', data: { items: [], next_cursor: null } },
       community: { status: 'success', data: { items: [], next_cursor: null } },
     };
 
     render(<ChatListPageContent states={states} />);
 
-    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    await user.click(screen.getByRole('tab', { name: '택시팟' }));
 
-    expect(screen.getByText('참여중인 택시 매칭이 없어요')).toBeInTheDocument();
+    expect(screen.getByText('참여중인 택시팟이 없어요')).toBeInTheDocument();
     expect(screen.getByText('함께 택시 탈 사람을 찾아보세요')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: '매칭하러가기' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: '택시팟 찾으러가기' })).toBeInTheDocument();
   });
 
   it('오류 응답이면 오류 상태와 재시도 버튼을 표시한다', async () => {
     const user = userEvent.setup();
-    const onRetry = vi.fn<(tab: 'matching' | 'community') => void>();
+    const onRetry = vi.fn<(tab: 'taxiPot' | 'carpool' | 'community') => void>();
     const states: ChatListPageStates = {
-      matching: { status: 'success', data: { items: [], next_cursor: null } },
+      taxiPot: { status: 'success', data: { items: [], next_cursor: null } },
+      carpool: { status: 'success', data: { items: [], next_cursor: null } },
       community: { status: 'error' },
     };
 
@@ -148,12 +169,13 @@ describe('ChatListPageContent', () => {
   it('탭을 바꾸면 해당 탭의 상태를 표시한다', async () => {
     const user = userEvent.setup();
     const states: ChatListPageStates = {
-      matching: { status: 'success', data: { items: chatRooms, next_cursor: null } },
+      taxiPot: { status: 'success', data: { items: chatRooms, next_cursor: null } },
+      carpool: { status: 'success', data: { items: [], next_cursor: null } },
       community: { status: 'success', data: { items: [], next_cursor: null } },
     };
 
     render(<ChatListPageContent states={states} />);
-    await user.click(screen.getByRole('tab', { name: '매칭' }));
+    await user.click(screen.getByRole('tab', { name: '택시팟' }));
 
     expect(screen.getByRole('button', { name: /8시 판교역/ })).toBeInTheDocument();
     expect(screen.queryByTestId('chat-list-empty')).not.toBeInTheDocument();
